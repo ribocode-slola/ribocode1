@@ -36,3 +36,20 @@
     transform: rotate(360deg);
   }
 }
+
+.grid-container {
+  display: grid;
+  /* grid-template-columns: 1fr 1fr;  Two columns */
+  grid-template-rows: 1fr 1fr;  /* Two rows */
+  gap: 10px; /* Add spacing between containers */
+}
+
+.app-container {
+  padding: 20px;
+}
+
+#molstar-container-1CRN,
+#molstar-container-1BNA {
+    position: relative;
+    overflow: hidden;
+}

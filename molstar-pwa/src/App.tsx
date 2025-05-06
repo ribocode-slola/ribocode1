@@ -10,8 +10,8 @@ const App: React.FC = () => {
             </header>
             <main className="grid-container">
                 {/* Add multiple Molstar containers */}
-                <MolstarContainer moleculeUrl="https://files.rcsb.org/download/1CRN.cif" />
-                <MolstarContainer moleculeUrl="https://files.rcsb.org/download/1BNA.cif" />
+                <MolstarContainer key="1CRN" moleculeUrl="https://files.rcsb.org/download/1CRN.cif" />
+                <MolstarContainer key="1BNA" moleculeUrl="https://files.rcsb.org/download/1BNA.cif" />
                 {/*<MolstarContainer moleculeUrl="https://files.rcsb.org/download/4HHB.pdb" />
                 <MolstarContainer moleculeUrl="https://files.rcsb.org/download/1CRN.pdb" />*/}
             </main>
@@ -19,6 +19,7 @@ const App: React.FC = () => {
     );
 };
 
+/*
 const styles = {
     gridContainer: {
         display: 'grid',
@@ -29,5 +30,6 @@ const styles = {
         height: '100vh',
     },
 };
+*/
 
 export default App;

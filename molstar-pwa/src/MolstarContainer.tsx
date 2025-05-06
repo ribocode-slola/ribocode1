@@ -3,11 +3,12 @@ import ReactDOM from 'react-dom/client';
 import { PluginContext } from 'molstar/lib/mol-plugin/context';
 import { createPluginUI } from 'molstar/lib/mol-plugin-ui';
 import { DefaultPluginSpec } from 'molstar/lib/mol-plugin/spec';
+import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 
 // Defines a React component MolstarContainer that integrates the Mol* library for molecular visualization.
 const MolstarContainer = ({ moleculeUrl }: { moleculeUrl: string }) => {
     // viewerRef: A reference to the <div> element where the Mol* plugin will render the visualization.
-    const viewerRef = useRef<HTMLDivElement | null>(null);
+    const viewerRef = useRef<HTMLDivElement | null>(null); // Unique ref for each container
     // pluginRef: A reference to the Mol* plugin instance.
     const pluginRef = useRef<any>(null);
     // rootRef: A reference to the ReactDOM root instance for rendering React components inside the Mol* plugin.
@@ -15,73 +16,140 @@ const MolstarContainer = ({ moleculeUrl }: { moleculeUrl: string }) => {
 
     useEffect(() => {
         const initializePlugin = async () => {
-            if (viewerRef.current) {
-                try {
-                    // Dispose of any existing plugin instance
-                    pluginRef.current?.dispose();
-
-                    // Create the plugin instance asynchronously
-                    // Initialize the Mol* plugin with a custom render function.
-                    const plugin = await createPluginUI({
-                        target: viewerRef.current,
-                        render: (component, container) => {
-                            if (!container) return;
-
-                            // Store the root instance in a WeakMap or similar structure
-                            if (!rootRef.current) {
-                                console.log('Creating new React root');
-                                rootRef.current = ReactDOM.createRoot(container); // Create root only once
-                            } else {
-                                console.log('Reusing existing React root');
-                            }
-                            rootRef.current.render(component); // Reuse the root for rendering
-                        }
-                    });
-                    //const plugin = await createPluginUI({
-                    //    target: viewerRef.current,
-                    //    render: (component, container) => {
-                    //        ReactDOM.render(component, container); // Use ReactDOM to render the component
-                    //    },
-                    //});
-                    pluginRef.current = plugin;
-
-                    // Load the molecule from the provided URL
-                    await plugin.dataTransaction(async () => {
-                        try {
-                            const data = await plugin.builders.data.download({ url: moleculeUrl }, { state: { isGhost: true } });
-                            console.log('Downloaded data:', data);
-                            // Parse the downloaded data as a trajectory
-                            const trajectory = await plugin.builders.structure.parseTrajectory(data, 'mmcif'); // Use 'mmcif' for CIF files
-                            await plugin.builders.structure.hierarchy.applyPreset(trajectory, 'default');
-                        } catch (error) {
-                            console.error('Error loading molecule data:', error);
-                            console.error('Molecule URL:', moleculeUrl);
-                        }
-                    });
-                } catch (error) {
-                    console.error('Error loading molecule:', error);
+            if (!viewerRef.current) {
+                console.error('viewerRef is not attached to a DOM element!');
+                return;
+            }
+            // Prevent duplicate initialization
+            if (pluginRef.current) {
+                console.warn('Plugin already initialized for this container:', viewerRef.current);
+                return;
+            }
+            console.log('Initializing plugin for container:', viewerRef.current); // Debug log
+            let plugin: PluginUIContext | undefined;
+            // Check if the plugin is already initialized
+            try {
+                // Dispose of any existing plugin instance
+                if (pluginRef.current) {
+                    console.log('Disposing existing plugin instance:', pluginRef.current); // Debug log
+                    pluginRef.current.dispose();
                 }
+
+                // Create a new Mol* plugin instance for this container
+                plugin = await createPluginUI({
+                    target: viewerRef.current, // Attach to this container's unique DOM element
+                    render: (component, container) => {
+                        console.log('Rendering React component into container:', container); // Debug log
+                        if (!rootRef.current) {
+                            rootRef.current = ReactDOM.createRoot(container); // Initialize React root
+                        }
+                        rootRef.current.render(component); // Render the component
+                        console.log('Initializing plugin for viewerRef:', viewerRef.current); // Debug log
+                    },
+                });
+                console.log('WebGL context for plugin:', plugin.canvas3d?.webgl?.gl); // Debug log
+                pluginRef.current = plugin;
+            } catch (error) {
+                console.error('Error initializing plugin:', error);
+            }
+            try {
+                // Ensure plugin is initialized before using it
+                if (!plugin) {
+                    throw new Error('Plugin is not initialized.');
+                }
+                // Load and visualize the molecule
+                await plugin.dataTransaction(async () => {
+                    if (plugin) {
+                        const data = await plugin.builders.data.download(
+                            { url: moleculeUrl },
+                            { state: { isGhost: true } }
+                        );
+                        const trajectory = await plugin.builders.structure.parseTrajectory(data, 'mmcif');
+                        await plugin.builders.structure.hierarchy.applyPreset(trajectory, 'default');
+                    }
+                });
+
+                /*
+                // Create the plugin instance asynchronously
+                // Initialize the Mol* plugin with a custom render function.
+                const plugin = await createPluginUI({
+                    target: viewerRef.current,
+                    render: (component, container) => {
+                        if (!container) return;
+
+                        // Store the root instance in a WeakMap or similar structure
+                        if (!rootRef.current) {
+                            console.log('Creating new React root');
+                            rootRef.current = ReactDOM.createRoot(container); // Create root only once
+                        } else {
+                            console.log('Reusing existing React root');
+                        }
+                        rootRef.current.render(component); // Reuse the root for rendering
+                    }
+                });
+                //const plugin = await createPluginUI({
+                //    target: viewerRef.current,
+                //    render: (component, container) => {
+                //        ReactDOM.render(component, container); // Use ReactDOM to render the component
+                //    },
+                //});
+                pluginRef.current = plugin;
+
+                // Load the molecule from the provided URL
+                await plugin.dataTransaction(async () => {
+                    try {
+                        const data = await plugin.builders.data.download(
+                            { url: moleculeUrl }, { state: { isGhost: true } });
+                        console.log('Downloaded data:', data);
+                        // Parse the downloaded data as a trajectory
+                        const trajectory = await plugin.builders.structure.parseTrajectory(data, 'mmcif'); // Use 'mmcif' for CIF files
+                        await plugin.builders.structure.hierarchy.applyPreset(trajectory, 'default');
+                    } catch (error) {
+                        console.error('Error loading molecule data:', error);
+                        console.error('Molecule URL:', moleculeUrl);
+                    }
+                });
+                */
+            } catch (error) {
+                console.error('Error loading molecule:', error);
             }
         };
 
         initializePlugin();
 
+
+
         // Cleanup on unmount
         return () => {
-            pluginRef.current?.dispose(); // Dispose of the plugin
-            rootRef.current?.unmount(); // Unmount the React root
-            rootRef.current = null; // Reset the root reference
+            // Dispose of the plugin
+            if (pluginRef.current) {
+                console.log('Cleaning up plugin for container:', viewerRef.current);
+                console.log('Disposing of existing plugin instance:', pluginRef.current);
+                pluginRef.current.dispose();
+                pluginRef.current = null;
+            }
+
+            // Safely unmount the React root
+            if (rootRef.current) {
+                Promise.resolve().then(() => {
+                    rootRef.current?.unmount();
+                    rootRef.current = null; // Reset the root reference
+                });
+            }
         };
     }, [moleculeUrl]);
 
     return (
         <div
             ref={viewerRef}
+            id={`molstar-container-${moleculeUrl}`} // Ensure unique ID based on moleculeUrl
             style={{
                 width: '100%',
-                height: '100%',
+                height: '400px',
+                //height: '100%',
                 border: '1px solid #ccc',
                 margin: '10px',
+                position: 'relative'
             }}
         />
     );
