@@ -1,55 +1,18 @@
-.App {
-  text-align: center;
-}
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
+.app-container {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
-}
-
-.App-link {
-  color: #61dafb;
-}
-
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  flex-direction: column; /* Stack containers vertically */
+  /*flex-direction: row; /* Stack containers horizontally */
+  gap: 20px; /* Add spacing between containers */
+  padding: 20px;
+  border: 2px solid blue;
 }
 
 .grid-container {
   display: grid;
-  /* grid-template-columns: 1fr 1fr;  Two columns */
-  grid-template-rows: 1fr 1fr;  /* Two rows */
+  /*grid-template-columns: 1fr 1fr;  /* Two columns */
+  grid-template-columns: repeat(2, 800px);  /* Two columns, each 400px wide */
+  /* grid-template-rows: 1fr 1fr;  /* Two rows */
+  grid-template-rows: repeat(2, 400px); /* Two rows, each 400px tall */
   gap: 10px; /* Add spacing between containers */
-}
-
-.app-container {
-  padding: 20px;
-}
-
-#molstar-container-1CRN,
-#molstar-container-1BNA {
-    position: relative;
-    overflow: hidden;
 }

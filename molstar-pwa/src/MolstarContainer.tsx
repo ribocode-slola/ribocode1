@@ -4,6 +4,7 @@ import { PluginContext } from 'molstar/lib/mol-plugin/context';
 import { createPluginUI } from 'molstar/lib/mol-plugin-ui';
 import { DefaultPluginSpec } from 'molstar/lib/mol-plugin/spec';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
+import './MolstarContainer.css'; // Import the CSS file
 
 // Defines a React component MolstarContainer that integrates the Mol* library for molecular visualization.
 const MolstarContainer = ({ moleculeUrl }: { moleculeUrl: string }) => {
@@ -68,48 +69,6 @@ const MolstarContainer = ({ moleculeUrl }: { moleculeUrl: string }) => {
                         await plugin.builders.structure.hierarchy.applyPreset(trajectory, 'default');
                     }
                 });
-
-                /*
-                // Create the plugin instance asynchronously
-                // Initialize the Mol* plugin with a custom render function.
-                const plugin = await createPluginUI({
-                    target: viewerRef.current,
-                    render: (component, container) => {
-                        if (!container) return;
-
-                        // Store the root instance in a WeakMap or similar structure
-                        if (!rootRef.current) {
-                            console.log('Creating new React root');
-                            rootRef.current = ReactDOM.createRoot(container); // Create root only once
-                        } else {
-                            console.log('Reusing existing React root');
-                        }
-                        rootRef.current.render(component); // Reuse the root for rendering
-                    }
-                });
-                //const plugin = await createPluginUI({
-                //    target: viewerRef.current,
-                //    render: (component, container) => {
-                //        ReactDOM.render(component, container); // Use ReactDOM to render the component
-                //    },
-                //});
-                pluginRef.current = plugin;
-
-                // Load the molecule from the provided URL
-                await plugin.dataTransaction(async () => {
-                    try {
-                        const data = await plugin.builders.data.download(
-                            { url: moleculeUrl }, { state: { isGhost: true } });
-                        console.log('Downloaded data:', data);
-                        // Parse the downloaded data as a trajectory
-                        const trajectory = await plugin.builders.structure.parseTrajectory(data, 'mmcif'); // Use 'mmcif' for CIF files
-                        await plugin.builders.structure.hierarchy.applyPreset(trajectory, 'default');
-                    } catch (error) {
-                        console.error('Error loading molecule data:', error);
-                        console.error('Molecule URL:', moleculeUrl);
-                    }
-                });
-                */
             } catch (error) {
                 console.error('Error loading molecule:', error);
             }
@@ -142,16 +101,20 @@ const MolstarContainer = ({ moleculeUrl }: { moleculeUrl: string }) => {
     return (
         <div
             ref={viewerRef}
-            id={`molstar-container-${moleculeUrl}`} // Ensure unique ID based on moleculeUrl
-            style={{
-                width: '100%',
-                height: '400px',
-                //height: '100%',
-                border: '1px solid #ccc',
-                margin: '10px',
-                position: 'relative'
-            }}
-        />
+            id={`msp-container-${moleculeUrl}`} // Ensure unique ID based on moleculeUrl
+            className="msp-container" // Apply CSS class for styling
+        >
+            {/* Canvas for Molstar */}
+            <canvas
+                id={`msp-canvas-${moleculeUrl}`}
+                className="msp-canvas"
+            />
+            {/* Log for Molstar */}
+            <div
+                id={`molstar-log-${moleculeUrl}`}
+                className="msp-log"
+            />
+        </div>
     );
 };
 

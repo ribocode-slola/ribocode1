@@ -1,6 +1,6 @@
 import React from 'react';
 import MolstarContainer from './MolstarContainer';
-import './App.css'; // Add custom styles here
+import './App.css';
 
 const App: React.FC = () => {
     return (
@@ -10,10 +10,11 @@ const App: React.FC = () => {
             </header>
             <main className="grid-container">
                 {/* Add multiple Molstar containers */}
-                <MolstarContainer key="1CRN" moleculeUrl="https://files.rcsb.org/download/1CRN.cif" />
-                <MolstarContainer key="1BNA" moleculeUrl="https://files.rcsb.org/download/1BNA.cif" />
-                {/*<MolstarContainer moleculeUrl="https://files.rcsb.org/download/4HHB.pdb" />
-                <MolstarContainer moleculeUrl="https://files.rcsb.org/download/1CRN.pdb" />*/}
+                {/*<MolstarContainer key="1CRN" moleculeUrl="https://files.rcsb.org/download/1CRN.cif" />
+                <MolstarContainer key="1BNA" moleculeUrl="https://files.rcsb.org/download/1BNA.cif" />*/}
+                <MolstarContainer key="4UG0" moleculeUrl="https://files.rcsb.org/download/4UG0.cif" />
+                <MolstarContainer key="6XU8" moleculeUrl="https://files.rcsb.org/download/6XU8.cif" />
+                {/**/}
             </main>
         </div>
     );
