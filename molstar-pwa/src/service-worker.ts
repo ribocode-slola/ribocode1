@@ -77,4 +77,29 @@ self.addEventListener('message', (event) => {
   }
 });
 
-// Any other custom service worker logic can go here.
+// Handle fetch events to serve cached resources or fallback content
+self.addEventListener('fetch', (event) => {
+  event.respondWith(
+    caches.match(event.request).then((response) => {
+      // Return cached response if found
+      if (response) {
+        return response;
+      }
+
+      // Attempt to fetch the resource from the network
+      return fetch(event.request).catch(() => {
+        // Handle missing files gracefully
+        if (event.request.destination === 'document') {
+          // Fallback for HTML files
+          return caches.match('/index.html') as Promise<Response>;
+        } else if (event.request.destination === 'image') {
+          // Fallback for images
+          return caches.match('/fallback-image.png') as Promise<Response>;
+        }
+
+        // Default fallback for other types
+        return new Response('Resource not available', { status: 404 });
+      });
+    })
+  );
+});
