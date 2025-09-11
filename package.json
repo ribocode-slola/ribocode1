@@ -1,7 +1,7 @@
 {
   "name": "molstar-pwa",
   "version": "0.1.0",
-  "homepage": "https://agdturner.github.io/ribocode/",
+  "homepage": "https://ribocode-slola.github.io/ribocode1/",
   "private": true,
   "dependencies": {
     "@testing-library/jest-dom": "^5.16.1",
