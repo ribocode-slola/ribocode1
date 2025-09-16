@@ -1,5 +1,5 @@
 # ribocode
 React Progressive Web App for RiboCode Project
 
-https://agdturner.github.io/ribocode/molstar-pwa/
+https://ribocode-slola.github.io/ribocode1/molstar-pwa/
 
