@@ -1,0 +1,1 @@
+{"root":["./src/App.test.tsx","./src/App.tsx","./src/MolstarContainer.tsx","./src/MolstarViewer.tsx","./src/SyncContext.tsx","./src/index.tsx","./src/molstar.d.ts","./src/react-app-env.d.ts","./src/reportWebVitals.ts","./src/service-worker.ts","./src/serviceWorkerRegistration.ts","./src/setupTests.ts"],"errors":true,"version":"5.9.3"}
