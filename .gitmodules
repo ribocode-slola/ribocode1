@@ -1,0 +1,3 @@
+[submodule "packages/molstar"]
+	path = packages/molstar
+	url = https://github.com/agdturner/molstar

@@ -1,26 +1,30 @@
 {
+  "references": [{ "path": "packages/molstar" }], // Ensure molstar is built first
   "compilerOptions": {
-    "target": "es5",
+    "target": "es2018", // Modern JavaScript target for better performance
     "lib": [
       "dom",
       "dom.iterable",
       "esnext"
     ],
-    "allowJs": true,
-    "skipLibCheck": true,
+    "allowJs": false, // Disable JavaScript files for stricter type checking
+    "skipLibCheck": true, // Skip type checks for dependencies
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "strict": true,
+    "strict": true, // Enable all strict type-checking options
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
-    "module": "esnext",
-    "moduleResolution": "node",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
-    "jsx": "react-jsx"
+    "module": "esnext", // Use ESNext modules for modern bundlers
+    "moduleResolution": "node", // Resolve modules like Node.js
+    "resolveJsonModule": true, // Allow importing JSON files
+    "isolatedModules": true, // Required for React with TypeScript
+    "baseUrl": ".", // Required for paths to work
+    "paths": {
+      "molstar/*": ["../molstar/lib/*"] // Map molstar to its lib directory
+    },
+    "jsx": "react-jsx" // Use the new JSX transform for React
   },
   "include": [
-    "src"
+    "src" // Include the source directory
   ]
 }
