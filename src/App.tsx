@@ -4,9 +4,17 @@ import { useSync, SyncProvider } from './SyncContext';
 import MolstarViewer from './MolstarViewer';
 import { Subscription } from 'rxjs';
 import './App.css';
+//import * as Vec3Module from 'molstar/lib/mol-math/linear-algebra/3d/vec3';
+//const Vec3 = Vec3Module.Vec3;
+//import type { Vec3 as Vec3Type } from 'molstar/lib/mol-math/linear-algebra/3d/vec3';
 import { Vec3 } from 'molstar/lib/mol-math/linear-algebra/3d/vec3';
+//import * as Mat4Module from 'molstar/lib/mol-math/linear-algebra/3d/mat4';
+//const Mat4 = Mat4Module.Mat4;
+//import type { Mat4 as Mat4Type } from 'molstar/lib/mol-math/linear-algebra/3d/mat4';
 import { Mat4 } from 'molstar/lib/mol-math/linear-algebra';
 import { StructureElement } from 'molstar/lib/mol-model/structure';
+//import * as OrderedSetModule from 'molstar/lib/mol-data/int/ordered-set';
+//const OrderedSet = OrderedSetModule.OrderedSet; // Use this instead of 'mol-data/int'
 import { OrderedSet } from 'molstar/lib/mol-data/int';
 
 //import { mat4, quat, vec3, ReadonlyVec3 } from 'gl-matrix';
@@ -187,6 +195,7 @@ const App: React.FC = () => {
 
         // State to track the initial matrix of Viewer A's camera
         const [initialMatrixA, setInitialMatrixA] = useState<Mat4 | null>(null);
+        //const [initialMatrixA, setInitialMatrixA] = useState<Mat4 | null>(null);
 
         const handleSyncToggle = () => {
             const newSyncState = !syncEnabled;

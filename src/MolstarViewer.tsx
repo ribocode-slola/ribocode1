@@ -1,13 +1,20 @@
 import React, { useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom/client';
-//import { PluginContext } from 'molstar/lib/mol-plugin/context';
+import { PluginContext } from 'molstar/lib/mol-plugin/context';
+//import * as PluginUIModule from 'molstar/lib/commonjs/mol-plugin-ui';
+//const createPluginUI = PluginUIModule.createPluginUI;
 import { createPluginUI } from 'molstar/lib/mol-plugin-ui';
+//import * as Vec3Module from 'molstar/lib/commonjs/mol-math/linear-algebra/3d/vec3';
+//const Vec3 = Vec3Module.Vec3;
 import { Vec3 } from 'molstar/lib/mol-math/linear-algebra/3d/vec3';
 import './MolstarContainer.css';
-import { Structure, StructureElement } from 'molstar/lib/mol-model/structure';
+//import { Structure, StructureElement } from 'molstar/lib/mol-model/structure';
+import { Structure } from 'molstar/lib/mol-model/structure';
+// Use Structure everywhere, including for types
+//import * as Mat4Module from 'molstar/lib/commonjs/mol-math/linear-algebra/3d/mat4';
+//const Mat4 = Mat4Module.Mat4; // Use this instead of barrel import
 import { Mat4 } from 'molstar/lib/mol-math/linear-algebra/3d/mat4';
 import { Entities } from 'molstar/lib/mol-model/structure/model/properties/common';
-import { PluginContext } from 'molstar/lib/mol-plugin/context';
 import { CIF } from 'molstar/lib/mol-io/reader/cif';
 import { Asset } from 'molstar/lib/mol-util/assets';
 import * as fs from 'fs';
@@ -25,7 +32,8 @@ const MolstarViewer: React.FC<MolstarViewerProps> = ({ moleculeId, setViewer }) 
     const rootRef = useRef<ReactDOM.Root | null>(null);
     const pluginRef = useRef<any>(null);
     const molecule = useRef<Structure | null>(null);
-    const center = useRef<Vec3>(Vec3.create(0, 0, 0)); // Center of the molecule
+    const center = useRef<ReturnType<typeof Vec3.create>>(Vec3.create(0, 0, 0));
+    //const center = useRef<Vec3>(Vec3.create(0, 0, 0)); // Center of the molecule
     //const cameraPosition = useRef<Vec3>(Vec3.create(0, 0, 0)); // Camera position
 
     // const saveTransformedCIF = () => {
