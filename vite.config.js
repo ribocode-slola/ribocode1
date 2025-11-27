@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
-  base: '/ribocode1/', // Replace with your repository name
+  base: process.env.VITE_BASE_PATH || '/', //'/ribocode1/', // Replace with your repository name
   plugins: [
     react(),
     VitePWA({
@@ -15,8 +15,8 @@ export default defineConfig({
       manifest: {
         name: 'React Progressive Web App',
         short_name: 'ReactApp',
-        start_url: '/ribocode1/', // Update this to match your GitHub Pages base path
-        scope: '/ribocode1/', // Ensure this matches the base path
+        start_url: process.env.VITE_BASE_PATH || '/', //'/ribocode1/', // Update this to match your GitHub Pages base path
+        scope: process.env.VITE_BASE_PATH || '/', //'/ribocode1/', // Ensure this matches the base path
         display: 'standalone',
         background_color: '#ffffff',
         theme_color: '#000000',
@@ -47,7 +47,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      'molstar/lib/mol-plugin-ui': path.resolve(__dirname, 'packages/molstar/lib/mol-plugin-ui/index.js'),
+      'molstar': path.resolve(__dirname, 'packages/molstar'),
     },
   },
 })

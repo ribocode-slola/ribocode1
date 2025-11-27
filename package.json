@@ -10,6 +10,7 @@
     "clean": "rm -rf node_modules && npm cache clean --force",
     "preview": "vite preview",
     "start": "vite",
+    "dev": "vite",
     "build": "vite build",
     "serve": "vite preview",
     "predeploy": "npm run build",
