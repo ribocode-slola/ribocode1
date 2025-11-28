@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { PluginContext } from 'molstar/lib/mol-plugin/context';
 
 interface SyncContextType {
@@ -24,9 +24,15 @@ export const SyncProvider: React.FC<SyncProviderProps> = ({ children }) => {
     const [syncEnabled, setSyncEnabled] = useState<boolean>(false);
     const [activeViewer, setActiveViewer] = useState<'A' | 'B' | null>(null);
 
+    useEffect(() => {
+        console.log('[SyncContext] activeViewer changed:', activeViewer);
+    }, [activeViewer]);
+
     return (
         <SyncContext.Provider value={{
-             viewerA, setViewerA, viewerB, setViewerB, syncEnabled, setSyncEnabled,
+             viewerA, setViewerA, 
+             viewerB, setViewerB, 
+             syncEnabled, setSyncEnabled,
              activeViewer, setActiveViewer }}>
             {children}
         </SyncContext.Provider>
