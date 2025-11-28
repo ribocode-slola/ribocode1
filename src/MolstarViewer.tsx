@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom/client';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
-import * as PluginUI from 'molstar/lib/mol-plugin-ui';
 import { Vec3 } from 'molstar/lib/mol-math/linear-algebra/3d/vec3';
 import './MolstarContainer.css';
 import { Structure } from 'molstar/lib/mol-model/structure';
@@ -22,11 +21,11 @@ const MolstarViewer: React.FC<MolstarViewerProps> = ({
     const pluginRef = useRef<any>(null);
     const molecule = useRef<Structure | null>(null);
     const center = useRef<ReturnType<typeof Vec3.create>>(Vec3.create(0, 0, 0));
-    const [viewer, setLocalViewer] = useState<InstanceType<typeof PluginUI> | null>(null);
+    const [viewer, setLocalViewer] = useState<InstanceType<typeof PluginUIContext> | null>(null);
     
     // Camera subscription cleanup
     useEffect(() => {
-        if (!viewer || viewer.disposed) return;
+        if (!viewer || (viewer as any).disposed) return;
         const camera = pluginRef.current?.canvas3d?.camera;
         let sub: any;
         if (camera) {
@@ -39,60 +38,9 @@ const MolstarViewer: React.FC<MolstarViewerProps> = ({
         };
     }, [viewer, viewerKey]);
 
-    // Selection change subscription
-    useEffect(() => {
-        if (
-            !viewer ||
-            (viewer as any).disposed || // If disposed is private, use public checks
-            !viewer.managers?.interactivity?.selection
-        ) {
-            console.log(`[MolstarViewer ${viewerKey}] Viewer not ready for selection subscription.`);
-            return;
-        }
-    
-        const selectionManager = viewer.managers.interactivity.selection;
-        if (!selectionManager?.events?.changed) {
-            console.warn(`[MolstarViewer ${viewerKey}] Selection manager events not available`, selectionManager);
-            return;
-        }
-    
-        let sub: { unsubscribe: () => void } | undefined;
-        try {
-            sub = selectionManager.events.changed.subscribe(() => {
-                const selection = selectionManager.getSelection();
-                console.log(`[MolstarViewer ${viewerKey}] Selection changed`, selection);
-                onSelectionChange(selection);
-            });
-        } catch (err) {
-            console.error(`[MolstarViewer ${viewerKey}] Error subscribing to selection changed`, err);
-        }
-    
-        return () => {
-            if (sub) sub.unsubscribe();
-        };
-    }, [viewer, onSelectionChange, viewerKey]);
-
-    // External selection synchronization
-    useEffect(() => {
-        if (!viewer || viewer.disposed || !externalSelection) {
-            console.log(`[MolstarViewer ${viewerKey}] Viewer not ready for external selection.`);
-            return;
-        }
-        const currentSelection = viewer.managers.interactivity.selection.getSelection();
-        console.log(`[MolstarViewer ${viewerKey}] Comparing selections`, { currentSelection, externalSelection });
-        if (JSON.stringify(currentSelection) !== JSON.stringify(externalSelection)) {
-            console.log(`[MolstarViewer ${viewerKey}] Setting new selection`, externalSelection);
-            viewer.managers.interactivity.selection.setSelection(externalSelection);
-            // Force update if Molstar doesn't emit change event
-            if (viewer.managers.interactivity.selection.events.changed) {
-                viewer.managers.interactivity.selection.events.changed.next();
-            }
-        }
-    }, [viewer, externalSelection, viewerKey]);
-    
     // Molecule loading and camera setup
     useEffect(() => {
-        if (!viewer || viewer.disposed) {
+        if (!viewer || (viewer as any).disposed) {
             console.log(`[MolstarViewer ${viewerKey}] Viewer not ready for molecule load.`);
             return;
         }

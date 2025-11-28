@@ -11,6 +11,14 @@ const App: React.FC = () => {
     const [activeViewer, setActiveViewer] = useState<'A' | 'B'>('A');
     const [viewerA, setViewerA] = useState<PluginUIContext | null>(null);
     const [viewerB, setViewerB] = useState<PluginUIContext | null>(null);
+    const [molecule, setMolecule] = useState({
+        id: "6XU8",
+        url: "https://files.rcsb.org/download/6XU8.cif"
+      });
+
+    function handleLoadMolecule(molecule: { id: string; url: string }) {
+        setMolecule(molecule);
+    }
 
     // Memoize axis alignment matrix
     const axisAlignmentMatrix = useMemo(() => {
@@ -59,6 +67,7 @@ const App: React.FC = () => {
                         externalSelection={selection}
                         setViewer={setViewerA}
                         onMouseDown={() => setActiveViewer(viewerKeyA)}
+                        onLoadMolecule={handleLoadMolecule}
                     />
                     <MolstarContainer
                         moleculeId="4UG0"
@@ -68,6 +77,7 @@ const App: React.FC = () => {
                         externalSelection={selection}
                         setViewer={setViewerB}
                         onMouseDown={() => setActiveViewer(viewerKeyB)}
+                        onLoadMolecule={handleLoadMolecule}
                     />
                 </div>
             </div>

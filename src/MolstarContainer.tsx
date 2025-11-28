@@ -4,6 +4,8 @@ import * as PluginUI from 'molstar/lib/mol-plugin-ui';
 const createPluginUI = PluginUI.createPluginUI;
 import MolstarViewer from './MolstarViewer';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
+import { PluginStateObject } from 'molstar/lib/mol-plugin-state/objects';
+import { State } from 'molstar/lib/mol-state';
 import './MolstarContainer.css'; // Import the CSS file
 import { throttle } from 'lodash';
 
@@ -15,10 +17,12 @@ type MolstarContainerProps = {
     externalSelection: any;
     setViewer: (plugin: PluginUIContext) => void;
     onMouseDown?: (viewerKey: 'A' | 'B') => void;
+    onLoadMolecule?: (molecule: { id: string; url: string }) => void;
 };
 
 const MolstarContainer = memo(
-    ({ moleculeId, moleculeUrl, viewerKey, onSelectionChange, externalSelection, setViewer, onMouseDown }: MolstarContainerProps) => {
+    ({ moleculeId, moleculeUrl, viewerKey, onSelectionChange, externalSelection, 
+        setViewer, onMouseDown, onLoadMolecule }: MolstarContainerProps) => {
         const containerRef = useRef<HTMLDivElement | null>(null);
         const pluginRef = useRef<PluginUIContext | null>(null);
         const [plugin, setPlugin] = useState<PluginUIContext | null>(null);
