@@ -1,15 +1,16 @@
 {
   "name": "ribocode1",
   "version": "0.1.0",
-  "homepage": "https://ribocode-slola.github.io/ribocode1/",
+  "homepage": "https://agdturner.github.io/ribocode1/",
   "private": true,
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
-    "clean": "rm -rf node_modules && npm run cache clean --force",
+    "clean": "rm -rf node_modules && npm cache clean --force",
     "preview": "vite preview",
     "start": "vite",
+    "dev": "vite",
     "build": "vite build",
     "serve": "vite preview",
     "predeploy": "npm run build",
@@ -68,6 +69,7 @@
     "gh-pages": "^6.3.0",
     "patch-package": "^8.0.1",
     "typescript": "^5.9.3",
+    "vite": "^7.2.4",
     "vite-plugin-pwa": "^1.1.0"
   }
 }
