@@ -1,7 +1,10 @@
-const path = require('path');
+import 'dotenv/config';
+import path from 'path';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+
+console.log('VITE_BASE_PATH:', process.env.VITE_BASE_PATH);
 
 export default defineConfig({
   base: process.env.VITE_BASE_PATH || '/', //'/ribocode1/', // Replace with your repository name
