@@ -51,7 +51,7 @@ const App: React.FC = () => {
     return (
         <SyncProvider>
             <div className="App">
-                <h1>RiboCode Mol* Viewer</h1>
+                <h1>RiboCode Mol* Viewer 0.2.0</h1>
                 <SyncButton
                     viewerA={viewerA}
                     viewerB={viewerB}
