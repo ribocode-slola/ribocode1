@@ -1,7 +1,7 @@
 {
   "name": "ribocode1",
-  "version": "0.1.0",
-  "homepage": "https://agdturner.github.io/ribocode1/",
+  "version": "0.2.0",
+  "homepage": "https://ribocode-slola.github.io/ribocode1/",
   "private": true,
   "workspaces": [
     "packages/*"
