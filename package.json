@@ -1,7 +1,6 @@
 {
   "name": "ribocode1",
   "version": "0.2.0",
-  "homepage": "https://ribocode-slola.github.io/ribocode1/",
   "private": true,
   "workspaces": [
     "packages/*"
@@ -10,8 +9,8 @@
     "clean": "rm -rf node_modules && npm cache clean --force",
     "preview": "vite preview",
     "start": "vite",
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "DOTENV_CONFIG_PATH=.env vite build",
+    "build": "DOTENV_CONFIG_PATH=.env.production vite build",
     "serve": "vite preview",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"
@@ -66,6 +65,7 @@
     "@types/lodash": "^4.17.20",
     "@types/node": "^24.10.0",
     "@vitejs/plugin-react": "^5.1.0",
+    "dotenv": "^17.2.3",
     "gh-pages": "^6.3.0",
     "patch-package": "^8.0.1",
     "typescript": "^5.9.3",
