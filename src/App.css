@@ -1,5 +1,5 @@
 
-.app-container {
+.App {
   display: flex;
   flex-direction: column; /* Stack containers vertically */
   /*flex-direction: row; /* Stack containers horizontally */
@@ -16,4 +16,17 @@
   gap: 10px; /* Add spacing between containers */
   width: '100vw';
   height: '100vh';
-}            
+}
+
+.load-data-row {
+  display: flex;
+  align-items: center;
+  gap: 8px; /* space between input and button */
+  width: fit-content;
+  margin: 0 auto;
+}
+
+.load-data-row button {
+  width:
+  auto; min-width: 80px;
+}
