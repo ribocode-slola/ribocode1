@@ -132,4 +132,4 @@ export default memo( MolstarContainer,
     //prevProps.moleculeId === nextProps.moleculeId &&
     //prevProps.moleculeUrl === nextProps.moleculeUrl &&
      prevProps.viewerKey === nextProps.viewerKey
-     );
+);

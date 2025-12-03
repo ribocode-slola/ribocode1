@@ -91,25 +91,30 @@ const App: React.FC = () => {
         }
         try {
             const result = await loadMoleculeFileToViewer(viewerARef.current, selectedFile, true);
-            if (result?.atomCoordinates) {
-                setAlignment(result.atomCoordinates); // Store alignment for later use
+            if (result?.alignmentData) {
+                setAlignment(result.alignmentData); // Store alignment for later use
             }
             //await loadMoleculeFileToViewer(viewerARef.current, selectedFile, false);
             await loadMoleculeFileToViewer(viewerBRef.current, selectedFile, true);
+            //await loadMoleculeFileToViewer(viewerBRef.current, selectedFile, false);
             // After loading, hide all representations in viewer B
-            const models = viewerBRef.current.managers.structure.hierarchy.current?.models ?? [];
-            const state = viewerBRef.current.state.data;
-            for (const model of models) {
-                const ref = model.cell.transform.ref;
-                await PluginCommands.State.ToggleVisibility.apply(
-                    viewerBRef.current,
-                    [viewerBRef.current, { state, ref }]
-                );
-            }
+            await toggleViewerVisibility(viewerBRef);
         } catch (err) {
             console.error('Error loading molecule:', err);
         }
     };
+
+    async function toggleViewerVisibility(viewerRef: React.RefObject<any>) {
+        const models = viewerRef.current.managers.structure.hierarchy.current?.models ?? [];
+        const state = viewerRef.current.state.data;
+        for (const model of models) {
+            const ref = model.cell.transform.ref;
+            await PluginCommands.State.ToggleVisibility.apply(
+                viewerRef.current,
+                [viewerRef.current, { state, ref }]
+            );
+        }
+    }
 
     const handleLoadDataB = async () => {
         if (!selectedFile) {
@@ -121,18 +126,10 @@ const App: React.FC = () => {
             return;
         }
         try {
+            await toggleViewerVisibility(viewerARef);
             await loadMoleculeFileToViewer(viewerARef.current, selectedFile, true, alignment);
+            await toggleViewerVisibility(viewerARef);
             await loadMoleculeFileToViewer(viewerBRef.current, selectedFile, true, alignment);
-            // After loading, hide all representations in viewer A
-            const models = viewerARef.current.managers.structure.hierarchy.current?.models ?? [];
-            const state = viewerARef.current.state.data;
-            for (const model of models) {
-                const ref = model.cell.transform.ref;
-                await PluginCommands.State.ToggleVisibility.apply(
-                    viewerBRef.current,
-                    [viewerBRef.current, { state, ref }]
-                );
-            }
         } catch (err) {
             console.error('Error loading molecule:', err);
         }
@@ -141,7 +138,7 @@ const App: React.FC = () => {
     return (
         <SyncProvider>
             <div className="App">
-                <h1>RiboCode Mol* Viewer 0.3.0</h1>
+                <h1>RiboCode Mol* Viewer 0.3.3</h1>
                 <div className="load-data-row">
                     <input type="file" accept=".cif,.mmcif" onChange={handleFileChange} />
                     <button onClick={handleLoadDataA} disabled={!selectedFile || !viewerAReady || !viewerBReady}>
