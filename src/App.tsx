@@ -66,22 +66,33 @@ const App: React.FC = () => {
 
     const viewerARef = useRef<PluginUIContext>(null);
     const viewerBRef = useRef<PluginUIContext>(null);
-    const [selectedFile, setSelectedFile] = useState<Asset.File | null>(null);
+    const [selectedFileA, setSelectedFileA] = useState<Asset.File | null>(null);
+    const [selectedFileB, setSelectedFileB] = useState<Asset.File | null>(null);
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChangeA = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
             const assetFile = Asset.File(new File([file], file.name));
-            setSelectedFile(assetFile);
+            setSelectedFileA(assetFile);
         } else {
-            setSelectedFile(null);
+            setSelectedFileA(null);
+        }
+    };
+
+    const handleFileChangeB = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const assetFile = Asset.File(new File([file], file.name));
+            setSelectedFileB(assetFile);
+        } else {
+            setSelectedFileB(null);
         }
     };
 
     const [alignment, setAlignment] = useState<any>(null);
 
     const handleLoadDataA = async () => {
-        if (!selectedFile) {
+        if (!selectedFileA) {
             console.error('No file selected.');
             return;
         }
@@ -90,12 +101,12 @@ const App: React.FC = () => {
             return;
         }
         try {
-            const result = await loadMoleculeFileToViewer(viewerARef.current, selectedFile, true);
+            const result = await loadMoleculeFileToViewer(viewerARef.current, selectedFileA, true);
             if (result?.alignmentData) {
                 setAlignment(result.alignmentData); // Store alignment for later use
             }
             //await loadMoleculeFileToViewer(viewerARef.current, selectedFile, false);
-            await loadMoleculeFileToViewer(viewerBRef.current, selectedFile, true);
+            await loadMoleculeFileToViewer(viewerBRef.current, selectedFileA, true);
             //await loadMoleculeFileToViewer(viewerBRef.current, selectedFile, false);
             // After loading, hide all representations in viewer B
             await toggleViewerVisibility(viewerBRef);
@@ -117,7 +128,7 @@ const App: React.FC = () => {
     }
 
     const handleLoadDataB = async () => {
-        if (!selectedFile) {
+        if (!selectedFileB) {
             console.error('No file selected.');
             return;
         }
@@ -127,9 +138,9 @@ const App: React.FC = () => {
         }
         try {
             await toggleViewerVisibility(viewerARef);
-            await loadMoleculeFileToViewer(viewerARef.current, selectedFile, true, alignment);
+            await loadMoleculeFileToViewer(viewerARef.current, selectedFileB, true, alignment);
             await toggleViewerVisibility(viewerARef);
-            await loadMoleculeFileToViewer(viewerBRef.current, selectedFile, true, alignment);
+            await loadMoleculeFileToViewer(viewerBRef.current, selectedFileB, true, alignment);
         } catch (err) {
             console.error('Error loading molecule:', err);
         }
@@ -138,16 +149,16 @@ const App: React.FC = () => {
     return (
         <SyncProvider>
             <div className="App">
-                <h1>RiboCode Mol* Viewer 0.3.1</h1>
+                <h1>RiboCode Mol* Viewer 0.3.2</h1>
                 <div className="load-data-row">
-                    <input type="file" accept=".cif,.mmcif" onChange={handleFileChange} />
-                    <button onClick={handleLoadDataA} disabled={!selectedFile || !viewerAReady || !viewerBReady}>
+                    <input type="file" accept=".cif,.mmcif" onChange={handleFileChangeA} />
+                    <button onClick={handleLoadDataA} disabled={!selectedFileA || !viewerAReady || !viewerBReady}>
                         Load Data A
                     </button>
                 </div>
                 <div className="load-data-row">
-                    <input type="file" accept=".cif,.mmcif" onChange={handleFileChange} />
-                    <button onClick={handleLoadDataB} disabled={!selectedFile || !viewerAReady || !viewerBReady}>
+                    <input type="file" accept=".cif,.mmcif" onChange={handleFileChangeB} />
+                    <button onClick={handleLoadDataB} disabled={!selectedFileB || !viewerAReady || !viewerBReady}>
                         Load Data B
                     </button>
                 </div>
