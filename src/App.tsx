@@ -16,7 +16,7 @@ const App: React.FC = () => {
     const [activeViewer, setActiveViewer] = useState<'A' | 'B'>('A');
     const [viewerA, setViewerA] = useState<PluginUIContext | null>(null);
     const [viewerB, setViewerB] = useState<PluginUIContext | null>(null);
-    const setViewerAWrapper = (viewer: PluginUIContext | null) => { 
+    const setViewerAWrapper = (viewer: PluginUIContext | null) => {
         setViewerA(viewer); viewerARef.current = viewer;
     };
     const setViewerBWrapper = (viewer: PluginUIContext | null) => {
@@ -68,24 +68,36 @@ const App: React.FC = () => {
     const viewerBRef = useRef<PluginUIContext>(null);
     const [selectedFileA, setSelectedFileA] = useState<Asset.File | null>(null);
     const [selectedFileB, setSelectedFileB] = useState<Asset.File | null>(null);
+    const [isLoadAButtonDisabled, setIsLoadAButtonDisabled] = useState(false);
+    const [isLoadBButtonDisabled, setIsLoadBButtonDisabled] = useState(false);
 
     const handleFileChangeA = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            const assetFile = Asset.File(new File([file], file.name));
-            setSelectedFileA(assetFile);
-        } else {
-            setSelectedFileA(null);
+        setIsLoadAButtonDisabled(false);
+        try {
+            const file = e.target.files?.[0];
+            if (file) {
+                const assetFile = Asset.File(new File([file], file.name));
+                setSelectedFileA(assetFile);
+            } else {
+                setSelectedFileA(null);
+            }
+        } catch (err) {
+            console.error('Error loading molecule:', err);
         }
     };
 
     const handleFileChangeB = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            const assetFile = Asset.File(new File([file], file.name));
-            setSelectedFileB(assetFile);
-        } else {
-            setSelectedFileB(null);
+        setIsLoadBButtonDisabled(false);
+        try {
+            const file = e.target.files?.[0];
+            if (file) {
+                const assetFile = Asset.File(new File([file], file.name));
+                setSelectedFileB(assetFile);
+            } else {
+                setSelectedFileB(null);
+            }
+        } catch (err) {
+            console.error('Error loading molecule:', err);
         }
     };
 
@@ -110,8 +122,10 @@ const App: React.FC = () => {
             //await loadMoleculeFileToViewer(viewerBRef.current, selectedFile, false);
             // After loading, hide all representations in viewer B
             await toggleViewerVisibility(viewerBRef);
+            setIsLoadAButtonDisabled(true);
         } catch (err) {
             console.error('Error loading molecule:', err);
+            setIsLoadAButtonDisabled(false);
         }
     };
 
@@ -141,24 +155,63 @@ const App: React.FC = () => {
             await loadMoleculeFileToViewer(viewerARef.current, selectedFileB, true, alignment);
             await toggleViewerVisibility(viewerARef);
             await loadMoleculeFileToViewer(viewerBRef.current, selectedFileB, true, alignment);
+            setIsLoadBButtonDisabled(true);
         } catch (err) {
             console.error('Error loading molecule:', err);
+            setIsLoadBButtonDisabled(false);
         }
     };
 
     return (
         <SyncProvider>
             <div className="App">
-                <h1>RiboCode Mol* Viewer 0.3.2</h1>
+                <h1>RiboCode Mol* Viewer 0.3.0</h1>
                 <div className="load-data-row">
-                    <input type="file" accept=".cif,.mmcif" onChange={handleFileChangeA} />
-                    <button onClick={handleLoadDataA} disabled={!selectedFileA || !viewerAReady || !viewerBReady}>
+                    <input
+                        type="file"
+                        accept=".cif,.mmcif"
+                        onChange={handleFileChangeA}
+                        disabled={isLoadAButtonDisabled}
+                    />
+                    <button onClick={handleLoadDataA}
+                        disabled={!selectedFileA || !viewerAReady || !viewerBReady || isLoadAButtonDisabled}>
                         Load Data A
                     </button>
+                    {/* {Attempt to create a custom styled file input button
+                    <label
+                        htmlFor="fileA"
+                        className={`custom-file-button${isLoadAButtonDisabled ? ' disabled' : ''}`}
+                        style={{
+                            display: 'inline-block',
+                            padding: '8px 16px',
+                            background: isLoadAButtonDisabled ? '#ccc' : '#007bff',
+                            color: '#fff',
+                            borderRadius: '4px',
+                            cursor: isLoadAButtonDisabled ? 'not-allowed' : 'pointer',
+                            opacity: isLoadAButtonDisabled ? 0.6 : 1,
+                            marginRight: '8px'
+                        }}
+                    >
+                        {selectedFileA ? 'Loaded' : 'Load Data A'}
+                        <input
+                            id="fileA"
+                            type="file"
+                            accept=".cif,.mmcif"
+                            onChange={handleFileChangeA}
+                            disabled={isLoadAButtonDisabled}
+                            style={{ display: 'none' }}
+                        />
+                    </label>} */}
                 </div>
                 <div className="load-data-row">
-                    <input type="file" accept=".cif,.mmcif" onChange={handleFileChangeB} />
-                    <button onClick={handleLoadDataB} disabled={!selectedFileB || !viewerAReady || !viewerBReady}>
+                    <input
+                        type="file"
+                        accept=".cif,.mmcif"
+                        onChange={handleFileChangeB}
+                        disabled={isLoadBButtonDisabled}
+                    />
+                    <button onClick={handleLoadDataB}
+                        disabled={!selectedFileB || !viewerAReady || !viewerBReady || isLoadBButtonDisabled}>
                         Load Data B
                     </button>
                 </div>
