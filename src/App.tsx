@@ -138,7 +138,7 @@ const App: React.FC = () => {
     return (
         <SyncProvider>
             <div className="App">
-                <h1>RiboCode Mol* Viewer 0.3.3</h1>
+                <h1>RiboCode Mol* Viewer 0.3.1</h1>
                 <div className="load-data-row">
                     <input type="file" accept=".cif,.mmcif" onChange={handleFileChange} />
                     <button onClick={handleLoadDataA} disabled={!selectedFile || !viewerAReady || !viewerBReady}>
