@@ -4,11 +4,12 @@ import { SyncProvider } from './SyncContext';
 import SyncButton from './SyncButton';
 import MolstarContainer from './MolstarContainer';
 import { loadMoleculeToViewer } from './utils/data';
-import { loadMoleculeFileToViewer } from 'molstar/lib/extensions/ribocode/utils/structure';
+import { loadMoleculeFileToViewer } from 'molstar/lib/extensions/ribocode/structure';
 import './App.css';
 import { Mat4 } from 'molstar/lib/mol-math/linear-algebra';
 import { Asset } from 'molstar/lib/mol-util/assets';
 import { PluginCommands } from 'molstar/lib/mol-plugin/commands';
+//import { is } from 'packages/molstar/src/mol-data/int/impl/sorted-array';
 //import { Viewer } from 'molstar/lib/apps/viewer';
 
 const App: React.FC = () => {
@@ -113,12 +114,12 @@ const App: React.FC = () => {
             return;
         }
         try {
-            const result = await loadMoleculeFileToViewer(viewerARef.current, selectedFileA, true);
+            const result = await loadMoleculeFileToViewer(viewerARef.current, selectedFileA, true, true);
             if (result?.alignmentData) {
                 setAlignment(result.alignmentData); // Store alignment for later use
             }
             //await loadMoleculeFileToViewer(viewerARef.current, selectedFile, false);
-            await loadMoleculeFileToViewer(viewerBRef.current, selectedFileA, true);
+            await loadMoleculeFileToViewer(viewerBRef.current, selectedFileA, false, true);
             //await loadMoleculeFileToViewer(viewerBRef.current, selectedFile, false);
             // After loading, hide all representations in viewer B
             await toggleViewerVisibility(viewerBRef);
@@ -152,9 +153,9 @@ const App: React.FC = () => {
         }
         try {
             await toggleViewerVisibility(viewerARef);
-            await loadMoleculeFileToViewer(viewerARef.current, selectedFileB, true, alignment);
+            await loadMoleculeFileToViewer(viewerARef.current, selectedFileB, false, true, alignment);
             await toggleViewerVisibility(viewerARef);
-            await loadMoleculeFileToViewer(viewerBRef.current, selectedFileB, true, alignment);
+            await loadMoleculeFileToViewer(viewerBRef.current, selectedFileB, false, true, alignment);
             setIsLoadBButtonDisabled(true);
         } catch (err) {
             console.error('Error loading molecule:', err);
@@ -165,7 +166,7 @@ const App: React.FC = () => {
     return (
         <SyncProvider>
             <div className="App">
-                <h1>RiboCode Mol* Viewer 0.3.0</h1>
+                <h1>RiboCode Mol* Viewer 0.3.6</h1>
                 <div className="load-data-row">
                     <input
                         type="file"
@@ -175,44 +176,19 @@ const App: React.FC = () => {
                     />
                     <button onClick={handleLoadDataA}
                         disabled={!selectedFileA || !viewerAReady || !viewerBReady || isLoadAButtonDisabled}>
-                        Load Data A
+                        Load Ribosome to align to
                     </button>
-                    {/* {Attempt to create a custom styled file input button
-                    <label
-                        htmlFor="fileA"
-                        className={`custom-file-button${isLoadAButtonDisabled ? ' disabled' : ''}`}
-                        style={{
-                            display: 'inline-block',
-                            padding: '8px 16px',
-                            background: isLoadAButtonDisabled ? '#ccc' : '#007bff',
-                            color: '#fff',
-                            borderRadius: '4px',
-                            cursor: isLoadAButtonDisabled ? 'not-allowed' : 'pointer',
-                            opacity: isLoadAButtonDisabled ? 0.6 : 1,
-                            marginRight: '8px'
-                        }}
-                    >
-                        {selectedFileA ? 'Loaded' : 'Load Data A'}
-                        <input
-                            id="fileA"
-                            type="file"
-                            accept=".cif,.mmcif"
-                            onChange={handleFileChangeA}
-                            disabled={isLoadAButtonDisabled}
-                            style={{ display: 'none' }}
-                        />
-                    </label>} */}
                 </div>
                 <div className="load-data-row">
                     <input
                         type="file"
                         accept=".cif,.mmcif"
                         onChange={handleFileChangeB}
-                        disabled={isLoadBButtonDisabled}
+                        disabled={isLoadBButtonDisabled || !isLoadAButtonDisabled}
                     />
                     <button onClick={handleLoadDataB}
                         disabled={!selectedFileB || !viewerAReady || !viewerBReady || isLoadBButtonDisabled}>
-                        Load Data B
+                        Load Ribosome to align
                     </button>
                 </div>
                 <SyncButton

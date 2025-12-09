@@ -5,7 +5,7 @@ const createPluginUI = PluginUI.createPluginUI;
 import RibocodeViewer from './RibocodeViewer';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 import './MolstarContainer.css';
-import { set } from 'lodash';
+//import { set } from 'lodash';
 
 type MolstarContainerProps = {
     //moleculeId: string;

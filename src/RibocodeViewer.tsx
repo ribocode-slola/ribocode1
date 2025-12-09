@@ -3,7 +3,7 @@ import React, { forwardRef, useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom/client';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 import { Vec3 } from 'molstar/lib/mol-math/linear-algebra/3d/vec3';
-import { loadMoleculeToViewer } from './utils/data';
+//import { loadMoleculeToViewer } from './utils/data';
 import { Structure } from 'molstar/lib/mol-model/structure';
 import './MolstarContainer.css';
 
