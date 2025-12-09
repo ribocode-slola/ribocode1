@@ -37,28 +37,6 @@ const App: React.FC = () => {
         }
     }
 
-    // Memoize axis alignment matrix
-    const axisAlignmentMatrix = useMemo(() => {
-        const m = Mat4.identity();
-        Mat4.setValue(m, 0, 0, 1);
-        Mat4.setValue(m, 0, 1, 0);
-        Mat4.setValue(m, 0, 2, 0);
-        Mat4.setValue(m, 0, 3, 0);
-        Mat4.setValue(m, 1, 0, 0);
-        Mat4.setValue(m, 1, 1, 0);
-        Mat4.setValue(m, 1, 2, -1);
-        Mat4.setValue(m, 1, 3, 0);
-        Mat4.setValue(m, 2, 0, 0);
-        Mat4.setValue(m, 2, 1, 1);
-        Mat4.setValue(m, 2, 2, 0);
-        Mat4.setValue(m, 2, 3, 0);
-        Mat4.setValue(m, 3, 0, 0);
-        Mat4.setValue(m, 3, 1, 0);
-        Mat4.setValue(m, 3, 2, 0);
-        Mat4.setValue(m, 3, 3, 1);
-        return m;
-    }, []);
-
     const [selection, setSelection] = useState(null);
 
     // Stable keys
@@ -166,7 +144,7 @@ const App: React.FC = () => {
     return (
         <SyncProvider>
             <div className="App">
-                <h1>RiboCode Mol* Viewer 0.3.6</h1>
+                <h1>RiboCode Mol* Viewer 0.3.9</h1>
                 <div className="load-data-row">
                     <input
                         type="file"
@@ -194,7 +172,7 @@ const App: React.FC = () => {
                 <SyncButton
                     viewerA={viewerA}
                     viewerB={viewerB}
-                    axisAlignmentMatrix={axisAlignmentMatrix}
+                    //axisAlignmentMatrix={axisAlignmentMatrix}
                     activeViewer={activeViewer}
                 />
                 <div className="grid-container">
