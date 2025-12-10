@@ -9,6 +9,19 @@ import './App.css';
 import { Asset } from 'molstar/lib/mol-util/assets';
 import { PluginCommands } from 'molstar/lib/mol-plugin/commands';
 
+function parseDelimitedData(text: string): Array<Record<string, string>> {
+    const lines = text.trim().split('\n');
+    const headers = lines[0].split(',');
+    return lines.slice(1).map(line => {
+        const values = line.split(',');
+        const row: Record<string, string> = {};
+        headers.forEach((header, i) => {
+            row[header] = values[i];
+        });
+        return row;
+    });
+}
+
 const App: React.FC = () => {
     console.log('App rendered');
     const [activeViewer, setActiveViewer] = useState<'A' | 'B'>('A');
@@ -22,6 +35,23 @@ const App: React.FC = () => {
     };
     const [viewerAReady, setViewerAReady] = useState(false);
     const [viewerBReady, setViewerBReady] = useState(false);
+
+    const dictionaryFileInputRef = useRef<HTMLInputElement>(null);
+    const [dictionary, setDictionary] = useState<Array<Record<string, string>>>([]);
+
+    const handleLoadDictonaryButtonClick = () => {
+        dictionaryFileInputRef.current?.click();
+    };
+
+    const handleDictionaryFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            file.text().then(text => {
+                const parsed = parseDelimitedData(text);
+                setDictionary(parsed);
+            });
+        }
+    };
 
     function handleLoadMolecule(
         molecule: { id: string; url: string },
@@ -163,6 +193,11 @@ const App: React.FC = () => {
         <SyncProvider>
             <div className="App">
                 <h1 className="app-title">RiboCode Mol* Viewer 0.3.9</h1>
+                <SyncButton
+                    viewerA={viewerA}
+                    viewerB={viewerB}
+                    activeViewer={activeViewer}
+                />
                 <div className="grid-container">
                     <div className="viewer-wrapper">
                         <div className="load-data-row">
@@ -181,6 +216,18 @@ const App: React.FC = () => {
                             {viewerAData
                                 ? `${viewerAData.name || viewerAData.filename || "Loaded"}`
                                 : "Molecule to align with"}
+                        </div>
+                        <div>
+                            <button onClick={handleLoadDictonaryButtonClick}>Load Dictionary</button>
+                            <input
+                                type="file"
+                                accept=".csv,.txt"
+                                style={{ display: 'none' }}
+                                ref={dictionaryFileInputRef}
+                                onChange={handleDictionaryFileChange}
+                            />
+                            {/* Render dictionary for demonstration */}
+                            {/* <pre>{JSON.stringify(dictionary, null, 2)}</pre> */}
                         </div>
                         <MolstarContainer
                             viewerKey={viewerAKey}
@@ -219,11 +266,6 @@ const App: React.FC = () => {
                         />
                     </div>
                 </div>
-                <SyncButton
-                    viewerA={viewerA}
-                    viewerB={viewerB}
-                    activeViewer={activeViewer}
-                />
             </div>
         </SyncProvider>
     );
