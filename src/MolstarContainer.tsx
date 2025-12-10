@@ -5,24 +5,19 @@ const createPluginUI = PluginUI.createPluginUI;
 import RibocodeViewer from './RibocodeViewer';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 import './MolstarContainer.css';
-//import { set } from 'lodash';
 
 type MolstarContainerProps = {
-    //moleculeId: string;
-    //moleculeUrl: string;
     viewerKey: 'A' | 'B';
     onSelectionChange: (selection: any) => void;
     externalSelection: any;
     setViewer: (plugin: PluginUIContext) => void;
     onMouseDown?: (viewerKey: 'A' | 'B') => void;
-    onLoadMolecule?: (molecule: { id: string; url: string }) => void;
     onReady?: () => void;
 };
 
 const MolstarContainer = forwardRef<any, MolstarContainerProps>(
-    ({ //moleculeId, moleculeUrl,
-        viewerKey, onSelectionChange, externalSelection, 
-        setViewer, onMouseDown, onLoadMolecule, onReady }: MolstarContainerProps) => {
+    ({  viewerKey, onSelectionChange, externalSelection, 
+        setViewer, onMouseDown, onReady, data }: MolstarContainerProps) => {
             const containerRef = useRef<HTMLDivElement | null>(null);
             const pluginRef = useRef<PluginUIContext | null>(null);
             const [plugin, setPlugin] = useState<PluginUIContext | null>(null);
@@ -115,12 +110,11 @@ const MolstarContainer = forwardRef<any, MolstarContainerProps>(
                     }}
                 >
                     <RibocodeViewer
-                        //moleculeId={moleculeId}
-                        //moleculeUrl={moleculeUrl}
                         plugin={plugin}
                         viewerKey={viewerKey}
                         onSelectionChange={onSelectionChange}
                         externalSelection={externalSelection}
+                        onReady={onReady}
                     />
                 </div>
             );
@@ -129,7 +123,5 @@ const MolstarContainer = forwardRef<any, MolstarContainerProps>(
 
 export default memo( MolstarContainer, 
     (prevProps: MolstarContainerProps, nextProps: MolstarContainerProps) =>
-    //prevProps.moleculeId === nextProps.moleculeId &&
-    //prevProps.moleculeUrl === nextProps.moleculeUrl &&
-     prevProps.viewerKey === nextProps.viewerKey
+    prevProps.viewerKey === nextProps.viewerKey
 );
