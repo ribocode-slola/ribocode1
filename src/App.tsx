@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 import { SyncProvider } from './SyncContext';
 import SyncButton from './SyncButton';
@@ -6,11 +6,8 @@ import MolstarContainer from './MolstarContainer';
 import { loadMoleculeToViewer } from './utils/data';
 import { loadMoleculeFileToViewer } from 'molstar/lib/extensions/ribocode/structure';
 import './App.css';
-import { Mat4 } from 'molstar/lib/mol-math/linear-algebra';
 import { Asset } from 'molstar/lib/mol-util/assets';
 import { PluginCommands } from 'molstar/lib/mol-plugin/commands';
-//import { is } from 'packages/molstar/src/mol-data/int/impl/sorted-array';
-//import { Viewer } from 'molstar/lib/apps/viewer';
 
 const App: React.FC = () => {
     console.log('App rendered');
@@ -43,6 +40,9 @@ const App: React.FC = () => {
     const viewerAKey = 'A';
     const viewerBKey = 'B';
 
+    const [viewerAData, setViewerAData] = useState<{ name?: string; filename?: string } | null>(null);
+    const [viewerBData, setViewerBData] = useState<{ name?: string; filename?: string } | null>(null);
+
     const viewerARef = useRef<PluginUIContext>(null);
     const viewerBRef = useRef<PluginUIContext>(null);
     const [selectedFileA, setSelectedFileA] = useState<Asset.File | null>(null);
@@ -57,6 +57,11 @@ const App: React.FC = () => {
             if (file) {
                 const assetFile = Asset.File(new File([file], file.name));
                 setSelectedFileA(assetFile);
+                setViewerAData({
+                    ...viewerAData,
+                    filename: file.name,
+                    name: file.name
+                });
             } else {
                 setSelectedFileA(null);
             }
@@ -72,6 +77,11 @@ const App: React.FC = () => {
             if (file) {
                 const assetFile = Asset.File(new File([file], file.name));
                 setSelectedFileB(assetFile);
+                setViewerBData({
+                    ...viewerBData,
+                    filename: file.name,
+                    name: file.name
+                });
             } else {
                 setSelectedFileB(null);
             }
@@ -102,6 +112,10 @@ const App: React.FC = () => {
             // After loading, hide all representations in viewer B
             await toggleViewerVisibility(viewerBRef);
             setIsLoadAButtonDisabled(true);
+            setViewerAData(prev => ({
+                ...prev,
+                name: result?.name || "Unknown"
+            }));
         } catch (err) {
             console.error('Error loading molecule:', err);
             setIsLoadAButtonDisabled(false);
@@ -133,8 +147,12 @@ const App: React.FC = () => {
             await toggleViewerVisibility(viewerARef);
             await loadMoleculeFileToViewer(viewerARef.current, selectedFileB, false, true, alignment);
             await toggleViewerVisibility(viewerARef);
-            await loadMoleculeFileToViewer(viewerBRef.current, selectedFileB, false, true, alignment);
+            const result = await loadMoleculeFileToViewer(viewerBRef.current, selectedFileB, false, true, alignment);
             setIsLoadBButtonDisabled(true);
+            setViewerBData(prev => ({
+                ...prev,
+                name: result?.name || "Unknown"
+            }));
         } catch (err) {
             console.error('Error loading molecule:', err);
             setIsLoadBButtonDisabled(false);
@@ -144,61 +162,68 @@ const App: React.FC = () => {
     return (
         <SyncProvider>
             <div className="App">
-                <h1>RiboCode Mol* Viewer 0.3.9</h1>
-                <div className="load-data-row">
-                    <input
-                        type="file"
-                        accept=".cif,.mmcif"
-                        onChange={handleFileChangeA}
-                        disabled={isLoadAButtonDisabled}
-                    />
-                    <button onClick={handleLoadDataA}
-                        disabled={!selectedFileA || !viewerAReady || !viewerBReady || isLoadAButtonDisabled}>
-                        Load Ribosome to align to
-                    </button>
-                </div>
-                <div className="load-data-row">
-                    <input
-                        type="file"
-                        accept=".cif,.mmcif"
-                        onChange={handleFileChangeB}
-                        disabled={isLoadBButtonDisabled || !isLoadAButtonDisabled}
-                    />
-                    <button onClick={handleLoadDataB}
-                        disabled={!selectedFileB || !viewerAReady || !viewerBReady || isLoadBButtonDisabled}>
-                        Load Ribosome to align
-                    </button>
+                <h1 className="app-title">RiboCode Mol* Viewer 0.3.9</h1>
+                <div className="grid-container">
+                    <div className="viewer-wrapper">
+                        <div className="load-data-row">
+                            <input
+                                type="file"
+                                accept=".cif,.mmcif"
+                                onChange={handleFileChangeA}
+                                disabled={isLoadAButtonDisabled}
+                            />
+                            <button onClick={handleLoadDataA}
+                                disabled={!selectedFileA || !viewerAReady || !viewerBReady || isLoadAButtonDisabled}>
+                                Load Ribosome to align to
+                            </button>
+                        </div>
+                        <div className="viewer-title">
+                            {viewerAData
+                                ? `${viewerAData.name || viewerAData.filename || "Loaded"}`
+                                : "Molecule to align with"}
+                        </div>
+                        <MolstarContainer
+                            viewerKey={viewerAKey}
+                            onSelectionChange={setSelection}
+                            externalSelection={selection}
+                            setViewer={setViewerAWrapper}
+                            onMouseDown={() => setActiveViewer(viewerAKey)}
+                            onReady={() => setViewerAReady(true)}
+                        />
+                    </div>
+                    <div className="viewer-wrapper">
+                        <div className="load-data-row">
+                            <input
+                                type="file"
+                                accept=".cif,.mmcif"
+                                onChange={handleFileChangeB}
+                                disabled={isLoadBButtonDisabled || !isLoadAButtonDisabled}
+                            />
+                            <button onClick={handleLoadDataB}
+                                disabled={!selectedFileB || !viewerAReady || !viewerBReady || isLoadBButtonDisabled}>
+                                Load Ribosome to align
+                            </button>
+                        </div>
+                        <div className="viewer-title">
+                            {viewerBData
+                                ? `${viewerBData.name || viewerBData.filename || "Loaded"}`
+                                : "Molecule aligned"}
+                        </div>
+                        <MolstarContainer
+                            viewerKey={viewerBKey}
+                            onSelectionChange={setSelection}
+                            externalSelection={selection}
+                            setViewer={setViewerBWrapper}
+                            onMouseDown={() => setActiveViewer(viewerBKey)}
+                            onReady={() => setViewerBReady(true)}
+                        />
+                    </div>
                 </div>
                 <SyncButton
                     viewerA={viewerA}
                     viewerB={viewerB}
-                    //axisAlignmentMatrix={axisAlignmentMatrix}
                     activeViewer={activeViewer}
                 />
-                <div className="grid-container">
-                    <MolstarContainer
-                        //moleculeId="6XU8"
-                        //moleculeUrl='https://files.rcsb.org/download/6XU8.cif'
-                        viewerKey={viewerAKey}
-                        onSelectionChange={setSelection}
-                        externalSelection={selection}
-                        setViewer={setViewerAWrapper}
-                        onMouseDown={() => setActiveViewer(viewerAKey)}
-                        onLoadMolecule={(molecule) => handleLoadMolecule(molecule, viewerAKey)}
-                        onReady={() => setViewerAReady(true)}
-                    />
-                    <MolstarContainer
-                        //moleculeId="4UG0"
-                        //moleculeUrl='https://files.rcsb.org/download/4UG0.cif'
-                        viewerKey={viewerBKey}
-                        onSelectionChange={setSelection}
-                        externalSelection={selection}
-                        setViewer={setViewerBWrapper}
-                        onMouseDown={() => setActiveViewer(viewerBKey)}
-                        onLoadMolecule={(molecule) => handleLoadMolecule(molecule, viewerBKey)}
-                        onReady={() => setViewerBReady(true)}
-                    />
-                </div>
             </div>
         </SyncProvider>
     );
