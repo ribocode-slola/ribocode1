@@ -8,116 +8,115 @@ import './MolstarContainer.css';
 import { ViewerKey } from './App'
 
 type MolstarContainerProps = {
-    key: ViewerKey;
+    viewerKey: ViewerKey;
     setViewer: (plugin: PluginUIContext) => void;
-    onMouseDown?: (key: ViewerKey) => void;
+    onMouseDown?: (viewerKey: ViewerKey) => void;
     onReady?: () => void;
 };
 
-const MolstarContainer = forwardRef<any, MolstarContainerProps>(
-    ({  key: key, setViewer, onMouseDown, onReady }: MolstarContainerProps) => {
-            const containerRef = useRef<HTMLDivElement | null>(null);
-            const pluginRef = useRef<PluginUIContext | null>(null);
-            const [plugin, setPlugin] = useState<PluginUIContext | null>(null);
-            const rootRef = useRef<ReactDOM.Root | null>(null);
-            
-            // Plugin lifecycle: initialization and cleanup
-            useEffect(() => {
-                const container = containerRef.current;
-                console.log(`[MolstarContainer ${key}] Plugin init effect. containerRef.current:`, container);
-                if (!container) return;
-                
-                // Cleanup previous plugin/root
-                if (pluginRef.current) {
-                    pluginRef.current.dispose();
-                    pluginRef.current = null;
-                }
-                if (rootRef.current) {
-                    rootRef.current.unmount();
-                    rootRef.current = null;
-                }
+const MolstarContainer = ({viewerKey, setViewer, onMouseDown, onReady }: MolstarContainerProps) => {
+    const containerRef = useRef<HTMLDivElement | null>(null);
+    const pluginRef = useRef<PluginUIContext | null>(null);
+    const [plugin, setPlugin] = useState<PluginUIContext | null>(null);
+    const rootRef = useRef<ReactDOM.Root | null>(null);
+    
+    // Plugin lifecycle: initialization and cleanup
+    useEffect(() => {
+        const container = containerRef.current;
+        console.log(`[MolstarContainer ${viewerKey}] Plugin init effect. containerRef.current:`, container);
+        if (!container) return;
+        
+        // Cleanup previous plugin/root
+        if (pluginRef.current) {
+            pluginRef.current.dispose();
+            pluginRef.current = null;
+        }
+        if (rootRef.current) {
+            rootRef.current.unmount();
+            rootRef.current = null;
+        }
 
-                // Async plugin initialization
-                const initializePlugin = async () => {
-                    try {
-                        const pluginInstance = await createPluginUI({
-                            target: container,
-                            render: (component: React.ReactNode, container: HTMLElement) => {
-                                if (!rootRef.current) {
-                                    rootRef.current = ReactDOM.createRoot(container);
-                                }
-                                rootRef.current.render(component);
-                            },
-                        });
-
-                        // WebGL context loss handling
-                        const gl = pluginInstance.canvas3d?.webgl?.gl;
-                        if (gl) {
-                            gl.canvas.addEventListener('webglcontextlost', (event: WebGLContextEvent) => {
-                                event.preventDefault();
-                                console.error('WebGL context lost.');
-                            });
-
-                            gl.canvas.addEventListener('webglcontextrestored', () => {
-                                (async () => {
-                                    if (pluginRef.current) {
-                                        pluginRef.current.dispose();
-                                        pluginRef.current = null;
-                                    }
-                                    await initializePlugin();
-                                })();
-                            });
+        // Async plugin initialization
+        const initializePlugin = async () => {
+            try {
+                const pluginInstance = await createPluginUI({
+                    target: container,
+                    render: (component: React.ReactNode, container: HTMLElement) => {
+                        if (!rootRef.current) {
+                            rootRef.current = ReactDOM.createRoot(container);
                         }
+                        rootRef.current.render(component);
+                    },
+                });
 
-                        pluginRef.current = pluginInstance;
-                        setPlugin(pluginInstance);
-                        setViewer(pluginInstance);
-                        if (onReady) onReady();
-                    } catch (err) {
-                        console.error(`[MolstarContainer ${key}] Plugin creation failed:`, err);
-                    }
-                };
+                // WebGL context loss handling
+                const gl = pluginInstance.canvas3d?.webgl?.gl;
+                if (gl) {
+                    gl.canvas.addEventListener('webglcontextlost', (event: WebGLContextEvent) => {
+                        event.preventDefault();
+                        console.error('WebGL context lost.');
+                    });
 
-                initializePlugin();
-
-                return () => {
-                    if (pluginRef.current) {
-                        pluginRef.current.dispose();
-                        pluginRef.current = null;
-                    }
-                    if (rootRef.current) {
-                        rootRef.current.unmount();
-                        rootRef.current = null;
-                    }
-                };
-            }, [key, onReady]);
-
-            useEffect(() => {
-                if (plugin && setViewer) {
-                    setViewer(plugin);
+                    gl.canvas.addEventListener('webglcontextrestored', () => {
+                        (async () => {
+                            if (pluginRef.current) {
+                                pluginRef.current.dispose();
+                                pluginRef.current = null;
+                            }
+                            await initializePlugin();
+                        })();
+                    });
                 }
-            }, [plugin, setViewer]);
 
-            return (
-                <div
-                    ref={containerRef}
-                    className="molstar-container"
-                    onMouseDownCapture={() => {
-                        console.log('MolstarContainer mouse down:', key);
-                        onMouseDown?.(key);
-                    }}
-                >
-                    <RibocodeViewer
-                        plugin={plugin}
-                        key={key}
-                        onReady={onReady}
-                    />
-                </div>
-            );
-    },
-);
+                pluginRef.current = pluginInstance;
+                setPlugin(pluginInstance);
+                setViewer(pluginInstance);
+                if (onReady) onReady();
+            } catch (err) {
+                console.error(`[MolstarContainer ${viewerKey}] Plugin creation failed:`, err);
+            }
+        };
 
-export default memo( MolstarContainer, 
+        initializePlugin();
+
+        return () => {
+            if (pluginRef.current) {
+                pluginRef.current.dispose();
+                pluginRef.current = null;
+            }
+            if (rootRef.current) {
+                rootRef.current.unmount();
+                rootRef.current = null;
+            }
+        };
+    }, [viewerKey, onReady]);
+
+    useEffect(() => {
+        if (plugin && setViewer) {
+            setViewer(plugin);
+        }
+    }, [plugin, setViewer]);
+
+    return (
+        <div
+            ref={containerRef}
+            className="molstar-container"
+            onMouseDownCapture={() => {
+                console.log('MolstarContainer mouse down:', viewerKey);
+                onMouseDown?.(viewerKey);
+            }}
+        >
+            <RibocodeViewer
+                plugin={plugin}
+                viewerKey={viewerKey}
+                onReady={onReady}
+            />
+        </div>
+    );
+};
+
+export default memo(
+    MolstarContainer, 
     (prevProps: MolstarContainerProps, nextProps: MolstarContainerProps) =>
-    prevProps.key === nextProps.key
+        prevProps.viewerKey === nextProps.viewerKey
 );

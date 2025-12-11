@@ -1,14 +1,17 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
+import { PluginCommands } from 'molstar/lib/mol-plugin/commands';
 import { SyncProvider } from './SyncContext';
 import SyncButton from './SyncButton';
 import MolstarContainer from './MolstarContainer';
+import { toggleViewerVisibility } from './RibocodeViewer';
 //import { loadMoleculeToViewer } from './utils/data';
 import { loadMoleculeFileToViewer } from 'molstar/lib/extensions/ribocode/structure';
 import './App.css';
 import { Asset } from 'molstar/lib/mol-util/assets';
-import { PluginCommands } from 'molstar/lib/mol-plugin/commands';
 import { readFile, readJSONFile } from 'molstar/lib/extensions/ribocode/colors';
+import { Data } from 'molstar/lib/extensions/ribocode/colors';
+import { Color } from 'molstar/lib/mol-util/color';
 
 export type ViewerKey = "A" | "B";
 
@@ -21,7 +24,7 @@ type ViewerState = {
     fileInputRef: React.RefObject<HTMLInputElement | null>;
     handleFileInputButtonClick: () => void;
     setViewerRef: (viewer: PluginUIContext) => void;
-    key: ViewerKey;
+    viewerKey: ViewerKey;
 };
     
 function parseDelimitedData(text: string): Array<Record<string, string>> {
@@ -37,12 +40,50 @@ function parseDelimitedData(text: string): Array<Record<string, string>> {
     });
 }
 
+function parseFileContent(content: string): Data[] {
+    const lines = content.split('\n');
+    const colorMap = new Map<string, string>();
+    const data: Data[] = [];
+    if (lines.length > 0) {
+        const header = lines[0];
+        console.log('Header:', header);
+    }
+    for (let i = 1; i < lines.length; i++) {
+        const line = lines[i];
+        if (line.trim() === '') continue;
+        const [pdb_name, RP_name, , colorStr] = line.split(' ');
+        const [pdb_id, pdb_chain] = pdb_name.split('_');
+        data.push({
+            pdb_name,
+            RP_name,
+            //class: parseInt(classStr, 10),
+            color: colorStr, // Can later be parsed using mol-util.color.color.Color.fromHexStyle(colorStr),
+            pdb_id,
+            pdb_chain
+        });
+    }
+    data.forEach(x => {
+        colorMap.set(x.pdb_chain, x.color);
+    });
+    const colorMapArray = Array.from(colorMap.entries()).map(([asym_id, color]) => ({
+        asym_id,
+        color: Color.fromHexStyle(color)
+    }));
+    console.log('colorMapArray:', colorMapArray);
+    // Update the state with the new colors
+
+    //this.props.onChange({ name: this.props.name, param: this.props.param, value: colorList });
+
+
+    return data;
+}
+
 const App: React.FC = () => {
     console.log('App rendered');
 
     // Viewer state management
     const [activeViewer, setActiveViewer] = useState<ViewerKey>('A');
-    function useViewerState(key: ViewerKey): ViewerState {
+    function useViewerState(viewerKey: ViewerKey): ViewerState {
         const [data, setData] = useState<{ name?: string; filename?: string } | null>(null);
         const [isLoaded, setIsLoaded] = useState(false);
         const ref = useRef<PluginUIContext>(null);
@@ -51,16 +92,16 @@ const App: React.FC = () => {
         const setViewerRef = useCallback((viewer: PluginUIContext) => {
             ref.current = viewer;
         }, []);
-        return { data, setData, isLoaded, setIsLoaded, ref, fileInputRef, handleFileInputButtonClick, setViewerRef, key };
+        return { data, setData, isLoaded, setIsLoaded, ref, fileInputRef, handleFileInputButtonClick, setViewerRef, viewerKey };
     }
     const viewerA = useViewerState('A');
     const viewerB = useViewerState('B');
-    const setViewerAWrapper = (viewer: PluginUIContext) => {
+    const setViewerAWrapper = useCallback((viewer: PluginUIContext) => {
         viewerA.ref.current = viewer;
-    };
-    const setViewerBWrapper = (viewer: PluginUIContext) => {
+    }, [viewerA]);
+    const setViewerBWrapper = useCallback((viewer: PluginUIContext) => {
         viewerB.ref.current = viewer;
-    };
+    }, [viewerB]);
     const [viewerAReady, setViewerAReady] = useState(false);
     const [viewerBReady, setViewerBReady] = useState(false);
     
@@ -89,9 +130,11 @@ const App: React.FC = () => {
         return { data, setData, inputRef, handleButtonClick, handleFileChange };
     }
     const dictionaryFile = useFileInput<Array<Record<string, string>>>(parseDelimitedData, []);
-    const colorsAFile = useFileInput<Array<Record<string, string>>>(parseDelimitedData, []);
-    const colorsBFile = useFileInput<Array<Record<string, string>>>(parseDelimitedData, []);
-    const handleFileChangeA = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const colorsAFile = useFileInput<Array<Record<string, string>>>(parseFileContent, []);
+    const colorsBFile = useFileInput<Array<Record<string, string>>>(parseFileContent, []);
+    //const colorsAFile = useFileInput<Array<Record<string, string>>>(parseDelimitedData, []);
+    //const colorsBFile = useFileInput<Array<Record<string, string>>>(parseDelimitedData, []);
+    const handleFileChangeA = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!viewerA.ref.current || !viewerB.ref.current) {
             console.error('One or both viewers are not initialized.');
             return;
@@ -115,9 +158,11 @@ const App: React.FC = () => {
         } catch (err) {
             console.error('Error loading molecule:', err);
         }
-    };
+    }, [viewerA, viewerB]);
 
-    const handleFileChangeB = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const [alignment, setAlignment] = useState<any>(null);
+
+    const handleFileChangeB = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!viewerA.ref.current || !viewerB.ref.current) {
             console.error('One or both viewers are not initialized.');
             return;
@@ -136,26 +181,12 @@ const App: React.FC = () => {
         } catch (err) {
             console.error('Error loading molecule:', err);
         }
-    };
-
-    const [alignment, setAlignment] = useState<any>(null);
-
-    async function toggleViewerVisibility(viewerRef: React.RefObject<any>) {
-        const models = viewerRef.current.managers.structure.hierarchy.current?.models ?? [];
-        const state = viewerRef.current.state.data;
-        for (const model of models) {
-            const ref = model.cell.transform.ref;
-            await PluginCommands.State.ToggleVisibility.apply(
-                viewerRef.current,
-                [viewerRef.current, { state, ref }]
-            );
-        }
-    }
+    }, [viewerA, viewerB, alignment]);
 
     return (
         <SyncProvider>
             <div className="App">
-                <h1 className="app-title">RiboCode Mol* Viewer 0.3.9</h1>
+                <h1 className="app-title">RiboCode Mol* Viewer 0.3.10</h1>
                 <div>
                     <button
                         onClick={dictionaryFile.handleButtonClick}
@@ -221,9 +252,9 @@ const App: React.FC = () => {
                             </>
                         </div>
                         <MolstarContainer
-                            key={viewerA.key}
+                            viewerKey={viewerA.viewerKey}
                             setViewer={setViewerAWrapper}
-                            onMouseDown={() => setActiveViewer(viewerA.key)}
+                            onMouseDown={() => setActiveViewer(viewerA.viewerKey)}
                             onReady={() => setViewerAReady(true)}
                         />
                     </div>
@@ -270,9 +301,9 @@ const App: React.FC = () => {
                             </>
                         </div>
                         <MolstarContainer
-                            key={viewerB.key}
+                            viewerKey={viewerB.viewerKey}
                             setViewer={setViewerBWrapper}
-                            onMouseDown={() => setActiveViewer(viewerB.key)}
+                            onMouseDown={() => setActiveViewer(viewerB.viewerKey)}
                             onReady={() => setViewerBReady(true)}
                         />
                     </div>
