@@ -5,19 +5,17 @@ const createPluginUI = PluginUI.createPluginUI;
 import RibocodeViewer from './RibocodeViewer';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 import './MolstarContainer.css';
+import { ViewerKey } from './App'
 
 type MolstarContainerProps = {
-    viewerKey: 'A' | 'B';
-    onSelectionChange: (selection: any) => void;
-    externalSelection: any;
+    key: ViewerKey;
     setViewer: (plugin: PluginUIContext) => void;
-    onMouseDown?: (viewerKey: 'A' | 'B') => void;
+    onMouseDown?: (key: ViewerKey) => void;
     onReady?: () => void;
 };
 
 const MolstarContainer = forwardRef<any, MolstarContainerProps>(
-    ({  viewerKey, onSelectionChange, externalSelection, 
-        setViewer, onMouseDown, onReady, data }: MolstarContainerProps) => {
+    ({  key: key, setViewer, onMouseDown, onReady }: MolstarContainerProps) => {
             const containerRef = useRef<HTMLDivElement | null>(null);
             const pluginRef = useRef<PluginUIContext | null>(null);
             const [plugin, setPlugin] = useState<PluginUIContext | null>(null);
@@ -26,7 +24,7 @@ const MolstarContainer = forwardRef<any, MolstarContainerProps>(
             // Plugin lifecycle: initialization and cleanup
             useEffect(() => {
                 const container = containerRef.current;
-                console.log(`[MolstarContainer ${viewerKey}] Plugin init effect. containerRef.current:`, container);
+                console.log(`[MolstarContainer ${key}] Plugin init effect. containerRef.current:`, container);
                 if (!container) return;
                 
                 // Cleanup previous plugin/root
@@ -76,7 +74,7 @@ const MolstarContainer = forwardRef<any, MolstarContainerProps>(
                         setViewer(pluginInstance);
                         if (onReady) onReady();
                     } catch (err) {
-                        console.error(`[MolstarContainer ${viewerKey}] Plugin creation failed:`, err);
+                        console.error(`[MolstarContainer ${key}] Plugin creation failed:`, err);
                     }
                 };
 
@@ -92,7 +90,7 @@ const MolstarContainer = forwardRef<any, MolstarContainerProps>(
                         rootRef.current = null;
                     }
                 };
-            }, [viewerKey, onReady]);
+            }, [key, onReady]);
 
             useEffect(() => {
                 if (plugin && setViewer) {
@@ -105,15 +103,13 @@ const MolstarContainer = forwardRef<any, MolstarContainerProps>(
                     ref={containerRef}
                     className="molstar-container"
                     onMouseDownCapture={() => {
-                        console.log('MolstarContainer mouse down:', viewerKey);
-                        onMouseDown?.(viewerKey);
+                        console.log('MolstarContainer mouse down:', key);
+                        onMouseDown?.(key);
                     }}
                 >
                     <RibocodeViewer
                         plugin={plugin}
-                        viewerKey={viewerKey}
-                        onSelectionChange={onSelectionChange}
-                        externalSelection={externalSelection}
+                        key={key}
                         onReady={onReady}
                     />
                 </div>
@@ -123,5 +119,5 @@ const MolstarContainer = forwardRef<any, MolstarContainerProps>(
 
 export default memo( MolstarContainer, 
     (prevProps: MolstarContainerProps, nextProps: MolstarContainerProps) =>
-    prevProps.viewerKey === nextProps.viewerKey
+    prevProps.key === nextProps.key
 );

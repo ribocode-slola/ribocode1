@@ -1,14 +1,29 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 import { SyncProvider } from './SyncContext';
 import SyncButton from './SyncButton';
 import MolstarContainer from './MolstarContainer';
-import { loadMoleculeToViewer } from './utils/data';
+//import { loadMoleculeToViewer } from './utils/data';
 import { loadMoleculeFileToViewer } from 'molstar/lib/extensions/ribocode/structure';
 import './App.css';
 import { Asset } from 'molstar/lib/mol-util/assets';
 import { PluginCommands } from 'molstar/lib/mol-plugin/commands';
+import { readFile, readJSONFile } from 'molstar/lib/extensions/ribocode/colors';
 
+export type ViewerKey = "A" | "B";
+
+type ViewerState = {
+    data: { name?: string; filename?: string } | null;
+    setData: React.Dispatch<React.SetStateAction<{ name?: string; filename?: string } | null>>;
+    isLoaded: boolean;
+    setIsLoaded: React.Dispatch<React.SetStateAction<boolean>>;
+    ref: React.RefObject<PluginUIContext | null>;
+    fileInputRef: React.RefObject<HTMLInputElement | null>;
+    handleFileInputButtonClick: () => void;
+    setViewerRef: (viewer: PluginUIContext) => void;
+    key: ViewerKey;
+};
+    
 function parseDelimitedData(text: string): Array<Record<string, string>> {
     const lines = text.trim().split('\n');
     const headers = lines[0].split(',');
@@ -24,96 +39,99 @@ function parseDelimitedData(text: string): Array<Record<string, string>> {
 
 const App: React.FC = () => {
     console.log('App rendered');
-    const [activeViewer, setActiveViewer] = useState<'A' | 'B'>('A');
-    const [viewerA, setViewerA] = useState<PluginUIContext | null>(null);
-    const [viewerB, setViewerB] = useState<PluginUIContext | null>(null);
-    const setViewerAWrapper = (viewer: PluginUIContext | null) => {
-        setViewerA(viewer); viewerARef.current = viewer;
+
+    // Viewer state management
+    const [activeViewer, setActiveViewer] = useState<ViewerKey>('A');
+    function useViewerState(key: ViewerKey): ViewerState {
+        const [data, setData] = useState<{ name?: string; filename?: string } | null>(null);
+        const [isLoaded, setIsLoaded] = useState(false);
+        const ref = useRef<PluginUIContext>(null);
+        const fileInputRef = useRef<HTMLInputElement | null>(null);
+        const handleFileInputButtonClick = useCallback(() => fileInputRef.current?.click(), []);
+        const setViewerRef = useCallback((viewer: PluginUIContext) => {
+            ref.current = viewer;
+        }, []);
+        return { data, setData, isLoaded, setIsLoaded, ref, fileInputRef, handleFileInputButtonClick, setViewerRef, key };
+    }
+    const viewerA = useViewerState('A');
+    const viewerB = useViewerState('B');
+    const setViewerAWrapper = (viewer: PluginUIContext) => {
+        viewerA.ref.current = viewer;
     };
-    const setViewerBWrapper = (viewer: PluginUIContext | null) => {
-        setViewerB(viewer); viewerBRef.current = viewer;
+    const setViewerBWrapper = (viewer: PluginUIContext) => {
+        viewerB.ref.current = viewer;
     };
     const [viewerAReady, setViewerAReady] = useState(false);
     const [viewerBReady, setViewerBReady] = useState(false);
-
-    const dictionaryFileInputRef = useRef<HTMLInputElement>(null);
-    const [dictionary, setDictionary] = useState<Array<Record<string, string>>>([]);
-
-    const handleLoadDictonaryButtonClick = () => {
-        dictionaryFileInputRef.current?.click();
-    };
-
-    const handleDictionaryFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            file.text().then(text => {
-                const parsed = parseDelimitedData(text);
-                setDictionary(parsed);
-            });
-        }
-    };
-
-    function handleLoadMolecule(
-        molecule: { id: string; url: string },
-        sourceViewerKey: 'A' | 'B'
+    
+    // Generic file input hook.
+    function useFileInput<T>(
+        parseFn: (text: string) => T,
+        initial: T
     ) {
-        if (sourceViewerKey === 'A' && viewerA) {
-            loadMoleculeToViewer(viewerA, molecule);
-        } else if (sourceViewerKey === 'B' && viewerB) {
-            loadMoleculeToViewer(viewerB, molecule);
-        }
+        const [data, setData] = useState<T>(initial);
+        const inputRef = useRef<HTMLInputElement>(null);
+    
+        const handleButtonClick = () => {
+            inputRef.current?.click();
+        };
+    
+        const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+            const file = e.target.files?.[0];
+            if (file) {
+                file.text().then(text => {
+                    const parsed = parseFn(text);
+                    setData(parsed);
+                    console.log('data:', parsed);
+                });
+            }
+        };
+        return { data, setData, inputRef, handleButtonClick, handleFileChange };
     }
-
-    const [selection, setSelection] = useState(null);
-
-    // Stable keys
-    const viewerAKey = 'A';
-    const viewerBKey = 'B';
-
-    const [viewerAData, setViewerAData] = useState<{ name?: string; filename?: string } | null>(null);
-    const [viewerBData, setViewerBData] = useState<{ name?: string; filename?: string } | null>(null);
-
-    const viewerARef = useRef<PluginUIContext>(null);
-    const viewerBRef = useRef<PluginUIContext>(null);
-    const [selectedFileA, setSelectedFileA] = useState<Asset.File | null>(null);
-    const [selectedFileB, setSelectedFileB] = useState<Asset.File | null>(null);
-    const [isLoadAButtonDisabled, setIsLoadAButtonDisabled] = useState(false);
-    const [isLoadBButtonDisabled, setIsLoadBButtonDisabled] = useState(false);
-
-    const handleFileChangeA = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setIsLoadAButtonDisabled(false);
+    const dictionaryFile = useFileInput<Array<Record<string, string>>>(parseDelimitedData, []);
+    const colorsAFile = useFileInput<Array<Record<string, string>>>(parseDelimitedData, []);
+    const colorsBFile = useFileInput<Array<Record<string, string>>>(parseDelimitedData, []);
+    const handleFileChangeA = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!viewerA.ref.current || !viewerB.ref.current) {
+            console.error('One or both viewers are not initialized.');
+            return;
+        }
         try {
             const file = e.target.files?.[0];
             if (file) {
                 const assetFile = Asset.File(new File([file], file.name));
-                setSelectedFileA(assetFile);
-                setViewerAData({
-                    ...viewerAData,
-                    filename: file.name,
-                    name: file.name
-                });
-            } else {
-                setSelectedFileA(null);
+                const result = await loadMoleculeFileToViewer(viewerA.ref.current, assetFile, true, true);
+                if (result?.alignmentData) {
+                    setAlignment(result.alignmentData); // Store alignment for later use
+                }
+                //await loadMoleculeFileToViewer(viewerA.ref.current, selectedFile, false);
+                await loadMoleculeFileToViewer(viewerB.ref.current, assetFile, false, true);
+                //await loadMoleculeFileToViewer(viewerB.ref.current, selectedFile, false);
+                // After loading, hide all representations in viewerB
+                await toggleViewerVisibility(viewerB.ref);
+                viewerA.setData(prev => ({ ...prev, name: result?.name || "Unknown" }));
+                viewerA.setIsLoaded(true);
             }
         } catch (err) {
             console.error('Error loading molecule:', err);
         }
     };
 
-    const handleFileChangeB = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setIsLoadBButtonDisabled(false);
+    const handleFileChangeB = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!viewerA.ref.current || !viewerB.ref.current) {
+            console.error('One or both viewers are not initialized.');
+            return;
+        }
         try {
             const file = e.target.files?.[0];
             if (file) {
                 const assetFile = Asset.File(new File([file], file.name));
-                setSelectedFileB(assetFile);
-                setViewerBData({
-                    ...viewerBData,
-                    filename: file.name,
-                    name: file.name
-                });
-            } else {
-                setSelectedFileB(null);
+                await toggleViewerVisibility(viewerA.ref);
+                await loadMoleculeFileToViewer(viewerA.ref.current, assetFile, false, true, alignment);
+                await toggleViewerVisibility(viewerA.ref);
+                const result = await loadMoleculeFileToViewer(viewerB.ref.current, assetFile, false, true, alignment);
+                viewerB.setData(prev => ({ ...prev, name: result?.name || "Unknown" }));
+                viewerB.setIsLoaded(true);
             }
         } catch (err) {
             console.error('Error loading molecule:', err);
@@ -121,36 +139,6 @@ const App: React.FC = () => {
     };
 
     const [alignment, setAlignment] = useState<any>(null);
-
-    const handleLoadDataA = async () => {
-        if (!selectedFileA) {
-            console.error('No file selected.');
-            return;
-        }
-        if (!viewerARef.current || !viewerBRef.current) {
-            console.error('One or both viewers are not initialized.');
-            return;
-        }
-        try {
-            const result = await loadMoleculeFileToViewer(viewerARef.current, selectedFileA, true, true);
-            if (result?.alignmentData) {
-                setAlignment(result.alignmentData); // Store alignment for later use
-            }
-            //await loadMoleculeFileToViewer(viewerARef.current, selectedFile, false);
-            await loadMoleculeFileToViewer(viewerBRef.current, selectedFileA, false, true);
-            //await loadMoleculeFileToViewer(viewerBRef.current, selectedFile, false);
-            // After loading, hide all representations in viewer B
-            await toggleViewerVisibility(viewerBRef);
-            setIsLoadAButtonDisabled(true);
-            setViewerAData(prev => ({
-                ...prev,
-                name: result?.name || "Unknown"
-            }));
-        } catch (err) {
-            console.error('Error loading molecule:', err);
-            setIsLoadAButtonDisabled(false);
-        }
-    };
 
     async function toggleViewerVisibility(viewerRef: React.RefObject<any>) {
         const models = viewerRef.current.managers.structure.hierarchy.current?.models ?? [];
@@ -164,104 +152,127 @@ const App: React.FC = () => {
         }
     }
 
-    const handleLoadDataB = async () => {
-        if (!selectedFileB) {
-            console.error('No file selected.');
-            return;
-        }
-        if (!viewerARef.current || !viewerBRef.current) {
-            console.error('One or both viewers are not initialized.');
-            return;
-        }
-        try {
-            await toggleViewerVisibility(viewerARef);
-            await loadMoleculeFileToViewer(viewerARef.current, selectedFileB, false, true, alignment);
-            await toggleViewerVisibility(viewerARef);
-            const result = await loadMoleculeFileToViewer(viewerBRef.current, selectedFileB, false, true, alignment);
-            setIsLoadBButtonDisabled(true);
-            setViewerBData(prev => ({
-                ...prev,
-                name: result?.name || "Unknown"
-            }));
-        } catch (err) {
-            console.error('Error loading molecule:', err);
-            setIsLoadBButtonDisabled(false);
-        }
-    };
-
     return (
         <SyncProvider>
             <div className="App">
                 <h1 className="app-title">RiboCode Mol* Viewer 0.3.9</h1>
-                <SyncButton
-                    viewerA={viewerA}
-                    viewerB={viewerB}
-                    activeViewer={activeViewer}
-                />
+                <div>
+                    <button
+                        onClick={dictionaryFile.handleButtonClick}
+                        disabled={!viewerB.isLoaded}
+                    >
+                        Load Dictionary
+                    </button>
+                    <input
+                        type="file"
+                        accept=".csv,.txt"
+                        style={{ display: 'none' }}
+                        ref={dictionaryFile.inputRef}
+                        onChange={dictionaryFile.handleFileChange}
+                    />
+                    <SyncButton
+                        viewerA={viewerA.ref.current}
+                        viewerB={viewerB.ref.current}
+                        activeViewer={activeViewer}
+                        disabled={!viewerB.isLoaded}
+                    />
+                </div>
                 <div className="grid-container">
                     <div className="viewer-wrapper">
                         <div className="load-data-row">
-                            <input
-                                type="file"
-                                accept=".cif,.mmcif"
-                                onChange={handleFileChangeA}
-                                disabled={isLoadAButtonDisabled}
-                            />
-                            <button onClick={handleLoadDataA}
-                                disabled={!selectedFileA || !viewerAReady || !viewerBReady || isLoadAButtonDisabled}>
-                                Load Ribosome to align to
-                            </button>
-                        </div>
-                        <div className="viewer-title">
-                            {viewerAData
-                                ? `${viewerAData.name || viewerAData.filename || "Loaded"}`
-                                : "Molecule to align with"}
+                            <div className="viewer-title">
+                                {viewerA.data
+                                    ? `${viewerA.data.name || viewerA.data.filename}`
+                                    : ""}
+                            </div>
+                            {!viewerA.isLoaded && (
+                                <>
+                                    <button
+                                        onClick={viewerA.handleFileInputButtonClick}
+                                        disabled={!viewerAReady || !viewerBReady}
+                                    >
+                                        Load molecule to align with
+                                    </button>
+                                    <input
+                                        type="file"
+                                        accept=".cif,.mmcif"
+                                        style={{ display: 'none' }}
+                                        ref={viewerA.fileInputRef}
+                                        onChange={handleFileChangeA}
+                                    />
+                                </>
+                            )}
                         </div>
                         <div>
-                            <button onClick={handleLoadDictonaryButtonClick}>Load Dictionary</button>
-                            <input
-                                type="file"
-                                accept=".csv,.txt"
-                                style={{ display: 'none' }}
-                                ref={dictionaryFileInputRef}
-                                onChange={handleDictionaryFileChange}
-                            />
-                            {/* Render dictionary for demonstration */}
-                            {/* <pre>{JSON.stringify(dictionary, null, 2)}</pre> */}
+                            <>
+                                <button
+                                    onClick={colorsAFile.handleButtonClick}
+                                    disabled={!viewerA.isLoaded}
+                                >
+                                    Load Colours
+                                </button>
+                                <input
+                                    type="file"
+                                    accept=".csv,.tsv,.txt,.json"
+                                    style={{ display: 'none' }}
+                                    ref={colorsAFile.inputRef}
+                                    onChange={colorsAFile.handleFileChange}
+                                />
+                            </>
                         </div>
                         <MolstarContainer
-                            viewerKey={viewerAKey}
-                            onSelectionChange={setSelection}
-                            externalSelection={selection}
+                            key={viewerA.key}
                             setViewer={setViewerAWrapper}
-                            onMouseDown={() => setActiveViewer(viewerAKey)}
+                            onMouseDown={() => setActiveViewer(viewerA.key)}
                             onReady={() => setViewerAReady(true)}
                         />
                     </div>
                     <div className="viewer-wrapper">
                         <div className="load-data-row">
-                            <input
-                                type="file"
-                                accept=".cif,.mmcif"
-                                onChange={handleFileChangeB}
-                                disabled={isLoadBButtonDisabled || !isLoadAButtonDisabled}
-                            />
-                            <button onClick={handleLoadDataB}
-                                disabled={!selectedFileB || !viewerAReady || !viewerBReady || isLoadBButtonDisabled}>
-                                Load Ribosome to align
-                            </button>
+                            <div className="viewer-title">
+                                {viewerB.data
+                                    ? `${viewerB.data.name || viewerB.data.filename}`
+                                    : ""}
+                            </div>
+                            {!viewerB.isLoaded && (
+                                <>
+                                    <button
+                                        onClick={viewerB.handleFileInputButtonClick}
+                                        disabled={!viewerA.isLoaded || !viewerAReady || !viewerBReady}
+                                    >
+                                        Load molecule to align
+                                    </button>
+                                    <input
+                                        type="file"
+                                        accept=".cif,.mmcif"
+                                        style={{ display: 'none' }}
+                                        ref={viewerB.fileInputRef}
+                                        onChange={handleFileChangeB}
+                                    />
+                                </>
+                            )}
                         </div>
-                        <div className="viewer-title">
-                            {viewerBData
-                                ? `${viewerBData.name || viewerBData.filename || "Loaded"}`
-                                : "Molecule aligned"}
+                        <div>
+                            <>
+                                <button
+                                    onClick={colorsBFile.handleButtonClick}
+                                    disabled={!viewerB.isLoaded}
+                                >
+                                    Load Colours
+                                </button>
+                                <input
+                                    type="file"
+                                    accept=".csv,.tsv,.txt,.json"
+                                    style={{ display: 'none' }}
+                                    ref={colorsBFile.inputRef}
+                                    onChange={colorsBFile.handleFileChange}
+                                />
+                            </>
                         </div>
                         <MolstarContainer
-                            viewerKey={viewerBKey}
-                            onSelectionChange={setSelection}
-                            externalSelection={selection}
+                            key={viewerB.key}
                             setViewer={setViewerBWrapper}
-                            onMouseDown={() => setActiveViewer(viewerBKey)}
+                            onMouseDown={() => setActiveViewer(viewerB.key)}
                             onReady={() => setViewerBReady(true)}
                         />
                     </div>
