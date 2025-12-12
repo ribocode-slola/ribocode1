@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 import { PluginCommands } from 'molstar/lib/mol-plugin/commands';
+import { ObjectListControl } from 'molstar/lib/mol-plugin-ui/controls/parameters';
 import { SyncProvider } from './SyncContext';
 import SyncButton from './SyncButton';
 import MolstarContainer from './MolstarContainer';
@@ -9,8 +10,7 @@ import { toggleViewerVisibility } from './RibocodeViewer';
 import { loadMoleculeFileToViewer } from 'molstar/lib/extensions/ribocode/structure';
 import './App.css';
 import { Asset } from 'molstar/lib/mol-util/assets';
-import { readFile, readJSONFile } from 'molstar/lib/extensions/ribocode/colors';
-import { Data } from 'molstar/lib/extensions/ribocode/colors';
+import { Data, readFile, readJSONFile } from 'molstar/lib/extensions/ribocode/colors';
 import { Color } from 'molstar/lib/mol-util/color';
 
 export type ViewerKey = "A" | "B";
@@ -26,8 +26,8 @@ type ViewerState = {
     setViewerRef: (viewer: PluginUIContext) => void;
     viewerKey: ViewerKey;
 };
-    
-function parseDelimitedData(text: string): Array<Record<string, string>> {
+
+async function parseDictionaryFileContent(text: string): Promise<Array<Record<string, string>>> {
     const lines = text.trim().split('\n');
     const headers = lines[0].split(',');
     return lines.slice(1).map(line => {
@@ -40,42 +40,13 @@ function parseDelimitedData(text: string): Array<Record<string, string>> {
     });
 }
 
-function parseFileContent(content: string): Data[] {
-    const lines = content.split('\n');
-    const colorMap = new Map<string, string>();
-    const data: Data[] = [];
-    if (lines.length > 0) {
-        const header = lines[0];
-        console.log('Header:', header);
+async function parseColorFileContent(text: string, file: File): Promise<Data[]> {
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (ext === 'json') {
+        return await readJSONFile(file);
+    } else {
+        return await readFile(file);
     }
-    for (let i = 1; i < lines.length; i++) {
-        const line = lines[i];
-        if (line.trim() === '') continue;
-        const [pdb_name, RP_name, , colorStr] = line.split(' ');
-        const [pdb_id, pdb_chain] = pdb_name.split('_');
-        data.push({
-            pdb_name,
-            RP_name,
-            //class: parseInt(classStr, 10),
-            color: colorStr, // Can later be parsed using mol-util.color.color.Color.fromHexStyle(colorStr),
-            pdb_id,
-            pdb_chain
-        });
-    }
-    data.forEach(x => {
-        colorMap.set(x.pdb_chain, x.color);
-    });
-    const colorMapArray = Array.from(colorMap.entries()).map(([asym_id, color]) => ({
-        asym_id,
-        color: Color.fromHexStyle(color)
-    }));
-    console.log('colorMapArray:', colorMapArray);
-    // Update the state with the new colors
-
-    //this.props.onChange({ name: this.props.name, param: this.props.param, value: colorList });
-
-
-    return data;
 }
 
 const App: React.FC = () => {
@@ -104,34 +75,37 @@ const App: React.FC = () => {
     }, [viewerB]);
     const [viewerAReady, setViewerAReady] = useState(false);
     const [viewerBReady, setViewerBReady] = useState(false);
-    
+
     // Generic file input hook.
     function useFileInput<T>(
-        parseFn: (text: string) => T,
-        initial: T
+        parseFn: (text: string, file: File) => Promise<T>,
+        initialValue: T
     ) {
-        const [data, setData] = useState<T>(initial);
+        const [data, setData] = useState<T>(initialValue);
         const inputRef = useRef<HTMLInputElement>(null);
-    
+
         const handleButtonClick = () => {
             inputRef.current?.click();
         };
-    
+
         const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
             const file = e.target.files?.[0];
             if (file) {
-                file.text().then(text => {
-                    const parsed = parseFn(text);
+                const reader = new FileReader();
+                reader.onload = async () => {
+                    const text = reader.result as string;
+                    const parsed = await parseFn(text, file); // Pass both text and file
                     setData(parsed);
                     console.log('data:', parsed);
-                });
+                };
+                reader.readAsText(file);
             }
         };
         return { data, setData, inputRef, handleButtonClick, handleFileChange };
     }
-    const dictionaryFile = useFileInput<Array<Record<string, string>>>(parseDelimitedData, []);
-    const colorsAFile = useFileInput<Array<Record<string, string>>>(parseFileContent, []);
-    const colorsBFile = useFileInput<Array<Record<string, string>>>(parseFileContent, []);
+    const dictionaryFile = useFileInput<Array<Record<string, string>>>(parseDictionaryFileContent, []);
+    const colorsAFile = useFileInput<Array<Record<string, string>>>(parseColorFileContent, []);
+    const colorsBFile = useFileInput<Array<Record<string, string>>>(parseColorFileContent, []);
     //const colorsAFile = useFileInput<Array<Record<string, string>>>(parseDelimitedData, []);
     //const colorsBFile = useFileInput<Array<Record<string, string>>>(parseDelimitedData, []);
     const handleFileChangeA = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -186,7 +160,7 @@ const App: React.FC = () => {
     return (
         <SyncProvider>
             <div className="App">
-                <h1 className="app-title">RiboCode Mol* Viewer 0.3.10</h1>
+                <h1 className="app-title">RiboCode Mol* Viewer 0.3.10c</h1>
                 <div>
                     <button
                         onClick={dictionaryFile.handleButtonClick}
