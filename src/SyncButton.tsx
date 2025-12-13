@@ -7,7 +7,8 @@ const SyncButton: React.FC<{
     viewerA: PluginUIContext | null;
     viewerB: PluginUIContext | null;
     activeViewer: 'A' | 'B';
-}> = ({ viewerA, viewerB, activeViewer }) => {
+    disabled: boolean
+}> = ({ viewerA, viewerB, activeViewer, disabled }) => {
     const { syncEnabled, setSyncEnabled } = useSync();
 
     useEffect(() => {
@@ -33,7 +34,7 @@ const SyncButton: React.FC<{
             });
             // Force target viewer to redraw.
             if (targetViewer.canvas3d) {
-                targetViewer.canvas3d.requestRender();
+                targetViewer.canvas3d.requestDraw();
             }
             console.log('Source radius:', state.radius);
             console.log('Target radius after setState:', targetCamera.getSnapshot().radius);
@@ -45,7 +46,10 @@ const SyncButton: React.FC<{
     const handleSyncToggle = () => setSyncEnabled(!syncEnabled);
 
     return (
-        <button onClick={handleSyncToggle}>
+        <button
+            onClick={handleSyncToggle}
+            disabled={disabled}
+        >
             {syncEnabled ? 'Action to unsync' : 'Action to sync'}
         </button>
     );
