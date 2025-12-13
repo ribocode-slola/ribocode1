@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 import { PluginCommands } from 'molstar/lib/mol-plugin/commands';
 import { ObjectListControl } from 'molstar/lib/mol-plugin-ui/controls/parameters';
@@ -12,6 +12,7 @@ import './App.css';
 import { Asset } from 'molstar/lib/mol-util/assets';
 import { Data, readFile, readJSONFile } from 'molstar/lib/extensions/ribocode/colors';
 import { Color } from 'molstar/lib/mol-util/color';
+import { StateTransforms } from 'packages/molstar/src/mol-plugin-state/transforms';
 
 export type ViewerKey = "A" | "B";
 
@@ -157,10 +158,50 @@ const App: React.FC = () => {
         }
     }, [viewerA, viewerB, alignment]);
 
+    async function updateViewerColors(colors: Array<Record<string, string>>) {
+        console.log('Updating viewer colors with data:', colors);
+        const plugin = viewerA.ref.current;
+        if (!plugin) return;
+    
+        const managersStructure = plugin.managers.structure;
+        const buildersData = plugin.builders.data;
+        const buildersStructure = plugin.builders.structure;
+        const representation = buildersStructure.representation;
+        const stateData = plugin.state.data;
+        const buildersHierarchy = buildersStructure.hierarchy;
+        const models = managersStructure.hierarchy.current?.models || [];
+        for (const model of models) {
+            const ref = model.cell.transform.ref;
+            // Build a state update tree for the representation
+            const update = plugin.state.data.build();
+            // update.to(ref).update(StateTransforms.Representation.StructureRepresentation3D, {
+            //     colorTheme: {
+            //         name: 'custom',
+            //         params: {
+            //             data: colors.map(colorEntry => ({
+            //                 chainId: colorEntry['chain'] || '',
+            //                 residueNumber: parseInt(colorEntry['residue_number'] || '0', 10),
+            //                 color: Color.fromHexString(colorEntry['color'] || '#FFFFFF')
+            //             }))
+            //         }
+            //     }
+            // });
+
+            // Apply the update
+            await plugin.state.data.updateTree(update).run();
+        }
+    }
+
+    useEffect(() => {
+        if (colorsAFile.data && colorsAFile.data.length > 0) {
+            updateViewerColors(colorsAFile.data);
+        }
+    }, [colorsAFile.data]);
+
     return (
         <SyncProvider>
             <div className="App">
-                <h1 className="app-title">RiboCode Mol* Viewer 0.3.10c</h1>
+                <h1 className="app-title">RiboCode Mol* Viewer 0.3.10</h1>
                 <div>
                     <button
                         onClick={dictionaryFile.handleButtonClick}
