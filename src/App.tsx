@@ -1,71 +1,44 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
-import { PluginCommands } from 'molstar/lib/mol-plugin/commands';
-import { ObjectListControl } from 'molstar/lib/mol-plugin-ui/controls/parameters';
 import { SyncProvider } from './SyncContext';
 import SyncButton from './SyncButton';
 import MolstarContainer from './MolstarContainer';
-import { toggleViewerVisibility } from './RibocodeViewer';
+import { parseColorFileContent } from './utils/colors';
+import { parseDictionaryFileContent } from './utils/dictionary';
+import { toggleViewerVisibility, ViewerKey, ViewerState } from './RibocodeViewer';
 //import { loadMoleculeToViewer } from './utils/data';
-import { loadMoleculeFileToViewer } from 'molstar/lib/extensions/ribocode/structure';
 import './App.css';
+import { loadMoleculeFileToViewer } from 'molstar/lib/extensions/ribocode/structure';
 import { Asset } from 'molstar/lib/mol-util/assets';
-import { Data, readFile, readJSONFile } from 'molstar/lib/extensions/ribocode/colors';
 import { Color } from 'molstar/lib/mol-util/color';
-import { StateTransforms } from 'packages/molstar/src/mol-plugin-state/transforms';
-
-export type ViewerKey = "A" | "B";
-
-type ViewerState = {
-    data: { name?: string; filename?: string } | null;
-    setData: React.Dispatch<React.SetStateAction<{ name?: string; filename?: string } | null>>;
-    isLoaded: boolean;
-    setIsLoaded: React.Dispatch<React.SetStateAction<boolean>>;
-    ref: React.RefObject<PluginUIContext | null>;
-    fileInputRef: React.RefObject<HTMLInputElement | null>;
-    handleFileInputButtonClick: () => void;
-    setViewerRef: (viewer: PluginUIContext) => void;
-    viewerKey: ViewerKey;
-};
-
-async function parseDictionaryFileContent(text: string): Promise<Array<Record<string, string>>> {
-    const lines = text.trim().split('\n');
-    const headers = lines[0].split(',');
-    return lines.slice(1).map(line => {
-        const values = line.split(',');
-        const row: Record<string, string> = {};
-        headers.forEach((header, i) => {
-            row[header] = values[i];
-        });
-        return row;
-    });
-}
-
-async function parseColorFileContent(text: string, file: File): Promise<Data[]> {
-    const ext = file.name.split('.').pop()?.toLowerCase();
-    if (ext === 'json') {
-        return await readJSONFile(file);
-    } else {
-        return await readFile(file);
-    }
-}
+//import { PluginCommands } from 'molstar/lib/mol-plugin/commands';
+import { StateTransforms } from 'molstar/lib/mol-plugin-state/transforms';
+import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
+//import { ObjectListControl } from 'molstar/lib/mol-plugin-ui/controls/parameters';
 
 const App: React.FC = () => {
     console.log('App rendered');
 
     // Viewer state management
+    // -----------------------
+    
     const [activeViewer, setActiveViewer] = useState<ViewerKey>('A');
+
+    // Custom hook to manage viewer state.
     function useViewerState(viewerKey: ViewerKey): ViewerState {
-        const [data, setData] = useState<{ name?: string; filename?: string } | null>(null);
-        const [isLoaded, setIsLoaded] = useState(false);
+        const [dataToAlignTo, setDataToAlignTo] = useState<{ name?: string; filename?: string } | null>(null);
+        const [dataAligned, setDataAligned] = useState<{ name?: string; filename?: string } | null>(null);
+        const [isDataToAlignToLoaded, setIsDataToAlignToLoaded] = useState(false);
+        const [isDataAlignedLoaded, setIsDataAlignedLoaded] = useState(false);
         const ref = useRef<PluginUIContext>(null);
         const fileInputRef = useRef<HTMLInputElement | null>(null);
         const handleFileInputButtonClick = useCallback(() => fileInputRef.current?.click(), []);
         const setViewerRef = useCallback((viewer: PluginUIContext) => {
             ref.current = viewer;
         }, []);
-        return { data, setData, isLoaded, setIsLoaded, ref, fileInputRef, handleFileInputButtonClick, setViewerRef, viewerKey };
+        return { dataToAlignTo, setDataToAlignTo, dataAligned, setDataAligned, isDataToAlignToLoaded, setIsDataToAlignToLoaded, isDataAlignedLoaded, setIsDataAlignedLoaded, ref, fileInputRef, handleFileInputButtonClick, setViewerRef, viewerKey };
     }
+
+    // Initialize viewer states.
     const viewerA = useViewerState('A');
     const viewerB = useViewerState('B');
     const setViewerAWrapper = useCallback((viewer: PluginUIContext) => {
@@ -82,13 +55,13 @@ const App: React.FC = () => {
         parseFn: (text: string, file: File) => Promise<T>,
         initialValue: T
     ) {
+        // State and refs for file input handling.
         const [data, setData] = useState<T>(initialValue);
         const inputRef = useRef<HTMLInputElement>(null);
-
+        // Handlers for button click and file change.
         const handleButtonClick = () => {
             inputRef.current?.click();
         };
-
         const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
             const file = e.target.files?.[0];
             if (file) {
@@ -104,11 +77,13 @@ const App: React.FC = () => {
         };
         return { data, setData, inputRef, handleButtonClick, handleFileChange };
     }
+
+    // File inputs for dictionary and colors.
     const dictionaryFile = useFileInput<Array<Record<string, string>>>(parseDictionaryFileContent, []);
     const colorsAFile = useFileInput<Array<Record<string, string>>>(parseColorFileContent, []);
     const colorsBFile = useFileInput<Array<Record<string, string>>>(parseColorFileContent, []);
-    //const colorsAFile = useFileInput<Array<Record<string, string>>>(parseDelimitedData, []);
-    //const colorsBFile = useFileInput<Array<Record<string, string>>>(parseDelimitedData, []);
+    
+    // File change handler for viewerA.
     const handleFileChangeA = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!viewerA.ref.current || !viewerB.ref.current) {
             console.error('One or both viewers are not initialized.');
@@ -118,25 +93,28 @@ const App: React.FC = () => {
             const file = e.target.files?.[0];
             if (file) {
                 const assetFile = Asset.File(new File([file], file.name));
-                const result = await loadMoleculeFileToViewer(viewerA.ref.current, assetFile, true, true);
-                if (result?.alignmentData) {
-                    setAlignment(result.alignmentData); // Store alignment for later use
+                const viewerADataToAlignTo = await loadMoleculeFileToViewer(viewerA.ref.current, assetFile, true, true);
+                if (viewerADataToAlignTo?.alignmentData) {
+                    setAlignment(viewerADataToAlignTo.alignmentData); // Store alignment for later use
                 }
+                viewerA.setDataToAlignTo(prev => ({ ...prev, name: viewerADataToAlignTo?.name, presetResult: viewerADataToAlignTo || "Unknown" }));
+                viewerA.setIsDataToAlignToLoaded(true);
                 //await loadMoleculeFileToViewer(viewerA.ref.current, selectedFile, false);
-                await loadMoleculeFileToViewer(viewerB.ref.current, assetFile, false, true);
+                const viewerBDataToAlignTo = await loadMoleculeFileToViewer(viewerB.ref.current, assetFile, false, true);
+                viewerB.setDataToAlignTo(prev => ({ ...prev, name: viewerBDataToAlignTo?.name, presetResult: viewerBDataToAlignTo || "Unknown" }));
                 //await loadMoleculeFileToViewer(viewerB.ref.current, selectedFile, false);
                 // After loading, hide all representations in viewerB
                 await toggleViewerVisibility(viewerB.ref);
-                viewerA.setData(prev => ({ ...prev, name: result?.name || "Unknown" }));
-                viewerA.setIsLoaded(true);
             }
         } catch (err) {
             console.error('Error loading molecule:', err);
         }
     }, [viewerA, viewerB]);
 
+    // Alignment state.
     const [alignment, setAlignment] = useState<any>(null);
 
+    // File change handler for viewerB.
     const handleFileChangeB = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!viewerA.ref.current || !viewerB.ref.current) {
             console.error('One or both viewers are not initialized.');
@@ -147,17 +125,20 @@ const App: React.FC = () => {
             if (file) {
                 const assetFile = Asset.File(new File([file], file.name));
                 await toggleViewerVisibility(viewerA.ref);
-                await loadMoleculeFileToViewer(viewerA.ref.current, assetFile, false, true, alignment);
+                const viewerAMoleculeAligned = await loadMoleculeFileToViewer(viewerA.ref.current, assetFile, false, true, alignment);
+                viewerA.setDataAligned(prev => ({ ...prev, name: viewerAMoleculeAligned?.name || "Unknown" }));
+                viewerA.setIsDataAlignedLoaded(true);
                 await toggleViewerVisibility(viewerA.ref);
-                const result = await loadMoleculeFileToViewer(viewerB.ref.current, assetFile, false, true, alignment);
-                viewerB.setData(prev => ({ ...prev, name: result?.name || "Unknown" }));
-                viewerB.setIsLoaded(true);
-            }
+                const viewerBMoleculeAligned = await loadMoleculeFileToViewer(viewerB.ref.current, assetFile, false, true, alignment);
+                viewerB.setDataAligned(prev => ({ ...prev, name: viewerBMoleculeAligned?.name || "Unknown" }));
+                viewerB.setIsDataAlignedLoaded(true);
+            }                
         } catch (err) {
             console.error('Error loading molecule:', err);
         }
     }, [viewerA, viewerB, alignment]);
 
+    // Update viewer colors based on loaded color data.
     async function updateViewerColors(colors: Array<Record<string, string>>) {
         console.log('Updating viewer colors with data:', colors);
         const plugin = viewerA.ref.current;
@@ -171,27 +152,31 @@ const App: React.FC = () => {
         const buildersHierarchy = buildersStructure.hierarchy;
         const models = managersStructure.hierarchy.current?.models || [];
         for (const model of models) {
+            console.log('Processing model for color update:', model);
             const ref = model.cell.transform.ref;
             // Build a state update tree for the representation
             const update = plugin.state.data.build();
-            // update.to(ref).update(StateTransforms.Representation.StructureRepresentation3D, {
-            //     colorTheme: {
-            //         name: 'custom',
-            //         params: {
-            //             data: colors.map(colorEntry => ({
-            //                 chainId: colorEntry['chain'] || '',
-            //                 residueNumber: parseInt(colorEntry['residue_number'] || '0', 10),
-            //                 color: Color.fromHexString(colorEntry['color'] || '#FFFFFF')
-            //             }))
-            //         }
-            //     }
-            // });
+            update.to(ref).update(StateTransforms.Representation.StructureRepresentation3D, old => ({
+                ...old,
+                colorTheme: {
+                    name: 'custom',
+                    params: {
+                        data: colors.map(colorEntry => ({
+                            chainId: colorEntry['chain'] || '',
+                            residueNumber: parseInt(colorEntry['residue_number'] || '0', 10),
+                            color: Color.fromHexString(colorEntry['color'] || '#FFFFFF')
+                        }))
+                    }
+                }
+            }));
 
             // Apply the update
+            console.log('Applying color update to model:', model);
             await plugin.state.data.updateTree(update).run();
         }
     }
 
+    // Effect to update colors in viewerA when colorsAFile changes.
     useEffect(() => {
         if (colorsAFile.data && colorsAFile.data.length > 0) {
             updateViewerColors(colorsAFile.data);
@@ -201,11 +186,11 @@ const App: React.FC = () => {
     return (
         <SyncProvider>
             <div className="App">
-                <h1 className="app-title">RiboCode Mol* Viewer 0.3.10</h1>
+                <h1 className="app-title">RiboCode Mol* Viewer 0.3.11</h1>
                 <div>
                     <button
                         onClick={dictionaryFile.handleButtonClick}
-                        disabled={!viewerB.isLoaded}
+                        disabled={!viewerB.isDataAlignedLoaded}
                     >
                         Load Dictionary
                     </button>
@@ -220,18 +205,18 @@ const App: React.FC = () => {
                         viewerA={viewerA.ref.current}
                         viewerB={viewerB.ref.current}
                         activeViewer={activeViewer}
-                        disabled={!viewerB.isLoaded}
+                        disabled={!viewerB.isDataAlignedLoaded}
                     />
                 </div>
                 <div className="grid-container">
                     <div className="viewer-wrapper">
                         <div className="load-data-row">
                             <div className="viewer-title">
-                                {viewerA.data
-                                    ? `${viewerA.data.name || viewerA.data.filename}`
+                                {viewerA.dataToAlignTo
+                                    ? `${viewerA.dataToAlignTo.name || viewerA.dataToAlignTo.filename}`
                                     : ""}
                             </div>
-                            {!viewerA.isLoaded && (
+                            {!viewerA.isDataToAlignToLoaded && (
                                 <>
                                     <button
                                         onClick={viewerA.handleFileInputButtonClick}
@@ -253,7 +238,7 @@ const App: React.FC = () => {
                             <>
                                 <button
                                     onClick={colorsAFile.handleButtonClick}
-                                    disabled={!viewerA.isLoaded}
+                                    disabled={!viewerA.isDataToAlignToLoaded}
                                 >
                                     Load Colours
                                 </button>
@@ -276,15 +261,15 @@ const App: React.FC = () => {
                     <div className="viewer-wrapper">
                         <div className="load-data-row">
                             <div className="viewer-title">
-                                {viewerB.data
-                                    ? `${viewerB.data.name || viewerB.data.filename}`
+                                {viewerB.dataAligned
+                                    ? `${viewerB.dataAligned.name || viewerB.dataAligned.filename}`
                                     : ""}
                             </div>
-                            {!viewerB.isLoaded && (
+                            {!viewerB.isDataAlignedLoaded && (
                                 <>
                                     <button
                                         onClick={viewerB.handleFileInputButtonClick}
-                                        disabled={!viewerA.isLoaded || !viewerAReady || !viewerBReady}
+                                        disabled={!viewerA.isDataToAlignToLoaded || !viewerAReady || !viewerBReady}
                                     >
                                         Load molecule to align
                                     </button>
@@ -302,7 +287,7 @@ const App: React.FC = () => {
                             <>
                                 <button
                                     onClick={colorsBFile.handleButtonClick}
-                                    disabled={!viewerB.isLoaded}
+                                    disabled={!viewerB.isDataAlignedLoaded}
                                 >
                                     Load Colours
                                 </button>
