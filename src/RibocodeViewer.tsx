@@ -2,19 +2,19 @@ import React, { useState, useEffect, useRef } from 'react';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 import { PluginCommands } from 'molstar/lib/mol-plugin/commands';
 import './MolstarContainer.css';
-import { PresetResult } from 'molstar/lib/extensions/ribocode/structure';
+import { Molecule, PresetResult } from 'molstar/lib/extensions/ribocode/structure';
 
 export type ViewerKey = "A" | "B";
 
 export type ViewerState = {
-    dataToAlignTo: { name?: string; filename?: string; model?: any } | null;
-    setDataToAlignTo: React.Dispatch<React.SetStateAction<{ name?: string; filename?: string; presetResult?: PresetResult } | null>>;
-    dataAligned: { name?: string; filename?: string; model?: any } | null;
-    setDataAligned: React.Dispatch<React.SetStateAction<{ name?: string; filename?: string; presetReult?: PresetResult } | null>>;
-    isDataToAlignToLoaded: boolean;
-    setIsDataToAlignToLoaded: React.Dispatch<React.SetStateAction<boolean>>;
-    isDataAlignedLoaded: boolean;
-    setIsDataAlignedLoaded: React.Dispatch<React.SetStateAction<boolean>>;
+    moleculeAlignedTo: Molecule | null;
+    setMoleculeAlignedTo: React.Dispatch<React.SetStateAction<Molecule | null>>;
+    moleculeAligned: Molecule | null;
+    setMoleculeAligned: React.Dispatch<React.SetStateAction<Molecule | null>>;
+    isMoleculeAlignedToLoaded: boolean;
+    setIsMoleculeAlignedToLoaded: React.Dispatch<React.SetStateAction<boolean>>;
+    isMoleculeAlignedLoaded: boolean;
+    setIsMoleculeAlignedLoaded: React.Dispatch<React.SetStateAction<boolean>>;
     ref: React.RefObject<PluginUIContext | null>;
     fileInputRef: React.RefObject<HTMLInputElement | null>;
     handleFileInputButtonClick: () => void;
