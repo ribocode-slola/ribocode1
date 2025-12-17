@@ -25,9 +25,10 @@ import { MolScriptBuilder } from 'molstar/lib/mol-script/language/builder';
 import { compile } from 'molstar/lib/mol-script/runtime/query/base';
 import { VisibilityOutlinedSvg, VisibilityOffOutlinedSvg } from 'molstar/lib/mol-plugin-ui/controls/icons';
 import { Data } from 'molstar/lib/extensions/ribocode/colors';
-import { ColorTheme } from 'molstar/lib/mol-theme/color';
 import { ThemeDataContext } from 'molstar/lib/mol-theme/theme';
 import { AtomicHierarchy } from 'molstar/lib/mol-model/structure/model/properties/atomic';
+import { ColorType } from 'molstar/lib/mol-geo/geometry/color-data';
+import { ColorTheme } from 'molstar/lib/mol-theme/color';
 
 const App: React.FC = () => {
     console.log('App rendered');
@@ -267,17 +268,16 @@ const App: React.FC = () => {
             ),
     };
 
-
     function createChainColorTheme(
-        chainColorMap: Map<string, Color>
-    ): ColorTheme.Provider<{}, StructureElement.Location> {
-        const theme: ColorTheme.Factory<{}, StructureElement.Location> = (ctx: ThemeDataContext, props: {}) => ({
+        chainColorMap: Map<string, Color>) {
+        const theme = (ctx: ThemeDataContext, props: {}) => ({
             granularity: 'group',
             color: (location: StructureElement.Location) => {
+                console.log('Color function called for:', location);
                 const { unit, element } = location;
                 if (Unit.isAtomic(unit)) {
                     const chainIndex = unit.model.atomicHierarchy.chainAtomSegments.index[element];
-                    const asym_id = String(unit.model.atomicHierarchy.chains.label_asym_id.value(chainIndex)); // ensure string
+                    const asym_id: string = String(unit.model.atomicHierarchy.chains.label_asym_id.value(chainIndex));
                     return chainColorMap.get(asym_id) ?? Color(0xCCCCCC);
                 }
                 return Color(0xCCCCCC);
@@ -427,16 +427,85 @@ const App: React.FC = () => {
         console.log('Updated colorTheme:', newColorTheme);
 
         // Update the representation using the plugin state API
-        await pluginA.state.data.build()
-            .to(reprCell.transform.ref)
-            .update({
-                ...params,
+        const builders = pluginA.builders;
+        if (!builders) {
+            console.warn('No builders found in plugin.');
+            return;
+        }
+        console.log('builders:', builders); 
+        const structureBuilder = builders.structure;
+        if (!structureBuilder) {
+            console.warn('No structure found in builders.');
+            return;
+        }
+        console.log('builders.structure:', structureBuilder);
+        const representationBuilder = structureBuilder.representation;
+        if (!representationBuilder) {
+            console.warn('No representation found in structure builders.');
+            return;
+        }
+        console.log('builders.structure.representation:', representationBuilder);
+
+        // Get the plugin state root
+        const stateA = pluginA.state.data;
+        console.log('pluginA.state.data:', stateA);
+        const root = pluginA.state.data.root;
+        if (!root) {
+            console.warn('No root found in plugin state data.');
+            return;
+        }
+        console.log('pluginA.state.data.root:', root);
+        const structureCell = pluginA.managers.structure.hierarchy.current.structures[0]?.cell;
+        if (!structureCell) {
+            console.warn('No structure cell found in hierarchy.');
+            return;
+        }
+        console.log('structureCell:', structureCell);
+        const structureRef = structureCell.transform.ref;
+        if (!structureRef) {
+            console.warn('No structureRef found in hierarchy.');
+            return;
+        }
+        console.log('structureRef:', structureRef);
+        //const structureRefObj = { ref: structureCell.transform.ref }; // Wrap the ref string
+
+        const builder = pluginA.state.data.build(); // Get the Root (builder)
+
+        const newrep = representationBuilder.buildRepresentation(
+            builder,
+            structureRef,
+            // structureCell,
+            // structureRefObj,
+            {
+                type: 'spacefill',
                 colorTheme: newColorTheme
-            })
-            .commit();
+            }
+        );
+        console.log('Built new representation:', newrep);
 
+        
 
+        // Add to representations object.
+        const repKey = 'spacefill'; // or use newrep.ref for uniqueness
+        representations[repKey] = newrep;
+        console.log('representations:', representations);
 
+        // This sort of works, but the colorsTheme is still the default one.
+        // // Add the new representation to the state.
+        // await pluginA.state.data.build()
+        //     .to(structureCell.transform.ref)
+        //     .apply(
+        //         StateTransforms.Representation.StructureRepresentation3D, // Transformer for structure representations
+        //         {
+        //             type: { name: 'spacefill', params: {} },
+        //             colorTheme: newColorTheme
+        //         }
+        //     )
+        //     .commit();
+
+        // console.log('New representation added to state.');
+
+        
         // Build chain color map
         const chainColorMap = new Map<string, Color>();
         colors.forEach(row => {
@@ -448,23 +517,59 @@ const App: React.FC = () => {
                 }
             }
         });
+        console.log('chainColorMap:', chainColorMap);
+
+        const managers = pluginA.managers;
+        if (!managers) {
+            console.warn('No managers found in plugin.');
+            return;
+        }
+        console.log('managers:', managers);
+        const colorThemeRegistry = pluginA.representation.structure.themes.colorThemeRegistry;
+        if (!colorThemeRegistry) {
+            console.warn('No colorThemeRegistry found in representation structure themes.');
+            return;
+        }
+        console.log('ColorThemeRegistry:', colorThemeRegistry);
 
         // Register custom theme if not already registered
-        if (!pluginA.representation.structure.themes.colorThemeRegistry.has('custom-chain-colors')) {
-            pluginA.representation.structure.themes.colorThemeRegistry.add(createChainColorTheme(chainColorMap));
+        if (colorThemeRegistry.get('custom-chain-colors')) {
+            colorThemeRegistry.add(
+                createChainColorTheme(chainColorMap) as any
+            );
         }
-
-
+        console.log('Registered custom-chain-colors theme.');
 
         const structureComponent = pluginA.managers.structure.hierarchy.current.structures[0]?.components[0];
+        if (!structureComponent) {
+            console.warn('No structure component found to update representation.');
+            return;
+        }
+        console.log('structureComponent:', structureComponent);
 
-        await pluginA.managers.structure.component.updateRepresentationsTheme(
-            [structureComponent],
-            { 
-                ...reprCell.transform.params, // existing params
-                colorTheme: newColorTheme     // override colorTheme
-            }
-        );
+        const reprs = structureComponent.representations;
+        if (!reprs || reprs.length === 0) {
+            console.warn('No representations found in structure component.');
+            return;
+        }
+        console.log('Representations:', reprs);
+
+        console.log('Applied color theme:', representation.cell?.params?.values?.colorTheme);
+
+        // Add the new representation to the state.
+        await pluginA.state.data.build()
+            .to(structureCell.transform.ref)
+            .apply(
+                StateTransforms.Representation.StructureRepresentation3D, // Transformer for structure representations
+                {
+                    type: { name: 'spacefill', params: {} },
+                    colorTheme: { name: 'custom-chain-colors', params: {} }
+                }
+            )
+            .commit();
+
+        console.log('New representation added to state.');
+
 
         // Request redraw with new colors.
         if (pluginA.canvas3d) {
