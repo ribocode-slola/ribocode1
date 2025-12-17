@@ -3,18 +3,23 @@ import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 import { PluginCommands } from 'molstar/lib/mol-plugin/commands';
 import './MolstarContainer.css';
 import { Molecule, PresetResult } from 'molstar/lib/extensions/ribocode/structure';
+import { ModelRef } from 'molstar/lib/mol-plugin-state/manager/structure/hierarchy-state';
 
 export type ViewerKey = "A" | "B";
 
 export type ViewerState = {
-    moleculeAlignedTo: Molecule | null;
-    setMoleculeAlignedTo: React.Dispatch<React.SetStateAction<Molecule | null>>;
-    moleculeAligned: Molecule | null;
-    setMoleculeAligned: React.Dispatch<React.SetStateAction<Molecule | null>>;
+    moleculeAlignedTo: Molecule | undefined;
+    setMoleculeAlignedTo: React.Dispatch<React.SetStateAction<Molecule | undefined>>;
+    moleculeAligned: Molecule | undefined;
+    setMoleculeAligned: React.Dispatch<React.SetStateAction<Molecule | undefined>>;
     isMoleculeAlignedToLoaded: boolean;
     setIsMoleculeAlignedToLoaded: React.Dispatch<React.SetStateAction<boolean>>;
     isMoleculeAlignedLoaded: boolean;
     setIsMoleculeAlignedLoaded: React.Dispatch<React.SetStateAction<boolean>>;
+    isMoleculeAlignedToVisible: boolean;
+    setIsMoleculeAlignedToVisible: React.Dispatch<React.SetStateAction<boolean>>;
+    isMoleculeAlignedVisible: boolean;
+    setIsMoleculeAlignedVisible: React.Dispatch<React.SetStateAction<boolean>>;    
     ref: React.RefObject<PluginUIContext | null>;
     fileInputRef: React.RefObject<HTMLInputElement | null>;
     handleFileInputButtonClick: () => void;
@@ -65,18 +70,26 @@ const RibocodeViewer: React.FC<RibocodeViewerProps> = ({
     );
 };
 
-export async function toggleViewerVisibility(viewerRef: React.RefObject<PluginUIContext | null>) {
-//export async function toggleViewerVisibility(viewerRef: React.RefObject<any>) {
-        if (!viewerRef.current) return;
-    const models = viewerRef.current.managers.structure.hierarchy.current?.models ?? [];
-    const state = viewerRef.current.state.data;
+//export async function toggleViewerVisibility(viewerRef: React.RefObject<PluginUIContext | null>) {
+export async function toggleViewerVisibility(viewer: ViewerState) {
+    const vrc = viewer.ref.current;
+    if (!vrc) return;
+    const models = vrc.managers.structure.hierarchy.current?.models ?? [];
     for (const model of models) {
-        const ref = model.cell.transform.ref;
-        await PluginCommands.State.ToggleVisibility.apply(
-            viewerRef.current,
-            [viewerRef.current, { state, ref }]
-        );
+        toggleVisibility(viewer, model);
     }
+}
+
+//export async function toggleVisibility(viewerRef: React.RefObject<PluginUIContext | null>, model: ModelRef ) {
+export async function toggleVisibility(viewer: ViewerState, model: ModelRef ) {
+    const vrc = viewer.ref.current;
+    if (!vrc) return;
+    const state = vrc.state.data;
+    const ref = model.cell.transform.ref;
+    await PluginCommands.State.ToggleVisibility.apply(
+        vrc,
+        [vrc, { state, ref }]
+    );
 }
 
 export default RibocodeViewer;

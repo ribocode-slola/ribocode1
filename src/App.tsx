@@ -4,7 +4,7 @@ import SyncButton from './SyncButton';
 import MolstarContainer from './MolstarContainer';
 import { parseColorFileContent } from './utils/colors';
 import { parseDictionaryFileContent } from './utils/dictionary';
-import { toggleViewerVisibility, ViewerKey, ViewerState } from './RibocodeViewer';
+import { toggleViewerVisibility, toggleVisibility, ViewerKey, ViewerState } from './RibocodeViewer';
 //import { loadMoleculeToViewer } from './utils/data';
 import './App.css';
 import { loadMoleculeFileToViewer, Molecule, PresetResult } from 'molstar/lib/extensions/ribocode/structure';
@@ -16,21 +16,35 @@ import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 import { StructureRepresentation3D } from 'molstar/lib/mol-plugin-state/transforms/representation';
 import { PluginStateObject } from 'molstar/lib/mol-plugin-state/objects';
 //import { ObjectListControl } from 'molstar/lib/mol-plugin-ui/controls/parameters';
+import { Overpaint } from 'molstar/lib/mol-theme/overpaint';
+import { Unit, Structure, StructureElement, StructureQuery, StructureSelection } from 'molstar/lib/mol-model/structure';
+import { StructureSelectionQuery } from 'packages/molstar/src/mol-plugin-state/helpers/structure-selection-query';
+import { QueryContext } from 'molstar/lib/mol-model/structure/query/context';
+import { ElementIndex } from 'molstar/lib/mol-model/structure';
+import { MolScriptBuilder } from 'molstar/lib/mol-script/language/builder';
+import { compile } from 'molstar/lib/mol-script/runtime/query/base';
+import { VisibilityOutlinedSvg, VisibilityOffOutlinedSvg } from 'molstar/lib/mol-plugin-ui/controls/icons';
+import { Data } from 'molstar/lib/extensions/ribocode/colors';
+import { ColorTheme } from 'molstar/lib/mol-theme/color';
+import { ThemeDataContext } from 'molstar/lib/mol-theme/theme';
+import { AtomicHierarchy } from 'molstar/lib/mol-model/structure/model/properties/atomic';
 
 const App: React.FC = () => {
     console.log('App rendered');
 
     // Viewer state management
     // -----------------------
-    
+
     const [activeViewer, setActiveViewer] = useState<ViewerKey>('A');
 
     // Custom hook to manage viewer state.
     function useViewerState(viewerKey: ViewerKey): ViewerState {
-        const [moleculeAlignedTo, setMoleculeAlignedTo] = useState<Molecule | null>(null);
-        const [moleculeAligned, setMoleculeAligned] = useState<Molecule | null>(null);
+        const [moleculeAlignedTo, setMoleculeAlignedTo] = useState<Molecule>();
+        const [moleculeAligned, setMoleculeAligned] = useState<Molecule>();
         const [isMoleculeAlignedToLoaded, setIsMoleculeAlignedToLoaded] = useState(false);
         const [isMoleculeAlignedLoaded, setIsMoleculeAlignedLoaded] = useState(false);
+        const [isMoleculeAlignedToVisible, setIsMoleculeAlignedToVisible] = useState(false);
+        const [isMoleculeAlignedVisible, setIsMoleculeAlignedVisible] = useState(false);
         const ref = useRef<PluginUIContext | null>(null);
         const fileInputRef = useRef<HTMLInputElement | null>(null);
         const handleFileInputButtonClick = useCallback(() => {
@@ -40,18 +54,29 @@ const App: React.FC = () => {
             ref.current = viewer;
         }, []);
         return {
-            moleculeAlignedTo: moleculeAlignedTo, setMoleculeAlignedTo: setMoleculeAlignedTo,
-            moleculeAligned: moleculeAligned, setMoleculeAligned: setMoleculeAligned,
-            isMoleculeAlignedToLoaded: isMoleculeAlignedToLoaded, setIsMoleculeAlignedToLoaded: setIsMoleculeAlignedToLoaded,
-            isMoleculeAlignedLoaded: isMoleculeAlignedLoaded, setIsMoleculeAlignedLoaded: setIsMoleculeAlignedLoaded,
-            ref, fileInputRef, handleFileInputButtonClick,
-            setViewerRef, viewerKey
+            moleculeAlignedTo: moleculeAlignedTo,
+            setMoleculeAlignedTo: setMoleculeAlignedTo,
+            moleculeAligned: moleculeAligned,
+            setMoleculeAligned: setMoleculeAligned,
+            isMoleculeAlignedToLoaded: isMoleculeAlignedToLoaded,
+            setIsMoleculeAlignedToLoaded: setIsMoleculeAlignedToLoaded,
+            isMoleculeAlignedLoaded: isMoleculeAlignedLoaded,
+            setIsMoleculeAlignedLoaded: setIsMoleculeAlignedLoaded,
+            isMoleculeAlignedToVisible: isMoleculeAlignedToVisible,
+            setIsMoleculeAlignedToVisible: setIsMoleculeAlignedToVisible,
+            isMoleculeAlignedVisible: isMoleculeAlignedVisible,
+            setIsMoleculeAlignedVisible: setIsMoleculeAlignedVisible,
+            ref: ref,
+            fileInputRef: fileInputRef,
+            handleFileInputButtonClick: handleFileInputButtonClick,
+            setViewerRef: setViewerRef,
+            viewerKey: viewerKey
         };
     }
 
     // Initialize viewer states.
-    const viewerA = useViewerState('A');
-    const viewerB = useViewerState('B');
+    const viewerA: ViewerState = useViewerState('A');
+    const viewerB: ViewerState = useViewerState('B');
     const setViewerAWrapper = useCallback((viewer: PluginUIContext) => {
         viewerA.ref.current = viewer;
     }, [viewerA]);
@@ -93,118 +118,185 @@ const App: React.FC = () => {
     const dictionaryFile = useFileInput<Array<Record<string, string>>>(parseDictionaryFileContent, []);
     const colorsAlignedToFile = useFileInput<Array<Record<string, string>>>(parseColorFileContent, []);
     const colorsAlignedFile = useFileInput<Array<Record<string, string>>>(parseColorFileContent, []);
-    
-    // File change handler for viewerA.
-    const handleFileChangeA = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const pluginA = viewerA.ref.current;
-        const pluginB = viewerB.ref.current;
-        if (!pluginA || !pluginB) {
-            console.error('One or both viewers are not initialized.');
-            return;
-        }
-        try {
-            const file = e.target.files?.[0];
-            if (file) {
-                const assetFile = Asset.File(new File([file], file.name));
-                const viewerAMoleculeAlignedTo: Molecule | undefined = await loadMoleculeFileToViewer(
-                    pluginA, assetFile, true, true);
-                if (!viewerAMoleculeAlignedTo) {
-                    console.error('Failed to load molecule into viewer A.');
-                    return;
-                }
-                console.log('viewerAMoleculeAlignedTo:', viewerAMoleculeAlignedTo);
-                
-                // Find the viewerAMoleculeAlignedTo model in pluginA.
-                const state = pluginA.state;
-                // Get all models in the state.
-                const models = state.data.selectQ(q => q.ofType(PluginStateObject.Molecule.Model));
-                console.log('All models in pluginA state:', models);
-                
-                models.forEach(m => {
-                    console.log('Model data:', m.obj?.data);
-                });
-                viewerA.setMoleculeAlignedTo(prev => ({
-                    name: viewerAMoleculeAlignedTo.name,
-                    filename: viewerAMoleculeAlignedTo.filename ?? prev?.filename ?? "",
-                    presetResult: viewerAMoleculeAlignedTo.presetResult ?? "Unknown",
-                    alignmentData: viewerAMoleculeAlignedTo.alignmentData
-                }));
-                viewerA.setIsMoleculeAlignedToLoaded(true);
-                //await loadMoleculeFileToViewer(viewerA.ref.current, selectedFile, false);
-                const viewerBMoleculeAlignedTo = await loadMoleculeFileToViewer(
-                    pluginB, assetFile, false, true);
-                if (!viewerBMoleculeAlignedTo) {
-                    console.error('Failed to load molecule into viewer B.');
-                    return;
-                }
-                console.log('viewerBMoleculeAlignedTo:', viewerBMoleculeAlignedTo);
-                if (!viewerBMoleculeAlignedTo) {
-                    console.error('Failed to load molecule into viewer B.');
-                    return;
-                }
-                viewerB.setMoleculeAlignedTo(prev => ({
-                    name: viewerBMoleculeAlignedTo.name,
-                    filename: viewerBMoleculeAlignedTo.filename ?? prev?.filename ?? "",
-                    presetResult: viewerBMoleculeAlignedTo.presetResult ?? "Unknown",
-                }));
-                //await loadMoleculeFileToViewer(viewerB.ref.current, selectedFile, false);
-                // After loading, hide all representations in viewerB
-                await toggleViewerVisibility(viewerB.ref);
+
+    type FileChangeMode = 'alignedTo' | 'aligned';
+
+    const handleFileChange = useCallback(
+        async (
+            e: React.ChangeEvent<HTMLInputElement>,
+            mode: FileChangeMode
+        ) => {
+            const pluginA = viewerA.ref.current;
+            const pluginB = viewerB.ref.current;
+            if (!pluginA || !pluginB) {
+                console.error('One or both viewers are not initialized.');
+                return;
             }
-        } catch (err) {
-            console.error('Error loading molecule:', err);
-        }
-    }, [viewerA, viewerB]);
-
-    // Alignment state.
-    //const [alignment, setAlignment] = useState<any>(null);
-
-    // File change handler for viewerB.
-    const handleFileChangeB = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const pluginA = viewerA.ref.current;
-        const pluginB = viewerB.ref.current;
-        if (!pluginA || !pluginB) {
-            console.error('One or both viewers are not initialized.');
-            return;
-        }
-        try {
-            const file = e.target.files?.[0];
-            if (file) {
+            try {
+                const file = e.target.files?.[0];
+                if (!file) return;
                 const assetFile = Asset.File(new File([file], file.name));
-                await toggleViewerVisibility(viewerA.ref);
-                const viewerAMoleculeAligned = await loadMoleculeFileToViewer(
-                    pluginA, assetFile, false, true, viewerA.moleculeAlignedTo!.alignmentData);
-                if (!viewerAMoleculeAligned) {
-                    console.error('Failed to load molecule into viewer A.');
-                    return;
-                }
-                console.log('viewerAMoleculeAligned:', viewerAMoleculeAligned);
-                viewerA.setMoleculeAligned(prev => ({
-                    name: viewerAMoleculeAligned.name,
-                    filename: viewerAMoleculeAligned.filename ?? prev?.filename ?? "",
-                    presetResult: viewerAMoleculeAligned.presetResult ?? "Unknown",
-                }));
-                viewerA.setIsMoleculeAlignedLoaded(true);
-                await toggleViewerVisibility(viewerA.ref);
-                const viewerBMoleculeAligned = await loadMoleculeFileToViewer(
-                    pluginB, assetFile, false, true, viewerA.moleculeAlignedTo!.alignmentData);
-                if (!viewerBMoleculeAligned) {
-                    console.error('Failed to load molecule into viewer B.');
-                    return;
-                }
-                console.log('viewerBMoleculeAligned:', viewerBMoleculeAligned);
-                viewerB.setMoleculeAligned(prev => ({
-                    name: viewerBMoleculeAligned.name,
-                    filename: viewerBMoleculeAligned.filename ?? prev?.filename ?? "",
-                    presetResult: viewerBMoleculeAligned.presetResult ?? "Unknown",
-                }));
-                viewerB.setIsMoleculeAlignedLoaded(true);
-            }                
-        } catch (err) {
-            console.error('Error loading molecule:', err);
-        }
-    }, [viewerA, viewerB]);
 
+                if (mode === 'alignedTo') {
+                    // Load alignedTo molecule into both viewers
+                    const viewerAMoleculeAlignedTo = await loadMoleculeFileToViewer(
+                        pluginA, assetFile, true, true
+                    );
+                    if (!viewerAMoleculeAlignedTo) {
+                        console.error('Failed to load molecule into viewer A.');
+                        return;
+                    }
+                    viewerA.setMoleculeAlignedTo(prev => ({
+                        label: viewerAMoleculeAlignedTo.label,
+                        name: viewerAMoleculeAlignedTo.name,
+                        filename: viewerAMoleculeAlignedTo.filename ?? prev?.filename ?? "",
+                        presetResult: viewerAMoleculeAlignedTo.presetResult ?? "Unknown",
+                        alignmentData: viewerAMoleculeAlignedTo.alignmentData
+                    }));
+                    viewerA.setIsMoleculeAlignedToLoaded(true);
+                    viewerA.setIsMoleculeAlignedToVisible(true);
+
+                    const viewerBMoleculeAlignedTo = await loadMoleculeFileToViewer(
+                        pluginB, assetFile, false, true
+                    );
+                    if (!viewerBMoleculeAlignedTo) {
+                        console.error('Failed to load molecule into viewer B.');
+                        return;
+                    }
+                    viewerB.setMoleculeAlignedTo(prev => ({
+                        label: viewerBMoleculeAlignedTo.label,
+                        name: viewerBMoleculeAlignedTo.name,
+                        filename: viewerBMoleculeAlignedTo.filename ?? prev?.filename ?? "",
+                        presetResult: viewerBMoleculeAlignedTo.presetResult ?? "Unknown",
+                    }));
+                    viewerB.setIsMoleculeAlignedToLoaded(true);
+                    viewerB.setIsMoleculeAlignedToVisible(true);
+                } else if (mode === 'aligned') {
+                    // Require alignedTo data to be loaded
+                    if (!viewerA.moleculeAlignedTo?.alignmentData) {
+                        console.error('AlignedTo molecule must be loaded before loading aligned molecule.');
+                        return;
+                    }
+                    // Load aligned molecule into both viewers using alignment data
+                    const alignmentData = viewerA.moleculeAlignedTo.alignmentData;
+                    const viewerAMoleculeAligned = await loadMoleculeFileToViewer(
+                        pluginA, assetFile, false, true, alignmentData
+                    );
+                    if (!viewerAMoleculeAligned) {
+                        console.error('Failed to load molecule into viewer A.');
+                        return;
+                    }
+                    viewerA.setMoleculeAligned(prev => ({
+                        label: viewerAMoleculeAligned.label,
+                        name: viewerAMoleculeAligned.name,
+                        filename: viewerAMoleculeAligned.filename ?? prev?.filename ?? "",
+                        presetResult: viewerAMoleculeAligned.presetResult ?? "Unknown",
+                    }));
+                    viewerA.setIsMoleculeAlignedLoaded(true);
+                    viewerA.setIsMoleculeAlignedVisible(true);
+
+                    const viewerBMoleculeAligned = await loadMoleculeFileToViewer(
+                        pluginB, assetFile, false, true, alignmentData
+                    );
+                    if (!viewerBMoleculeAligned) {
+                        console.error('Failed to load molecule into viewer B.');
+                        return;
+                    }
+                    viewerB.setMoleculeAligned(prev => ({
+                        label: viewerBMoleculeAligned.label,
+                        name: viewerBMoleculeAligned.name,
+                        filename: viewerBMoleculeAligned.filename ?? prev?.filename ?? "",
+                        presetResult: viewerBMoleculeAligned.presetResult ?? "Unknown",
+                    }));
+                    viewerB.setIsMoleculeAlignedLoaded(true);
+                    viewerB.setIsMoleculeAlignedVisible(true);
+                }
+            } catch (err) {
+                console.error('Error loading molecule:', err);
+            }
+        },
+        [viewerA, viewerB]
+    );
+
+    async function handleToggle(viewer: any, moleculeKey: string, setVisible: (v: boolean) => void, isVisible: boolean) {
+        const molecule = viewer[moleculeKey];
+        const model = molecule?.presetResult && (molecule.presetResult as any).model;
+        if (model) {
+            await toggleVisibility(viewer, model);
+            setVisible(!isVisible);
+        }
+    }
+
+    const toggleViewerAAlignedTo = {
+        handleButtonClick: () =>
+            handleToggle(
+                viewerA,
+                'moleculeAlignedTo',
+                viewerA.setIsMoleculeAlignedToVisible,
+                viewerA.isMoleculeAlignedToVisible
+            ),
+    };
+
+    const toggleViewerAAligned = {
+        handleButtonClick: () =>
+            handleToggle(
+                viewerA,
+                'moleculeAligned',
+                viewerA.setIsMoleculeAlignedVisible,
+                viewerA.isMoleculeAlignedVisible
+            ),
+    };
+
+    const toggleViewerBAlignedTo = {
+        handleButtonClick: () =>
+            handleToggle(
+                viewerB,
+                'moleculeAlignedTo',
+                viewerB.setIsMoleculeAlignedToVisible,
+                viewerB.isMoleculeAlignedToVisible
+            ),
+    };
+
+    const toggleViewerBAligned = {
+        handleButtonClick: () =>
+            handleToggle(
+                viewerB,
+                'moleculeAligned',
+                viewerB.setIsMoleculeAlignedVisible,
+                viewerB.isMoleculeAlignedVisible
+            ),
+    };
+
+
+    function createChainColorTheme(
+        chainColorMap: Map<string, Color>
+    ): ColorTheme.Provider<{}, StructureElement.Location> {
+        const theme: ColorTheme.Factory<{}, StructureElement.Location> = (ctx: ThemeDataContext, props: {}) => ({
+            granularity: 'group',
+            color: (location: StructureElement.Location) => {
+                const { unit, element } = location;
+                if (Unit.isAtomic(unit)) {
+                    const chainIndex = unit.model.atomicHierarchy.chainAtomSegments.index[element];
+                    const asym_id = String(unit.model.atomicHierarchy.chains.label_asym_id.value(chainIndex)); // ensure string
+                    return chainColorMap.get(asym_id) ?? Color(0xCCCCCC);
+                }
+                return Color(0xCCCCCC);
+            },
+            props: {},
+            description: 'Colors chains according to a custom map.'
+        });
+    
+        return {
+            name: 'custom-chain-colors',
+            label: 'Custom Chain Colors',
+            category: ColorTheme.Category.Chain,
+            factory: theme,
+            getParams: () => ({}),
+            defaultValues: {},
+            isApplicable: () => true,
+        };
+    }
+    
     // Update viewer colors based on loaded color data.
     async function updateDataAlignedToColors(colors: Array<Record<string, string>>) {
         console.log('Updating data aligned to colours:', colors);
@@ -212,97 +304,175 @@ const App: React.FC = () => {
             console.warn('Viewer A data aligned to is not loaded. Cannot update colors.');
             return;
         }
-        const plugin = viewerA.ref.current;
-        if (!plugin) return;
-        const viewerADataAlignedTo: Molecule | null = viewerA.moleculeAlignedTo;
+        const pluginA = viewerA.ref.current;
+        if (!pluginA) return;
+        const pluginB = viewerB.ref.current;
+        if (!pluginB) return;
+        const viewerADataAlignedTo: Molecule | undefined = viewerA.moleculeAlignedTo;
         if (!viewerADataAlignedTo) {
             console.warn('No dataAlignedTo presetResult found.');
             return;
         }
         console.log('viewerADataAlignedTo:', viewerADataAlignedTo);
-        const presetResult: PresetResult = viewerADataAlignedTo.presetResult;
-        if (!presetResult) {
+        const presetResultA: PresetResult = viewerADataAlignedTo.presetResult;
+        if (!presetResultA) {
             console.warn('No presetResult found in dataAlignedTo.');
             return;
         }
-        console.log('presetResult:', presetResult);
+        console.log('presetResultA:', presetResultA);
         // Object { model: {…}, modelProperties: {…}, unitcell: undefined, structure: {…}, structureProperties: {…}, representation: {…} }
-        const model = (presetResult as { model: any }).model;
+        const model = (presetResultA as { model: any }).model;
         if (!model) {
             console.warn('No model found in presetResult.');
             return;
         }
-        const modelProperties = (presetResult as { modelProperties: any }).modelProperties;
+        console.log('model:', model);
+        const modelProperties = (presetResultA as { modelProperties: any }).modelProperties;
         if (!modelProperties) {
             console.warn('No modelProperties found in presetResult.');
             return;
         }
-        const structure = (presetResult as { structure: any }).structure;
+        console.log('modelProperties:', modelProperties);
+        const structure = (presetResultA as { structure: any }).structure;
         if (!structure) {
             console.warn('No structure found in presetResult.');
             return;
         }
-        const structureProperties = (presetResult as { structureProperties: any }).structureProperties;
+        console.log('structure:', structure);
+        const structureProperties = (presetResultA as { structureProperties: any }).structureProperties;
         if (!structureProperties) {
             console.warn('No structureProperties found in presetResult.');
             return;
         }
-        const representation = (presetResult as { representation: any }).representation;
+        console.log('structureProperties:', structureProperties);
+        // Get the representation.
+        const representation = (presetResultA as { representation: any }).representation;
         if (!representation) {
             console.warn('No representation found in presetResult.');
             return;
         }
         console.log('representation:', representation);
+        const components = representation.components;
+        console.log('components:', components);
         const representations = representation.representations;
         console.log('representations:', representations);
-        let targetRep = null;
-        if (representations.assembly) {
-            targetRep = representations.assembly;
-            console.log('Using assembly representation for color update.');
-        } else if (representations.polymer) {
-            targetRep = representations.polymer;
-            console.log('Using polymer representation for color update.');
-        } else {
-            console.warn('No assembly or polymer representation found.');
+        const polymer = representations.polymer;
+        if (!polymer) {
+            console.warn('No polymer representation found.');
             return;
         }
-        const state = targetRep.state;
+        console.log('polymer representation:', polymer);
+        const ref = polymer.ref;
+        if (!ref) {
+            console.warn('No ref found in polymer representation.');
+            return;
+        }
+        console.log('polymer ref:', ref);
+        const state = polymer.state;
         if (!state) {
-            console.warn('No state found in target representation.');
+            console.warn('No state found in polymer representation.');
             return;
         }
-        // Update the colors in the representation
-        console.log('Processing model for color update:', model);
-        // const managersStructure = plugin.managers.structure;
-        // const buildersData = plugin.builders.data;
-        // const buildersStructure = plugin.builders.structure;
-        // const representation = buildersStructure.representation;
-        // const stateData = plugin.state.data;
-        // const buildersHierarchy = buildersStructure.hierarchy;
-        // const models = managersStructure.hierarchy.current?.models || [];
-        console.log('Processing model for color update:', model);
-        
-        const ref = model.cell.transform.ref;
-
-        // Build a state update tree for the representation
-        const update = plugin.state.data.build();
-        update.to(ref).update(StateTransforms.Representation.StructureRepresentation3D, (old : any) => ({
-            ...old,
-            colorTheme: {
-                name: 'custom',
-                params: {
-                    data: colors.map(colorEntry => ({
-                        chainId: colorEntry['chain'] || '',
-                        residueNumber: parseInt(colorEntry['residue_number'] || '0', 10),
-                        color: Color.fromHexString(colorEntry['color'] || '#FFFFFF')
-                    }))
+        console.log('polymer state:', state);
+        const reprCell = polymer.state.cells.get(ref);
+        if (!reprCell) {
+            console.warn('No representation cell found for ref:', ref);
+            return;
+        }
+        console.log('Representation cell:', reprCell);
+        const params = reprCell.transform.params;
+        if (!params) {
+            console.warn('No params found in representation cell.');
+            return;
+        }
+        console.log('Representation params:', params);
+        const colorTheme = params.colorTheme;
+        if (!colorTheme) {
+            console.warn('No colorTheme found in representation params.');
+            return;
+        }
+        console.log('Current colorTheme:', colorTheme);
+        // Create new colorTheme.
+        const colorMap = new Map<string, string>();
+        let data: Data[] = colors.map(row => ({
+            pdb_chain: row['pdb_chain'],
+            color: row['color']
+        }));
+        data.forEach(x => colorMap.set(x.pdb_chain, x.color));
+        const colorList = Array.from(colorMap.entries())
+            .map(([asym_id, color]) => {
+                const colorObj = Color.fromHexStyle(color);
+                if (!colorObj) {
+                    console.warn(`Invalid color for asym_id ${asym_id}: ${color}`);
+                    return null;
+                }
+                return { asym_id, color: colorObj };
+            })
+            .filter((item): item is { asym_id: string, color: Color } => item !== null);
+        console.log('colorList:', colorList);
+        // Get an array of colors for the new color theme.
+        const colorsArray = colorList.map(item => item.color);
+        const newColorTheme = {
+            name: 'chain-id',
+            params: {
+                asymId: 'auth',
+                palette: {
+                    name: 'colors',
+                    params: {
+                        colors: colorsArray,
+                    }
                 }
             }
-        }));
+        };
+        console.log('Updated colorTheme:', newColorTheme);
 
-        // Apply the update
-        console.log('Applying color update to model:', model);
-        await plugin.state.data.updateTree(update).run();
+        // Update the representation using the plugin state API
+        await pluginA.state.data.build()
+            .to(reprCell.transform.ref)
+            .update({
+                ...params,
+                colorTheme: newColorTheme
+            })
+            .commit();
+
+
+
+        // Build chain color map
+        const chainColorMap = new Map<string, Color>();
+        colors.forEach(row => {
+            if (row.pdb_chain && row.color) {
+                try {
+                    chainColorMap.set(row.pdb_chain, Color.fromHexStyle(row.color));
+                } catch {
+                    console.warn(`Invalid color: ${row.color}`);
+                }
+            }
+        });
+
+        // Register custom theme if not already registered
+        if (!pluginA.representation.structure.themes.colorThemeRegistry.has('custom-chain-colors')) {
+            pluginA.representation.structure.themes.colorThemeRegistry.add(createChainColorTheme(chainColorMap));
+        }
+
+
+
+        const structureComponent = pluginA.managers.structure.hierarchy.current.structures[0]?.components[0];
+
+        await pluginA.managers.structure.component.updateRepresentationsTheme(
+            [structureComponent],
+            { 
+                ...reprCell.transform.params, // existing params
+                colorTheme: newColorTheme     // override colorTheme
+            }
+        );
+
+        // Request redraw with new colors.
+        if (pluginA.canvas3d) {
+            pluginA.canvas3d.requestDraw?.();
+        }
+        if (pluginB.canvas3d) {
+            pluginB.canvas3d.requestDraw?.();
+        }
     }
 
     // Effect to update colors in viewerA when colorsAFile changes.
@@ -312,11 +482,144 @@ const App: React.FC = () => {
         }
     }, [colorsAlignedToFile.data]);
 
+    function createSelectAndZoomAligned(sourceViewer: React.RefObject<any>, targetViewer: React.RefObject<any>, label: string) {
+        return {
+            handleButtonClick: async () => {
+                const pluginSource = sourceViewer.current;
+                if (!pluginSource) return;
+                const pluginTarget = targetViewer.current;
+                if (!pluginTarget) return;
+
+                const structures = pluginSource.managers.structure.hierarchy.current.structures;
+                if (structures.length === 0) {
+                    console.warn(`No structures found in viewer ${label}.`);
+                    return;
+                }
+                console.log(`Structures in viewer ${label}:`, structures);
+
+                console.log(`Number of structures:` + structures.length);
+                //const structureObj = structures[0];
+                const structureObj = structures[structures.length - 1];
+                const structure = structureObj.cell.obj?.data;
+                if (!structure) {
+                    console.warn(`No structure found in viewer ${label}.`);
+                    return;
+                }
+                // Select chain 'A', residues 10-20 (fallback if inRange/inSet are not available)
+                const residueNumbers = [];
+                for (let i = 10; i <= 20; i++) residueNumbers.push(i);
+
+                const qb = MolScriptBuilder.struct.generator.atomGroups({
+                    'chain-test': MolScriptBuilder.core.rel.eq([
+                        MolScriptBuilder.struct.atomProperty.macromolecular.auth_asym_id(),
+                        'A'
+                    ])
+                    //'chain-test': MolScriptBuilder.core.set.has([
+                    //    MolScriptBuilder.to(['A', 'B', 'C']),
+                    //    MolScriptBuilder.struct.atomProperty.macromolecular.auth_asym_id()
+                    //])
+                });
+                const compiled = compile(qb);
+                const ctx = new QueryContext(structure);
+                const selection = compiled(ctx);
+                const loci = StructureSelection.toLociWithSourceUnits(selection);
+
+                pluginSource.managers.camera.focusLoci(loci);
+                pluginTarget.managers.camera.focusLoci(loci);
+            }
+        };
+    }
+    const selectAndZoomAlignedA = createSelectAndZoomAligned(viewerA.ref, viewerB.ref, 'A');
+    const selectAndZoomAlignedB = createSelectAndZoomAligned(viewerB.ref, viewerA.ref, 'B');
+
+
+
     return (
+
         <SyncProvider>
             <div className="App">
-                <h1 className="app-title">RiboCode Mol* Viewer 0.3.11</h1>
+                <h1 className="app-title">RiboCode Mol* Viewer 0.4.0</h1>
+                <div className="load-data-row">
+                    <div className="viewer-title">
+                        {viewerA.moleculeAlignedTo
+                            ? `Molecule aligned to: ${viewerA.moleculeAlignedTo.name || viewerA.moleculeAlignedTo.filename}`
+                            : ""}
+                    </div>
+                    {!viewerA.isMoleculeAlignedToLoaded && (
+                        <>
+                            <button
+                                onClick={viewerA.handleFileInputButtonClick}
+                                disabled={!viewerAReady || !viewerBReady}
+                            >
+                                Load Molecule To Align To
+                            </button>
+                            <input
+                                type="file"
+                                accept=".cif,.mmcif"
+                                style={{ display: 'none' }}
+                                ref={viewerA.fileInputRef}
+                                onChange={e => handleFileChange(e, 'alignedTo')}
+                            />
+                        </>
+                    )}
+                    <button
+                        onClick={colorsAlignedToFile.handleButtonClick}
+                        disabled={!viewerA.isMoleculeAlignedToLoaded}
+                    >
+                        Load Colours
+                    </button>
+                    <input
+                        type="file"
+                        accept=".csv,.tsv,.txt,.json"
+                        style={{ display: 'none' }}
+                        ref={colorsAlignedToFile.inputRef}
+                        onChange={colorsAlignedToFile.handleFileChange}
+                    />
+                </div>
+                <div className="load-data-row">
+                    <div className="viewer-title">
+                        {viewerB.moleculeAligned
+                            ? `Molecule aligned: ${viewerB.moleculeAligned.name || viewerB.moleculeAligned.filename}`
+                            : ""}
+                    </div>
+                    {!viewerB.isMoleculeAlignedLoaded && (
+                        <>
+                            <button
+                                onClick={viewerB.handleFileInputButtonClick}
+                                disabled={!viewerA.isMoleculeAlignedToLoaded || !viewerAReady || !viewerBReady}
+                            >
+                                Load Molecule To Align
+                            </button>
+                            <input
+                                type="file"
+                                accept=".cif,.mmcif"
+                                style={{ display: 'none' }}
+                                ref={viewerB.fileInputRef}
+                                onChange={e => handleFileChange(e, 'aligned')}
+                            />
+                        </>
+                    )}
+                    <button
+                        onClick={colorsAlignedFile.handleButtonClick}
+                        disabled={!viewerB.isMoleculeAlignedLoaded}
+                    >
+                        Load Colours
+                    </button>
+                    <input
+                        type="file"
+                        accept=".csv,.tsv,.txt,.json"
+                        style={{ display: 'none' }}
+                        ref={colorsAlignedFile.inputRef}
+                        onChange={colorsAlignedFile.handleFileChange}
+                    />
+                </div>
                 <div>
+                    <SyncButton
+                        viewerA={viewerA.ref.current}
+                        viewerB={viewerB.ref.current}
+                        activeViewer={activeViewer}
+                        disabled={!viewerB.isMoleculeAlignedLoaded}
+                    />
                     <button
                         onClick={dictionaryFile.handleButtonClick}
                         disabled={!viewerB.isMoleculeAlignedLoaded}
@@ -330,55 +633,35 @@ const App: React.FC = () => {
                         ref={dictionaryFile.inputRef}
                         onChange={dictionaryFile.handleFileChange}
                     />
-                    <SyncButton
-                        viewerA={viewerA.ref.current}
-                        viewerB={viewerB.ref.current}
-                        activeViewer={activeViewer}
-                        disabled={!viewerB.isMoleculeAlignedLoaded}
-                    />
+
                 </div>
                 <div className="grid-container">
                     <div className="viewer-wrapper">
-                        <div className="load-data-row">
-                            <div className="viewer-title">
-                                {viewerA.moleculeAlignedTo
-                                    ? `${viewerA.moleculeAlignedTo.name || viewerA.moleculeAlignedTo.filename}`
-                                    : ""}
-                            </div>
-                            {!viewerA.isMoleculeAlignedToLoaded && (
-                                <>
-                                    <button
-                                        onClick={viewerA.handleFileInputButtonClick}
-                                        disabled={!viewerAReady || !viewerBReady}
-                                    >
-                                        Load Molecule To Align To
-                                    </button>
-                                    <input
-                                        type="file"
-                                        accept=".cif,.mmcif"
-                                        style={{ display: 'none' }}
-                                        ref={viewerA.fileInputRef}
-                                        onChange={handleFileChangeA}
-                                    />
-                                </>
-                            )}
-                        </div>
                         <div>
-                            <>
-                                <button
-                                    onClick={colorsAlignedToFile.handleButtonClick}
-                                    disabled={!viewerA.isMoleculeAlignedToLoaded}
-                                >
-                                    Load Aligned To Colours
-                                </button>
-                                <input
-                                    type="file"
-                                    accept=".csv,.tsv,.txt,.json"
-                                    style={{ display: 'none' }}
-                                    ref={colorsAlignedToFile.inputRef}
-                                    onChange={colorsAlignedToFile.handleFileChange}
-                                />
-                            </>
+                            <button
+                                onClick={toggleViewerAAlignedTo.handleButtonClick}
+                                disabled={!viewerA.isMoleculeAlignedToLoaded}
+                            >
+                                {viewerA.isMoleculeAlignedToVisible ? <VisibilityOutlinedSvg /> : <VisibilityOffOutlinedSvg />}
+                                <span style={{ marginLeft: 8 }}>
+                                    {viewerA.moleculeAlignedTo?.label ?? 'Molecule Aligned'}
+                                </span>
+                            </button>
+                            <button
+                                onClick={toggleViewerAAligned.handleButtonClick}
+                                disabled={!viewerA.isMoleculeAlignedLoaded}
+                            >
+                                {viewerA.isMoleculeAlignedVisible ? <VisibilityOutlinedSvg /> : <VisibilityOffOutlinedSvg />}
+                                <span style={{ marginLeft: 8 }}>
+                                    {viewerA.moleculeAligned?.label ?? 'Molecule Aligned'}
+                                </span>
+                            </button>
+                            <button
+                                onClick={selectAndZoomAlignedA.handleButtonClick}
+                                disabled={!viewerB.isMoleculeAlignedLoaded}
+                            >
+                                Select and Zoom
+                            </button>
                         </div>
                         <MolstarContainer
                             viewerKey={viewerA.viewerKey}
@@ -388,46 +671,31 @@ const App: React.FC = () => {
                         />
                     </div>
                     <div className="viewer-wrapper">
-                        <div className="load-data-row">
-                            <div className="viewer-title">
-                                {viewerB.moleculeAligned
-                                    ? `${viewerB.moleculeAligned.name || viewerB.moleculeAligned.filename}`
-                                    : ""}
-                            </div>
-                            {!viewerB.isMoleculeAlignedLoaded && (
-                                <>
-                                    <button
-                                        onClick={viewerB.handleFileInputButtonClick}
-                                        disabled={!viewerA.isMoleculeAlignedToLoaded || !viewerAReady || !viewerBReady}
-                                    >
-                                        Load Molecule To Align
-                                    </button>
-                                    <input
-                                        type="file"
-                                        accept=".cif,.mmcif"
-                                        style={{ display: 'none' }}
-                                        ref={viewerB.fileInputRef}
-                                        onChange={handleFileChangeB}
-                                    />
-                                </>
-                            )}
-                        </div>
                         <div>
-                            <>
-                                <button
-                                    onClick={colorsAlignedFile.handleButtonClick}
-                                    disabled={!viewerB.isMoleculeAlignedLoaded}
-                                >
-                                    Load Aligned Colours
-                                </button>
-                                <input
-                                    type="file"
-                                    accept=".csv,.tsv,.txt,.json"
-                                    style={{ display: 'none' }}
-                                    ref={colorsAlignedFile.inputRef}
-                                    onChange={colorsAlignedFile.handleFileChange}
-                                />
-                            </>
+                            <button
+                                onClick={toggleViewerBAlignedTo.handleButtonClick}
+                                disabled={!viewerB.isMoleculeAlignedToLoaded}
+                            >
+                                {viewerB.isMoleculeAlignedToVisible ? <VisibilityOutlinedSvg /> : <VisibilityOffOutlinedSvg />}
+                                <span style={{ marginLeft: 8 }}>
+                                    {viewerB.moleculeAlignedTo?.label ?? 'Molecule Aligned To'}
+                                </span>
+                            </button>
+                            <button
+                                onClick={toggleViewerBAligned.handleButtonClick}
+                                disabled={!viewerB.isMoleculeAlignedLoaded}
+                            >
+                                {viewerB.isMoleculeAlignedVisible ? <VisibilityOutlinedSvg /> : <VisibilityOffOutlinedSvg />}
+                                <span style={{ marginLeft: 8 }}>
+                                    {viewerB.moleculeAligned?.label ?? 'Molecule Aligned'}
+                                </span>
+                            </button>
+                            <button
+                                onClick={selectAndZoomAlignedB.handleButtonClick}
+                                disabled={!viewerB.isMoleculeAlignedLoaded}
+                            >
+                                Select and Zoom
+                            </button>
                         </div>
                         <MolstarContainer
                             viewerKey={viewerB.viewerKey}
