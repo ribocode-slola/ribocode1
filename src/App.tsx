@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { SyncProvider } from './SyncContext';
 import SyncButton from './SyncButton';
 import MolstarContainer from './MolstarContainer';
-import { parseColorFileContent } from './utils/colors';
+import { parseColorFileContent, getColourTheme, createChainColorTheme } from './utils/colors';
 import { parseDictionaryFileContent } from './utils/dictionary';
 import { toggleViewerVisibility, toggleVisibility, ViewerKey, ViewerState } from './RibocodeViewer';
 //import { loadMoleculeToViewer } from './utils/data';
@@ -20,15 +20,12 @@ import { Overpaint } from 'molstar/lib/mol-theme/overpaint';
 import { Unit, Structure, StructureElement, StructureQuery, StructureSelection } from 'molstar/lib/mol-model/structure';
 import { StructureSelectionQuery } from 'packages/molstar/src/mol-plugin-state/helpers/structure-selection-query';
 import { QueryContext } from 'molstar/lib/mol-model/structure/query/context';
-import { ElementIndex } from 'molstar/lib/mol-model/structure';
+//import { ElementIndex } from 'molstar/lib/mol-model/structure';
 import { MolScriptBuilder } from 'molstar/lib/mol-script/language/builder';
 import { compile } from 'molstar/lib/mol-script/runtime/query/base';
 import { VisibilityOutlinedSvg, VisibilityOffOutlinedSvg } from 'molstar/lib/mol-plugin-ui/controls/icons';
 import { Data } from 'molstar/lib/extensions/ribocode/colors';
-import { ThemeDataContext } from 'molstar/lib/mol-theme/theme';
-import { AtomicHierarchy } from 'molstar/lib/mol-model/structure/model/properties/atomic';
-import { ColorType } from 'molstar/lib/mol-geo/geometry/color-data';
-import { ColorTheme } from 'molstar/lib/mol-theme/color';
+//import { AtomicHierarchy } from 'molstar/lib/mol-model/structure/model/properties/atomic';
 
 const App: React.FC = () => {
     console.log('App rendered');
@@ -268,166 +265,60 @@ const App: React.FC = () => {
             ),
     };
 
-    function createChainColorTheme(
-        chainColorMap: Map<string, Color>) {
-        const theme = (ctx: ThemeDataContext, props: {}) => ({
-            granularity: 'group',
-            color: (location: StructureElement.Location) => {
-                console.log('Color function called for:', location);
-                const { unit, element } = location;
-                if (Unit.isAtomic(unit)) {
-                    const chainIndex = unit.model.atomicHierarchy.chainAtomSegments.index[element];
-                    const asym_id: string = String(unit.model.atomicHierarchy.chains.label_asym_id.value(chainIndex));
-                    return chainColorMap.get(asym_id) ?? Color(0xCCCCCC);
-                }
-                return Color(0xCCCCCC);
-            },
-            props: {},
-            description: 'Colors chains according to a custom map.'
-        });
-    
-        return {
-            name: 'custom-chain-colors',
-            label: 'Custom Chain Colors',
-            category: ColorTheme.Category.Chain,
-            factory: theme,
-            getParams: () => ({}),
-            defaultValues: {},
-            isApplicable: () => true,
-        };
-    }
-    
     // Update viewer colors based on loaded color data.
-    async function updateDataAlignedToColors(colors: Array<Record<string, string>>) {
-        console.log('Updating data aligned to colours:', colors);
-        if (!viewerA.isMoleculeAlignedToLoaded) {
-            console.warn('Viewer A data aligned to is not loaded. Cannot update colors.');
+    async function updateMoleculeColors(
+        viewer: ViewerState,
+        molecule: Molecule,
+        colorTheme: any,
+        type: 'spacefill' | 'cartoon' | 'ball-and-stick',
+        structureIndex: number,
+    ) {
+        const plugin = viewer.ref.current;
+        if (!plugin) return;
+        const pr: PresetResult = molecule.presetResult;
+        if (!pr) {
+            console.warn('No presetResult found in moleculeAlignedTo.');
             return;
         }
-        const pluginA = viewerA.ref.current;
-        if (!pluginA) return;
-        const pluginB = viewerB.ref.current;
-        if (!pluginB) return;
-        const viewerADataAlignedTo: Molecule | undefined = viewerA.moleculeAlignedTo;
-        if (!viewerADataAlignedTo) {
-            console.warn('No dataAlignedTo presetResult found.');
-            return;
-        }
-        console.log('viewerADataAlignedTo:', viewerADataAlignedTo);
-        const presetResultA: PresetResult = viewerADataAlignedTo.presetResult;
-        if (!presetResultA) {
-            console.warn('No presetResult found in dataAlignedTo.');
-            return;
-        }
-        console.log('presetResultA:', presetResultA);
+        console.log('presetResult:', pr);
         // Object { model: {…}, modelProperties: {…}, unitcell: undefined, structure: {…}, structureProperties: {…}, representation: {…} }
-        const model = (presetResultA as { model: any }).model;
+        const model = (pr as { model: any }).model;
         if (!model) {
             console.warn('No model found in presetResult.');
             return;
         }
         console.log('model:', model);
-        const modelProperties = (presetResultA as { modelProperties: any }).modelProperties;
+        const modelProperties = (pr as { modelProperties: any }).modelProperties;
         if (!modelProperties) {
             console.warn('No modelProperties found in presetResult.');
             return;
         }
         console.log('modelProperties:', modelProperties);
-        const structure = (presetResultA as { structure: any }).structure;
+        const structure = (pr as { structure: any }).structure;
         if (!structure) {
             console.warn('No structure found in presetResult.');
             return;
         }
         console.log('structure:', structure);
-        const structureProperties = (presetResultA as { structureProperties: any }).structureProperties;
+        const structureProperties = (pr as { structureProperties: any }).structureProperties;
         if (!structureProperties) {
             console.warn('No structureProperties found in presetResult.');
             return;
         }
         console.log('structureProperties:', structureProperties);
         // Get the representation.
-        const representation = (presetResultA as { representation: any }).representation;
+        const representation = (pr as { representation: any }).representation;
         if (!representation) {
             console.warn('No representation found in presetResult.');
             return;
         }
-        console.log('representation:', representation);
-        const components = representation.components;
-        console.log('components:', components);
+        // console.log('representation:', representation);
+        // const components = representation.components;
+        // console.log('components:', components);
         const representations = representation.representations;
         console.log('representations:', representations);
-        const polymer = representations.polymer;
-        if (!polymer) {
-            console.warn('No polymer representation found.');
-            return;
-        }
-        console.log('polymer representation:', polymer);
-        const ref = polymer.ref;
-        if (!ref) {
-            console.warn('No ref found in polymer representation.');
-            return;
-        }
-        console.log('polymer ref:', ref);
-        const state = polymer.state;
-        if (!state) {
-            console.warn('No state found in polymer representation.');
-            return;
-        }
-        console.log('polymer state:', state);
-        const reprCell = polymer.state.cells.get(ref);
-        if (!reprCell) {
-            console.warn('No representation cell found for ref:', ref);
-            return;
-        }
-        console.log('Representation cell:', reprCell);
-        const params = reprCell.transform.params;
-        if (!params) {
-            console.warn('No params found in representation cell.');
-            return;
-        }
-        console.log('Representation params:', params);
-        const colorTheme = params.colorTheme;
-        if (!colorTheme) {
-            console.warn('No colorTheme found in representation params.');
-            return;
-        }
-        console.log('Current colorTheme:', colorTheme);
-        // Create new colorTheme.
-        const colorMap = new Map<string, string>();
-        let data: Data[] = colors.map(row => ({
-            pdb_chain: row['pdb_chain'],
-            color: row['color']
-        }));
-        data.forEach(x => colorMap.set(x.pdb_chain, x.color));
-        const colorList = Array.from(colorMap.entries())
-            .map(([asym_id, color]) => {
-                const colorObj = Color.fromHexStyle(color);
-                if (!colorObj) {
-                    console.warn(`Invalid color for asym_id ${asym_id}: ${color}`);
-                    return null;
-                }
-                return { asym_id, color: colorObj };
-            })
-            .filter((item): item is { asym_id: string, color: Color } => item !== null);
-        console.log('colorList:', colorList);
-        // Get an array of colors for the new color theme.
-        const colorsArray = colorList.map(item => item.color);
-        const newColorTheme = {
-            name: 'chain-id',
-            params: {
-                asymId: 'auth',
-                palette: {
-                    name: 'colors',
-                    params: {
-                        colors: colorsArray,
-                    }
-                }
-            }
-        };
-        console.log('Updated colorTheme:', newColorTheme);
-
         // Update the representation using the plugin state API
-        const builders = pluginA.builders;
+        const builders = plugin.builders;
         if (!builders) {
             console.warn('No builders found in plugin.');
             return;
@@ -447,15 +338,25 @@ const App: React.FC = () => {
         console.log('builders.structure.representation:', representationBuilder);
 
         // Get the plugin state root
-        const stateA = pluginA.state.data;
-        console.log('pluginA.state.data:', stateA);
-        const root = pluginA.state.data.root;
+        const psd = plugin.state.data;
+        console.log('plugin.state.data:', psd);
+        const root = psd.root;
         if (!root) {
-            console.warn('No root found in plugin state data.');
+            console.warn('No root found in plugin.state.data.');
             return;
         }
-        console.log('pluginA.state.data.root:', root);
-        const structureCell = pluginA.managers.structure.hierarchy.current.structures[0]?.cell;
+        console.log('plugin.state.data.root:', root);
+        const structures = plugin.managers.structure.hierarchy.current.structures;
+        if (!structures || structures.length === 0) {
+            console.warn('No structures found in hierarchy.');
+            return;
+        }
+        console.log('structures in hierarchy:', structures);
+        // Replace 'my-dataset-label' with your dataset's unique label or property
+        // Log all available labels to debug
+        const ref = structure.ref;
+
+        const structureCell = plugin.managers.structure.hierarchy.current.structures[structureIndex]?.cell;
         if (!structureCell) {
             console.warn('No structure cell found in hierarchy.');
             return;
@@ -467,45 +368,149 @@ const App: React.FC = () => {
             return;
         }
         console.log('structureRef:', structureRef);
-        //const structureRefObj = { ref: structureCell.transform.ref }; // Wrap the ref string
-
-        const builder = pluginA.state.data.build(); // Get the Root (builder)
-
+        // const structureRefObj = { ref: structureCell.transform.ref }; // Wrap the ref string
+        // console.log('structureRefObj:', structureRefObj);
+        // Build the current state to get the structure.
+        const builder = psd.build();
+        // Build new representation with updated color theme.
         const newrep = representationBuilder.buildRepresentation(
             builder,
             structureRef,
             // structureCell,
             // structureRefObj,
             {
-                type: 'spacefill',
-                colorTheme: newColorTheme
+                type: type,
+                colorTheme: colorTheme
             }
         );
         console.log('Built new representation:', newrep);
-
-        
-
         // Add to representations object.
-        const repKey = 'spacefill'; // or use newrep.ref for uniqueness
+        const repKey = type; // or use newrep.ref for uniqueness
         representations[repKey] = newrep;
         console.log('representations:', representations);
-
-        // This sort of works, but the colorsTheme is still the default one.
-        // // Add the new representation to the state.
-        // await pluginA.state.data.build()
-        //     .to(structureCell.transform.ref)
-        //     .apply(
-        //         StateTransforms.Representation.StructureRepresentation3D, // Transformer for structure representations
-        //         {
-        //             type: { name: 'spacefill', params: {} },
-        //             colorTheme: newColorTheme
+        // // Build chain color map
+        // const chainColorMap = new Map<string, Color>();
+        // colors.forEach(row => {
+        //     if (row.pdb_chain && row.color) {
+        //         try {
+        //             chainColorMap.set(row.pdb_chain, Color.fromHexStyle(row.color));
+        //         } catch {
+        //             console.warn(`Invalid color: ${row.color}`);
         //         }
-        //     )
-        //     .commit();
+        //     }
+        // });
+        // console.log('chainColorMap:', chainColorMap);
+        // Get plugin managers.
+        const managers = plugin.managers;
+        if (!managers) {
+            console.warn('No managers found in plugin.');
+            return;
+        }
+        console.log('managers:', managers);
+        // // Get color theme registry.
+        // const colorThemeRegistry = plugin.representation.structure.themes.colorThemeRegistry;
+        // if (!colorThemeRegistry) {
+        //     console.warn('No colorThemeRegistry found in representation structure themes.');
+        //     return;
+        // }
+        // console.log('ColorThemeRegistry:', colorThemeRegistry);
+        // // Register custom theme if not already registered
+        // if (colorThemeRegistry.get('custom-chain-colors')) {
+        //     colorThemeRegistry.add(
+        //         createChainColorTheme(chainColorMap) as any
+        //     );
+        // }
+        // console.log('Registered custom-chain-colors theme.');
+        // Get the structure component.
+        const structureComponent = managers.structure.hierarchy.current.structures[0]?.components[0];
+        if (!structureComponent) {
+            console.warn('No structure component found to update representation.');
+            return;
+        }
+        console.log('structureComponent:', structureComponent);
+        // Get existing representations.
+        const reprs = structureComponent.representations;
+        if (!reprs || reprs.length === 0) {
+            console.warn('No representations found in structure component.');
+            return;
+        }
+        console.log('Representations:', reprs);
 
-        // console.log('New representation added to state.');
+        //console.log('Applied color theme:', representation.cell?.params?.values?.colorTheme);
 
-        
+        // Add the new representation to the state.
+        await psd.build()
+            .to(structureCell.transform.ref)
+            .apply(
+                StateTransforms.Representation.StructureRepresentation3D, // Transformer for structure representations
+                {
+                    type: { name: type, params: {} },
+                    colorTheme: { name: colorTheme.name, params: {} }
+                }
+            )
+            .commit();
+
+        console.log('New representation added to state.');
+
+
+        // Request redraw with new colors.
+        if (plugin.canvas3d) {
+            plugin.canvas3d.requestDraw?.();
+        }
+    }
+
+    /**
+     * Registers a custom chain color theme if it is not already registered.
+     * @param plugin The Mol* plugin instance.
+     * @param themeName The name of the theme to register.
+     * @param chainColorMap The map of chain identifiers to Color objects.
+     * @returns A promise that resolves when the theme is registered.
+     */
+    function registerThemeIfNeeded(
+        plugin: PluginUIContext,
+        themeName: string, 
+        chainColorMap: Map<string, Color>
+    ) {
+        if (!plugin) return;
+        // Get color theme registry.
+        const colorThemeRegistry = plugin.representation.structure.themes.colorThemeRegistry;
+        if (!colorThemeRegistry) {
+            console.warn('No colorThemeRegistry found in representation structure themes.');
+            return;
+        }
+        console.log('ColorThemeRegistry:', colorThemeRegistry);
+        // Remove the old theme if it exists.
+        const existingTheme = colorThemeRegistry.get(themeName);
+        if (existingTheme) {
+            colorThemeRegistry.remove(existingTheme);
+            console.log(`Removed old ${themeName} theme.`);
+        }
+        // Add the new theme.
+        colorThemeRegistry.add(
+            createChainColorTheme(themeName, chainColorMap) as any
+        );
+        console.log(`Registered ${themeName} theme.`);
+    }
+
+    /**
+     * Updates colors for both viewers based on provided color data.
+     * @param viewerA 
+     * @param viewerB 
+     * @param molA 
+     * @param molB 
+     * @param themeName 
+     * @param type 
+     * @param colors 
+     */
+    function updateColorsForViewers(
+        molA: Molecule | undefined,
+        molB: Molecule | undefined,
+        themeName: string,
+        type: 'spacefill' | 'cartoon' | 'ball-and-stick',
+        colors: Array<Record<string, string>>,
+        structureIndex: number,
+    ) {
+        const ct = getColourTheme(themeName, colors);
         // Build chain color map
         const chainColorMap = new Map<string, Color>();
         colors.forEach(row => {
@@ -519,73 +524,42 @@ const App: React.FC = () => {
         });
         console.log('chainColorMap:', chainColorMap);
 
-        const managers = pluginA.managers;
-        if (!managers) {
-            console.warn('No managers found in plugin.');
-            return;
-        }
-        console.log('managers:', managers);
-        const colorThemeRegistry = pluginA.representation.structure.themes.colorThemeRegistry;
-        if (!colorThemeRegistry) {
-            console.warn('No colorThemeRegistry found in representation structure themes.');
-            return;
-        }
-        console.log('ColorThemeRegistry:', colorThemeRegistry);
+        registerThemeIfNeeded(viewerA.ref.current!, themeName, chainColorMap);
+        registerThemeIfNeeded(viewerB.ref.current!, themeName, chainColorMap);
+        
+        console.log('Registered theme:', themeName);
 
-        // Register custom theme if not already registered
-        if (colorThemeRegistry.get('custom-chain-colors')) {
-            colorThemeRegistry.add(
-                createChainColorTheme(chainColorMap) as any
-            );
-        }
-        console.log('Registered custom-chain-colors theme.');
-
-        const structureComponent = pluginA.managers.structure.hierarchy.current.structures[0]?.components[0];
-        if (!structureComponent) {
-            console.warn('No structure component found to update representation.');
-            return;
-        }
-        console.log('structureComponent:', structureComponent);
-
-        const reprs = structureComponent.representations;
-        if (!reprs || reprs.length === 0) {
-            console.warn('No representations found in structure component.');
-            return;
-        }
-        console.log('Representations:', reprs);
-
-        console.log('Applied color theme:', representation.cell?.params?.values?.colorTheme);
-
-        // Add the new representation to the state.
-        await pluginA.state.data.build()
-            .to(structureCell.transform.ref)
-            .apply(
-                StateTransforms.Representation.StructureRepresentation3D, // Transformer for structure representations
-                {
-                    type: { name: 'spacefill', params: {} },
-                    colorTheme: { name: 'custom-chain-colors', params: {} }
-                }
-            )
-            .commit();
-
-        console.log('New representation added to state.');
-
-
-        // Request redraw with new colors.
-        if (pluginA.canvas3d) {
-            pluginA.canvas3d.requestDraw?.();
-        }
-        if (pluginB.canvas3d) {
-            pluginB.canvas3d.requestDraw?.();
+        if (molA && molB && colors.length) {
+            updateMoleculeColors(viewerA, molA, ct, type, structureIndex);
+            updateMoleculeColors(viewerB, molB, ct, type, structureIndex);
         }
     }
-
-    // Effect to update colors in viewerA when colorsAFile changes.
+    
     useEffect(() => {
         if (colorsAlignedToFile.data && colorsAlignedToFile.data.length > 0) {
-            updateDataAlignedToColors(colorsAlignedToFile.data);
+            updateColorsForViewers(
+                viewerA.moleculeAlignedTo,
+                viewerB.moleculeAlignedTo,
+                'alignedTo-custom-chain-colors',
+                'spacefill',
+                colorsAlignedToFile.data,
+                0,
+            );
         }
-    }, [colorsAlignedToFile.data]);
+    }, [colorsAlignedToFile.data, viewerA.moleculeAlignedTo, viewerB.moleculeAlignedTo]);
+    
+    useEffect(() => {
+        if (colorsAlignedFile.data && colorsAlignedFile.data.length > 0) {
+            updateColorsForViewers(
+                viewerA.moleculeAligned,
+                viewerB.moleculeAligned,
+                'aligned-custom-chain-colors',
+                'spacefill',
+                colorsAlignedFile.data,
+                1,
+            );
+        }
+    }, [colorsAlignedFile.data, viewerA.moleculeAligned, viewerB.moleculeAligned]);
 
     function createSelectAndZoomAligned(sourceViewer: React.RefObject<any>, targetViewer: React.RefObject<any>, label: string) {
         return {
@@ -636,14 +610,10 @@ const App: React.FC = () => {
     }
     const selectAndZoomAlignedA = createSelectAndZoomAligned(viewerA.ref, viewerB.ref, 'A');
     const selectAndZoomAlignedB = createSelectAndZoomAligned(viewerB.ref, viewerA.ref, 'B');
-
-
-
     return (
-
         <SyncProvider>
             <div className="App">
-                <h1 className="app-title">RiboCode Mol* Viewer 0.4.0</h1>
+                <h1 className="app-title">RiboCode Mol* Viewer 0.4.1</h1>
                 <div className="load-data-row">
                     <div className="viewer-title">
                         {viewerA.moleculeAlignedTo
