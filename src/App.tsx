@@ -32,9 +32,7 @@ const App: React.FC = () => {
 
     // Viewer state management
     // -----------------------
-
     const [activeViewer, setActiveViewer] = useState<ViewerKey>('A');
-
     // Custom hook to manage viewer state.
     function useViewerState(viewerKey: ViewerKey): ViewerState {
         const [moleculeAlignedTo, setMoleculeAlignedTo] = useState<Molecule>();
@@ -114,11 +112,12 @@ const App: React.FC = () => {
 
     // File inputs for dictionary and colors.
     const dictionaryFile = useFileInput<Array<Record<string, string>>>(parseDictionaryFileContent, []);
+    const alignmentFile = useFileInput<Array<Record<string, string>>>(parseDictionaryFileContent, []);
     const colorsAlignedToFile = useFileInput<Array<Record<string, string>>>(parseColorFileContent, []);
     const colorsAlignedFile = useFileInput<Array<Record<string, string>>>(parseColorFileContent, []);
 
+    // Handle file changes for molecule loading.
     type FileChangeMode = 'alignedTo' | 'aligned';
-
     const handleFileChange = useCallback(
         async (
             e: React.ChangeEvent<HTMLInputElement>,
@@ -134,9 +133,9 @@ const App: React.FC = () => {
                 const file = e.target.files?.[0];
                 if (!file) return;
                 const assetFile = Asset.File(new File([file], file.name));
-
                 if (mode === 'alignedTo') {
-                    // Load alignedTo molecule into both viewers
+                    // Load alignedTo molecule into both viewers:
+                    // Viewer A
                     const viewerAMoleculeAlignedTo = await loadMoleculeFileToViewer(
                         pluginA, assetFile, true, true
                     );
@@ -153,7 +152,7 @@ const App: React.FC = () => {
                     }));
                     viewerA.setIsMoleculeAlignedToLoaded(true);
                     viewerA.setIsMoleculeAlignedToVisible(true);
-
+                    // Viewer B
                     const viewerBMoleculeAlignedTo = await loadMoleculeFileToViewer(
                         pluginB, assetFile, false, true
                     );
@@ -216,6 +215,13 @@ const App: React.FC = () => {
         [viewerA, viewerB]
     );
 
+    /**
+     * Handle toggling visibility of a molecule.
+     * @param viewer The viewer state.
+     * @param moleculeKey The key of the molecule to toggle.
+     * @param setVisible The setter function for visibility state.
+     * @param isVisible The current visibility state.
+     */
     async function handleToggle(viewer: any, moleculeKey: string, setVisible: (v: boolean) => void, isVisible: boolean) {
         const molecule = viewer[moleculeKey];
         const model = molecule?.presetResult && (molecule.presetResult as any).model;
@@ -225,6 +231,7 @@ const App: React.FC = () => {
         }
     }
 
+    // Toggle visibility for moleculeAlignedTo in viewer A.
     const toggleViewerAAlignedTo = {
         handleButtonClick: () =>
             handleToggle(
@@ -235,6 +242,7 @@ const App: React.FC = () => {
             ),
     };
 
+    // Toggle visibility for moleculeAligned in viewer A.
     const toggleViewerAAligned = {
         handleButtonClick: () =>
             handleToggle(
@@ -245,6 +253,7 @@ const App: React.FC = () => {
             ),
     };
 
+    // Toggle visibility for moleculeAlignedTo in viewer B.
     const toggleViewerBAlignedTo = {
         handleButtonClick: () =>
             handleToggle(
@@ -255,6 +264,7 @@ const App: React.FC = () => {
             ),
     };
 
+    // Toggle visibility for moleculeAligned in viewer B.
     const toggleViewerBAligned = {
         handleButtonClick: () =>
             handleToggle(
@@ -265,7 +275,18 @@ const App: React.FC = () => {
             ),
     };
 
-    // Update viewer colors based on loaded color data.
+    /**
+     * Update colorTheme for a molecule.
+     * @param viewer The viewer state.
+     * @param molecule The molecule to update.
+     * @param colorTheme The color theme to apply.
+     * @param type The representation type.
+     * @param structureIndex The index of the structure to be updated in the 
+     * viewer hierarchy. This is hardcoded to 0 or 1 depending on whether the
+     * molecule is alignedTo or aligned. If the user reorders the structures,
+     * this could cause problems. There may be a better way to ascertain the 
+     * structure index for the molecule in each viewer which may change.
+     */
     async function updateMoleculeColors(
         viewer: ViewerState,
         molecule: Molecule,
@@ -336,7 +357,6 @@ const App: React.FC = () => {
             return;
         }
         console.log('builders.structure.representation:', representationBuilder);
-
         // Get the plugin state root
         const psd = plugin.state.data;
         console.log('plugin.state.data:', psd);
@@ -352,10 +372,6 @@ const App: React.FC = () => {
             return;
         }
         console.log('structures in hierarchy:', structures);
-        // Replace 'my-dataset-label' with your dataset's unique label or property
-        // Log all available labels to debug
-        const ref = structure.ref;
-
         const structureCell = plugin.managers.structure.hierarchy.current.structures[structureIndex]?.cell;
         if (!structureCell) {
             console.warn('No structure cell found in hierarchy.');
@@ -388,18 +404,6 @@ const App: React.FC = () => {
         const repKey = type; // or use newrep.ref for uniqueness
         representations[repKey] = newrep;
         console.log('representations:', representations);
-        // // Build chain color map
-        // const chainColorMap = new Map<string, Color>();
-        // colors.forEach(row => {
-        //     if (row.pdb_chain && row.color) {
-        //         try {
-        //             chainColorMap.set(row.pdb_chain, Color.fromHexStyle(row.color));
-        //         } catch {
-        //             console.warn(`Invalid color: ${row.color}`);
-        //         }
-        //     }
-        // });
-        // console.log('chainColorMap:', chainColorMap);
         // Get plugin managers.
         const managers = plugin.managers;
         if (!managers) {
@@ -407,20 +411,6 @@ const App: React.FC = () => {
             return;
         }
         console.log('managers:', managers);
-        // // Get color theme registry.
-        // const colorThemeRegistry = plugin.representation.structure.themes.colorThemeRegistry;
-        // if (!colorThemeRegistry) {
-        //     console.warn('No colorThemeRegistry found in representation structure themes.');
-        //     return;
-        // }
-        // console.log('ColorThemeRegistry:', colorThemeRegistry);
-        // // Register custom theme if not already registered
-        // if (colorThemeRegistry.get('custom-chain-colors')) {
-        //     colorThemeRegistry.add(
-        //         createChainColorTheme(chainColorMap) as any
-        //     );
-        // }
-        // console.log('Registered custom-chain-colors theme.');
         // Get the structure component.
         const structureComponent = managers.structure.hierarchy.current.structures[0]?.components[0];
         if (!structureComponent) {
@@ -435,9 +425,7 @@ const App: React.FC = () => {
             return;
         }
         console.log('Representations:', reprs);
-
         //console.log('Applied color theme:', representation.cell?.params?.values?.colorTheme);
-
         // Add the new representation to the state.
         await psd.build()
             .to(structureCell.transform.ref)
@@ -449,10 +437,7 @@ const App: React.FC = () => {
                 }
             )
             .commit();
-
         console.log('New representation added to state.');
-
-
         // Request redraw with new colors.
         if (plugin.canvas3d) {
             plugin.canvas3d.requestDraw?.();
@@ -493,14 +478,18 @@ const App: React.FC = () => {
     }
 
     /**
-     * Updates colors for both viewers based on provided color data.
-     * @param viewerA 
-     * @param viewerB 
-     * @param molA 
-     * @param molB 
-     * @param themeName 
-     * @param type 
-     * @param colors 
+     * Updates theme used to style a molecule.
+     * @param molA The molecule in viewer A.
+     * @param molB The molecule in viewer B.
+     * @param themeName The name of the theme.
+     * @param type The representation type. This can be 'spacefill', 'cartoon',
+     * or 'ball-and-stick'.
+     * @param colors The array of color mapping objects.
+     * @param structureIndex The index of the structure to be updated in the 
+     * viewer hierarchy. This is hardcoded to 0 or 1 depending on whether the
+     * molecule is alignedTo or aligned. If the user reorders the structures,
+     * this could cause problems. There may be a better way to ascertain the 
+     * structure index for the molecule in each viewer which may change.
      */
     function updateColorsForViewers(
         molA: Molecule | undefined,
@@ -511,7 +500,7 @@ const App: React.FC = () => {
         structureIndex: number,
     ) {
         const ct = getColourTheme(themeName, colors);
-        // Build chain color map
+        // Build chain color map:
         const chainColorMap = new Map<string, Color>();
         colors.forEach(row => {
             if (row.pdb_chain && row.color) {
@@ -523,18 +512,18 @@ const App: React.FC = () => {
             }
         });
         console.log('chainColorMap:', chainColorMap);
-
+        // Register custom theme if needed:
         registerThemeIfNeeded(viewerA.ref.current!, themeName, chainColorMap);
         registerThemeIfNeeded(viewerB.ref.current!, themeName, chainColorMap);
-        
         console.log('Registered theme:', themeName);
-
+        // Update molecule colors in both viewers:
         if (molA && molB && colors.length) {
             updateMoleculeColors(viewerA, molA, ct, type, structureIndex);
             updateMoleculeColors(viewerB, molB, ct, type, structureIndex);
         }
     }
-    
+    // Effects to update colors when files are loaded.
+    // AlignedTo:
     useEffect(() => {
         if (colorsAlignedToFile.data && colorsAlignedToFile.data.length > 0) {
             updateColorsForViewers(
@@ -547,7 +536,7 @@ const App: React.FC = () => {
             );
         }
     }, [colorsAlignedToFile.data, viewerA.moleculeAlignedTo, viewerB.moleculeAlignedTo]);
-    
+    // Aligned:
     useEffect(() => {
         if (colorsAlignedFile.data && colorsAlignedFile.data.length > 0) {
             updateColorsForViewers(
@@ -561,6 +550,12 @@ const App: React.FC = () => {
         }
     }, [colorsAlignedFile.data, viewerA.moleculeAligned, viewerB.moleculeAligned]);
 
+    /**
+     * @param sourceViewer 
+     * @param targetViewer 
+     * @param label 
+     * @returns 
+     */
     function createSelectAndZoomAligned(sourceViewer: React.RefObject<any>, targetViewer: React.RefObject<any>, label: string) {
         return {
             handleButtonClick: async () => {
@@ -608,12 +603,15 @@ const App: React.FC = () => {
             }
         };
     }
+    // Create select and zoom handlers.
     const selectAndZoomAlignedA = createSelectAndZoomAligned(viewerA.ref, viewerB.ref, 'A');
     const selectAndZoomAlignedB = createSelectAndZoomAligned(viewerB.ref, viewerA.ref, 'B');
+    
+    // Application UI.
     return (
         <SyncProvider>
             <div className="App">
-                <h1 className="app-title">RiboCode Mol* Viewer 0.4.1</h1>
+                <h1 className="app-title">RiboCode Mol* Viewer 0.4.2</h1>
                 <div className="load-data-row">
                     <div className="viewer-title">
                         {viewerA.moleculeAlignedTo
@@ -707,6 +705,19 @@ const App: React.FC = () => {
                         style={{ display: 'none' }}
                         ref={dictionaryFile.inputRef}
                         onChange={dictionaryFile.handleFileChange}
+                    />
+                    <button
+                        onClick={alignmentFile.handleButtonClick}
+                        disabled={!viewerB.isMoleculeAlignedLoaded}
+                    >
+                        Load Alignment
+                    </button>
+                    <input
+                        type="file"
+                        accept=".csv,.txt"
+                        style={{ display: 'none' }}
+                        ref={alignmentFile.inputRef}
+                        onChange={alignmentFile.handleFileChange}
                     />
 
                 </div>

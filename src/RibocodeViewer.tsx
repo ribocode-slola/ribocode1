@@ -2,11 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 import { PluginCommands } from 'molstar/lib/mol-plugin/commands';
 import './MolstarContainer.css';
-import { Molecule, PresetResult } from 'molstar/lib/extensions/ribocode/structure';
+import { Molecule } from 'molstar/lib/extensions/ribocode/structure';
 import { ModelRef } from 'molstar/lib/mol-plugin-state/manager/structure/hierarchy-state';
 
+// Type representing viewer keys.
 export type ViewerKey = "A" | "B";
 
+// State type for RibocodeViewer component.
 export type ViewerState = {
     moleculeAlignedTo: Molecule | undefined;
     setMoleculeAlignedTo: React.Dispatch<React.SetStateAction<Molecule | undefined>>;
@@ -27,12 +29,14 @@ export type ViewerState = {
     viewerKey: ViewerKey;
 };
 
+// Props for RibocodeViewer component.
 interface RibocodeViewerProps {
     plugin: PluginUIContext | null;
     viewerKey: ViewerKey;
     onReady?: (viewer: PluginUIContext | null) => void;
 }
 
+// RibocodeViewer component encapsulates a Mol* viewer instance.
 const RibocodeViewer: React.FC<RibocodeViewerProps> = ({
     plugin, viewerKey, onReady }) => {
     const containerRef = useRef<HTMLDivElement | null>(null);
@@ -70,7 +74,10 @@ const RibocodeViewer: React.FC<RibocodeViewerProps> = ({
     );
 };
 
-//export async function toggleViewerVisibility(viewerRef: React.RefObject<PluginUIContext | null>) {
+/**
+ * Toggles the visibility of all models in the viewer.
+ * @param viewer The viewer state.
+ */
 export async function toggleViewerVisibility(viewer: ViewerState) {
     const vrc = viewer.ref.current;
     if (!vrc) return;
@@ -80,7 +87,11 @@ export async function toggleViewerVisibility(viewer: ViewerState) {
     }
 }
 
-//export async function toggleVisibility(viewerRef: React.RefObject<PluginUIContext | null>, model: ModelRef ) {
+/**
+ * Toggles the visibility of a specific model in the viewer.
+ * @param viewer The viewer state.
+ * @param model The model reference to toggle visibility for.
+ */
 export async function toggleVisibility(viewer: ViewerState, model: ModelRef ) {
     const vrc = viewer.ref.current;
     if (!vrc) return;

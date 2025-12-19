@@ -5,6 +5,7 @@ import App from './App';
 import * as serviceWorkerRegistration from './serviceWorkerRegistration';
 import reportWebVitals from './reportWebVitals';
 
+// Render the main App component into the root element.
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
 );
@@ -14,14 +15,15 @@ root.render(
   </React.StrictMode>
 );
 
-
-
-// If you want your app to work offline and load faster, you can change
+// For the app to work offline and load faster, can change
 // unregister() to register() below. Note this comes with some pitfalls.
-// Learn more about service workers: https://cra.link/PWA
+// Learn more about service workers:
+// https://create-react-app.dev/docs/making-a-progressive-web-app/
 serviceWorkerRegistration.unregister();
 
-// If you want to start measuring performance in your app, pass a function
+// To start measuring performance in your app, pass a function
 // to log results (for example: reportWebVitals(console.log))
-// or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
+// or send to an analytics endpoint. Learn more: 
+// https://create-react-app.dev/docs/measuring-performance/
+
 reportWebVitals();

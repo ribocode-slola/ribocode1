@@ -94,7 +94,7 @@ export function createChainColorTheme(
         props: {},
         description: 'Colors chains according to a custom map.'
     });
-
+    // Return the ColorTheme object
     return {
         name: themeName,
         label: themeName,
