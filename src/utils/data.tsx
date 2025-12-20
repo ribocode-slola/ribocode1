@@ -1,7 +1,17 @@
+/**
+ * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
+ *
+ * @author Andy Turner <agdturner@gmail.com>
+ */
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 import { Asset } from 'molstar/lib/mol-util/assets';
-//import { Viewer } from 'molstar/lib/apps/viewer/app';
 
+/**
+ * Load a molecule from a URL into the Molstar viewer.
+ * @param viewer The Molstar viewer/plugin instance.
+ * @param molecule The molecule to load, with id and url.
+ * @returns The loaded structure.
+ */
 export async function loadMoleculeToViewer(viewer: PluginUIContext, molecule: { id: string; url: string }) {
     const data = await viewer.builders.data.download(
         { url: molecule.url },
@@ -15,6 +25,12 @@ export async function loadMoleculeToViewer(viewer: PluginUIContext, molecule: { 
     return structure;
 }
 
+/**
+ * Load a molecule from a file into the Molstar viewer.
+ * @param viewer The Molstar viewer/plugin instance.
+ * @param file The file to load.
+ * @returns The loaded structure.
+ */
 export async function loadMoleculeFileToViewer(viewer: PluginUIContext, file: Asset.File) {
     const data = await viewer.builders.data.readFile(
         { file, label: file.name },
