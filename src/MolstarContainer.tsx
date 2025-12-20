@@ -7,6 +7,7 @@ import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 import './MolstarContainer.css';
 import { ViewerKey } from './RibocodeViewer'
 
+// Props for MolstarContainer component.
 type MolstarContainerProps = {
     viewerKey: ViewerKey;
     setViewer: (plugin: PluginUIContext) => void;
@@ -14,6 +15,7 @@ type MolstarContainerProps = {
     onReady?: () => void;
 };
 
+// MolstarContainer component manages the lifecycle of the Mol* plugin instance.
 const MolstarContainer = ({viewerKey, setViewer, onMouseDown, onReady }: MolstarContainerProps) => {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const pluginRef = useRef<PluginUIContext | null>(null);
@@ -96,7 +98,7 @@ const MolstarContainer = ({viewerKey, setViewer, onMouseDown, onReady }: Molstar
             setViewer(plugin);
         }
     }, [plugin, setViewer]);
-
+    // Return the container and RibocodeViewer
     return (
         <div
             ref={containerRef}
