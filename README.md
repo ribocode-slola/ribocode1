@@ -50,8 +50,13 @@ To get the PWA working on your repository GitHub Pages, these need to be set up 
 
 If you want help please reach out. 
 
-We aim to release Version 1 in 2026 after which we plan to welcome contributions from the wider community
+We aim to release Version 1 in 2026 and organise automated checks to welcome contributions from the wider community.
 
-### Deploy
-Ribocode developers can deploy To deploy a new version    npm run deploy
+As of [v0.4.3] there is a CHANGELOG.md which outlines changes.
 
+### Task List
+1. Allow users to select a chain to zoom to. Currently this is hardcoded to a specific chain which may only work for the test 4ug0 dataset.
+2. When zooming to selection, allow zoom to the specific viewer if synchronisation is off.
+3. Use dictionary to look up chain ids to color and zoom to the same chains in datasets for different species.
+4. Load colours created a 'spacefill' representation every time. It would be goodd for the user to be able to choose other representations.
+5. Each representation wants an easy access on/off visibility button.
