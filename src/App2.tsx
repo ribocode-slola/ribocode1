@@ -13,19 +13,19 @@ import { Color } from 'molstar/lib/mol-util/color';
 //import { PluginCommands } from 'molstar/lib/mol-plugin/commands';
 import { StateTransforms } from 'molstar/lib/mol-plugin-state/transforms';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
-//import { StructureRepresentation3D } from 'molstar/lib/mol-plugin-state/transforms/representation';
-//import { PluginStateObject } from 'molstar/lib/mol-plugin-state/objects';
+import { StructureRepresentation3D } from 'molstar/lib/mol-plugin-state/transforms/representation';
+import { PluginStateObject } from 'molstar/lib/mol-plugin-state/objects';
 //import { ObjectListControl } from 'molstar/lib/mol-plugin-ui/controls/parameters';
-//import { Overpaint } from 'molstar/lib/mol-theme/overpaint';
+import { Overpaint } from 'molstar/lib/mol-theme/overpaint';
 import { Unit, Structure, StructureElement, StructureQuery, StructureSelection } from 'molstar/lib/mol-model/structure';
-//import { StructureSelectionQuery } from 'packages/molstar/src/mol-plugin-state/helpers/structure-selection-query';
+import { StructureSelectionQuery } from 'packages/molstar/src/mol-plugin-state/helpers/structure-selection-query';
 import { QueryContext } from 'molstar/lib/mol-model/structure/query/context';
 //import { ElementIndex } from 'molstar/lib/mol-model/structure';
 import { MolScriptBuilder } from 'molstar/lib/mol-script/language/builder';
 import { compile } from 'molstar/lib/mol-script/runtime/query/base';
 import { VisibilityOutlinedSvg, VisibilityOffOutlinedSvg } from 'molstar/lib/mol-plugin-ui/controls/icons';
-//import { Data } from 'molstar/lib/extensions/ribocode/colors';
-//import { set } from 'lodash';
+import { Data } from 'molstar/lib/extensions/ribocode/colors';
+import { set } from 'lodash';
 //import { AtomicHierarchy } from 'molstar/lib/mol-model/structure/model/properties/atomic';
 
 const App: React.FC = () => {
@@ -119,11 +119,7 @@ const App: React.FC = () => {
     const colorsAlignedToFile = useFileInput<Array<Record<string, string>>>(parseColorFileContent, []);
     const colorsAlignedFile = useFileInput<Array<Record<string, string>>>(parseColorFileContent, []);
     // Chain color map state.
-    const [chainColorMap, setChainColorMap] = useState<Map<string, Map<string, Color>>>(new Map());
-    const [chainAlignedToColorMap, setChainAlignedToColorMap] = useState<Map<string, Color>>(new Map());
-    //const [chainAlignedColorMap, setChainAlignedColorMap] = useState<Map<string, Color>>(new Map());
-    //const [chainIdsAlignedTo, setChainIdsAlignedTo] = useState<Set<string>>(new Set());
-    //const [chainIdsAligned, setChainIdsAligned] = useState<Set<string>>(new Set());
+    //const [chainColorMap, setChainColorMap] = useState<Map<string, Map<string, Color>>>(new Map());
         
     // Handle file changes for molecule loading.
     type FileChangeMode = 'alignedTo' | 'aligned';
@@ -464,9 +460,7 @@ const App: React.FC = () => {
      */
     function registerThemeIfNeeded(
         plugin: PluginUIContext,
-        themeName: string,
-        //chainAlignedToColorMap: Map<string, Color>,
-        //chainAlignedColorMap: Map<string, Color>
+        themeName: string
     ) {
         if (!plugin) return;
         // Get color theme registry.
@@ -486,18 +480,6 @@ const App: React.FC = () => {
         colorThemeRegistry.add(
             createChainColorTheme(themeName, chainColorMap.get(themeName)!) as any
         );
-        // if (themeName === themeNameAlignedTo) {
-        //     colorThemeRegistry.add(
-        //         createChainColorTheme(themeName, chainAlignedToColorMap!) as any
-        //     );
-        // } else if (themeName === themeNameAligned) {
-        //     colorThemeRegistry.add(
-        //         createChainColorTheme(themeName, chainAlignedColorMap!) as any
-        //     );
-        // } else {
-        //     console.warn(`Unknown theme name: ${themeName}`);
-        //     return;
-        // }
         console.log(`Registered ${themeName} theme.`);
     }
 
@@ -537,30 +519,9 @@ const App: React.FC = () => {
         });
         console.log('themeChainColorMap:', themeChainColorMap);
         chainColorMap.set(themeName, themeChainColorMap);
-        // // Update appropriate chain color map state:
-        // if (themeName === themeNameAlignedTo) {
-        //     setChainAlignedToColorMap(themeChainColorMap);
-        //     setChainIdsAlignedTo(new Set(themeChainColorMap.keys()));
-        // } else if (themeName === themeNameAligned) {
-        //     setChainAlignedColorMap(themeChainColorMap);
-        //     setChainIdsAligned(new Set(themeChainColorMap.keys()));
-        // } else {
-        //     console.warn(`Unknown theme name: ${themeName}`);
-        //     return;
-        // }
         // Register custom theme if needed:
-        registerThemeIfNeeded(
-            viewerA.ref.current!,
-            themeName,
-            //chainAlignedToColorMap,
-            //chainAlignedColorMap
-        );
-        registerThemeIfNeeded(
-            viewerB.ref.current!,
-            themeName,
-            //chainAlignedToColorMap,
-            //chainAlignedColorMap
-        );
+        registerThemeIfNeeded(viewerA.ref.current!, themeName);
+        registerThemeIfNeeded(viewerB.ref.current!, themeName);
         console.log('Registered theme:', themeName);
         // Update molecule colors in both viewers:
         if (molA && molB && colors.length) {
@@ -586,7 +547,6 @@ const App: React.FC = () => {
     // Aligned:
     useEffect(() => {
         if (colorsAlignedFile.data && colorsAlignedFile.data.length > 0) {
-            setIsMoleculeAlignedColoursLoaded(true);
             updateColorsForViewers(
                 viewerA.moleculeAligned,
                 viewerB.moleculeAligned,
@@ -604,7 +564,7 @@ const App: React.FC = () => {
      * Creates a handler to select and zoom to a specific region in both viewers.
      * @return An object with a handleButtonClick method.
      */
-    function createSelectAndZoom() {
+    function createSelectAndZoom(themeName: string) {
         return {
             handleButtonClick: async () => {
                 const pluginA = viewerA.ref.current;
@@ -612,6 +572,7 @@ const App: React.FC = () => {
                 const pluginB = viewerB.ref.current;
                 if (!pluginB) return;
                 const chain = "LY";
+                //const chain = selectChain(themeName);
                 //const chain = selectedChain;
                 // Get structures from viewer A.
                 const structuresA = pluginA.managers.structure.hierarchy.current.structures;
@@ -660,8 +621,25 @@ const App: React.FC = () => {
         };
     }
     // Create select and zoom handlers.
-    const selectAndZoomA = createSelectAndZoom();
-    const selectAndZoomB = createSelectAndZoom();
+    const selectAndZoomA = createSelectAndZoom(themeNameAlignedTo);
+    const selectAndZoomB = createSelectAndZoom(themeNameAligned);
+
+    /**
+     * Selects a chain based on the loaded color data.
+     * Currently selects the first chain in the color data.
+     * @param themeName The name of the theme to get colors from.
+     */
+    function selectChain(themeName: string) {
+        const colorMap = chainColorMap.get(themeName);
+        if (colorMap && colorMap.size > 0) {
+            // Select the first chain in the map.
+            const firstChain = colorMap.keys().next().value;
+            setSelectedChain(firstChain);
+            console.log(`Selected chain: ${firstChain}`);
+        } else {
+            console.warn(`No color map found for theme: ${themeName}`);
+        }
+    }
     
     // Return the main app component.
     return (

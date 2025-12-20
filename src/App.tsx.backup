@@ -119,11 +119,10 @@ const App: React.FC = () => {
     const colorsAlignedToFile = useFileInput<Array<Record<string, string>>>(parseColorFileContent, []);
     const colorsAlignedFile = useFileInput<Array<Record<string, string>>>(parseColorFileContent, []);
     // Chain color map state.
-    const [chainColorMap, setChainColorMap] = useState<Map<string, Map<string, Color>>>(new Map());
     const [chainAlignedToColorMap, setChainAlignedToColorMap] = useState<Map<string, Color>>(new Map());
-    //const [chainAlignedColorMap, setChainAlignedColorMap] = useState<Map<string, Color>>(new Map());
-    //const [chainIdsAlignedTo, setChainIdsAlignedTo] = useState<Set<string>>(new Set());
-    //const [chainIdsAligned, setChainIdsAligned] = useState<Set<string>>(new Set());
+    const [chainAlignedColorMap, setChainAlignedColorMap] = useState<Map<string, Color>>(new Map());
+    const [chainIdsAlignedTo, setChainIdsAlignedTo] = useState<Set<string>>(new Set());
+    const [chainIdsAlignTo, setChainIdsAlignTo] = useState<Set<string>>(new Set());
         
     // Handle file changes for molecule loading.
     type FileChangeMode = 'alignedTo' | 'aligned';
@@ -464,9 +463,7 @@ const App: React.FC = () => {
      */
     function registerThemeIfNeeded(
         plugin: PluginUIContext,
-        themeName: string,
-        //chainAlignedToColorMap: Map<string, Color>,
-        //chainAlignedColorMap: Map<string, Color>
+        themeName: string
     ) {
         if (!plugin) return;
         // Get color theme registry.
@@ -483,21 +480,18 @@ const App: React.FC = () => {
             console.log(`Removed old ${themeName} theme.`);
         }
         // Add the new theme.
-        colorThemeRegistry.add(
-            createChainColorTheme(themeName, chainColorMap.get(themeName)!) as any
-        );
-        // if (themeName === themeNameAlignedTo) {
-        //     colorThemeRegistry.add(
-        //         createChainColorTheme(themeName, chainAlignedToColorMap!) as any
-        //     );
-        // } else if (themeName === themeNameAligned) {
-        //     colorThemeRegistry.add(
-        //         createChainColorTheme(themeName, chainAlignedColorMap!) as any
-        //     );
-        // } else {
-        //     console.warn(`Unknown theme name: ${themeName}`);
-        //     return;
-        // }
+        if (themeName === themeNameAlignedTo) {
+            colorThemeRegistry.add(
+                createChainColorTheme(themeName, chainAlignedToColorMap!) as any
+            );
+        } else if (themeName === themeNameAligned) {
+            colorThemeRegistry.add(
+                createChainColorTheme(themeName, chainAlignedColorMap!) as any
+            );
+        } else {
+            console.warn(`Unknown theme name: ${themeName}`);
+            return;
+        }
         console.log(`Registered ${themeName} theme.`);
     }
 
@@ -536,31 +530,20 @@ const App: React.FC = () => {
             }
         });
         console.log('themeChainColorMap:', themeChainColorMap);
-        chainColorMap.set(themeName, themeChainColorMap);
-        // // Update appropriate chain color map state:
-        // if (themeName === themeNameAlignedTo) {
-        //     setChainAlignedToColorMap(themeChainColorMap);
-        //     setChainIdsAlignedTo(new Set(themeChainColorMap.keys()));
-        // } else if (themeName === themeNameAligned) {
-        //     setChainAlignedColorMap(themeChainColorMap);
-        //     setChainIdsAligned(new Set(themeChainColorMap.keys()));
-        // } else {
-        //     console.warn(`Unknown theme name: ${themeName}`);
-        //     return;
-        // }
+        // Update appropriate chain color map state:
+        if (themeName === themeNameAlignedTo) {
+            setChainAlignedToColorMap(themeChainColorMap);
+            setChainIdsAlignedTo(new Set(themeChainColorMap.keys()));
+        } else if (themeName === themeNameAligned) {
+            setChainAlignedColorMap(themeChainColorMap);
+            setChainIdsAlignTo(new Set(themeChainColorMap.keys()));
+        } else {
+            console.warn(`Unknown theme name: ${themeName}`);
+            return;
+        }
         // Register custom theme if needed:
-        registerThemeIfNeeded(
-            viewerA.ref.current!,
-            themeName,
-            //chainAlignedToColorMap,
-            //chainAlignedColorMap
-        );
-        registerThemeIfNeeded(
-            viewerB.ref.current!,
-            themeName,
-            //chainAlignedToColorMap,
-            //chainAlignedColorMap
-        );
+        registerThemeIfNeeded(viewerA.ref.current!, themeName);
+        registerThemeIfNeeded(viewerB.ref.current!, themeName);
         console.log('Registered theme:', themeName);
         // Update molecule colors in both viewers:
         if (molA && molB && colors.length) {
@@ -586,7 +569,6 @@ const App: React.FC = () => {
     // Aligned:
     useEffect(() => {
         if (colorsAlignedFile.data && colorsAlignedFile.data.length > 0) {
-            setIsMoleculeAlignedColoursLoaded(true);
             updateColorsForViewers(
                 viewerA.moleculeAligned,
                 viewerB.moleculeAligned,
