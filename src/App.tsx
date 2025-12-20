@@ -120,7 +120,7 @@ const App: React.FC = () => {
     const colorsAlignedFile = useFileInput<Array<Record<string, string>>>(parseColorFileContent, []);
     // Chain color map state.
     const [chainColorMap, setChainColorMap] = useState<Map<string, Map<string, Color>>>(new Map());
-    const [chainAlignedToColorMap, setChainAlignedToColorMap] = useState<Map<string, Color>>(new Map());
+    //const [chainAlignedToColorMap, setChainAlignedToColorMap] = useState<Map<string, Color>>(new Map());
     //const [chainAlignedColorMap, setChainAlignedColorMap] = useState<Map<string, Color>>(new Map());
     //const [chainIdsAlignedTo, setChainIdsAlignedTo] = useState<Set<string>>(new Set());
     //const [chainIdsAligned, setChainIdsAligned] = useState<Set<string>>(new Set());
