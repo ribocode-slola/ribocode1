@@ -4,11 +4,11 @@
 A React Progressive Web App (PWA) Graphical User Interface (GUI) visualisation tool for the Ribocode Project. The latest release is available online via GitHub Pages at the following URL:
 * https://ribocode-slola.github.io/ribocode1/
 
-The PWA can be installed using the latest versions of most Web browsers and then used offline.
+The PWA can be installed using the latest versions of most Web browsers and then used offline. The interface is designed to be intuitive. Start by loading a molecule file in CIF format, e.g [4ug0](https://files.rcsb.org/download/4UG0.cif). Then load another molecule, e.g. [6xu8](https://files.rcsb.org/download/6XU8.cif). (Those downloads are from the from the [RCSB Protein Data Bank](https://www.rcsb.org/pages/about-us/index).)
 
-Ribocode is based on [Mol*](https://github.com/molstar/molstar). It effectively contains two Mol* viewers each in their own container with some additional GUI controls for ease of use. There are buttons for loading molecules into both viewers, styling how these are visualised, and selecting parts of these to look at more closely. Viewer sychronization can be activated and deactivated. When activated rotation and zoom in one viewer rotates and zooms in the other viewer accordingly. When deactivated zoom and rotation in each viewer is independent.
+Ribocode is based on [Mol*](https://github.com/molstar/molstar). The GUI contains two Mol* viewers which on a normal sized screen appear side by side. These are in in their own container with some additional GUI controls for ease of use. There are buttons for loading molecules into both viewers, styling how these are visualised, and selecting parts of these to look at more closely. Viewer sychronization can be activated and deactivated. When activated rotation/zoom in one viewer causes rotation/zoom in the other. When deactivated zoom/rotation in each viewer is independent. Please refer to the [Mol* Viewer Documentation](https://molstar.org/viewer-docs/) for information about the controls and how to zoom/rotate. In Ribocode, the 3D Canvas of each Mol* viewer should appear above the sequence panel, main menu, control panel and log panel in that order.  
 
-Ribocode is being developed to help researchers studying and comparing ribosome datasets. UKRI funded Ribocode development under research grant [BB/X003086/1](https://gtr.ukri.org/projects?ref=BB%2FX003086%2F1). For more details of the project please see the [Ribocode Website](https://ribocode.org/)
+Ribocode is being developed to help researchers study the 3D strucutre of [ribosomes](https://en.wikipedia.org/wiki/Ribosome) and compare static 3D ribosome datasets. UKRI funded Ribocode development under research grant [BB/X003086/1](https://gtr.ukri.org/projects?ref=BB%2FX003086%2F1). For more details of the project please see the [Ribocode Website](https://ribocode.org/)
 
 When using Ribocode, please also cite Mol* using the following:
 
