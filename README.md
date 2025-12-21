@@ -28,12 +28,13 @@ Mol* is added as a workpackage inside Ribocode in the `workpackage/molstar` dire
 
 ## Building and Running
 
-### Dependencies
-[node](https://nodejs.org/) 24.11.0
-[Mol*](https://github.com/molstar/molstar)
+### Platform Build Environment
+* [node](https://nodejs.org/) 24.11.0
 
 ### Set up
-Clone the Ribocode repository. Clone [Mol*](https://github.com/molstar/molstar) in `src/packages`.
+1. Clone the Ribocode repository.
+2. ```cd src/packages```
+3. Clone [Ribocode Mol*](https://github.com/ribocode-slola/molstar) into `src/packages`.
 
 ### Build and run locally
 From the Ribocode root directory run:
