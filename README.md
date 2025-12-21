@@ -1,8 +1,9 @@
 [![License](http://img.shields.io/badge/license-MIT-blue.svg?style=flat)](./LICENSE)
 
 # Ribocode
-A React Progressive Web App (PWA) Graphical User Interface (GUI) visualisation tool for the Ribocode Project. The latest release is available online via GitHub Pages at the following URL: 
-https://ribocode-slola.github.io/ribocode1/
+A React Progressive Web App (PWA) Graphical User Interface (GUI) visualisation tool for the Ribocode Project. The latest release is available online via GitHub Pages at the following URL:
+* https://ribocode-slola.github.io/ribocode1/
+
 The PWA can be installed using the latest versions of most Web browsers and then used offline.
 
 Ribocode is based on [Mol*](https://github.com/molstar/molstar). It effectively contains two Mol* viewers each in their own container with some additional GUI controls for ease of use. There are buttons for loading molecules into both viewers, styling how these are visualised, and selecting parts of these to look at more closely. Viewer sychronization can be activated and deactivated. When activated rotation and zoom in one viewer rotates and zooms in the other viewer accordingly. When deactivated zoom and rotation in each viewer is independent.
