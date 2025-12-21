@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
+ *
+ * @author Andy Turner <agdturner@gmail.com>
+ */
 import React, { useEffect } from 'react';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 import { useSync } from './SyncContext';

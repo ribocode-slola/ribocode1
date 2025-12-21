@@ -1,7 +1,15 @@
+/**
+ * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
+ *
+ * @author Andy Turner <agdturner@gmail.com>
+ */
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { PluginContext } from 'molstar/lib/mol-plugin/context';
 
-// SyncContextType interface definition.
+/**
+ * Holds the state and setters for synchronizing two Mol* viewers.
+ * Includes references to both viewers, sync status, and active viewer.
+ */
 interface SyncContextType {
     viewerA: PluginContext | null;
     setViewerA: React.Dispatch<React.SetStateAction<PluginContext | null>>;

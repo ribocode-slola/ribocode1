@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
+ *
+ * @author Andy Turner <agdturner@gmail.com>
+ */
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { SyncProvider } from './SyncContext';
 import SyncButton from './SyncButton';
@@ -28,6 +33,10 @@ import { VisibilityOutlinedSvg, VisibilityOffOutlinedSvg } from 'molstar/lib/mol
 //import { set } from 'lodash';
 //import { AtomicHierarchy } from 'molstar/lib/mol-model/structure/model/properties/atomic';
 
+/**
+ * The main App component.
+ * @returns The main App component.
+ */
 const App: React.FC = () => {
     console.log('App rendered');
 
@@ -667,7 +676,7 @@ const App: React.FC = () => {
     return (
         <SyncProvider>
             <div className="App">
-                <h1 className="app-title">RiboCode Mol* Viewer 0.4.2</h1>
+                <h1 className="app-title">RiboCode Mol* Viewer 0.4.3</h1>
                 <div className="load-data-row">
                     <div className="viewer-title">
                         {viewerA.moleculeAlignedTo
