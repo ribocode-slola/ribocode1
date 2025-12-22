@@ -29,6 +29,8 @@ import { QueryContext } from 'molstar/lib/mol-model/structure/query/context';
 import { MolScriptBuilder } from 'molstar/lib/mol-script/language/builder';
 import { compile } from 'molstar/lib/mol-script/runtime/query/base';
 import { VisibilityOutlinedSvg, VisibilityOffOutlinedSvg } from 'molstar/lib/mol-plugin-ui/controls/icons';
+import ChainSelectButton from './ChainSelectButton';
+import { getChainIdsFromStructure } from './utils/chain';
 //import { Data } from 'molstar/lib/extensions/ribocode/colors';
 //import { set } from 'lodash';
 //import { AtomicHierarchy } from 'molstar/lib/mol-model/structure/model/properties/atomic';
@@ -128,14 +130,15 @@ const App: React.FC = () => {
     const colorsAlignedToFile = useFileInput<Array<Record<string, string>>>(parseColorFileContent, []);
     const colorsAlignedFile = useFileInput<Array<Record<string, string>>>(parseColorFileContent, []);
     // Chain color map state.
-    const [chainColorMap, setChainColorMap] = useState<Map<string, Map<string, Color>>>(new Map());
-    //const [chainAlignedToColorMap, setChainAlignedToColorMap] = useState<Map<string, Color>>(new Map());
-    //const [chainAlignedColorMap, setChainAlignedColorMap] = useState<Map<string, Color>>(new Map());
-    //const [chainIdsAlignedTo, setChainIdsAlignedTo] = useState<Set<string>>(new Set());
-    //const [chainIdsAligned, setChainIdsAligned] = useState<Set<string>>(new Set());
-        
+    const [chainColorMaps] = useState<Map<string, Map<string, Color>>>(new Map());
+    // Chain ID selection state.
+    const [chainIdsAlignedTo, setChainIdsAlignedTo] = useState<string[]>([]);
+    const [selectedChainIdAlignedTo, setSelectedChainIdAlignedTo] = useState<string>('');
+    const [chainIdsAligned, setChainIdsAligned] = useState<string[]>([]);
+
     // Handle file changes for molecule loading.
     type FileChangeMode = 'alignedTo' | 'aligned';
+
     const handleFileChange = useCallback(
         async (
             e: React.ChangeEvent<HTMLInputElement>,
@@ -493,7 +496,7 @@ const App: React.FC = () => {
         }
         // Add the new theme.
         colorThemeRegistry.add(
-            createChainColorTheme(themeName, chainColorMap.get(themeName)!) as any
+            createChainColorTheme(themeName, chainColorMaps.get(themeName)!) as any
         );
         // if (themeName === themeNameAlignedTo) {
         //     colorThemeRegistry.add(
@@ -545,7 +548,7 @@ const App: React.FC = () => {
             }
         });
         console.log('themeChainColorMap:', themeChainColorMap);
-        chainColorMap.set(themeName, themeChainColorMap);
+        chainColorMaps.set(themeName, themeChainColorMap);
         // // Update appropriate chain color map state:
         // if (themeName === themeNameAlignedTo) {
         //     setChainAlignedToColorMap(themeChainColorMap);
@@ -607,8 +610,25 @@ const App: React.FC = () => {
         }
     }, [colorsAlignedFile.data, viewerA.moleculeAligned, viewerB.moleculeAligned]);
 
-    const [selectedChain, setSelectedChain] = useState('');
-    
+    // Chain ID selection state.
+    useEffect(() => {
+        console.log('Updating chain IDs for moleculeAlignedTo');
+        const pluginA = viewerA.ref.current;
+        if (!pluginA) return;
+        const structuresA = pluginA.managers.structure.hierarchy.current.structures;
+        if (!structuresA) {
+            console.warn('No structures found in viewer A.');
+            return;
+        }
+        console.log(`Structures in viewer A:`, structuresA);
+        console.log(`Number of structures:` + structuresA.length);
+        const structureAAlignedTo = structuresA[0].cell.obj?.data;
+        setChainIdsAlignedTo(
+            getChainIdsFromStructure(structureAAlignedTo!)
+        );
+    }, [viewerA.moleculeAlignedTo]);
+
+       
     /**
      * Creates a handler to select and zoom to a specific region in both viewers.
      * @return An object with a handleButtonClick method.
@@ -620,7 +640,7 @@ const App: React.FC = () => {
                 if (!pluginA) return;
                 const pluginB = viewerB.ref.current;
                 if (!pluginB) return;
-                const chain = "LY";
+                const chain = selectedChainIdAlignedTo;
                 //const chain = selectedChain;
                 // Get structures from viewer A.
                 const structuresA = pluginA.managers.structure.hierarchy.current.structures;
@@ -676,7 +696,7 @@ const App: React.FC = () => {
     return (
         <SyncProvider>
             <div className="App">
-                <h1 className="app-title">RiboCode Mol* Viewer 0.4.3</h1>
+                <h1 className="app-title">RiboCode Mol* Viewer 0.4.4</h1>
                 <div className="load-data-row">
                     <div className="viewer-title">
                         {viewerA.moleculeAlignedTo
@@ -699,7 +719,7 @@ const App: React.FC = () => {
                                 onChange={e => handleFileChange(e, 'alignedTo')}
                             />
                         </>
-                    )}
+                    )}                    
                     <button
                         onClick={colorsAlignedToFile.handleButtonClick}
                         disabled={!viewerA.isMoleculeAlignedToLoaded}
@@ -712,6 +732,13 @@ const App: React.FC = () => {
                         style={{ display: 'none' }}
                         ref={colorsAlignedToFile.inputRef}
                         onChange={colorsAlignedToFile.handleFileChange}
+                    />
+                    <ChainSelectButton
+                        disabled={!viewerA.isMoleculeAlignedToLoaded}
+                        chainIds={chainIdsAlignedTo}
+                        selectedChainId={selectedChainIdAlignedTo}
+                        onSelect={setSelectedChainIdAlignedTo}
+                        label="Select Chain"
                     />
                 </div>
                 <div className="load-data-row">
@@ -809,9 +836,9 @@ const App: React.FC = () => {
                             </button>
                             <button
                                 onClick={selectAndZoomA.handleButtonClick}
-                                disabled={!isMoleculeAlignedToColoursLoaded}
+                                disabled={!selectedChainIdAlignedTo}
                             >
-                                Select and Zoom
+                                Zoom to: {selectedChainIdAlignedTo}
                             </button>
                         </div>
                         <MolstarContainer
