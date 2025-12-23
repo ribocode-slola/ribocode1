@@ -3,20 +3,28 @@
  *
  * @author Andy Turner <agdturner@gmail.com>
  */
+
 import React, { useEffect } from 'react';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
-import { useSync } from './SyncContext';
 import { Vec3 } from 'molstar/lib/mol-math/linear-algebra/3d/vec3';
 
-// SyncButton component to toggle camera synchronization between two viewers.
-const SyncButton: React.FC<{
+interface SyncButtonProps {
     viewerA: PluginUIContext | null;
     viewerB: PluginUIContext | null;
     activeViewer: 'A' | 'B';
-    disabled: boolean
-}> = ({ viewerA, viewerB, activeViewer, disabled }) => {
-    const { syncEnabled, setSyncEnabled } = useSync();
-    // Effect to synchronize camera states between viewers.
+    disabled: boolean;
+    syncEnabled: boolean;
+    setSyncEnabled: (enabled: boolean) => void;
+}
+
+const SyncButton: React.FC<SyncButtonProps> = ({
+    viewerA,
+    viewerB,
+    activeViewer,
+    disabled,
+    syncEnabled,
+    setSyncEnabled
+}) => {
     useEffect(() => {
         if (!syncEnabled || !viewerA || !viewerB) return;
         // Determine source and target viewers based on activeViewer.

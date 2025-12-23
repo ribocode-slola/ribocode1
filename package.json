@@ -1,6 +1,6 @@
 {
   "name": "ribocode1",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "private": true,
   "workspaces": [
     "packages/*"
@@ -61,6 +61,7 @@
     "workbox-streams": "^6.4.2"
   },
   "devDependencies": {
+    "@types/big.js": "^6.2.2",
     "@types/jest": "^30.0.0",
     "@types/lodash": "^4.17.20",
     "@types/node": "^24.10.0",
