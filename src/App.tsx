@@ -721,7 +721,7 @@ const App: React.FC = () => {
     return (
         <SyncProvider>
             <div className="App">
-                <h1 className="app-title">RiboCode Mol* Viewer 0.4.4</h1>
+                <h1 className="app-title">RiboCode Mol* Viewer 0.4.5 (please see <a href="https://github.com/ribocode-slola/ribocode1/?tab=readme-ov-file#ribocode" target="_blank">README</a> for information).</h1>
                 <div className="load-data-row">
                     <div className="viewer-title">
                         {viewerA.moleculeAlignedTo
