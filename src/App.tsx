@@ -29,6 +29,8 @@ import { QueryContext } from 'molstar/lib/mol-model/structure/query/context';
 import { MolScriptBuilder } from 'molstar/lib/mol-script/language/builder';
 import { compile } from 'molstar/lib/mol-script/runtime/query/base';
 import { VisibilityOutlinedSvg, VisibilityOffOutlinedSvg } from 'molstar/lib/mol-plugin-ui/controls/icons';
+import ChainSelectButton from './ChainSelectButton';
+import { getChainIdsFromStructure } from './utils/chain';
 //import { Data } from 'molstar/lib/extensions/ribocode/colors';
 //import { set } from 'lodash';
 //import { AtomicHierarchy } from 'molstar/lib/mol-model/structure/model/properties/atomic';
@@ -91,6 +93,7 @@ const App: React.FC = () => {
     }, [viewerB]);
     const [viewerAReady, setViewerAReady] = useState(false);
     const [viewerBReady, setViewerBReady] = useState(false);
+    const [syncEnabled, setSyncEnabled] = useState(false);
 
     // Generic file input hook.
     function useFileInput<T>(
@@ -128,14 +131,16 @@ const App: React.FC = () => {
     const colorsAlignedToFile = useFileInput<Array<Record<string, string>>>(parseColorFileContent, []);
     const colorsAlignedFile = useFileInput<Array<Record<string, string>>>(parseColorFileContent, []);
     // Chain color map state.
-    const [chainColorMap, setChainColorMap] = useState<Map<string, Map<string, Color>>>(new Map());
-    //const [chainAlignedToColorMap, setChainAlignedToColorMap] = useState<Map<string, Color>>(new Map());
-    //const [chainAlignedColorMap, setChainAlignedColorMap] = useState<Map<string, Color>>(new Map());
-    //const [chainIdsAlignedTo, setChainIdsAlignedTo] = useState<Set<string>>(new Set());
-    //const [chainIdsAligned, setChainIdsAligned] = useState<Set<string>>(new Set());
-        
+    const [chainColorMaps] = useState<Map<string, Map<string, Color>>>(new Map());
+    // Chain ID selection state.
+    const [chainIdsAlignedTo, setChainIdsAlignedTo] = useState<string[]>([]);
+    const [selectedChainIdAlignedTo, setSelectedChainIdAlignedTo] = useState<string>('');
+    const [chainIdsAligned, setChainIdsAligned] = useState<string[]>([]);
+    const [selectedChainIdAligned, setSelectedChainIdAligned] = useState<string>('');
+
     // Handle file changes for molecule loading.
     type FileChangeMode = 'alignedTo' | 'aligned';
+
     const handleFileChange = useCallback(
         async (
             e: React.ChangeEvent<HTMLInputElement>,
@@ -493,7 +498,7 @@ const App: React.FC = () => {
         }
         // Add the new theme.
         colorThemeRegistry.add(
-            createChainColorTheme(themeName, chainColorMap.get(themeName)!) as any
+            createChainColorTheme(themeName, chainColorMaps.get(themeName)!) as any
         );
         // if (themeName === themeNameAlignedTo) {
         //     colorThemeRegistry.add(
@@ -545,7 +550,7 @@ const App: React.FC = () => {
             }
         });
         console.log('themeChainColorMap:', themeChainColorMap);
-        chainColorMap.set(themeName, themeChainColorMap);
+        chainColorMaps.set(themeName, themeChainColorMap);
         // // Update appropriate chain color map state:
         // if (themeName === themeNameAlignedTo) {
         //     setChainAlignedToColorMap(themeChainColorMap);
@@ -607,76 +612,116 @@ const App: React.FC = () => {
         }
     }, [colorsAlignedFile.data, viewerA.moleculeAligned, viewerB.moleculeAligned]);
 
-    const [selectedChain, setSelectedChain] = useState('');
-    
+    // Effect for moleculeAlignedTo Chain ID selection.
+    useEffect(() => {
+        console.log('Updating chain IDs for moleculeAlignedTo');
+        const pluginA = viewerA.ref.current;
+        if (!pluginA) return;
+        const structure = pluginA.managers.structure.hierarchy.current.structures[0].cell.obj?.data;
+        setChainIdsAlignedTo(
+            getChainIdsFromStructure(structure!)
+        );
+    }, [viewerA.moleculeAlignedTo]);
+
+    // Effect for moleculeAligned Chain ID selection.
+    useEffect(() => {
+        console.log('Updating chain IDs for moleculeAligned');
+        const pluginB = viewerB.ref.current;
+        if (!pluginB) return;
+        const structure = pluginB.managers.structure.hierarchy.current.structures[1].cell.obj?.data;
+        setChainIdsAligned(
+            getChainIdsFromStructure(structure!)
+        );
+    }, [viewerB.moleculeAligned]);
+
     /**
-     * Creates a handler to select and zoom to a specific region in both viewers.
+     * Creates a handler to zoom to a chain.
+     * @param structureIndex The index of the structure in the viewer hierarchy to zoom to.
      * @return An object with a handleButtonClick method.
      */
-    function createSelectAndZoom() {
+    function createZoomA(structureIndex: number, chain: string) {
         return {
             handleButtonClick: async () => {
                 const pluginA = viewerA.ref.current;
                 if (!pluginA) return;
-                const pluginB = viewerB.ref.current;
-                if (!pluginB) return;
-                const chain = "LY";
-                //const chain = selectedChain;
-                // Get structures from viewer A.
-                const structuresA = pluginA.managers.structure.hierarchy.current.structures;
-                if (!structuresA) {
-                    console.warn('No structures found in viewer A.');
+                const structure = pluginA.managers.structure.hierarchy.current.structures[structureIndex].cell.obj?.data;
+                if (!structure) {
+                    console.warn('No structure data found for alignedTo.');
                     return;
                 }
-                console.log(`Structures in viewer A:`, structuresA);
-                console.log(`Number of structures:` + structuresA.length);
-                const structureAAlignedTo = structuresA[0].cell.obj?.data;
-                if (!structureAAlignedTo) {
-                    console.warn('No structure data found for alignedTo in viewer A.');
-                    return;
-                }
-                // const structureAAligned = structuresA[1].cell.obj?.data;
-                // if (!structureAAligned) {
-                //     console.warn('No structure data found for aligned in viewer A.');
-                //     return;
-                // }
                 const qb = MolScriptBuilder.struct.generator.atomGroups({
                     'chain-test': MolScriptBuilder.core.rel.eq([
                         MolScriptBuilder.struct.atomProperty.macromolecular.auth_asym_id(),
                         chain
                     ])
-                    // For pdb_strand_id, use:
-                    // MolScriptBuilder.struct.atomProperty.macromolecular.pdb_strand_id()
                 });
-                // const qb = MolScriptBuilder.struct.generator.atomGroups({
-                //     'chain-test': MolScriptBuilder.core.rel.eq([
-                //         MolScriptBuilder.struct.atomProperty.macromolecular.auth_asym_id(),
-                //         'A'
-                //     ]),
-                //     'residue-test': MolScriptBuilder.core.rel.inRange([
-                //         MolScriptBuilder.struct.atomProperty.macromolecular.auth_seq_id(),
-                //         10, 20
-                //     ])
-                // });
                 const compiled = compile(qb);
-                const ctx = new QueryContext(structureAAlignedTo);
+                const ctx = new QueryContext(structure);
                 const selection = compiled(ctx);
                 const loci = StructureSelection.toLociWithSourceUnits(selection);
-
+                // Zoom
                 pluginA.managers.camera.focusLoci(loci);
-                pluginB.managers.camera.focusLoci(loci);
+                if (syncEnabled){
+                    const pluginB = viewerB.ref.current;
+                    if (!pluginB) return;
+                    pluginB.managers.camera.focusLoci(loci);
+                }
             }
         };
     }
-    // Create select and zoom handlers.
-    const selectAndZoomA = createSelectAndZoom();
-    const selectAndZoomB = createSelectAndZoom();
+
+    // Create zoomA handlers.
+    const zoomAAlignedTo = createZoomA(0, selectedChainIdAlignedTo);
+    const zoomAAligned = createZoomA(1, selectedChainIdAligned);
+
+    /**
+     * Creates a handler to zoom to a chain.
+     * @return An object with a handleButtonClick method.
+     * 
+     * @param structureIndex The index of the structure in the viewer hierarchy to zoom to.
+     * @return An object with a handleButtonClick method.
+     */
+    function createZoomB(structureIndex: number, chain: string) {
+        return {
+            handleButtonClick: async () => {
+                const pluginB = viewerB.ref.current;
+                if (!pluginB) return;
+                // Get structure.
+                const structure = pluginB.managers.structure.hierarchy.current.structures[structureIndex].cell.obj?.data;
+                if (!structure) {
+                    console.warn('No structure data found for aligned.');
+                    return;
+                }
+                const qb = MolScriptBuilder.struct.generator.atomGroups({
+                    'chain-test': MolScriptBuilder.core.rel.eq([
+                        MolScriptBuilder.struct.atomProperty.macromolecular.auth_asym_id(),
+                        chain
+                    ])
+                });
+                const compiled = compile(qb);
+                const ctx = new QueryContext(structure);
+                const selection = compiled(ctx);
+                const loci = StructureSelection.toLociWithSourceUnits(selection);
+
+                pluginB.managers.camera.focusLoci(loci);
+                if (syncEnabled){
+                    const pluginA = viewerA.ref.current;
+                    if (!pluginA) return;
+                    pluginA.managers.camera.focusLoci(loci);
+                }
+            }
+        };
+    }
+
+    // Create zoomB handlers.
+    const zoomBAlignedTo = createZoomB(0, selectedChainIdAlignedTo);
+    const zoomBAligned = createZoomB(1, selectedChainIdAligned);
     
     // Return the main app component.
     return (
         <SyncProvider>
             <div className="App">
-                <h1 className="app-title">RiboCode Mol* Viewer 0.4.3</h1>
+                <h1 className="app-title">RiboCode Mol* Viewer 0.4.4</h1>
                 <div className="load-data-row">
                     <div className="viewer-title">
                         {viewerA.moleculeAlignedTo
@@ -699,7 +744,7 @@ const App: React.FC = () => {
                                 onChange={e => handleFileChange(e, 'alignedTo')}
                             />
                         </>
-                    )}
+                    )}                    
                     <button
                         onClick={colorsAlignedToFile.handleButtonClick}
                         disabled={!viewerA.isMoleculeAlignedToLoaded}
@@ -712,6 +757,13 @@ const App: React.FC = () => {
                         style={{ display: 'none' }}
                         ref={colorsAlignedToFile.inputRef}
                         onChange={colorsAlignedToFile.handleFileChange}
+                    />
+                    <ChainSelectButton
+                        disabled={!viewerA.isMoleculeAlignedToLoaded}
+                        chainIds={chainIdsAlignedTo}
+                        selectedChainId={selectedChainIdAlignedTo}
+                        onSelect={setSelectedChainIdAlignedTo}
+                        label="Select Chain"
                     />
                 </div>
                 <div className="load-data-row">
@@ -750,13 +802,22 @@ const App: React.FC = () => {
                         ref={colorsAlignedFile.inputRef}
                         onChange={colorsAlignedFile.handleFileChange}
                     />
+                    <ChainSelectButton
+                        disabled={!viewerB.isMoleculeAlignedLoaded}
+                        chainIds={chainIdsAligned}
+                        selectedChainId={selectedChainIdAligned}
+                        onSelect={setSelectedChainIdAligned}
+                        label="Select Chain"
+                    />
                 </div>
                 <div>
                     <SyncButton
                         viewerA={viewerA.ref.current}
                         viewerB={viewerB.ref.current}
                         activeViewer={activeViewer}
-                        disabled={!viewerB.isMoleculeAlignedLoaded}
+                        disabled={!viewerB.isMoleculeAlignedToLoaded}
+                        syncEnabled={syncEnabled}
+                        setSyncEnabled={setSyncEnabled}
                     />
                     <button
                         onClick={dictionaryFile.handleButtonClick}
@@ -799,6 +860,12 @@ const App: React.FC = () => {
                                 </span>
                             </button>
                             <button
+                                onClick={zoomAAlignedTo.handleButtonClick}
+                                disabled={!selectedChainIdAlignedTo}
+                            >
+                                Zoom to: {selectedChainIdAlignedTo}
+                            </button>
+                            <button
                                 onClick={toggleViewerAAligned.handleButtonClick}
                                 disabled={!viewerA.isMoleculeAlignedLoaded}
                             >
@@ -808,10 +875,10 @@ const App: React.FC = () => {
                                 </span>
                             </button>
                             <button
-                                onClick={selectAndZoomA.handleButtonClick}
-                                disabled={!isMoleculeAlignedToColoursLoaded}
+                                onClick={zoomAAligned.handleButtonClick}
+                                disabled={!selectedChainIdAligned}
                             >
-                                Select and Zoom
+                                Zoom to: {selectedChainIdAligned}
                             </button>
                         </div>
                         <MolstarContainer
@@ -833,6 +900,12 @@ const App: React.FC = () => {
                                 </span>
                             </button>
                             <button
+                                onClick={zoomBAlignedTo.handleButtonClick}
+                                disabled={!selectedChainIdAlignedTo}
+                            >
+                                Zoom to: {selectedChainIdAlignedTo}
+                            </button>
+                            <button
                                 onClick={toggleViewerBAligned.handleButtonClick}
                                 disabled={!viewerB.isMoleculeAlignedLoaded}
                             >
@@ -842,10 +915,10 @@ const App: React.FC = () => {
                                 </span>
                             </button>
                             <button
-                                onClick={selectAndZoomB.handleButtonClick}
-                                disabled={!isMoleculeAlignedColoursLoaded}
+                                onClick={zoomBAligned.handleButtonClick}
+                                disabled={!selectedChainIdAligned}
                             >
-                                Select and Zoom
+                                Zoom to: {selectedChainIdAligned}
                             </button>
                         </div>
                         <MolstarContainer
