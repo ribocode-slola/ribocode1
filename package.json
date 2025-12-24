@@ -33,6 +33,11 @@
       "last 1 safari version"
     ]
   },
+  "author": "Ribocode Contributors",
+  "contributors": [
+    "Andy Turner <agdturner@gmail.com>"
+  ],
+  "license": "MIT",
   "dependencies": {
     "@types/jest": "^27.4.0",
     "@types/node": "^17.0.10",
