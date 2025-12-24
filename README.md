@@ -1,12 +1,12 @@
 [![License](http://img.shields.io/badge/license-MIT-blue.svg?style=flat)](./LICENSE)
 
 # Ribocode
-Ribocode is designed to help researchers compare static atomic level detail [ribosome](https://en.wikipedia.org/wiki/Ribosome) data in 3D. There is a [Progressive Web App (PWA)](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps) deployed via GitHub Pages:
+Ribocode is for comparing [ribosome](https://en.wikipedia.org/wiki/Ribosome) data in [3D](https://en.wikipedia.org/wiki/Three-dimensional_space). There is a [Progressive Web App (PWA)](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps) deployment via GitHub Pages:
 * https://ribocode-slola.github.io/ribocode1/
 
 This is generally available for use and can be easily duplicated. The user requires a recent [Web browser](https://en.wikipedia.org/wiki/Web_browser) (e.g. [Firefox](https://www.firefox.com/)) that will run [JavaScript](https://developer.mozilla.org/en-US/docs/Web/JavaScript). Installed as a PWA, it can be used offline. Ribocode is based on [Node](https://nodejs.org/), [React](https://react.dev/) and [Mol*](https://github.com/molstar/molstar), and is mostly written in [TypeScript](https://www.typescriptlang.org/).
 
-The user interface requires a landscape computer screen, keyboard and mouse. Start by loading a ribosome dataset in [CIF](https://www.iucr.org/resources/cif/spec/version1.1) format file. The two viewers should display the data in 3D. The default style can be changed and the user can rotate and zoom in out. Another dataset can be loaded and aligned with the dataset first loaded using an algorithm.
+The interface is best displayed on a landscape computer screen. Interaction is generally easiest with a 3 button mouse and keyboard. Start by loading a ribosome dataset in [CIF](https://www.iucr.org/resources/cif/spec/version1.1) format file. The two viewers should display the data in 3D. The default style can be changed and the user can rotate and zoom in out. Another dataset can be loaded and aligned with the dataset first loaded using an algorithm.
 
 Ribosome data can be downloaded from the [RCSB Protein Data Bank](https://www.rcsb.org/pages/about-us/index) in CIF format: e.g. [4ug0](https://files.rcsb.org/download/4UG0.cif); and [6xu8](https://files.rcsb.org/download/6XU8.cif).
 
