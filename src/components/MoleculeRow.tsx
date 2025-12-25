@@ -32,6 +32,7 @@ interface MoleculeRowProps {
     zoomLabel: string;
     onZoom: () => void;
     zoomDisabled: boolean;
+    isLoaded: boolean;
     forceUpdate: () => void;
     representationRefs?: string[];
 }
@@ -59,9 +60,12 @@ const MoleculeRow: React.FC<MoleculeRowProps> = ({
     zoomLabel,
     onZoom,
     zoomDisabled,
+    isLoaded,
     forceUpdate,
     representationRefs = [],
 }) => {
+    // Debug: log representationRefs prop on each render
+    console.log('[MoleculeRow] representationRefs prop:', label, representationRefs);
     // Helper to get visibility state and type for a representation
     const getRepType = (ref: string): string | null => {
         if (!plugin) return null;
@@ -76,7 +80,8 @@ const MoleculeRow: React.FC<MoleculeRowProps> = ({
     const isRepVisible = (ref: string) => {
         if (!plugin) return false;
         const cell = plugin.state?.data?.cells?.get(ref);
-        return cell?.state?.isHidden === false;
+        // If isHidden is undefined or false, treat as visible
+        return cell?.state?.isHidden !== true;
     };
 
     // Toggle visibility for a representation
@@ -100,7 +105,7 @@ const MoleculeRow: React.FC<MoleculeRowProps> = ({
         <div className="molecule-row">
             <button
                 onClick={onToggleVisibility}
-                disabled={!plugin}
+                disabled={!plugin || !isLoaded}
             >
                 {isVisible ? <VisibilityOutlinedSvg /> : <VisibilityOffOutlinedSvg />}
                 <span style={{ marginLeft: 8 }}>{label}</span>
@@ -109,14 +114,17 @@ const MoleculeRow: React.FC<MoleculeRowProps> = ({
             {representationRefs.length > 0 && (
                 <span style={{ marginLeft: 8 }}>
                     {representationRefs.map(ref => {
+                        const cell = plugin?.state?.data?.cells?.get(ref);
                         const typeName = getRepType(ref);
-                        if (!typeName) return null;
                         const isVisible = isRepVisible(ref);
+                        console.log('[MoleculeRow] map:', { label, ref, typeName, isVisible, cell });
+                        if (!typeName) return null;
                         return (
                             <button
                                 key={ref}
                                 onClick={() => handleToggleRepVisibility(ref)}
                                 style={{ marginLeft: 4 }}
+                                disabled={!isLoaded}
                             >
                                 {isVisible ? <VisibilityOutlinedSvg /> : <VisibilityOffOutlinedSvg />}
                                 <span style={{ marginLeft: 4, fontSize: '0.9em' }}>{typeName}</span>

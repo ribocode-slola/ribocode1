@@ -20,7 +20,7 @@ type MolstarContainerProps = {
 };
 
 // MolstarContainer component manages the lifecycle of the Mol* plugin instance.
-const MolstarContainer = ({viewerKey, setViewer, onMouseDown, onReady }: MolstarContainerProps) => {
+const MolstarContainer = React.forwardRef(({viewerKey, setViewer, onMouseDown, onReady }: MolstarContainerProps, ref) => {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const pluginRef = useRef<PluginUIContext | null>(null);
     const [plugin, setPlugin] = useState<PluginUIContext | null>(null);
@@ -102,6 +102,13 @@ const MolstarContainer = ({viewerKey, setViewer, onMouseDown, onReady }: Molstar
             setViewer(plugin);
         }
     }, [plugin, setViewer]);
+    // Expose forceMolstarUIRefresh via ref (triggers a React re-render of the Molstar UI only)
+    React.useImperativeHandle(ref, () => ({
+        forceMolstarUIRefresh: () => {
+            setPlugin(p => p); // Triggers a re-render of the Molstar UI without breaking prototype
+        }
+    }), []);
+
     // Return the container and RibocodeViewer
     return (
         <div
@@ -119,7 +126,7 @@ const MolstarContainer = ({viewerKey, setViewer, onMouseDown, onReady }: Molstar
             />
         </div>
     );
-};
+});
 
 export default memo(
     MolstarContainer, 

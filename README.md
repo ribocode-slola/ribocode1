@@ -56,4 +56,4 @@ To get the PWA working on your repository GitHub Pages, the repository needs con
 
 It would be good to organise automated checks to manage contributions.
 
-As of [v0.4.3] there is a CHANGELOG.md which outlines changes.
+As of [v0.4.3] there is a [CHANGELOG](./CHANGELOG.md) which outlines changes.
