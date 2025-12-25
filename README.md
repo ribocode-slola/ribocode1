@@ -52,13 +52,8 @@ From the Ribocode root directory run:
 Ribocode project particiapnats are encouraged to get involved in development by providing feedback which can be done by raising issues. To contribute source code, please fork your own copy of the repository and submit pull requests against this. With your own repository you can serve out the gh-pages branch on GitHub pages to test the PWA using:
 ```npm run deploy```
 
-To get the PWA working on your repository GitHub Pages, these need to be configured to serve the `gh-pages` branch.
+To get the PWA working on your repository GitHub Pages, the repository needs configuring to serve the `gh-pages` branch.
 
-If you want help please reach out. 
-
-A Version 1 is tentatively scheduled for release in 2026. The plan is to organise automated checks to welcome contributions from the wider community in due course.
+It would be good to organise automated checks to manage contributions.
 
 As of [v0.4.3] there is a CHANGELOG.md which outlines changes.
-
-### Task List
-1. Load colours creates a 'spacefill' representation every time. It would be goodd for the user to be able to choose other representations and for each representation to have a hide/show visibility control.
