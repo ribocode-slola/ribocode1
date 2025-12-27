@@ -1,4 +1,6 @@
 /**
+ * RibocodeViewer component for displaying and managing molecular viewers.
+ * 
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
  *
  * @author Andy Turner <agdturner@gmail.com>
@@ -101,7 +103,7 @@ interface RibocodeViewerProps {
             console.log(`[RibocodeViewer ${viewerKey}] Viewer ready.`);
         }
     }, [viewerReady]);
-
+    // Render the component.
     return (
         <div className="ribocode-viewer">
             <div ref={containerRef} className="molstar-container"></div>

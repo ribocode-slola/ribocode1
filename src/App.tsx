@@ -22,7 +22,6 @@ import { StructureSelection } from 'molstar/lib/mol-model/structure';
 import { QueryContext } from 'molstar/lib/mol-model/structure/query/context';
 import { MolScriptBuilder } from 'molstar/lib/mol-script/language/builder';
 import { compile } from 'molstar/lib/mol-script/runtime/query/base';
-import { getChainIdsFromStructure } from './utils/Chain';
 import { AllowedRepresentationType } from './types/Representation';
 import { useMolstarViewer } from './hooks/useMolstarViewer';
 
@@ -496,7 +495,7 @@ const App: React.FC = () => {
         const structureObj = pluginA.managers.structure.hierarchy.current.structures.find(s => s.cell.transform.ref === structureRefAAlignedTo)?.cell.obj?.data;
         if (!structureObj) return;
         setChainIdsAlignedTo(
-            getChainIdsFromStructure(structureObj)
+            molstarA.getChainIds(structureRefAAlignedTo)
         );
     }, [viewerA.moleculeAlignedTo, structureRefAAlignedTo]);
 
@@ -508,7 +507,7 @@ const App: React.FC = () => {
         const structureObj = pluginB.managers.structure.hierarchy.current.structures.find(s => s.cell.transform.ref === structureRefBAligned)?.cell.obj?.data;
         if (!structureObj) return;
         setChainIdsAligned(
-            getChainIdsFromStructure(structureObj)
+            molstarB.getChainIds(structureRefBAligned)
         );
     }, [viewerB.moleculeAligned, structureRefBAligned]);
 
