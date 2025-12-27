@@ -1,11 +1,12 @@
 /**
+ * MoleculeRow component for displaying molecule controls and information.
+ * 
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
  *
  * @author Andy Turner <agdturner@gmail.com>
  */
 import React from 'react';
 import { VisibilityOutlinedSvg, VisibilityOffOutlinedSvg } from 'molstar/lib/mol-plugin-ui/controls/icons';
-import RepresentationVisibilityToggle from './RepresentationVisibilityToggle';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 import { PluginCommands } from 'molstar/lib/mol-plugin/commands';
 import { allowedRepresentationTypes } from '../types/Representation';
@@ -41,7 +42,6 @@ interface MoleculeRowProps {
  * A reusable row for molecule controls and info, including visibility and zoom.
  * @param label The label for the molecule.
  * @param plugin The Mol* PluginUIContext instance.
- * @param structureRef The structure reference for the molecule.
  * @param isVisible Whether the molecule is currently visible.
  * @param onToggleVisibility Function to toggle the molecule's visibility.
  * @param zoomLabel The label for the zoom button.
@@ -54,7 +54,6 @@ interface MoleculeRowProps {
 const MoleculeRow: React.FC<MoleculeRowProps> = ({
     label,
     plugin,
-    //structureRef,
     isVisible,
     onToggleVisibility,
     zoomLabel,
@@ -64,8 +63,6 @@ const MoleculeRow: React.FC<MoleculeRowProps> = ({
     forceUpdate,
     representationRefs = [],
 }) => {
-    // Debug: log representationRefs prop on each render
-    console.log('[MoleculeRow] representationRefs prop:', label, representationRefs);
     // Helper to get visibility state and type for a representation
     const getRepType = (ref: string): string | null => {
         if (!plugin) return null;
@@ -76,15 +73,14 @@ const MoleculeRow: React.FC<MoleculeRowProps> = ({
         }
         return null;
     };
-
+    // Check if a representation is visible.
     const isRepVisible = (ref: string) => {
         if (!plugin) return false;
         const cell = plugin.state?.data?.cells?.get(ref);
         // If isHidden is undefined or false, treat as visible
         return cell?.state?.isHidden !== true;
     };
-
-    // Toggle visibility for a representation
+    // Toggle visibility for a representation.
     const handleToggleRepVisibility = async (ref: string, retryCount = 0) => {
         if (!plugin) return;
         const cell = plugin.state?.data?.cells?.get(ref);
@@ -100,7 +96,7 @@ const MoleculeRow: React.FC<MoleculeRowProps> = ({
         plugin.canvas3d?.requestDraw?.();
         forceUpdate();
     };
-
+    // Render the component.
     return (
         <div className="molecule-row">
             <button
@@ -117,7 +113,6 @@ const MoleculeRow: React.FC<MoleculeRowProps> = ({
                         const cell = plugin?.state?.data?.cells?.get(ref);
                         const typeName = getRepType(ref);
                         const isVisible = isRepVisible(ref);
-                        console.log('[MoleculeRow] map:', { label, ref, typeName, isVisible, cell });
                         if (!typeName) return null;
                         return (
                             <button
@@ -125,6 +120,7 @@ const MoleculeRow: React.FC<MoleculeRowProps> = ({
                                 onClick={() => handleToggleRepVisibility(ref)}
                                 style={{ marginLeft: 4 }}
                                 disabled={!isLoaded}
+                                aria-label={`Toggle visibility for ${typeName} representation`}
                             >
                                 {isVisible ? <VisibilityOutlinedSvg /> : <VisibilityOffOutlinedSvg />}
                                 <span style={{ marginLeft: 4, fontSize: '0.9em' }}>{typeName}</span>

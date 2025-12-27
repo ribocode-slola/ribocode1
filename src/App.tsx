@@ -12,93 +12,49 @@ import MolstarContainer from './components/MolstarContainer';
 import { parseColorFileContent, getColourTheme, createChainColorTheme } from './utils/Colors';
 import { parseDictionaryFileContent } from './utils/Dictionary';
 import { toggleVisibility, ViewerKey, ViewerState } from './components/RibocodeViewer';
-//import { loadMoleculeToViewer } from './utils/data';
 import './App.css';
 import { loadMoleculeFileToViewer, Molecule, PresetResult } from 'molstar/lib/extensions/ribocode/structure';
 import { Asset } from 'molstar/lib/mol-util/assets';
 import { Color } from 'molstar/lib/mol-util/color';
-import { PluginCommands } from 'molstar/lib/mol-plugin/commands';
 import { StateTransforms } from 'molstar/lib/mol-plugin-state/transforms';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
-//import { StructureRepresentation3D } from 'molstar/lib/mol-plugin-state/transforms/representation';
-//import { PluginStateObject } from 'molstar/lib/mol-plugin-state/objects';
-//import { ObjectListControl } from 'molstar/lib/mol-plugin-ui/controls/parameters';
-//import { Overpaint } from 'molstar/lib/mol-theme/overpaint';
-import { Unit, Structure, StructureElement, StructureQuery, StructureSelection } from 'molstar/lib/mol-model/structure';
-//import { StructureSelectionQuery } from 'packages/molstar/src/mol-plugin-state/helpers/structure-selection-query';
+import { StructureSelection } from 'molstar/lib/mol-model/structure';
 import { QueryContext } from 'molstar/lib/mol-model/structure/query/context';
-//import { ElementIndex } from 'molstar/lib/mol-model/structure';
 import { MolScriptBuilder } from 'molstar/lib/mol-script/language/builder';
 import { compile } from 'molstar/lib/mol-script/runtime/query/base';
-import { VisibilityOutlinedSvg, VisibilityOffOutlinedSvg } from 'molstar/lib/mol-plugin-ui/controls/icons';
-import ChainSelectButton from './components/ChainSelectButton';
 import { getChainIdsFromStructure } from './utils/Chain';
-//import { Data } from 'molstar/lib/extensions/ribocode/colors';
-//import { set } from 'lodash';
-//import { AtomicHierarchy } from 'molstar/lib/mol-model/structure/model/properties/atomic';
-//import { RepresentationType } from 'molstar/lib/mol-repr/representation';
-import { allowedRepresentationTypes, AllowedRepresentationType } from './types/Representation';
+import { AllowedRepresentationType } from './types/Representation';
+import { useMolstarViewer } from './hooks/useMolstarViewer';
+
+// Constants for structure ref keys.
+export const s_AlignedTo: string = 'AlignedTo';
+export const s_Aligned: string = 'Aligned';
 
 /**
  * The main App component.
  * @returns The main App component.
  */
 const App: React.FC = () => {
-                // Refs for MolstarContainer UI refresh
-                const molstarARef = useRef(null);
-                const molstarBRef = useRef(null);
-            // Helper to refresh representation refs for a structure
-            function refreshRepresentationRefs(plugin: PluginUIContext | null, structureRef: string | null, setFn: (refs: string[]) => void) {
-                if (!plugin || !structureRef) return;
-                const allStructs = plugin.managers.structure.hierarchy.current.structures;
-                const struct = allStructs.find((s: any) => s.cell.transform.ref === structureRef);
-                let allRefs: string[] = [];
-                if (struct && struct.components && struct.components.length > 0) {
-                    for (const comp of struct.components) {
-                        for (const rep of comp.representations) {
-                            if (rep.cell?.transform?.ref) allRefs.push(rep.cell.transform.ref);
-                        }
-                    }
-                }
-                setFn(allRefs);
-            }
-        // State to track all representation refs for each molecule
-        const [representationRefsAAlignedTo, setRepresentationRefsAAlignedTo] = useState<string[]>([]);
-        const [representationRefsAAligned, setRepresentationRefsAAligned] = useState<string[]>([]);
-        const [representationRefsBAlignedTo, setRepresentationRefsBAlignedTo] = useState<string[]>([]);
-        const [representationRefsBAligned, setRepresentationRefsBAligned] = useState<string[]>([]);
-    console.log('App rendered');
 
-    // Diagnostic: Deep logging function for Mol* state and representation refs
-    function logMolstarStateDiagnostics(plugin: any, label: string = '') {
-        if (!plugin || !plugin.managers || !plugin.managers.structure) {
-            console.warn('Mol* plugin or structure manager missing');
-            return;
-        }
-        const hierarchy = plugin.managers.structure.hierarchy.current;
-        console.log(`==== MOLSTAR DIAGNOSTICS ${label} ====`);
-        console.log('plugin.managers.structure.hierarchy.current:', hierarchy);
-        if (hierarchy && hierarchy.structures) {
-            hierarchy.structures.forEach((s: any, i: number) => {
-                console.log(`Structure[${i}] ref:`, s.cell.transform.ref);
-                if (s.components && s.components.length > 0) {
-                    s.components.forEach((comp: any, j: number) => {
-                        console.log(`  Component[${j}]:`, comp);
-                        if (comp.representations && comp.representations.length > 0) {
-                            comp.representations.forEach((rep: any, k: number) => {
-                                console.log(`    Representation[${k}]:`, rep);
-                            });
-                        }
-                    });
-                }
-            });
-        }
-        // Also log the plugin.state.data.cells map for completeness
-        if (plugin.state && plugin.state.data && plugin.state.data.cells) {
-            console.log('plugin.state.data.cells:', plugin.state.data.cells);
-        }
-        console.log('==== END MOLSTAR DIAGNOSTICS ====');
-    }
+    // Create plugin refs and pass to both useMolstarViewer and MolstarContainer
+    const pluginRefA = useRef<PluginUIContext | null>(null);
+    const pluginRefB = useRef<PluginUIContext | null>(null);
+    const molstarA = useMolstarViewer(pluginRefA);
+    const molstarB = useMolstarViewer(pluginRefB);
+
+
+    // Initialize viewer states.
+    const viewerA: ViewerState = useViewerState('A');
+    const viewerB: ViewerState = useViewerState('B');
+    const setViewerAWrapper = useCallback((viewer: PluginUIContext) => {
+        viewerA.ref.current = viewer;
+    }, [viewerA]);
+    const setViewerBWrapper = useCallback((viewer: PluginUIContext) => {
+        viewerB.ref.current = viewer;
+    }, [viewerB]);
+    const [viewerAReady, setViewerAReady] = useState(false);
+    const [viewerBReady, setViewerBReady] = useState(false);
+    const [syncEnabled, setSyncEnabled] = useState(false);
 
     // Viewer state management
     // -----------------------
@@ -139,19 +95,6 @@ const App: React.FC = () => {
             viewerKey: viewerKey
         };
     }
-
-    // Initialize viewer states.
-    const viewerA: ViewerState = useViewerState('A');
-    const viewerB: ViewerState = useViewerState('B');
-    const setViewerAWrapper = useCallback((viewer: PluginUIContext) => {
-        viewerA.ref.current = viewer;
-    }, [viewerA]);
-    const setViewerBWrapper = useCallback((viewer: PluginUIContext) => {
-        viewerB.ref.current = viewer;
-    }, [viewerB]);
-    const [viewerAReady, setViewerAReady] = useState(false);
-    const [viewerBReady, setViewerBReady] = useState(false);
-    const [syncEnabled, setSyncEnabled] = useState(false);
 
     // Generic file input hook.
     function useFileInput<T>(
@@ -195,7 +138,7 @@ const App: React.FC = () => {
     const [selectedChainIdAlignedTo, setSelectedChainIdAlignedTo] = useState<string>('');
     const [chainIdsAligned, setChainIdsAligned] = useState<string[]>([]);
     const [selectedChainIdAligned, setSelectedChainIdAligned] = useState<string>('');
-    
+
     // Handle file changes for molecule loading.
     type FileChangeMode = 'alignedTo' | 'aligned';
 
@@ -231,11 +174,11 @@ const App: React.FC = () => {
                         presetResult: viewerAMoleculeAlignedTo.presetResult ?? "Unknown",
                         alignmentData: viewerAMoleculeAlignedTo.alignmentData
                     }));
-                    // Set structureRef for robust lookup
-                    if (pluginA.managers.structure.hierarchy.current.structures[0]) {
-                        setStructureRefAAlignedTo(pluginA.managers.structure.hierarchy.current.structures[0].cell.transform.ref);
-                        // Always refresh representation refs after molecule load
-                        refreshRepresentationRefs(pluginA, pluginA.managers.structure.hierarchy.current.structures[0].cell.transform.ref, setRepresentationRefsAAlignedTo);
+                    // Set structureRef for robust lookup and start robust polling
+                    const structureA = pluginA.managers.structure.hierarchy.current.structures[0];
+                    if (structureA) {
+                        const ref = structureA.cell.transform.ref;
+                        molstarA.setStructureRef(s_AlignedTo, ref);
                     }
                     viewerA.setIsMoleculeAlignedToLoaded(true);
                     viewerA.setIsMoleculeAlignedToVisible(true);
@@ -253,10 +196,10 @@ const App: React.FC = () => {
                         filename: viewerBMoleculeAlignedTo.filename ?? prev?.filename ?? "",
                         presetResult: viewerBMoleculeAlignedTo.presetResult ?? "Unknown",
                     }));
-                    if (pluginB.managers.structure.hierarchy.current.structures[0]) {
-                        setStructureRefBAlignedTo(pluginB.managers.structure.hierarchy.current.structures[0].cell.transform.ref);
-                        // Always refresh representation refs after molecule load
-                        refreshRepresentationRefs(pluginB, pluginB.managers.structure.hierarchy.current.structures[0].cell.transform.ref, setRepresentationRefsBAlignedTo);
+                    const structureB = pluginB.managers.structure.hierarchy.current.structures[0];
+                    if (structureB) {
+                        const ref = structureB.cell.transform.ref;
+                        molstarB.setStructureRef(s_AlignedTo, ref);
                     }
                     viewerB.setIsMoleculeAlignedToLoaded(true);
                     viewerB.setIsMoleculeAlignedToVisible(true);
@@ -281,10 +224,10 @@ const App: React.FC = () => {
                         filename: viewerAMoleculeAligned.filename ?? prev?.filename ?? "",
                         presetResult: viewerAMoleculeAligned.presetResult ?? "Unknown",
                     }));
-                    if (pluginA.managers.structure.hierarchy.current.structures[1]) {
-                        setStructureRefAAligned(pluginA.managers.structure.hierarchy.current.structures[1].cell.transform.ref);
-                        // Always refresh representation refs after molecule load
-                        refreshRepresentationRefs(pluginA, pluginA.managers.structure.hierarchy.current.structures[1].cell.transform.ref, setRepresentationRefsAAligned);
+                    const structureA = pluginA.managers.structure.hierarchy.current.structures[1];
+                    if (structureA) {
+                        const ref = structureA.cell.transform.ref;
+                        molstarA.setStructureRef(s_Aligned, ref);
                     }
                     viewerA.setIsMoleculeAlignedLoaded(true);
                     viewerA.setIsMoleculeAlignedVisible(true);
@@ -302,10 +245,10 @@ const App: React.FC = () => {
                         filename: viewerBMoleculeAligned.filename ?? prev?.filename ?? "",
                         presetResult: viewerBMoleculeAligned.presetResult ?? "Unknown",
                     }));
-                    if (pluginB.managers.structure.hierarchy.current.structures[1]) {
-                        setStructureRefBAligned(pluginB.managers.structure.hierarchy.current.structures[1].cell.transform.ref);
-                        // Always refresh representation refs after molecule load
-                        refreshRepresentationRefs(pluginB, pluginB.managers.structure.hierarchy.current.structures[1].cell.transform.ref, setRepresentationRefsBAligned);
+                    const structureB = pluginB.managers.structure.hierarchy.current.structures[1];
+                    if (structureB) {
+                        const ref = structureB.cell.transform.ref;
+                        molstarB.setStructureRef(s_Aligned, ref);
                     }
                     viewerB.setIsMoleculeAlignedLoaded(true);
                     viewerB.setIsMoleculeAlignedVisible(true);
@@ -380,16 +323,12 @@ const App: React.FC = () => {
     // Dummy state to force re-render after toggling representation visibility
     const [, setForceUpdate] = useState(0);
     const forceUpdate = () => setForceUpdate(f => f + 1);
-    // Track the most recently added representation ref for each viewer
-    // Track the most recently added representation ref for each viewer
-    const [lastAddedRepresentationRefA, setLastAddedRepresentationRefA] = useState<string | null>(null);
-    const [lastAddedRepresentationRefB, setLastAddedRepresentationRefB] = useState<string | null>(null);
-    // Track the structureRef for each molecule for robust lookup (avoid index issues)
-    const [structureRefAAlignedTo, setStructureRefAAlignedTo] = useState<string | null>(null);
-    const [structureRefAAligned, setStructureRefAAligned] = useState<string | null>(null);
-    const [structureRefBAlignedTo, setStructureRefBAlignedTo] = useState<string | null>(null);
-    const [structureRefBAligned, setStructureRefBAligned] = useState<string | null>(null);
-
+    // Get structure refs for both viewers.
+    const structureRefAAlignedTo = molstarA.structureRefs[s_AlignedTo];
+    const structureRefAAligned = molstarA.structureRefs[s_Aligned];
+    const structureRefBAlignedTo = molstarB.structureRefs[s_AlignedTo];
+    const structureRefBAligned = molstarB.structureRefs[s_Aligned];
+    
     /**
      * Update colorTheme for a molecule.
      * @param viewer The viewer state.
@@ -399,283 +338,21 @@ const App: React.FC = () => {
      * @param structureRef The structure ref string for robust lookup.
      * @param setLastAddedRepresentationRef Callback to track last added rep.
      */
+    // Use the hook's addRepresentation API for adding/updating representations
     async function updateMoleculeColors(
         viewer: ViewerState,
         molecule: Molecule,
         colorTheme: any,
         type: AllowedRepresentationType,
         structureRef: string | null,
-        setLastAddedRepresentationRef: (ref: string | null) => void
+        key: string
     ) {
-        const plugin = viewer.ref.current;
-        if (!plugin) return;
-        const pr: PresetResult = molecule.presetResult;
-        if (!pr) {
-            console.warn('No presetResult found in moleculeAlignedTo.');
-            return;
-        }
-        console.log('presetResult:', pr);
-        // Object { model: {…}, modelProperties: {…}, unitcell: undefined, structure: {…}, structureProperties: {…}, representation: {…} }
-        const model = (pr as { model: any }).model;
-        if (!model) {
-            console.warn('No model found in presetResult.');
-            return;
-        }
-        console.log('model:', model);
-        const modelProperties = (pr as { modelProperties: any }).modelProperties;
-        if (!modelProperties) {
-            console.warn('No modelProperties found in presetResult.');
-            return;
-        }
-        console.log('modelProperties:', modelProperties);
-        const structure = (pr as { structure: any }).structure;
-        if (!structure) {
-            console.warn('No structure found in presetResult.');
-            return;
-        }
-        console.log('structure:', structure);
-        const structureProperties = (pr as { structureProperties: any }).structureProperties;
-        if (!structureProperties) {
-            console.warn('No structureProperties found in presetResult.');
-            return;
-        }
-        console.log('structureProperties:', structureProperties);
-        // Get the representation.
-        const representation = (pr as { representation: any }).representation;
-        if (!representation) {
-            console.warn('No representation found in presetResult.');
-            return;
-        }
-        // console.log('representation:', representation);
-        // const components = representation.components;
-        // console.log('components:', components);
-        const representations = representation.representations;
-        console.log('representations:', representations);
-        // Update the representation using the plugin state API
-        const builders = plugin.builders;
-        if (!builders) {
-            console.warn('No builders found in plugin.');
-            return;
-        }
-        console.log('builders:', builders); 
-        const structureBuilder = builders.structure;
-        if (!structureBuilder) {
-            console.warn('No structure found in builders.');
-            return;
-        }
-        console.log('builders.structure:', structureBuilder);
-        const representationBuilder = structureBuilder.representation;
-        if (!representationBuilder) {
-            console.warn('No representation found in structure builders.');
-            return;
-        }
-        console.log('builders.structure.representation:', representationBuilder);
-        // Get the plugin state root
-        const psd = plugin.state.data;
-        console.log('plugin.state.data:', psd);
-        const root = psd.root;
-        if (!root) {
-            console.warn('No root found in plugin.state.data.');
-            return;
-        }
-        console.log('plugin.state.data.root:', root);
-        const structures = plugin.managers.structure.hierarchy.current.structures;
-        if (!structures || structures.length === 0) {
-            console.warn('No structures found in hierarchy.');
-            return;
-        }
-        // Find the structure by ref for robust lookup (avoid index issues)
-        const structureCell = structures.find(s => s.cell.transform.ref === structureRef)?.cell;
-        if (!structureCell) {
-            console.warn('No structure cell found in hierarchy for ref:', structureRef);
-            return;
-        }
-        console.log('structureCell:', structureCell);
-        // Only find the Polymer/component to add the new representation
-        const pluginStructs = plugin.managers.structure.hierarchy.current.structures;
-        const struct = pluginStructs.find((s: any) => s.cell.transform.ref === structureRef);
-        // const structureRefObj = { ref: structureCell.transform.ref }; // Wrap the ref string
-        // console.log('structureRefObj:', structureRefObj);
-        // Build the current state to get the structure.
-        const builder = psd.build();
-        // Build new representation with updated color theme.
-        // Pass the actual StateObjectRef (structureCell.transform) instead of string ref
-        // Find the correct component ref (e.g., polymer component) to attach the new representation
-        // Always get the component ref from the Mol* hierarchy for reliability
-        // Add the new representation to the state (with colorTheme)
-        // Deep debug: log all components and their representations before adding
-        if (struct && struct.components && struct.components.length > 0) {
-            console.log('[DEBUG] Components BEFORE add:');
-            struct.components.forEach((comp: any, idx: number) => {
-                console.log(`  Component[${idx}] key:`, comp.key, 'ref:', comp.cell.transform.ref);
-                if (Array.isArray(comp.representations)) {
-                    comp.representations.forEach((rep: any, rIdx: number) => {
-                        console.log(`    Rep[${rIdx}]: type=${rep.cell?.params?.type?.name}, colorTheme=${rep.cell?.params?.colorTheme?.name}, ref=${rep.cell?.transform?.ref}`);
-                    });
-                }
-            });
-        }
-        // Find the first Polymer component (key starts with 'polymer')
-        let polymerComponentRef: string | null = null;
-        let foundPolymerComp: any = null;
-        if (struct && struct.components && struct.components.length > 0) {
-            foundPolymerComp = struct.components.find((comp: any) => typeof comp.key === 'string' && comp.key.includes('polymer'));
-            if (foundPolymerComp) polymerComponentRef = foundPolymerComp.cell.transform.ref;
-        }
-        if (!polymerComponentRef) {
-            if (struct && struct.components) {
-                console.warn('Failed to find Polymer component for new representation. Available keys:', struct.components.map((comp: any) => comp.key));
-            } else {
-                console.warn('Failed to find Polymer component for new representation. Structure or components are undefined.');
-            }
-            return;
-        }
-        console.log('[DEBUG] Adding new representation to Polymer component ref:', polymerComponentRef);
-        // Always add a new representation to the Polymer/component (allow multiple of the same type)
-        console.log('[DEBUG] ADDING representation:', {
-            to: polymerComponentRef,
-            type,
-            colorTheme: colorTheme.name
-        });
-        await psd.build()
-            .to(polymerComponentRef)
-            .apply(
-                StateTransforms.Representation.StructureRepresentation3D,
-                {
-                    type: { name: type, params: {} },
-                    colorTheme: { name: colorTheme.name, params: {} }
-                }
-            )
-            .commit();
-        console.log('New representation added to Polymer component.');
-        // Deep debug: log all components and their representations after adding
-        if (struct && struct.components && struct.components.length > 0) {
-            console.log('[DEBUG] Components AFTER add:');
-            struct.components.forEach((comp: any, idx: number) => {
-                console.log(`  Component[${idx}] key:`, comp.key, 'ref:', comp.cell.transform.ref);
-                if (Array.isArray(comp.representations)) {
-                    comp.representations.forEach((rep: any, rIdx: number) => {
-                        console.log(`    Rep[${rIdx}]: type=${rep.cell?.params?.type?.name}, colorTheme=${rep.cell?.params?.colorTheme?.name}, ref=${rep.cell?.transform?.ref}`);
-                    });
-                }
-            });
-        }
-        // Force refresh of representation refs and UI update
-        setTimeout(() => {
-            refreshRepresentationRefs(plugin, structureRef, (refs: string[]) => {
-                setLastAddedRepresentationRef(refs.length > 0 ? refs[refs.length - 1] : null);
-                forceUpdate();
-            });
-        }, 200);
-        // ...existing code...
-        forceUpdate();
-        // After Mol* state updates, update all representationRefs for this molecule (with retry logic)
-        // Always force a full refresh of representationRefs after adding a new representation
-        const refreshRefs = (structureRefToCheck: string | null, setFn: (refs: string[]) => void, setLastRef?: (ref: string | null) => void) => {
-            if (!structureRefToCheck) return;
-            logMolstarStateDiagnostics(plugin, `refreshRefs for ${structureRefToCheck}`);
-            const allStructs = plugin.managers.structure.hierarchy.current.structures;
-            const struct = allStructs.find((s: any) => s.cell.transform.ref === structureRefToCheck);
-            let allRefs: string[] = [];
-            if (struct && struct.components && struct.components.length > 0) {
-                for (const comp of struct.components) {
-                    for (const rep of comp.representations) {
-                        if (rep.cell?.transform?.ref) allRefs.push(rep.cell.transform.ref);
-                    }
-                }
-            }
-            setFn(allRefs);
-            if (setLastRef) {
-                setLastRef(allRefs.length > 0 ? allRefs[allRefs.length - 1] : null);
-            }
-        };
-        // Retry logic to ensure Mol* state is updated before refreshing representation refs
-        const maxRetries = 10;
-        let retryCount = 0;
-        const prevRefsAAlignedTo = [...representationRefsAAlignedTo];
-        const prevRefsAAligned = [...representationRefsAAligned];
-        const prevRefsBAlignedTo = [...representationRefsBAlignedTo];
-        const prevRefsBAligned = [...representationRefsBAligned];
-        function retryRefresh() {
-            if (!plugin) return;
-            let prevRefs: string[] = [];
-            let setFn: (refs: string[]) => void = () => {};
-            let refToCheck: string | null = null;
-            if (structureRef === structureRefAAlignedTo) {
-                prevRefs = prevRefsAAlignedTo;
-                setFn = setRepresentationRefsAAlignedTo;
-                refToCheck = structureRefAAlignedTo;
-            } else if (structureRef === structureRefAAligned) {
-                prevRefs = prevRefsAAligned;
-                setFn = setRepresentationRefsAAligned;
-                refToCheck = structureRefAAligned;
-            } else if (structureRef === structureRefBAlignedTo) {
-                prevRefs = prevRefsBAlignedTo;
-                setFn = setRepresentationRefsBAlignedTo;
-                refToCheck = structureRefBAlignedTo;
-            } else if (structureRef === structureRefBAligned) {
-                prevRefs = prevRefsBAligned;
-                setFn = setRepresentationRefsBAligned;
-                refToCheck = structureRefBAligned;
-            }
-            if (!refToCheck) return;
-            const pluginStructs = plugin.managers.structure.hierarchy.current.structures;
-            const struct = pluginStructs.find((s: any) => s.cell.transform.ref === refToCheck);
-            let allRefs: string[] = [];
-            if (struct && struct.components && struct.components.length > 0) {
-                for (const comp of struct.components) {
-                    for (const rep of comp.representations) {
-                        if (rep.cell?.transform?.ref) allRefs.push(rep.cell.transform.ref);
-                    }
-                }
-            }
-            if (allRefs.length > prevRefs.length) {
-                setFn(allRefs);
-                console.log('[DEBUG] Updated representationRefs:', allRefs, 'for ref', refToCheck);
-                forceUpdate();
-                setTimeout(() => {
-                    console.log('[DEBUG] Post-forceUpdate representationRefsAAlignedTo:', representationRefsAAlignedTo);
-                    console.log('[DEBUG] Post-forceUpdate representationRefsAAligned:', representationRefsAAligned);
-                    console.log('[DEBUG] Post-forceUpdate representationRefsBAlignedTo:', representationRefsBAlignedTo);
-                    console.log('[DEBUG] Post-forceUpdate representationRefsBAligned:', representationRefsBAligned);
-                }, 200);
-            } else if (retryCount < maxRetries) {
-                retryCount++;
-                setTimeout(retryRefresh, 150);
-            } else {
-                setFn(allRefs); // Set whatever is there after max retries
-                console.log('[DEBUG] Updated representationRefs (max retries):', allRefs, 'for ref', refToCheck);
-                forceUpdate();
-                setTimeout(() => {
-                    console.log('[DEBUG] Post-forceUpdate representationRefsAAlignedTo:', representationRefsAAlignedTo);
-                    console.log('[DEBUG] Post-forceUpdate representationRefsAAligned:', representationRefsAAligned);
-                    console.log('[DEBUG] Post-forceUpdate representationRefsBAlignedTo:', representationRefsBAlignedTo);
-                    console.log('[DEBUG] Post-forceUpdate representationRefsBAligned:', representationRefsBAligned);
-                }, 200);
-            }
-        }
-        retryRefresh();
-        // Get plugin managers.
-        const managers = plugin.managers;
-        if (!managers) {
-            console.warn('No managers found in plugin.');
-            return;
-        }
-        console.log('managers:', managers);
-        // Get the structure component.
-        const structureComponent = managers.structure.hierarchy.current.structures[0]?.components[0];
-        if (!structureComponent) {
-            console.warn('No structure component found to update representation.');
-            return;
-        }
-        console.log('structureComponent:', structureComponent);
-        // Get existing representations.
-        const reprs = structureComponent.representations;
-        if (!reprs || reprs.length === 0) {
-            console.warn('No representations found in structure component.');
-            return;
-        }
-        console.log('Representations:', reprs);
+        if (!structureRef) return;
+        let molstar;
+        if (structureRef === structureRefAAlignedTo || structureRef === structureRefAAligned) molstar = molstarA;
+        else if (structureRef === structureRefBAlignedTo || structureRef === structureRefBAligned) molstar = molstarB;
+        else return;
+        await molstar.addRepresentation(key, structureRef, type, colorTheme);
     }
 
     const themeNameAlignedTo = 'alignedTo-custom-chain-colors';
@@ -714,86 +391,6 @@ const App: React.FC = () => {
         console.log(`Registered ${themeName} theme.`);
     }
 
-    /**
-     * Updates theme used to style a molecule.
-     * @param molA The molecule in viewer A.
-     * @param molB The molecule in viewer B.
-     * @param themeName The name of the theme.
-     * @param type The representation type. This can be 'spacefill', 'cartoon',
-     * or 'ball-and-stick'.
-     * @param colors The array of color mapping objects.
-     * @param structureIndex The index of the structure to be updated in the 
-     * viewer hierarchy. This is hardcoded to 0 or 1 depending on whether the
-     * molecule is alignedTo or aligned. If the user reorders the structures,
-     * this could cause problems. There may be a better way to ascertain the 
-     * structure index for the molecule in each viewer which may change.
-     */
-    function updateColorsForViewers(
-        molA: Molecule | undefined,
-        molB: Molecule | undefined,
-        themeName: string,
-        type: AllowedRepresentationType,
-        colors: Array<Record<string, string>>,
-        structureIndex: number,
-    ) {
-        const ct = getColourTheme(themeName, colors);
-        // Build chain color map:
-        const themeChainColorMap = new Map<string, Color>();
-        colors.forEach(row => {
-            if (row.pdb_chain && row.color) {
-                try {
-                    themeChainColorMap.set(row.pdb_chain, Color.fromHexStyle(row.color));
-                } catch {
-                    console.warn(`Invalid color: ${row.color}`);
-                }
-            }
-        });
-        console.log('themeChainColorMap:', themeChainColorMap);
-        chainColorMaps.set(themeName, themeChainColorMap);
-        // // Update appropriate chain color map state:
-        // if (themeName === themeNameAlignedTo) {
-        //     setChainAlignedToColorMap(themeChainColorMap);
-        //     setChainIdsAlignedTo(new Set(themeChainColorMap.keys()));
-        // } else if (themeName === themeNameAligned) {
-        //     setChainAlignedColorMap(themeChainColorMap);
-        //     setChainIdsAligned(new Set(themeChainColorMap.keys()));
-        // } else {
-        //     console.warn(`Unknown theme name: ${themeName}`);
-        //     return;
-        // }
-        // Register custom theme if needed:
-        registerThemeIfNeeded(
-            viewerA.ref.current!,
-            themeName,
-            //chainAlignedToColorMap,
-            //chainAlignedColorMap
-        );
-        registerThemeIfNeeded(
-            viewerB.ref.current!,
-            themeName,
-            //chainAlignedToColorMap,
-            //chainAlignedColorMap
-        );
-        console.log('Registered theme:', themeName);
-        // Update molecule colors in both viewers:
-        // Only update if molecule and structureRef are present for each viewer
-        if (molA && structureIndex === 0 && structureRefAAlignedTo && colors.length) {
-            updateMoleculeColors(viewerA, molA, ct, type, structureRefAAlignedTo, setLastAddedRepresentationRefA);
-        }
-        if (molA && structureIndex === 1 && structureRefAAligned && colors.length) {
-            updateMoleculeColors(viewerA, molA, ct, type, structureRefAAligned, setLastAddedRepresentationRefA);
-        }
-        if (molB && structureIndex === 0 && structureRefBAlignedTo && colors.length) {
-            updateMoleculeColors(viewerB, molB, ct, type, structureRefBAlignedTo, setLastAddedRepresentationRefB);
-        }
-        if (molB && structureIndex === 1 && structureRefBAligned && colors.length) {
-            updateMoleculeColors(viewerB, molB, ct, type, structureRefBAligned, setLastAddedRepresentationRefB);
-        }
-
-    // End of updateColorsForViewers
-    }
-
-    
     const [representationTypeAlignedTo, setRepresentationTypeAlignedTo] = useState<AllowedRepresentationType>('spacefill');
     const [representationTypeAligned, setRepresentationTypeAligned] = useState<AllowedRepresentationType>('spacefill');
 
@@ -829,8 +426,8 @@ const App: React.FC = () => {
                     { name: themeNameAlignedTo, params: {} },
                     representationTypeAlignedTo,
                     structureRefAAlignedTo,
-                    setLastAddedRepresentationRefA
-                );
+                    s_AlignedTo
+                ).then(forceUpdate);
             }
             if (viewerB.moleculeAlignedTo && structureRefBAlignedTo) {
                 updateMoleculeColors(
@@ -839,8 +436,8 @@ const App: React.FC = () => {
                     { name: themeNameAlignedTo, params: {} },
                     representationTypeAlignedTo,
                     structureRefBAlignedTo,
-                    setLastAddedRepresentationRefB
-                );
+                    s_AlignedTo
+                ).then(forceUpdate);
             }
         }
     }, [colorsAlignedToFile.data, viewerA.moleculeAlignedTo, viewerB.moleculeAlignedTo, representationTypeAlignedTo, structureRefAAlignedTo, structureRefBAlignedTo]);
@@ -875,8 +472,8 @@ const App: React.FC = () => {
                     { name: themeNameAligned, params: {} },
                     representationTypeAligned,
                     structureRefAAligned,
-                    setLastAddedRepresentationRefA
-                );
+                    s_Aligned
+                ).then(forceUpdate);
             }
             if (viewerB.moleculeAligned && structureRefBAligned) {
                 updateMoleculeColors(
@@ -885,8 +482,8 @@ const App: React.FC = () => {
                     { name: themeNameAligned, params: {} },
                     representationTypeAligned,
                     structureRefBAligned,
-                    setLastAddedRepresentationRefB
-                );
+                    s_Aligned
+                ).then(forceUpdate);
             }
         }
     }, [colorsAlignedFile.data, viewerA.moleculeAligned, viewerB.moleculeAligned, representationTypeAligned, structureRefAAligned, structureRefBAligned]);
@@ -945,7 +542,7 @@ const App: React.FC = () => {
                 const loci = StructureSelection.toLociWithSourceUnits(selection);
                 // Zoom
                 pluginA.managers.camera.focusLoci(loci);
-                if (syncEnabled){
+                if (syncEnabled) {
                     const pluginB = viewerB.ref.current;
                     if (!pluginB) return;
                     pluginB.managers.camera.focusLoci(loci);
@@ -990,7 +587,7 @@ const App: React.FC = () => {
                 const loci = StructureSelection.toLociWithSourceUnits(selection);
 
                 pluginB.managers.camera.focusLoci(loci);
-                if (syncEnabled){
+                if (syncEnabled) {
                     const pluginA = viewerA.ref.current;
                     if (!pluginA) return;
                     pluginA.managers.camera.focusLoci(loci);
@@ -1002,12 +599,12 @@ const App: React.FC = () => {
     // Create zoomB handlers.
     const zoomBAlignedTo = createZoomB(0, selectedChainIdAlignedTo);
     const zoomBAligned = createZoomB(1, selectedChainIdAligned);
-    
+
     // Return the main app component.
     return (
         <SyncProvider>
             <div className="App">
-                <h1 className="app-title">RiboCode Mol* Viewer 0.5.0 (please see <a href="https://github.com/ribocode-slola/ribocode1/?tab=readme-ov-file#ribocode" target="_blank">README</a> for information).</h1>
+                <h1 className="app-title">RiboCode Mol* Viewer 0.5.1 (please see <a href="https://github.com/ribocode-slola/ribocode1/?tab=readme-ov-file#ribocode" target="_blank">README</a> for information).</h1>
                 <LoadDataRow
                     viewerTitle={viewerA.moleculeAlignedTo
                         ? `Molecule aligned to: ${viewerA.moleculeAlignedTo.name || viewerA.moleculeAlignedTo.filename}`
@@ -1093,7 +690,6 @@ const App: React.FC = () => {
                         <MoleculeRow
                             label={viewerA.moleculeAlignedTo?.label ?? 'Molecule Aligned To'}
                             plugin={viewerA.ref.current}
-                            //structureRef={structureRefAAlignedTo}
                             isVisible={viewerA.isMoleculeAlignedToVisible}
                             onToggleVisibility={toggleViewerAAlignedTo.handleButtonClick}
                             zoomLabel={selectedChainIdAlignedTo}
@@ -1101,12 +697,11 @@ const App: React.FC = () => {
                             zoomDisabled={!selectedChainIdAlignedTo}
                             isLoaded={viewerA.isMoleculeAlignedToLoaded}
                             forceUpdate={forceUpdate}
-                            representationRefs={representationRefsAAlignedTo}
+                            representationRefs={molstarA.representationRefs[s_AlignedTo] || []}
                         />
                         <MoleculeRow
                             label={viewerA.moleculeAligned?.label ?? 'Molecule Aligned'}
                             plugin={viewerA.ref.current}
-                            //structureRef={structureRefAAligned}
                             isVisible={viewerA.isMoleculeAlignedVisible}
                             onToggleVisibility={toggleViewerAAligned.handleButtonClick}
                             zoomLabel={selectedChainIdAligned}
@@ -1114,10 +709,10 @@ const App: React.FC = () => {
                             zoomDisabled={!selectedChainIdAligned}
                             isLoaded={viewerA.isMoleculeAlignedLoaded}
                             forceUpdate={forceUpdate}
-                            representationRefs={representationRefsAAligned}
+                            representationRefs={molstarA.representationRefs[s_Aligned] || []}
                         />
                         <MolstarContainer
-                            ref={molstarARef}
+                            ref={pluginRefA}
                             viewerKey={viewerA.viewerKey}
                             setViewer={setViewerAWrapper}
                             onMouseDown={() => setActiveViewer(viewerA.viewerKey)}
@@ -1128,7 +723,6 @@ const App: React.FC = () => {
                         <MoleculeRow
                             label={viewerB.moleculeAlignedTo?.label ?? 'Molecule Aligned To'}
                             plugin={viewerB.ref.current}
-                            //structureRef={structureRefBAlignedTo}
                             isVisible={viewerB.isMoleculeAlignedToVisible}
                             onToggleVisibility={toggleViewerBAlignedTo.handleButtonClick}
                             zoomLabel={selectedChainIdAlignedTo}
@@ -1136,12 +730,11 @@ const App: React.FC = () => {
                             zoomDisabled={!selectedChainIdAlignedTo}
                             isLoaded={viewerB.isMoleculeAlignedToLoaded}
                             forceUpdate={forceUpdate}
-                            representationRefs={representationRefsBAlignedTo}
+                            representationRefs={molstarB.representationRefs[s_AlignedTo] || []}
                         />
                         <MoleculeRow
                             label={viewerB.moleculeAligned?.label ?? 'Molecule Aligned'}
                             plugin={viewerB.ref.current}
-                            //structureRef={structureRefBAligned}
                             isVisible={viewerB.isMoleculeAlignedVisible}
                             onToggleVisibility={toggleViewerBAligned.handleButtonClick}
                             zoomLabel={selectedChainIdAligned}
@@ -1149,10 +742,10 @@ const App: React.FC = () => {
                             zoomDisabled={!selectedChainIdAligned}
                             isLoaded={viewerB.isMoleculeAlignedLoaded}
                             forceUpdate={forceUpdate}
-                            representationRefs={representationRefsBAligned}
+                            representationRefs={molstarB.representationRefs[s_Aligned] || []}
                         />
                         <MolstarContainer
-                            ref={molstarBRef}
+                            ref={pluginRefB}
                             viewerKey={viewerB.viewerKey}
                             setViewer={setViewerBWrapper}
                             onMouseDown={() => setActiveViewer(viewerB.viewerKey)}
