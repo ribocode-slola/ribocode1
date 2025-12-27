@@ -13,6 +13,7 @@ import { s_AlignedTo, s_Aligned} from '../App';
 import { AllowedRepresentationType } from '../types/Representation';
 import { StateTransforms } from 'molstar/lib/mol-plugin-state/transforms';
 import { StructureComponentRef } from 'molstar/lib/mol-plugin-state/manager/structure/hierarchy-state';
+import { getChainIdsFromStructure } from '../utils/Chain';
 
 /**
  * State and helper functions for managing a Mol* viewer instance.
@@ -40,6 +41,7 @@ export interface MolstarViewerState {
         type: AllowedRepresentationType,
         colorTheme: { name: string; params?: Record<string, unknown> }
     ) => Promise<void>;
+    getChainIds: (structureRef: string) => string[];
 }
 
 /**
@@ -47,7 +49,6 @@ export interface MolstarViewerState {
  * @returns An object containing the Mol* viewer state and helper functions.
  */
 export function useMolstarViewer(pluginRef: React.RefObject<PluginUIContext | null>): MolstarViewerState {
-
 
     // --- HOOKS: All hooks must be at the top level ---
 
@@ -175,7 +176,6 @@ export function useMolstarViewer(pluginRef: React.RefObject<PluginUIContext | nu
         [pluginRef, representationRefs, setRepresentationRefs]
     );
     
-
     // --- waitForPluginReady removed (unused) ---
 
     /**
@@ -249,6 +249,19 @@ export function useMolstarViewer(pluginRef: React.RefObject<PluginUIContext | nu
         // Only run when structureRefs or pluginRef changes
     }, [structureRefs, pluginRef, refreshRepresentationRefs]);
 
+    /**
+     * Extracts chain IDs from a structure ref.
+     * @param structureRef The structure reference string.
+     * @returns Array of chain IDs, or empty array if not found.
+     */
+    function getChainIds(structureRef: string): string[] {
+        if (!pluginRef.current) return [];
+        const plugin = pluginRef.current;
+        const structureObj = plugin.managers.structure.hierarchy.current.structures.find(s => s.cell.transform.ref === structureRef)?.cell.obj?.data;
+        if (!structureObj) return [];
+        return getChainIdsFromStructure(structureObj);
+    }
+
     // Add more state and logic as needed (e.g., color theme registration)
 
     // Expose all state and helper functions needed by consuming components.
@@ -261,6 +274,7 @@ export function useMolstarViewer(pluginRef: React.RefObject<PluginUIContext | nu
         lastAddedRepresentationRef,
         setLastAddedRepresentationRef,
         refreshRepresentationRefs,
-        addRepresentation
+        addRepresentation,
+        getChainIds
     };
 }
