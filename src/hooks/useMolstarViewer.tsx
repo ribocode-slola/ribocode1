@@ -132,15 +132,19 @@ export function useMolstarViewer(pluginRef: React.RefObject<PluginUIContext | nu
             const structs = plugin.managers.structure.hierarchy.current.structures;
             const struct = structs.find((s: { cell: { transform: { ref: string } } }) => s.cell.transform.ref === structureRef);
             if (!struct) return;
-            let polymerComponentRef: string | null = null;
+            let targetComponentRef: string | null = null;
             let foundPolymerComp;
             if (Array.isArray(struct.components) && struct.components.length > 0) {
                 foundPolymerComp = struct.components.find((comp: StructureComponentRef) => typeof comp.key === 'string' && comp.key.includes('polymer'));
-                if (foundPolymerComp) polymerComponentRef = foundPolymerComp.cell.transform.ref;
+                if (foundPolymerComp) targetComponentRef = foundPolymerComp.cell.transform.ref;
+                else targetComponentRef = struct.components[0].cell.transform.ref;
+            } else {
+                // Fallback: use the root structure ref
+                targetComponentRef = structureRef;
             }
-            if (!polymerComponentRef) return;
+            if (!targetComponentRef) return;
             await psd.build()
-                .to(polymerComponentRef)
+                .to(targetComponentRef)
                 .apply(
                     StateTransforms.Representation.StructureRepresentation3D,
                     {

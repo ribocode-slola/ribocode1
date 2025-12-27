@@ -5,18 +5,18 @@
  */
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import MoleculeRow from './components/MoleculeRow';
+import SelectButton from './components/SelectButton';
 import LoadDataRow from './components/LoadDataRow';
 import { SyncProvider } from './SyncContext';
 import SyncButton from './components/SyncButton';
 import MolstarContainer from './components/MolstarContainer';
-import { parseColorFileContent, getColourTheme, createChainColorTheme } from './utils/Colors';
+import { parseColorFileContent, createChainColorTheme } from './utils/Colors';
 import { parseDictionaryFileContent } from './utils/Dictionary';
 import { toggleVisibility, ViewerKey, ViewerState } from './components/RibocodeViewer';
 import './App.css';
-import { loadMoleculeFileToViewer, Molecule, PresetResult } from 'molstar/lib/extensions/ribocode/structure';
+import { loadMoleculeFileToViewer, Molecule } from 'molstar/lib/extensions/ribocode/structure';
 import { Asset } from 'molstar/lib/mol-util/assets';
 import { Color } from 'molstar/lib/mol-util/color';
-import { StateTransforms } from 'molstar/lib/mol-plugin-state/transforms';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 import { StructureSelection } from 'molstar/lib/mol-model/structure';
 import { QueryContext } from 'molstar/lib/mol-model/structure/query/context';
@@ -417,27 +417,7 @@ const App: React.FC = () => {
             if (viewerB.ref.current) {
                 registerThemeIfNeeded(viewerB.ref.current, themeNameAlignedTo);
             }
-            // Update only the alignedTo molecules for both viewers using their refs
-            if (viewerA.moleculeAlignedTo && structureRefAAlignedTo) {
-                updateMoleculeColors(
-                    viewerA,
-                    viewerA.moleculeAlignedTo,
-                    { name: themeNameAlignedTo, params: {} },
-                    representationTypeAlignedTo,
-                    structureRefAAlignedTo,
-                    s_AlignedTo
-                ).then(forceUpdate);
-            }
-            if (viewerB.moleculeAlignedTo && structureRefBAlignedTo) {
-                updateMoleculeColors(
-                    viewerB,
-                    viewerB.moleculeAlignedTo,
-                    { name: themeNameAlignedTo, params: {} },
-                    representationTypeAlignedTo,
-                    structureRefBAlignedTo,
-                    s_AlignedTo
-                ).then(forceUpdate);
-            }
+            // Do not update representations here; only register the theme and set color map
         }
     }, [colorsAlignedToFile.data, viewerA.moleculeAlignedTo, viewerB.moleculeAlignedTo, representationTypeAlignedTo, structureRefAAlignedTo, structureRefBAlignedTo]);
     // Aligned:
@@ -463,27 +443,7 @@ const App: React.FC = () => {
             if (viewerB.ref.current) {
                 registerThemeIfNeeded(viewerB.ref.current, themeNameAligned);
             }
-            // Update only the aligned molecules for both viewers using their refs
-            if (viewerA.moleculeAligned && structureRefAAligned) {
-                updateMoleculeColors(
-                    viewerA,
-                    viewerA.moleculeAligned,
-                    { name: themeNameAligned, params: {} },
-                    representationTypeAligned,
-                    structureRefAAligned,
-                    s_Aligned
-                ).then(forceUpdate);
-            }
-            if (viewerB.moleculeAligned && structureRefBAligned) {
-                updateMoleculeColors(
-                    viewerB,
-                    viewerB.moleculeAligned,
-                    { name: themeNameAligned, params: {} },
-                    representationTypeAligned,
-                    structureRefBAligned,
-                    s_Aligned
-                ).then(forceUpdate);
-            }
+            // Do not update representations here; only register the theme and set color map
         }
     }, [colorsAlignedFile.data, viewerA.moleculeAligned, viewerB.moleculeAligned, representationTypeAligned, structureRefAAligned, structureRefBAligned]);
 
@@ -617,8 +577,49 @@ const App: React.FC = () => {
                     representationType={representationTypeAlignedTo}
                     onRepresentationTypeChange={setRepresentationTypeAlignedTo}
                     representationTypeDisabled={!viewerA.isMoleculeAlignedToLoaded}
+                    representationTypeSelector={
+                        <SelectButton
+                            label="Select Representation"
+                            options={[
+                                "spacefill", "cartoon", "ball-and-stick", "gaussian-surface",
+                                "molecular-surface", "putty", "point", "ellipsoid", "carbohydrate",
+                                "backbone", "label", "plane", "gaussian-volume", "line", "orientation"
+                            ]}
+                            selected={representationTypeAlignedTo}
+                            onSelect={option => setRepresentationTypeAlignedTo(option as AllowedRepresentationType)}
+                            disabled={!viewerA.isMoleculeAlignedToLoaded}
+                        />
+                    }
                     onAddColorsClick={colorsAlignedToFile.handleButtonClick}
                     addColorsDisabled={!viewerA.isMoleculeAlignedToLoaded}
+                    onAddRepresentationClick={() => {
+                        // Add representation for alignedTo in both viewers
+                        let colorTheme;
+                        if (isMoleculeAlignedToColoursLoaded) {
+                            colorTheme = { name: 'alignedTo-custom-chain-colors', params: {} };
+                        } else {
+                            colorTheme = { name: 'default', params: {} };
+                        }
+                        if (viewerA.moleculeAlignedTo && structureRefAAlignedTo) {
+                            molstarA.addRepresentation(
+                                s_AlignedTo,
+                                structureRefAAlignedTo,
+                                representationTypeAlignedTo,
+                                colorTheme
+                            );
+                        }
+                        if (viewerB.moleculeAlignedTo && structureRefBAlignedTo) {
+                            molstarB.addRepresentation(
+                                s_AlignedTo,
+                                structureRefBAlignedTo,
+                                representationTypeAlignedTo,
+                                colorTheme
+                            );
+                        }
+                    }}
+                    addRepresentationDisabled={
+                        !viewerA.isMoleculeAlignedToLoaded || !structureRefAAlignedTo
+                    }
                     colorsInputRef={colorsAlignedToFile.inputRef}
                     onColorsFileChange={colorsAlignedToFile.handleFileChange}
                     chainIds={chainIdsAlignedTo}
@@ -639,8 +640,49 @@ const App: React.FC = () => {
                     representationType={representationTypeAligned}
                     onRepresentationTypeChange={setRepresentationTypeAligned}
                     representationTypeDisabled={!viewerB.isMoleculeAlignedLoaded}
+                    representationTypeSelector={
+                        <SelectButton
+                            label="Select Representation"
+                            options={[
+                                "spacefill", "cartoon", "ball-and-stick", "gaussian-surface",
+                                "molecular-surface", "putty", "point", "ellipsoid", "carbohydrate",
+                                "backbone", "label", "plane", "gaussian-volume", "line", "orientation"
+                            ]}
+                            selected={representationTypeAligned}
+                            onSelect={option => setRepresentationTypeAligned(option as AllowedRepresentationType)}
+                            disabled={!viewerB.isMoleculeAlignedLoaded}
+                        />
+                    }
                     onAddColorsClick={colorsAlignedFile.handleButtonClick}
                     addColorsDisabled={!viewerB.isMoleculeAlignedLoaded}
+                    onAddRepresentationClick={() => {
+                        // Add representation for aligned in both viewers
+                        let colorTheme;
+                        if (isMoleculeAlignedColoursLoaded) {
+                            colorTheme = { name: 'aligned-custom-chain-colors', params: {} };
+                        } else {
+                            colorTheme = { name: 'default', params: {} };
+                        }
+                        if (viewerA.moleculeAligned && structureRefAAligned) {
+                            molstarA.addRepresentation(
+                                s_Aligned,
+                                structureRefAAligned,
+                                representationTypeAligned,
+                                colorTheme
+                            );
+                        }
+                        if (viewerB.moleculeAligned && structureRefBAligned) {
+                            molstarB.addRepresentation(
+                                s_Aligned,
+                                structureRefBAligned,
+                                representationTypeAligned,
+                                colorTheme
+                            );
+                        }
+                    }}
+                    addRepresentationDisabled={
+                        !viewerB.isMoleculeAlignedLoaded || !structureRefBAligned
+                    }
                     colorsInputRef={colorsAlignedFile.inputRef}
                     onColorsFileChange={colorsAlignedFile.handleFileChange}
                     chainIds={chainIdsAligned}

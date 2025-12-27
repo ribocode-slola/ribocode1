@@ -47,6 +47,9 @@ interface LoadDataRowProps {
     selectedChainId: string;
     onSelectChainId: (id: string) => void;
     chainSelectDisabled: boolean;
+    representationTypeSelector?: React.ReactNode;
+    onAddRepresentationClick: () => void;
+    addRepresentationDisabled: boolean;
 }
 
 /**
@@ -91,6 +94,9 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
     selectedChainId,
     onSelectChainId,
     chainSelectDisabled,
+    representationTypeSelector,
+    onAddRepresentationClick = () => {},
+    addRepresentationDisabled = false,
 }) => (
     <div className="load-data-row">
         <div className="viewer-title">{viewerTitle}</div>
@@ -112,24 +118,30 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
             </>
         )}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <label htmlFor="representation-type" style={{ marginRight: 4 }}>
-                Representation:
-            </label>
-            <select
-                id="representation-type"
-                value={representationType}
-                onChange={e => onRepresentationTypeChange(e.target.value as AllowedRepresentationType)}
-                disabled={representationTypeDisabled}
-            >
-                {allowedRepresentationTypes.map(type => (
-                    <option key={type} value={type}>{type.replace(/-/g, ' ')}</option>
-                ))}
-            </select>
+            {representationTypeSelector ? (
+                representationTypeSelector
+            ) : (
+                <>
+                    <label htmlFor="representation-type" style={{ marginRight: 4 }}>
+                        Representation:
+                    </label>
+                    <select
+                        id="representation-type"
+                        value={representationType}
+                        onChange={e => onRepresentationTypeChange(e.target.value as AllowedRepresentationType)}
+                        disabled={representationTypeDisabled}
+                    >
+                        {allowedRepresentationTypes.map(type => (
+                            <option key={type} value={type}>{type.replace(/-/g, ' ')}</option>
+                        ))}
+                    </select>
+                </>
+            )}
             <button
                 onClick={onAddColorsClick}
                 disabled={addColorsDisabled}
             >
-                Add
+                Load Colours
             </button>
             <input
                 type="file"
@@ -138,6 +150,13 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
                 ref={colorsInputRef}
                 onChange={onColorsFileChange}
             />
+            <button
+                onClick={onAddRepresentationClick}
+                disabled={addRepresentationDisabled}
+                style={{ marginLeft: 8 }}
+            >
+                Add Representation: {representationType}{selectedChainId ? ` for ${selectedChainId}` : ''}
+            </button>
         </div>
         <ChainSelectButton
             disabled={chainSelectDisabled}
