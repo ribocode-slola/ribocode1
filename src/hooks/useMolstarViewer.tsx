@@ -39,9 +39,12 @@ export interface MolstarViewerState {
         key: string,
         structureRef: string,
         type: AllowedRepresentationType,
-        colorTheme: { name: string; params?: Record<string, unknown> }
-    ) => Promise<void>;
+        colorTheme: { name: string; params?: Record<string, unknown> },
+        repId?: string
+    ) => Promise<string>;
     getChainIds: (structureRef: string) => string[];
+    repIdMap: Record<string, Record<string, string>>;
+    setRepIdMap: (key: string, map: Record<string, string>) => void;
 }
 
 /**
@@ -84,6 +87,17 @@ export function useMolstarViewer(pluginRef: React.RefObject<PluginUIContext | nu
         setLastAddedRepresentationRefState(prev => ({ ...prev, [key]: ref }));
     }, []);
 
+    // Map: structureKey -> repId -> repRef
+    const [repIdMapState, setRepIdMapState] = useState<Record<string, Record<string, string>>>(
+        INITIAL_KEYS.reduce<Record<string, Record<string, string>>>((acc, k) => {
+            acc[k] = {};
+            return acc;
+        }, {})
+    );
+    const setRepIdMap = useCallback((key: string, map: Record<string, string>) => {
+        setRepIdMapState(prev => ({ ...prev, [key]: map }));
+    }, []);
+
     /**
      * Debounce utility (not a hook).
      * Returns a debounced version of the given function.
@@ -123,15 +137,16 @@ export function useMolstarViewer(pluginRef: React.RefObject<PluginUIContext | nu
             key: string,
             structureRef: string,
             type: AllowedRepresentationType,
-            colorTheme: ColorTheme
-        ): Promise<void> => {
-            if (!pluginRef.current) return;
+            colorTheme: ColorTheme,
+            repId?: string
+        ): Promise<string> => {
+            if (!pluginRef.current) return '';
             const plugin = pluginRef.current;
             const psd = plugin.state.data;
             // Find the structure and first polymer component
             const structs = plugin.managers.structure.hierarchy.current.structures;
             const struct = structs.find((s: { cell: { transform: { ref: string } } }) => s.cell.transform.ref === structureRef);
-            if (!struct) return;
+            if (!struct) return '';
             let targetComponentRef: string | null = null;
             let foundPolymerComp;
             if (Array.isArray(struct.components) && struct.components.length > 0) {
@@ -142,8 +157,11 @@ export function useMolstarViewer(pluginRef: React.RefObject<PluginUIContext | nu
                 // Fallback: use the root structure ref
                 targetComponentRef = structureRef;
             }
-            if (!targetComponentRef) return;
-            await psd.build()
+            if (!targetComponentRef) return '';
+            // Generate a unique repId if not provided
+            const newRepId = repId || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
+            // Add representation without custom property
+            const result = await psd.build()
                 .to(targetComponentRef)
                 .apply(
                     StateTransforms.Representation.StructureRepresentation3D,
@@ -153,31 +171,36 @@ export function useMolstarViewer(pluginRef: React.RefObject<PluginUIContext | nu
                     }
                 )
                 .commit();
-            // Delay before refreshing representationRefs to allow Mol* state to update
             setTimeout(() => {
                 if (!pluginRef.current) return;
                 const plugin = pluginRef.current;
                 const pluginStructs = plugin.managers.structure.hierarchy.current.structures;
                 const struct = pluginStructs.find((s: { cell: { transform: { ref: string } } }) => s.cell.transform.ref === structureRef);
                 let allRefs: string[] = [];
+                let idMap: Record<string, string> = { ...repIdMapState[key] };
+                // Find the most recently added representation ref
+                let newRepRef: string | undefined;
                 if (struct && Array.isArray(struct.components) && struct.components.length > 0) {
                     for (const comp of struct.components) {
                         for (const rep of comp.representations) {
-                            if (rep.cell?.transform?.ref) allRefs.push(rep.cell.transform.ref);
+                            if (rep.cell?.transform?.ref) {
+                                allRefs.push(rep.cell.transform.ref);
+                            }
                         }
                     }
+                    // Assume the last ref is the new one
+                    if (allRefs.length > 0) {
+                        newRepRef = allRefs[allRefs.length - 1];
+                        idMap[newRepId] = newRepRef;
+                    }
                 }
-                // Only update if different
-                const currentRefs = representationRefs[key] || [];
-                const isDifferent = allRefs.length !== currentRefs.length || allRefs.some((r, i) => r !== currentRefs[i]);
-                if (isDifferent) {
-                    setRepresentationRefs(key, allRefs);
-                    // Set lastAddedRepresentationRef to the last rep
-                    setLastAddedRepresentationRef(key, allRefs.length > 0 ? allRefs[allRefs.length - 1] : null);
-                }
+                setRepresentationRefs(key, allRefs);
+                setRepIdMap(key, idMap);
+                setLastAddedRepresentationRef(key, allRefs.length > 0 ? allRefs[allRefs.length - 1] : null);
             }, 500);
+            return newRepId;
         },
-        [pluginRef, representationRefs, setRepresentationRefs]
+        [pluginRef, representationRefs, setRepresentationRefs, repIdMapState, setRepIdMap]
     );
     
     // --- waitForPluginReady removed (unused) ---
@@ -194,6 +217,7 @@ export function useMolstarViewer(pluginRef: React.RefObject<PluginUIContext | nu
         const structureCell = state.cells.get(structureRef);
         if (!structureCell) {
             setRepresentationRefs(key, []);
+            setRepIdMap(key, {});
             return;
         }
         const reps: string[] = [];
@@ -212,6 +236,25 @@ export function useMolstarViewer(pluginRef: React.RefObject<PluginUIContext | nu
             }
         }
         traverse(structureRef);
+        // Assign repIds to any untracked representations
+        let idMap: Record<string, string> = { ...repIdMapState[key] };
+        reps.forEach((repRef, i) => {
+            // For the first rep, always assign deterministic 'default' repId
+            if (i === 0) {
+                idMap['default'] = repRef;
+            } else if (!Object.values(idMap).includes(repRef)) {
+                // For others, assign random repId if not already tracked
+                const newRepId = (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
+                idMap[newRepId] = repRef;
+            }
+        });
+        // Remove repIds for deleted reps
+        for (const [repId, repRef] of Object.entries(idMap)) {
+            if (!reps.includes(repRef)) {
+                delete idMap[repId];
+            }
+        }
+        setRepIdMap(key, idMap);
         // Defensive: Only update if reps is non-empty or there are no root children
         if (reps.length > 0 || rootChildren.length === 0) {
             setRepresentationRefs(key, reps);
@@ -279,6 +322,8 @@ export function useMolstarViewer(pluginRef: React.RefObject<PluginUIContext | nu
         setLastAddedRepresentationRef,
         refreshRepresentationRefs,
         addRepresentation,
-        getChainIds
+        getChainIds,
+        repIdMap: repIdMapState,
+        setRepIdMap
     };
 }

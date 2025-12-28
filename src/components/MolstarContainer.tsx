@@ -11,7 +11,6 @@ import * as PluginUI from 'molstar/lib/mol-plugin-ui';
 const createPluginUI = PluginUI.createPluginUI;
 import RibocodeViewer, { ViewerKey } from './RibocodeViewer';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
-import '../css/MolstarContainer.css';
 
 /**
  * Props for MolstarContainer component.
@@ -36,7 +35,7 @@ type MolstarContainerProps = {
  * @param ref Forwarded ref to expose methods to parent components.
  * @returns The MolstarContainer component.
  */
-const MolstarContainer = React.forwardRef(({viewerKey, setViewer, onMouseDown, onReady }: MolstarContainerProps, ref) => {
+const MolstarContainer = React.forwardRef(({ viewerKey, setViewer, onMouseDown, onReady }: MolstarContainerProps, ref) => {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const pluginRef = useRef<PluginUIContext | null>(null);
     const [plugin, setPlugin] = useState<PluginUIContext | null>(null);
@@ -123,20 +122,16 @@ const MolstarContainer = React.forwardRef(({viewerKey, setViewer, onMouseDown, o
             setPlugin(p => p); // Triggers a re-render of the Molstar UI without breaking prototype
         }
     }), []);
-    // Return the container and RibocodeViewer
+    // Return the container with a dedicated plugin root for Mol*
     return (
-        <div
-            ref={containerRef}
-            className="molstar-container"
-            onMouseDownCapture={() => {
-                console.log('MolstarContainer mouse down:', viewerKey);
-                onMouseDown?.(viewerKey);
-            }}
-        >
-            <RibocodeViewer
-                plugin={plugin}
-                viewerKey={viewerKey}
-                onReady={onReady}
+        <div className="molstar-container">
+            <div
+                ref={containerRef}
+                className="molstar-plugin-root"
+                onMouseDownCapture={() => {
+                    console.log('MolstarContainer mouse down:', viewerKey);
+                    onMouseDown?.(viewerKey);
+                }}
             />
         </div>
     );
@@ -149,7 +144,7 @@ const MolstarContainer = React.forwardRef(({viewerKey, setViewer, onMouseDown, o
  * @returns Whether the props are equal.
  */
 export default memo(
-    MolstarContainer, 
+    MolstarContainer,
     (prevProps: MolstarContainerProps, nextProps: MolstarContainerProps) =>
         prevProps.viewerKey === nextProps.viewerKey
 );

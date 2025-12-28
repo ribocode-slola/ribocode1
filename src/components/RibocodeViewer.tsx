@@ -8,7 +8,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 import { PluginCommands } from 'molstar/lib/mol-plugin/commands';
-import '../css/MolstarContainer.css';
 import { Molecule } from 'molstar/lib/extensions/ribocode/structure';
 import { ModelRef } from 'molstar/lib/mol-plugin-state/manager/structure/hierarchy-state';
 
@@ -105,9 +104,7 @@ interface RibocodeViewerProps {
     }, [viewerReady]);
     // Render the component.
     return (
-        <div className="ribocode-viewer">
-            <div ref={containerRef} className="molstar-container"></div>
-        </div>
+        <div ref={containerRef} className="molstar-container"></div>
     );
 };
 

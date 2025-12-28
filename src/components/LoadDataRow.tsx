@@ -75,6 +75,9 @@ interface LoadDataRowProps {
  * @param chainSelectDisabled Whether the chain select button is disabled.
  * @returns The LoadDataRow component.
  */
+
+// import '../../src/css/controls.css'; // Now loaded globally via index.css
+
 const LoadDataRow: React.FC<LoadDataRowProps> = ({
     viewerTitle,
     isLoaded,
@@ -95,34 +98,67 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
     onSelectChainId,
     chainSelectDisabled,
     representationTypeSelector,
-    onAddRepresentationClick = () => {},
+    onAddRepresentationClick = () => { },
     addRepresentationDisabled = false,
 }) => (
     <div className="load-data-row">
         <div className="viewer-title">{viewerTitle}</div>
         {!isLoaded && (
-            <>
+            <div>
                 <button
+                    type="button"
                     onClick={onFileInputClick}
                     disabled={fileInputDisabled}
+                    className="msp-btn msp-form-control"
+                    aria-label={fileInputLabel}
                 >
                     {fileInputLabel}
                 </button>
                 <input
                     type="file"
                     accept=".cif,.mmcif"
-                    style={{ display: 'none' }}
                     ref={fileInputRef}
                     onChange={onFileChange}
+                    style={{ display: 'none' }}
+                    tabIndex={-1}
                 />
-            </>
+            </div>
         )}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div className="load-data-controls">
+            <div>
+                <button
+                    type="button"
+                    onClick={onAddColorsClick}
+                    disabled={addColorsDisabled}
+                    aria-label="Load Colours"
+                    className="msp-btn msp-form-control"
+                >
+                    Load Colours
+                </button>
+                <input
+                    type="file"
+                    accept=".csv,.tsv,.txt,.json"
+                    ref={colorsInputRef}
+                    onChange={onColorsFileChange}
+                    style={{ display: 'none' }}
+                    tabIndex={-1}
+                />
+            </div>
             {representationTypeSelector ? (
-                representationTypeSelector
+                <span className="rep-type-controls">
+                    {representationTypeSelector}
+                    <button
+                        onClick={onAddRepresentationClick}
+                        disabled={addRepresentationDisabled}
+                        aria-label="Add Representation"
+                        className="msp-btn msp-form-control"
+                    >
+                        +
+                    </button>
+                </span>
             ) : (
-                <>
-                    <label htmlFor="representation-type" style={{ marginRight: 4 }}>
+                <span className="rep-type-controls">
+                    <label htmlFor="representation-type">
                         Representation:
                     </label>
                     <select
@@ -130,40 +166,29 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
                         value={representationType}
                         onChange={e => onRepresentationTypeChange(e.target.value as AllowedRepresentationType)}
                         disabled={representationTypeDisabled}
+                        className="msp-select msp-form-control"
                     >
                         {allowedRepresentationTypes.map(type => (
                             <option key={type} value={type}>{type.replace(/-/g, ' ')}</option>
                         ))}
                     </select>
-                </>
+                    <button
+                        onClick={onAddRepresentationClick}
+                        disabled={addRepresentationDisabled}
+                        aria-label="Add Representation"
+                        className="msp-btn msp-form-control"
+                    >
+                        +
+                    </button>
+                </span>
             )}
-            <button
-                onClick={onAddColorsClick}
-                disabled={addColorsDisabled}
-            >
-                Load Colours
-            </button>
-            <input
-                type="file"
-                accept=".csv,.tsv,.txt,.json"
-                style={{ display: 'none' }}
-                ref={colorsInputRef}
-                onChange={onColorsFileChange}
+            <ChainSelectButton
+                disabled={chainSelectDisabled}
+                chainIds={chainIds}
+                selectedChainId={selectedChainId}
+                onSelect={onSelectChainId}
             />
-            <button
-                onClick={onAddRepresentationClick}
-                disabled={addRepresentationDisabled}
-                style={{ marginLeft: 8 }}
-            >
-                Add Representation: {representationType}{selectedChainId ? ` for ${selectedChainId}` : ''}
-            </button>
         </div>
-        <ChainSelectButton
-            disabled={chainSelectDisabled}
-            chainIds={chainIds}
-            selectedChainId={selectedChainId}
-            onSelect={onSelectChainId}
-        />
     </div>
 );
 

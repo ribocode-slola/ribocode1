@@ -5,7 +5,8 @@
  *
  * @author Andy Turner <agdturner@gmail.com>
  */
-import React from 'react';
+import React, { useState } from 'react';
+// import '../../src/css/controls.css'; // Now loaded globally via index.css
 import { VisibilityOutlinedSvg, VisibilityOffOutlinedSvg } from 'molstar/lib/mol-plugin-ui/controls/icons';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 import { PluginCommands } from 'molstar/lib/mol-plugin/commands';
@@ -27,7 +28,6 @@ import { allowedRepresentationTypes } from '../types/Representation';
 interface MoleculeRowProps {
     label: string;
     plugin: PluginUIContext | null;
-    //structureRef: string;
     isVisible: boolean;
     onToggleVisibility: () => void;
     zoomLabel: string;
@@ -36,6 +36,10 @@ interface MoleculeRowProps {
     isLoaded: boolean;
     forceUpdate: () => void;
     representationRefs?: string[];
+    onUpdateRepresentation?: (ref: string) => void;
+    onApplyAction?: (ref: string) => void;
+    onDeleteRepresentation?: (ref: string) => void;
+    onToggleRepVisibility?: (ref: string) => void;
 }
 
 /**
@@ -62,6 +66,10 @@ const MoleculeRow: React.FC<MoleculeRowProps> = ({
     isLoaded,
     forceUpdate,
     representationRefs = [],
+    onUpdateRepresentation,
+    onApplyAction,
+    onDeleteRepresentation,
+    onToggleRepVisibility,
 }) => {
     // Helper to get visibility state and type for a representation
     const getRepType = (ref: string): string | null => {
@@ -96,35 +104,51 @@ const MoleculeRow: React.FC<MoleculeRowProps> = ({
         plugin.canvas3d?.requestDraw?.();
         forceUpdate();
     };
-    // Render the component.
+    // Per-representation menu state
+    const [openMenu, setOpenMenu] = useState<string | null>(null);
+
     return (
         <div className="molecule-row">
             <button
                 onClick={onToggleVisibility}
                 disabled={!plugin || !isLoaded}
+                className="msp-btn msp-form-control"
+                aria-label={isVisible ? `Hide ${label}` : `Show ${label}`}
             >
                 {isVisible ? <VisibilityOutlinedSvg /> : <VisibilityOffOutlinedSvg />}
-                <span style={{ marginLeft: 8 }}>{label}</span>
+                <span className="molstar-label">{label}</span>
             </button>
-            {/* Per-representation visibility toggles */}
+            {/* Per-representation controls */}
             {representationRefs.length > 0 && (
-                <span style={{ marginLeft: 8 }}>
+                <span className="rep-controls">
                     {representationRefs.map(ref => {
                         const cell = plugin?.state?.data?.cells?.get(ref);
                         const typeName = getRepType(ref);
                         const isVisible = isRepVisible(ref);
                         if (!typeName) return null;
+                        // Use _ribocodeId if available, else fallback to ref
+                        const repId = cell?.params?.values?._ribocodeId || ref;
                         return (
-                            <button
-                                key={ref}
-                                onClick={() => handleToggleRepVisibility(ref)}
-                                style={{ marginLeft: 4 }}
-                                disabled={!isLoaded}
-                                aria-label={`Toggle visibility for ${typeName} representation`}
-                            >
-                                {isVisible ? <VisibilityOutlinedSvg /> : <VisibilityOffOutlinedSvg />}
-                                <span style={{ marginLeft: 4, fontSize: '0.9em' }}>{typeName}</span>
-                            </button>
+                            <span key={ref} className="rep-btn-group">
+                                <button
+                                    onClick={() => onToggleRepVisibility ? onToggleRepVisibility(repId) : handleToggleRepVisibility(ref)}
+                                    className="msp-btn msp-form-control"
+                                    disabled={!isLoaded}
+                                    aria-label={`Toggle visibility for ${typeName} representation`}
+                                >
+                                    {isVisible ? <VisibilityOutlinedSvg /> : <VisibilityOffOutlinedSvg />}
+                                    <span className="molstar-label">{typeName}</span>
+                                </button>
+                                {/* Delete button */}
+                                <button
+                                    onClick={() => onDeleteRepresentation && onDeleteRepresentation(repId)}
+                                    className="msp-btn msp-btn-danger msp-form-control"
+                                    disabled={!isLoaded}
+                                    aria-label={`Delete ${typeName} representation`}
+                                >
+                                    &#x2716;
+                                </button>
+                            </span>
                         );
                     })}
                 </span>
@@ -132,7 +156,7 @@ const MoleculeRow: React.FC<MoleculeRowProps> = ({
             <button
                 onClick={onZoom}
                 disabled={zoomDisabled}
-                style={{ marginLeft: 8 }}
+                className="msp-btn msp-form-control"
             >
                 Zoom to: {zoomLabel}
             </button>
