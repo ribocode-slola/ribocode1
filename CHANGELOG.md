@@ -1,6 +1,11 @@
+## [v0.5.1] - 2025-12-28
+
+- General update to css styles and layout.
+- Functionality to delete representions added.
+
 ## [v0.5.0] - 2025-12-24
 
-- Allows users to choose the style of representation with a drop down.
+- Functionality to choose the style of representation with a drop down.
 
 ## [v0.4.4] - 2025-12-22
 
