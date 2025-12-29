@@ -708,161 +708,157 @@ const App: React.FC = () => {
                             onSelectChainId={setSelectedChainIdAlignedTo}
                             chainSelectDisabled={!viewerA.isMoleculeAlignedToLoaded}
                         />
-                        <div className="molecule-row-section">
-                            <MoleculeRow
-                                key={molstarA.representationRefs[s_AlignedTo]?.join('-') || 'A-AlignedTo'}
-                                label={viewerA.moleculeAlignedTo?.label ?? 'Molecule Aligned To'}
-                                plugin={viewerA.ref.current}
-                                isVisible={viewerA.isMoleculeAlignedToVisible}
-                                onToggleVisibility={toggleViewerAAlignedTo.handleButtonClick}
-                                zoomLabel={selectedChainIdAlignedTo}
-                                onZoom={zoomAAlignedTo.handleButtonClick}
-                                zoomDisabled={!selectedChainIdAlignedTo}
-                                isLoaded={viewerA.isMoleculeAlignedToLoaded}
-                                forceUpdate={forceUpdate}
-                                representationRefs={molstarA.representationRefs[s_AlignedTo] || []}
-                                onUpdateRepresentation={ref => {
-                                    // Use repId for robust sync
-                                    const repId = Object.entries(molstarA.repIdMap[s_AlignedTo]).find(([id, r]) => r === ref)?.[0];
-                                    [molstarA, molstarB].forEach(molstar => {
-                                        let repRef = repId ? molstar.repIdMap[s_AlignedTo][repId] : ref;
-                                        if (!repRef) {
-                                            const idx = molstar.representationRefs[s_AlignedTo].indexOf(ref);
-                                            if (idx >= 0) repRef = molstar.representationRefs[s_AlignedTo][idx];
-                                        }
-                                        if (repRef) {
-                                            const plugin = molstar.pluginRef.current;
-                                            if (!plugin) return;
-                                            plugin.canvas3d?.requestDraw?.();
-                                            forceUpdate();
-                                        }
-                                    });
-                                }}
-                                onApplyAction={ref => {
-                                    // Use repId for robust sync
-                                    const repId = Object.entries(molstarA.repIdMap[s_AlignedTo]).find(([id, r]) => r === ref)?.[0];
-                                    [molstarA, molstarB].forEach(molstar => {
-                                        let repRef = repId ? molstar.repIdMap[s_AlignedTo][repId] : ref;
-                                        if (!repRef) {
-                                            const idx = molstar.representationRefs[s_AlignedTo].indexOf(ref);
-                                            if (idx >= 0) repRef = molstar.representationRefs[s_AlignedTo][idx];
-                                        }
-                                        if (repRef) {
-                                            const plugin = molstar.pluginRef.current;
-                                            if (!plugin) return;
-                                            plugin.canvas3d?.requestDraw?.();
-                                            forceUpdate();
-                                        }
-                                    });
-                                }}
-                                onDeleteRepresentation={ref => {
-                                    // Always use repId from molstarA for viewerA's row
-                                    const repId = Object.entries(molstarA.repIdMap[s_AlignedTo]).find(([id, r]) => r === ref)?.[0];
-                                    if (syncEnabled && repId) {
-                                        Promise.all([
-                                            deleteRepresentation(molstarA.repIdMap[s_AlignedTo][repId], s_AlignedTo, molstarA, false),
-                                            deleteRepresentation(molstarB.repIdMap[s_AlignedTo][repId], s_AlignedTo, molstarB, false)
-                                        ]).then(forceUpdate);
-                                    } else if (repId) {
-                                        deleteRepresentation(molstarA.repIdMap[s_AlignedTo][repId], s_AlignedTo, molstarA);
-                                    } else {
-                                        // fallback for legacy/edge
-                                        if (syncEnabled) {
-                                            Promise.all([
-                                                deleteRepresentation(ref, s_AlignedTo, molstarA, false),
-                                                deleteRepresentation(ref, s_AlignedTo, molstarB, false)
-                                            ]).then(forceUpdate);
-                                        } else {
-                                            deleteRepresentation(ref, s_AlignedTo, molstarA);
-                                        }
-                                    }
-                                }}
-                                onToggleRepVisibility={ref => {
-                                    // Toggle visibility for this representation only in viewerA
-                                    const repId = Object.entries(molstarA.repIdMap[s_AlignedTo]).find(([id, r]) => r === ref)?.[0];
-                                    let repRef = repId ? molstarA.repIdMap[s_AlignedTo][repId] : ref;
+                        <MoleculeRow
+                            key={molstarA.representationRefs[s_AlignedTo]?.join('-') || 'A-AlignedTo'}
+                            label={viewerA.moleculeAlignedTo?.label ?? 'Molecule Aligned To'}
+                            plugin={viewerA.ref.current}
+                            isVisible={viewerA.isMoleculeAlignedToVisible}
+                            onToggleVisibility={toggleViewerAAlignedTo.handleButtonClick}
+                            zoomLabel={selectedChainIdAlignedTo}
+                            onZoom={zoomAAlignedTo.handleButtonClick}
+                            zoomDisabled={!selectedChainIdAlignedTo}
+                            isLoaded={viewerA.isMoleculeAlignedToLoaded}
+                            forceUpdate={forceUpdate}
+                            representationRefs={molstarA.representationRefs[s_AlignedTo] || []}
+                            onUpdateRepresentation={ref => {
+                                // Use repId for robust sync
+                                const repId = Object.entries(molstarA.repIdMap[s_AlignedTo]).find(([id, r]) => r === ref)?.[0];
+                                [molstarA, molstarB].forEach(molstar => {
+                                    let repRef = repId ? molstar.repIdMap[s_AlignedTo][repId] : ref;
                                     if (!repRef) {
-                                        const idx = molstarA.representationRefs[s_AlignedTo].indexOf(ref);
-                                        if (idx >= 0) repRef = molstarA.representationRefs[s_AlignedTo][idx];
+                                        const idx = molstar.representationRefs[s_AlignedTo].indexOf(ref);
+                                        if (idx >= 0) repRef = molstar.representationRefs[s_AlignedTo][idx];
                                     }
                                     if (repRef) {
-                                        const plugin = molstarA.pluginRef.current;
+                                        const plugin = molstar.pluginRef.current;
                                         if (!plugin) return;
-                                        const cell = plugin.state?.data?.cells?.get(repRef);
-                                        if (cell) {
-                                            import('molstar/lib/mol-plugin/commands').then(({ PluginCommands }) => {
-                                                PluginCommands.State.ToggleVisibility.apply(plugin, [plugin, { state: plugin.state.data, ref: repRef }]);
-                                                plugin.canvas3d?.requestDraw?.();
-                                                forceUpdate();
-                                            });
-                                        }
+                                        plugin.canvas3d?.requestDraw?.();
+                                        forceUpdate();
                                     }
-                                }}
-                            />
-                        </div>
-                        <div className="molecule-row-section">
-                            <MoleculeRow
-                                key={molstarA.representationRefs[s_Aligned]?.join('-') || 'A-Aligned'}
-                                label={viewerA.moleculeAligned?.label ?? 'Molecule Aligned'}
-                                plugin={viewerA.ref.current}
-                                isVisible={viewerA.isMoleculeAlignedVisible}
-                                onToggleVisibility={toggleViewerAAligned.handleButtonClick}
-                                zoomLabel={selectedChainIdAligned}
-                                onZoom={zoomAAligned.handleButtonClick}
-                                zoomDisabled={!selectedChainIdAligned}
-                                isLoaded={viewerA.isMoleculeAlignedLoaded}
-                                forceUpdate={forceUpdate}
-                                representationRefs={molstarA.representationRefs[s_Aligned] || []}
-                                onUpdateRepresentation={ref => {
-                                    // TODO: Sync update 3D rep for both viewers
-                                }}
-                                onApplyAction={ref => {
-                                    // TODO: Sync apply action for both viewers
-                                }}
-                                onDeleteRepresentation={ref => {
-                                    // Always use repId from molstarA for viewerA's row
-                                    const repId = Object.entries(molstarA.repIdMap[s_Aligned]).find(([id, r]) => r === ref)?.[0];
-                                    if (syncEnabled && repId) {
-                                        Promise.all([
-                                            deleteRepresentation(molstarA.repIdMap[s_Aligned][repId], s_Aligned, molstarA, false),
-                                            deleteRepresentation(molstarB.repIdMap[s_Aligned][repId], s_Aligned, molstarB, false)
-                                        ]).then(forceUpdate);
-                                    } else if (repId) {
-                                        deleteRepresentation(molstarA.repIdMap[s_Aligned][repId], s_Aligned, molstarA);
-                                    } else {
-                                        if (syncEnabled) {
-                                            Promise.all([
-                                                deleteRepresentation(ref, s_Aligned, molstarA, false),
-                                                deleteRepresentation(ref, s_Aligned, molstarB, false)
-                                            ]).then(forceUpdate);
-                                        } else {
-                                            deleteRepresentation(ref, s_Aligned, molstarA);
-                                        }
-                                    }
-                                }}
-                                onToggleRepVisibility={ref => {
-                                    // Toggle visibility for this representation only in viewerA
-                                    const repId = Object.entries(molstarA.repIdMap[s_Aligned]).find(([id, r]) => r === ref)?.[0];
-                                    let repRef = repId ? molstarA.repIdMap[s_Aligned][repId] : ref;
+                                });
+                            }}
+                            onApplyAction={ref => {
+                                // Use repId for robust sync
+                                const repId = Object.entries(molstarA.repIdMap[s_AlignedTo]).find(([id, r]) => r === ref)?.[0];
+                                [molstarA, molstarB].forEach(molstar => {
+                                    let repRef = repId ? molstar.repIdMap[s_AlignedTo][repId] : ref;
                                     if (!repRef) {
-                                        const idx = molstarA.representationRefs[s_Aligned].indexOf(ref);
-                                        if (idx >= 0) repRef = molstarA.representationRefs[s_Aligned][idx];
+                                        const idx = molstar.representationRefs[s_AlignedTo].indexOf(ref);
+                                        if (idx >= 0) repRef = molstar.representationRefs[s_AlignedTo][idx];
                                     }
                                     if (repRef) {
-                                        const plugin = molstarA.pluginRef.current;
+                                        const plugin = molstar.pluginRef.current;
                                         if (!plugin) return;
-                                        const cell = plugin.state?.data?.cells?.get(repRef);
-                                        if (cell) {
-                                            import('molstar/lib/mol-plugin/commands').then(({ PluginCommands }) => {
-                                                PluginCommands.State.ToggleVisibility.apply(plugin, [plugin, { state: plugin.state.data, ref: repRef }]);
-                                                plugin.canvas3d?.requestDraw?.();
-                                                forceUpdate();
-                                            });
-                                        }
+                                        plugin.canvas3d?.requestDraw?.();
+                                        forceUpdate();
                                     }
-                                }}
-                            />
-                        </div>
+                                });
+                            }}
+                            onDeleteRepresentation={ref => {
+                                // Always use repId from molstarA for viewerA's row
+                                const repId = Object.entries(molstarA.repIdMap[s_AlignedTo]).find(([id, r]) => r === ref)?.[0];
+                                if (syncEnabled && repId) {
+                                    Promise.all([
+                                        deleteRepresentation(molstarA.repIdMap[s_AlignedTo][repId], s_AlignedTo, molstarA, false),
+                                        deleteRepresentation(molstarB.repIdMap[s_AlignedTo][repId], s_AlignedTo, molstarB, false)
+                                    ]).then(forceUpdate);
+                                } else if (repId) {
+                                    deleteRepresentation(molstarA.repIdMap[s_AlignedTo][repId], s_AlignedTo, molstarA);
+                                } else {
+                                    // fallback for legacy/edge
+                                    if (syncEnabled) {
+                                        Promise.all([
+                                            deleteRepresentation(ref, s_AlignedTo, molstarA, false),
+                                            deleteRepresentation(ref, s_AlignedTo, molstarB, false)
+                                        ]).then(forceUpdate);
+                                    } else {
+                                        deleteRepresentation(ref, s_AlignedTo, molstarA);
+                                    }
+                                }
+                            }}
+                            onToggleRepVisibility={ref => {
+                                // Toggle visibility for this representation only in viewerA
+                                const repId = Object.entries(molstarA.repIdMap[s_AlignedTo]).find(([id, r]) => r === ref)?.[0];
+                                let repRef = repId ? molstarA.repIdMap[s_AlignedTo][repId] : ref;
+                                if (!repRef) {
+                                    const idx = molstarA.representationRefs[s_AlignedTo].indexOf(ref);
+                                    if (idx >= 0) repRef = molstarA.representationRefs[s_AlignedTo][idx];
+                                }
+                                if (repRef) {
+                                    const plugin = molstarA.pluginRef.current;
+                                    if (!plugin) return;
+                                    const cell = plugin.state?.data?.cells?.get(repRef);
+                                    if (cell) {
+                                        import('molstar/lib/mol-plugin/commands').then(({ PluginCommands }) => {
+                                            PluginCommands.State.ToggleVisibility.apply(plugin, [plugin, { state: plugin.state.data, ref: repRef }]);
+                                            plugin.canvas3d?.requestDraw?.();
+                                            forceUpdate();
+                                        });
+                                    }
+                                }
+                            }}
+                        />
+                        <MoleculeRow
+                            key={molstarA.representationRefs[s_Aligned]?.join('-') || 'A-Aligned'}
+                            label={viewerA.moleculeAligned?.label ?? 'Molecule Aligned'}
+                            plugin={viewerA.ref.current}
+                            isVisible={viewerA.isMoleculeAlignedVisible}
+                            onToggleVisibility={toggleViewerAAligned.handleButtonClick}
+                            zoomLabel={selectedChainIdAligned}
+                            onZoom={zoomAAligned.handleButtonClick}
+                            zoomDisabled={!selectedChainIdAligned}
+                            isLoaded={viewerA.isMoleculeAlignedLoaded}
+                            forceUpdate={forceUpdate}
+                            representationRefs={molstarA.representationRefs[s_Aligned] || []}
+                            onUpdateRepresentation={ref => {
+                                // TODO: Sync update 3D rep for both viewers
+                            }}
+                            onApplyAction={ref => {
+                                // TODO: Sync apply action for both viewers
+                            }}
+                            onDeleteRepresentation={ref => {
+                                // Always use repId from molstarA for viewerA's row
+                                const repId = Object.entries(molstarA.repIdMap[s_Aligned]).find(([id, r]) => r === ref)?.[0];
+                                if (syncEnabled && repId) {
+                                    Promise.all([
+                                        deleteRepresentation(molstarA.repIdMap[s_Aligned][repId], s_Aligned, molstarA, false),
+                                        deleteRepresentation(molstarB.repIdMap[s_Aligned][repId], s_Aligned, molstarB, false)
+                                    ]).then(forceUpdate);
+                                } else if (repId) {
+                                    deleteRepresentation(molstarA.repIdMap[s_Aligned][repId], s_Aligned, molstarA);
+                                } else {
+                                    if (syncEnabled) {
+                                        Promise.all([
+                                            deleteRepresentation(ref, s_Aligned, molstarA, false),
+                                            deleteRepresentation(ref, s_Aligned, molstarB, false)
+                                        ]).then(forceUpdate);
+                                    } else {
+                                        deleteRepresentation(ref, s_Aligned, molstarA);
+                                    }
+                                }
+                            }}
+                            onToggleRepVisibility={ref => {
+                                // Toggle visibility for this representation only in viewerA
+                                const repId = Object.entries(molstarA.repIdMap[s_Aligned]).find(([id, r]) => r === ref)?.[0];
+                                let repRef = repId ? molstarA.repIdMap[s_Aligned][repId] : ref;
+                                if (!repRef) {
+                                    const idx = molstarA.representationRefs[s_Aligned].indexOf(ref);
+                                    if (idx >= 0) repRef = molstarA.representationRefs[s_Aligned][idx];
+                                }
+                                if (repRef) {
+                                    const plugin = molstarA.pluginRef.current;
+                                    if (!plugin) return;
+                                    const cell = plugin.state?.data?.cells?.get(repRef);
+                                    if (cell) {
+                                        import('molstar/lib/mol-plugin/commands').then(({ PluginCommands }) => {
+                                            PluginCommands.State.ToggleVisibility.apply(plugin, [plugin, { state: plugin.state.data, ref: repRef }]);
+                                            plugin.canvas3d?.requestDraw?.();
+                                            forceUpdate();
+                                        });
+                                    }
+                                }
+                            }}
+                        />
                         <MolstarContainer
                             ref={pluginRefA}
                             viewerKey={viewerA.viewerKey}
@@ -931,145 +927,141 @@ const App: React.FC = () => {
                             onSelectChainId={setSelectedChainIdAligned}
                             chainSelectDisabled={!viewerB.isMoleculeAlignedLoaded}
                         />
-                        <div className="molecule-row-section">
-                            <MoleculeRow
-                                key={molstarB.representationRefs[s_AlignedTo]?.join('-') || 'B-AlignedTo'}
-                                label={viewerB.moleculeAlignedTo?.label ?? 'Molecule Aligned To'}
-                                plugin={viewerB.ref.current}
-                                isVisible={viewerB.isMoleculeAlignedToVisible}
-                                onToggleVisibility={toggleViewerBAlignedTo.handleButtonClick}
-                                zoomLabel={selectedChainIdAlignedTo}
-                                onZoom={zoomBAlignedTo.handleButtonClick}
-                                zoomDisabled={!selectedChainIdAlignedTo}
-                                isLoaded={viewerB.isMoleculeAlignedToLoaded}
-                                forceUpdate={forceUpdate}
-                                representationRefs={molstarB.representationRefs[s_AlignedTo] || []}
-                                onUpdateRepresentation={ref => {
-                                    [molstarA, molstarB].forEach(molstar => {
-                                        const plugin = molstar.pluginRef.current;
-                                        if (!plugin) return;
-                                        plugin.canvas3d?.requestDraw?.();
-                                        forceUpdate();
-                                    });
-                                }}
-                                onApplyAction={ref => {
-                                    [molstarA, molstarB].forEach(molstar => {
-                                        const plugin = molstar.pluginRef.current;
-                                        if (!plugin) return;
-                                        plugin.canvas3d?.requestDraw?.();
-                                        forceUpdate();
-                                    });
-                                }}
-                                onDeleteRepresentation={ref => {
-                                    // Always use repId from molstarB for viewerB's row
-                                    const repId = Object.entries(molstarB.repIdMap[s_AlignedTo]).find(([id, r]) => r === ref)?.[0];
-                                    if (syncEnabled && repId) {
+                        <MoleculeRow
+                            key={molstarB.representationRefs[s_AlignedTo]?.join('-') || 'B-AlignedTo'}
+                            label={viewerB.moleculeAlignedTo?.label ?? 'Molecule Aligned To'}
+                            plugin={viewerB.ref.current}
+                            isVisible={viewerB.isMoleculeAlignedToVisible}
+                            onToggleVisibility={toggleViewerBAlignedTo.handleButtonClick}
+                            zoomLabel={selectedChainIdAlignedTo}
+                            onZoom={zoomBAlignedTo.handleButtonClick}
+                            zoomDisabled={!selectedChainIdAlignedTo}
+                            isLoaded={viewerB.isMoleculeAlignedToLoaded}
+                            forceUpdate={forceUpdate}
+                            representationRefs={molstarB.representationRefs[s_AlignedTo] || []}
+                            onUpdateRepresentation={ref => {
+                                [molstarA, molstarB].forEach(molstar => {
+                                    const plugin = molstar.pluginRef.current;
+                                    if (!plugin) return;
+                                    plugin.canvas3d?.requestDraw?.();
+                                    forceUpdate();
+                                });
+                            }}
+                            onApplyAction={ref => {
+                                [molstarA, molstarB].forEach(molstar => {
+                                    const plugin = molstar.pluginRef.current;
+                                    if (!plugin) return;
+                                    plugin.canvas3d?.requestDraw?.();
+                                    forceUpdate();
+                                });
+                            }}
+                            onDeleteRepresentation={ref => {
+                                // Always use repId from molstarB for viewerB's row
+                                const repId = Object.entries(molstarB.repIdMap[s_AlignedTo]).find(([id, r]) => r === ref)?.[0];
+                                if (syncEnabled && repId) {
+                                    Promise.all([
+                                        deleteRepresentation(molstarA.repIdMap[s_AlignedTo][repId], s_AlignedTo, molstarA, false),
+                                        deleteRepresentation(molstarB.repIdMap[s_AlignedTo][repId], s_AlignedTo, molstarB, false)
+                                    ]).then(forceUpdate);
+                                } else if (repId) {
+                                    deleteRepresentation(molstarB.repIdMap[s_AlignedTo][repId], s_AlignedTo, molstarB);
+                                } else {
+                                    if (syncEnabled) {
                                         Promise.all([
-                                            deleteRepresentation(molstarA.repIdMap[s_AlignedTo][repId], s_AlignedTo, molstarA, false),
-                                            deleteRepresentation(molstarB.repIdMap[s_AlignedTo][repId], s_AlignedTo, molstarB, false)
+                                            deleteRepresentation(ref, s_AlignedTo, molstarA, false),
+                                            deleteRepresentation(ref, s_AlignedTo, molstarB, false)
                                         ]).then(forceUpdate);
-                                    } else if (repId) {
-                                        deleteRepresentation(molstarB.repIdMap[s_AlignedTo][repId], s_AlignedTo, molstarB);
                                     } else {
-                                        if (syncEnabled) {
-                                            Promise.all([
-                                                deleteRepresentation(ref, s_AlignedTo, molstarA, false),
-                                                deleteRepresentation(ref, s_AlignedTo, molstarB, false)
-                                            ]).then(forceUpdate);
-                                        } else {
-                                            deleteRepresentation(ref, s_AlignedTo, molstarB);
-                                        }
+                                        deleteRepresentation(ref, s_AlignedTo, molstarB);
                                     }
-                                }}
-                                onToggleRepVisibility={ref => {
-                                    // Toggle visibility for this representation only in viewerB
-                                    const repId = Object.entries(molstarB.repIdMap[s_Aligned]).find(([id, r]) => r === ref)?.[0];
-                                    let repRef = repId ? molstarB.repIdMap[s_Aligned][repId] : ref;
-                                    if (!repRef) {
-                                        const idx = molstarB.representationRefs[s_Aligned].indexOf(ref);
-                                        if (idx >= 0) repRef = molstarB.representationRefs[s_Aligned][idx];
+                                }
+                            }}
+                            onToggleRepVisibility={ref => {
+                                // Toggle visibility for this representation only in viewerB
+                                const repId = Object.entries(molstarB.repIdMap[s_Aligned]).find(([id, r]) => r === ref)?.[0];
+                                let repRef = repId ? molstarB.repIdMap[s_Aligned][repId] : ref;
+                                if (!repRef) {
+                                    const idx = molstarB.representationRefs[s_Aligned].indexOf(ref);
+                                    if (idx >= 0) repRef = molstarB.representationRefs[s_Aligned][idx];
+                                }
+                                if (repRef) {
+                                    const plugin = molstarB.pluginRef.current;
+                                    if (!plugin) return;
+                                    const cell = plugin.state?.data?.cells?.get(ref);
+                                    if (cell) {
+                                        import('molstar/lib/mol-plugin/commands').then(({ PluginCommands }) => {
+                                            PluginCommands.State.ToggleVisibility.apply(plugin, [plugin, { state: plugin.state.data, ref: repRef }]);
+                                            plugin.canvas3d?.requestDraw?.();
+                                            forceUpdate();
+                                        });
                                     }
-                                    if (repRef) {
-                                        const plugin = molstarB.pluginRef.current;
-                                        if (!plugin) return;
-                                        const cell = plugin.state?.data?.cells?.get(ref);
-                                        if (cell) {
-                                            import('molstar/lib/mol-plugin/commands').then(({ PluginCommands }) => {
-                                                PluginCommands.State.ToggleVisibility.apply(plugin, [plugin, { state: plugin.state.data, ref: repRef }]);
-                                                plugin.canvas3d?.requestDraw?.();
-                                                forceUpdate();
-                                            });
-                                        }
-                                    }
-                                }}
-                            />
-                        </div>
-                        <div className="molecule-row-section">
-                            <MoleculeRow
-                                key={molstarB.representationRefs[s_Aligned]?.join('-') || 'B-Aligned'}
-                                label={viewerB.moleculeAligned?.label ?? 'Molecule Aligned'}
-                                plugin={viewerB.ref.current}
-                                isVisible={viewerB.isMoleculeAlignedVisible}
-                                onToggleVisibility={toggleViewerBAligned.handleButtonClick}
-                                zoomLabel={selectedChainIdAligned}
-                                onZoom={zoomBAligned.handleButtonClick}
-                                zoomDisabled={!selectedChainIdAligned}
-                                isLoaded={viewerB.isMoleculeAlignedLoaded}
-                                forceUpdate={forceUpdate}
-                                representationRefs={molstarB.representationRefs[s_Aligned] || []}
-                                onUpdateRepresentation={ref => {
-                                    [molstarA, molstarB].forEach(molstar => {
-                                        const plugin = molstar.pluginRef.current;
-                                        if (!plugin) return;
-                                        plugin.canvas3d?.requestDraw?.();
-                                        forceUpdate();
-                                    });
-                                }}
-                                onApplyAction={ref => {
-                                    [molstarA, molstarB].forEach(molstar => {
-                                        const plugin = molstar.pluginRef.current;
-                                        if (!plugin) return;
-                                        plugin.canvas3d?.requestDraw?.();
-                                        forceUpdate();
-                                    });
-                                }}
-                                onDeleteRepresentation={ref => {
-                                    // Always use repId from molstarB for viewerB's row
-                                    const repId = Object.entries(molstarB.repIdMap[s_Aligned]).find(([id, r]) => r === ref)?.[0];
-                                    if (syncEnabled && repId) {
+                                }
+                            }}
+                        />
+                        <MoleculeRow
+                            key={molstarB.representationRefs[s_Aligned]?.join('-') || 'B-Aligned'}
+                            label={viewerB.moleculeAligned?.label ?? 'Molecule Aligned'}
+                            plugin={viewerB.ref.current}
+                            isVisible={viewerB.isMoleculeAlignedVisible}
+                            onToggleVisibility={toggleViewerBAligned.handleButtonClick}
+                            zoomLabel={selectedChainIdAligned}
+                            onZoom={zoomBAligned.handleButtonClick}
+                            zoomDisabled={!selectedChainIdAligned}
+                            isLoaded={viewerB.isMoleculeAlignedLoaded}
+                            forceUpdate={forceUpdate}
+                            representationRefs={molstarB.representationRefs[s_Aligned] || []}
+                            onUpdateRepresentation={ref => {
+                                [molstarA, molstarB].forEach(molstar => {
+                                    const plugin = molstar.pluginRef.current;
+                                    if (!plugin) return;
+                                    plugin.canvas3d?.requestDraw?.();
+                                    forceUpdate();
+                                });
+                            }}
+                            onApplyAction={ref => {
+                                [molstarA, molstarB].forEach(molstar => {
+                                    const plugin = molstar.pluginRef.current;
+                                    if (!plugin) return;
+                                    plugin.canvas3d?.requestDraw?.();
+                                    forceUpdate();
+                                });
+                            }}
+                            onDeleteRepresentation={ref => {
+                                // Always use repId from molstarB for viewerB's row
+                                const repId = Object.entries(molstarB.repIdMap[s_Aligned]).find(([id, r]) => r === ref)?.[0];
+                                if (syncEnabled && repId) {
+                                    Promise.all([
+                                        deleteRepresentation(molstarA.repIdMap[s_Aligned][repId], s_Aligned, molstarA, false),
+                                        deleteRepresentation(molstarB.repIdMap[s_Aligned][repId], s_Aligned, molstarB, false)
+                                    ]).then(forceUpdate);
+                                } else if (repId) {
+                                    deleteRepresentation(molstarB.repIdMap[s_Aligned][repId], s_Aligned, molstarB);
+                                } else {
+                                    if (syncEnabled) {
                                         Promise.all([
-                                            deleteRepresentation(molstarA.repIdMap[s_Aligned][repId], s_Aligned, molstarA, false),
-                                            deleteRepresentation(molstarB.repIdMap[s_Aligned][repId], s_Aligned, molstarB, false)
+                                            deleteRepresentation(ref, s_Aligned, molstarA, false),
+                                            deleteRepresentation(ref, s_Aligned, molstarB, false)
                                         ]).then(forceUpdate);
-                                    } else if (repId) {
-                                        deleteRepresentation(molstarB.repIdMap[s_Aligned][repId], s_Aligned, molstarB);
                                     } else {
-                                        if (syncEnabled) {
-                                            Promise.all([
-                                                deleteRepresentation(ref, s_Aligned, molstarA, false),
-                                                deleteRepresentation(ref, s_Aligned, molstarB, false)
-                                            ]).then(forceUpdate);
-                                        } else {
-                                            deleteRepresentation(ref, s_Aligned, molstarB);
-                                        }
+                                        deleteRepresentation(ref, s_Aligned, molstarB);
                                     }
-                                }}
-                                onToggleRepVisibility={ref => {
-                                    [molstarA, molstarB].forEach(molstar => {
-                                        const plugin = molstar.pluginRef.current;
-                                        if (!plugin) return;
-                                        const cell = plugin.state?.data?.cells?.get(ref);
-                                        if (cell) {
-                                            import('molstar/lib/mol-plugin/commands').then(({ PluginCommands }) => {
-                                                PluginCommands.State.ToggleVisibility.apply(plugin, [plugin, { state: plugin.state.data, ref }]);
-                                                plugin.canvas3d?.requestDraw?.();
-                                                forceUpdate();
-                                            });
-                                        }
-                                    });
-                                }}
-                            />
-                        </div>
+                                }
+                            }}
+                            onToggleRepVisibility={ref => {
+                                [molstarA, molstarB].forEach(molstar => {
+                                    const plugin = molstar.pluginRef.current;
+                                    if (!plugin) return;
+                                    const cell = plugin.state?.data?.cells?.get(ref);
+                                    if (cell) {
+                                        import('molstar/lib/mol-plugin/commands').then(({ PluginCommands }) => {
+                                            PluginCommands.State.ToggleVisibility.apply(plugin, [plugin, { state: plugin.state.data, ref }]);
+                                            plugin.canvas3d?.requestDraw?.();
+                                            forceUpdate();
+                                        });
+                                    }
+                                });
+                            }}
+                        />
                         <MolstarContainer
                             ref={pluginRefB}
                             viewerKey={viewerB.viewerKey}
