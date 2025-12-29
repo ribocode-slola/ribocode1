@@ -33,7 +33,7 @@
 	flex-direction: column;
 	gap: 20px;
 	padding: 24px 16px;
-	max-width: 1200px;
+	max-width: 1200px; /* Prevents the app from stretching too wide on large screens, improving readability and layout consistency */
 	margin: 0 auto;
 	background: #fafbfc;
 }
@@ -90,14 +90,14 @@
 .msp-viewport {
 	position: relative;
 	width: 100%;
-	height: 400px;
+	height: 400px; /* Sets a fixed height for the Mol* 3D viewer area, ensuring it is always visible and usable. Adjust as needed for your layout. */
 	margin-bottom: 10px;
 	overflow: hidden;
 }
 
 .msp-canvas {
-	width: 100%;
-	height: 400px;
+	width: 100%; /* Ensures the Mol* 3D canvas fills the available horizontal space of the viewer */
+	height: 400px; /* Matches the .msp-viewport height to keep the 3D canvas and viewport in sync */
 	display: block;
 	position: absolute;
 	top: 0;
