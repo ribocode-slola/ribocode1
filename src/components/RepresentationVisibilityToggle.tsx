@@ -43,10 +43,9 @@ const RepresentationVisibilityToggle: React.FC<RepresentationVisibilityTogglePro
         <button
             key={rep.cell?.transform?.ref}
             onClick={handleToggle}
-            style={{ marginLeft: 4 }}
         >
             {isVisible ? <VisibilityOutlinedSvg /> : <VisibilityOffOutlinedSvg />}
-            <span style={{ marginLeft: 4, fontSize: '0.9em' }}>{rep.cell?.params?.values?.type?.name || 'repr'}</span>
+            <span>{rep.cell?.params?.values?.type?.name || 'repr'}</span>
         </button>
     );
 };

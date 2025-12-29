@@ -47,6 +47,9 @@ interface LoadDataRowProps {
     selectedChainId: string;
     onSelectChainId: (id: string) => void;
     chainSelectDisabled: boolean;
+    representationTypeSelector?: React.ReactNode;
+    onAddRepresentationClick: () => void;
+    addRepresentationDisabled: boolean;
 }
 
 /**
@@ -72,6 +75,9 @@ interface LoadDataRowProps {
  * @param chainSelectDisabled Whether the chain select button is disabled.
  * @returns The LoadDataRow component.
  */
+
+// import '../../src/css/controls.css'; // Now loaded globally via index.css
+
 const LoadDataRow: React.FC<LoadDataRowProps> = ({
     viewerTitle,
     isLoaded,
@@ -91,60 +97,98 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
     selectedChainId,
     onSelectChainId,
     chainSelectDisabled,
+    representationTypeSelector,
+    onAddRepresentationClick = () => { },
+    addRepresentationDisabled = false,
 }) => (
     <div className="load-data-row">
         <div className="viewer-title">{viewerTitle}</div>
         {!isLoaded && (
-            <>
+            <div>
                 <button
+                    type="button"
                     onClick={onFileInputClick}
                     disabled={fileInputDisabled}
+                    className="msp-btn msp-form-control"
+                    aria-label={fileInputLabel}
                 >
                     {fileInputLabel}
                 </button>
                 <input
                     type="file"
                     accept=".cif,.mmcif"
-                    style={{ display: 'none' }}
                     ref={fileInputRef}
                     onChange={onFileChange}
+                    style={{ display: 'none' }}
+                    tabIndex={-1}
                 />
-            </>
+            </div>
         )}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <label htmlFor="representation-type" style={{ marginRight: 4 }}>
-                Representation:
-            </label>
-            <select
-                id="representation-type"
-                value={representationType}
-                onChange={e => onRepresentationTypeChange(e.target.value as AllowedRepresentationType)}
-                disabled={representationTypeDisabled}
-            >
-                {allowedRepresentationTypes.map(type => (
-                    <option key={type} value={type}>{type.replace(/-/g, ' ')}</option>
-                ))}
-            </select>
-            <button
-                onClick={onAddColorsClick}
-                disabled={addColorsDisabled}
-            >
-                Add
-            </button>
-            <input
-                type="file"
-                accept=".csv,.tsv,.txt,.json"
-                style={{ display: 'none' }}
-                ref={colorsInputRef}
-                onChange={onColorsFileChange}
+        <div className="load-data-controls">
+            <div>
+                <button
+                    type="button"
+                    onClick={onAddColorsClick}
+                    disabled={addColorsDisabled}
+                    aria-label="Load Colours"
+                    className="msp-btn msp-form-control"
+                >
+                    Load Colours
+                </button>
+                <input
+                    type="file"
+                    accept=".csv,.tsv,.txt,.json"
+                    ref={colorsInputRef}
+                    onChange={onColorsFileChange}
+                    style={{ display: 'none' }}
+                    tabIndex={-1}
+                />
+            </div>
+            {representationTypeSelector ? (
+                <span className="rep-type-controls">
+                    {representationTypeSelector}
+                    <button
+                        onClick={onAddRepresentationClick}
+                        disabled={addRepresentationDisabled}
+                        aria-label="Add Representation"
+                        className="msp-btn msp-form-control"
+                    >
+                        +
+                    </button>
+                </span>
+            ) : (
+                <span className="rep-type-controls">
+                    <label htmlFor="representation-type">
+                        Representation:
+                    </label>
+                    <select
+                        id="representation-type"
+                        value={representationType}
+                        onChange={e => onRepresentationTypeChange(e.target.value as AllowedRepresentationType)}
+                        disabled={representationTypeDisabled}
+                        className="msp-select msp-form-control"
+                    >
+                        {allowedRepresentationTypes.map(type => (
+                            <option key={type} value={type}>{type.replace(/-/g, ' ')}</option>
+                        ))}
+                    </select>
+                    <button
+                        onClick={onAddRepresentationClick}
+                        disabled={addRepresentationDisabled}
+                        aria-label="Add Representation"
+                        className="msp-btn msp-form-control"
+                    >
+                        +
+                    </button>
+                </span>
+            )}
+            <ChainSelectButton
+                disabled={chainSelectDisabled}
+                chainIds={chainIds}
+                selectedChainId={selectedChainId}
+                onSelect={onSelectChainId}
             />
         </div>
-        <ChainSelectButton
-            disabled={chainSelectDisabled}
-            chainIds={chainIds}
-            selectedChainId={selectedChainId}
-            onSelect={onSelectChainId}
-        />
     </div>
 );
 
