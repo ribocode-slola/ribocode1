@@ -69,7 +69,7 @@ To contribute source code, please submit `pull requests` against your fork.
 Serve out the `gh-pages` branch for your fork on `GitHub Pages` to create a PWA deployment. Deploy to this using the following command:
 * ```npm run deploy```
 
-The [Ribocode Mol*](https://github.com/ribocode-slola/molstar) is essentially Mol* 5.4.2 with some files added for Ribocode that might be generally useful for Mol* and are in [https://github.com/molstar/molstar/pull/1726](this Pull Request).
+The [Ribocode Mol*](https://github.com/ribocode-slola/molstar) is essentially Mol* 5.4.2 with some files added for Ribocode that might be generally useful for Mol* and are in [Mol* Pull Request #1726](https://github.com/molstar/molstar/pull/1726).
 
 It is perhaps a good idea to organise automated checks to manage contributions...
 
