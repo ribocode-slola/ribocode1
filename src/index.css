@@ -12,5 +12,4 @@ code {
     monospace;
 }
 
-@import './css/app-layout.css';
-@import './css/molstar-overrides.css';
+@import 'App.css';
