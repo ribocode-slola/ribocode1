@@ -19,25 +19,33 @@ import { allowedRepresentationTypes } from '../types/Representation';
  * @param structureRef The structure reference for the molecule.
  * @param isVisible Whether the molecule is currently visible.
  * @param onToggleVisibility Function to toggle the molecule's visibility.
- * @param zoomLabel The label for the zoom button.
- * @param onZoom Function to zoom to the molecule.
- * @param zoomDisabled Whether the zoom button is disabled.
+ * @param chainZoomLabel The label for the chain zoom button.
+ * @param onChainZoom Function to zoom to the chain.
+ * @param chainZoomDisabled Whether the chain zoom button is disabled.
+ * @param residueZoomLabel The label for the residue zoom button.
+ * @param onResidueZoom Function to zoom to the residue.
+ * @param residueZoomDisabled Whether the residue zoom button is disabled.
+ * @param isLoaded Whether the molecule data is loaded.
  * @param forceUpdate A function to force the parent component to re-render.
- * @param representationRefs Array of representation refs associated with the molecule. 
+ * @param representationRefs Array of representation refs associated with the molecule.
+ * @param onDeleteRepresentation Optional callback to delete a representation.
+ * @param onToggleRepVisibility Optional callback to toggle representation visibility.
+ * @return The MoleculeRow component.
  */
 interface MoleculeRowProps {
     label: string;
     plugin: PluginUIContext | null;
     isVisible: boolean;
     onToggleVisibility: () => void;
-    zoomLabel: string;
-    onZoom: () => void;
-    zoomDisabled: boolean;
+    chainZoomLabel: string;
+    onChainZoom: () => void;
+    chainZoomDisabled: boolean;
+    residueZoomLabel: string;
+    onResidueZoom: () => void;
+    residueZoomDisabled: boolean;
     isLoaded: boolean;
     forceUpdate: () => void;
     representationRefs?: string[];
-    onUpdateRepresentation?: (ref: string) => void;
-    onApplyAction?: (ref: string) => void;
     onDeleteRepresentation?: (ref: string) => void;
     onToggleRepVisibility?: (ref: string) => void;
 }
@@ -48,11 +56,17 @@ interface MoleculeRowProps {
  * @param plugin The Mol* PluginUIContext instance.
  * @param isVisible Whether the molecule is currently visible.
  * @param onToggleVisibility Function to toggle the molecule's visibility.
- * @param zoomLabel The label for the zoom button.
- * @param onZoom Function to zoom to the molecule.
- * @param zoomDisabled Whether the zoom button is disabled.
+ * @param chainZoomLabel The label for the chain zoom button.
+ * @param onChainZoom Function to zoom to the chain.
+ * @param chainZoomDisabled Whether the chain zoom button is disabled.
+ * @param residueZoomLabel The label for the residue zoom button.
+ * @param onResidueZoom Function to zoom to the residue.
+ * @param residueZoomDisabled Whether the residue zoom button is disabled.
+ * @param isLoaded Whether the molecule data is loaded.
  * @param forceUpdate A function to force the parent component to re-render.
  * @param representationRefs Array of representation refs associated with the molecule.
+ * @param onDeleteRepresentation Optional callback to delete a representation.
+ * @param onToggleRepVisibility Optional callback to toggle representation visibility.
  * @returns The MoleculeRow component.
  */
 const MoleculeRow: React.FC<MoleculeRowProps> = ({
@@ -60,14 +74,15 @@ const MoleculeRow: React.FC<MoleculeRowProps> = ({
     plugin,
     isVisible,
     onToggleVisibility,
-    zoomLabel,
-    onZoom,
-    zoomDisabled,
+    chainZoomLabel,
+    onChainZoom,
+    chainZoomDisabled,
+    residueZoomLabel,
+    onResidueZoom,
+    residueZoomDisabled,
     isLoaded,
     forceUpdate,
     representationRefs = [],
-    onUpdateRepresentation,
-    onApplyAction,
     onDeleteRepresentation,
     onToggleRepVisibility,
 }) => {
@@ -106,7 +121,7 @@ const MoleculeRow: React.FC<MoleculeRowProps> = ({
     };
     // Per-representation menu state
     const [openMenu, setOpenMenu] = useState<string | null>(null);
-
+    // Render the component.
     return (
         <div className="molecule-row">
             <button
@@ -153,12 +168,21 @@ const MoleculeRow: React.FC<MoleculeRowProps> = ({
                     })}
                 </span>
             )}
+            {/* Chain Zoom Button */}
             <button
-                onClick={onZoom}
-                disabled={zoomDisabled}
+                onClick={onChainZoom}
+                disabled={chainZoomDisabled}
                 className="msp-btn msp-form-control"
             >
-                Zoom to: {zoomLabel}
+                Zoom to Chain: {chainZoomLabel}
+            </button>
+            {/* Residue Zoom Button */}
+            <button
+                onClick={onResidueZoom}
+                disabled={residueZoomDisabled}
+                className="msp-btn msp-form-control"
+            >
+                Zoom to Residue: {residueZoomLabel}
             </button>
         </div>
     );

@@ -14,6 +14,7 @@ import { AllowedRepresentationType } from '../types/Representation';
 import { StateTransforms } from 'molstar/lib/mol-plugin-state/transforms';
 import { StructureComponentRef } from 'molstar/lib/mol-plugin-state/manager/structure/hierarchy-state';
 import { getChainIdsFromStructure } from '../utils/Chain';
+import { getResidueIdsFromStructure } from '../utils/Residue';
 
 /**
  * State and helper functions for managing a Mol* viewer instance.
@@ -45,6 +46,7 @@ export interface MolstarViewerState {
     getChainIds: (structureRef: string) => string[];
     repIdMap: Record<string, Record<string, string>>;
     setRepIdMap: (key: string, map: Record<string, string>) => void;
+    getResidueIds: (structureRef: string) => string[];
 }
 
 /**
@@ -309,6 +311,19 @@ export function useMolstarViewer(pluginRef: React.RefObject<PluginUIContext | nu
         return getChainIdsFromStructure(structureObj);
     }
 
+    /**
+     * Extracts Residue IDs from a structure ref.
+     * @param structureRef The structure reference string.
+     * @returns Array of Residue IDs, or empty array if not found.
+     */
+    function getResidueIds(structureRef: string): string[] {
+        if (!pluginRef.current) return [];
+        const plugin = pluginRef.current;
+        const structureObj = plugin.managers.structure.hierarchy.current.structures.find(s => s.cell.transform.ref === structureRef)?.cell.obj?.data;
+        if (!structureObj) return [];
+        return getResidueIdsFromStructure(structureObj);
+    }
+    
     // Add more state and logic as needed (e.g., color theme registration)
 
     // Expose all state and helper functions needed by consuming components.
@@ -324,6 +339,7 @@ export function useMolstarViewer(pluginRef: React.RefObject<PluginUIContext | nu
         addRepresentation,
         getChainIds,
         repIdMap: repIdMapState,
-        setRepIdMap
+        setRepIdMap,
+        getResidueIds
     };
 }

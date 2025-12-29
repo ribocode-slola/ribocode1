@@ -5,7 +5,7 @@
  */
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import MoleculeRow from './components/MoleculeRow';
-import SelectButton from './components/SelectButton';
+import RepresentationSelectButton from './components/select/RepresentationSelectButton';
 import LoadDataRow from './components/LoadDataRow';
 import { SyncProvider } from './SyncContext';
 import MolstarContainer from './components/MolstarContainer';
@@ -23,6 +23,7 @@ import { MolScriptBuilder } from 'molstar/lib/mol-script/language/builder';
 import { compile } from 'molstar/lib/mol-script/runtime/query/base';
 import { allowedRepresentationTypes, AllowedRepresentationType } from './types/Representation';
 import { useMolstarViewer } from './hooks/useMolstarViewer';
+import { set } from 'lodash';
 
 // Constants for structure ref keys.
 export const s_AlignedTo: string = 'AlignedTo';
@@ -135,7 +136,12 @@ const App: React.FC = () => {
     const [selectedChainIdAlignedTo, setSelectedChainIdAlignedTo] = useState<string>('');
     const [chainIdsAligned, setChainIdsAligned] = useState<string[]>([]);
     const [selectedChainIdAligned, setSelectedChainIdAligned] = useState<string>('');
-
+    // Residue ID selection state.
+    const [residueIdsAlignedTo, setResidueIdsAlignedTo] = useState<string[]>([]);
+    const [selectedResidueIdAlignedTo, setSelectedResidueIdAlignedTo] = useState<string>('');
+    const [residueIdsAligned, setResidueIdsAligned] = useState<string[]>([]);
+    const [selectedResidueIdAligned, setSelectedResidueIdAligned] = useState<string>('');
+    
     // Handle file changes for molecule loading.
     type FileChangeMode = 'alignedTo' | 'aligned';
 
@@ -364,8 +370,6 @@ const App: React.FC = () => {
     function registerThemeIfNeeded(
         plugin: PluginUIContext,
         themeName: string,
-        //chainAlignedToColorMap: Map<string, Color>,
-        //chainAlignedColorMap: Map<string, Color>
     ) {
         if (!plugin) return;
         // Get color theme registry.
@@ -469,93 +473,247 @@ const App: React.FC = () => {
         );
     }, [viewerB.moleculeAligned, structureRefBAligned]);
 
+    // Effect for moleculeAlignedTo Residue ID selection.
+    useEffect(() => {
+        console.log('Updating Residue IDs for moleculeAlignedTo');
+        const pluginA = viewerA.ref.current;
+        if (!pluginA || !structureRefAAlignedTo) return;
+        const structureObj = pluginA.managers.structure.hierarchy.current.structures.find(s => s.cell.transform.ref === structureRefAAlignedTo)?.cell.obj?.data;
+        if (!structureObj) return;
+        setResidueIdsAlignedTo(
+            molstarA.getResidueIds(structureRefAAlignedTo)
+        );
+    }, [viewerA.moleculeAlignedTo, structureRefAAlignedTo]);
+
+    // Effect for moleculeAligned Residue ID selection.
+    useEffect(() => {
+        console.log('Updating RNA IDs for moleculeAligned');
+        const pluginB = viewerB.ref.current;
+        if (!pluginB || !structureRefBAligned) return;
+        const structureObj = pluginB.managers.structure.hierarchy.current.structures.find(s => s.cell.transform.ref === structureRefBAligned)?.cell.obj?.data;
+        if (!structureObj) return;
+        setResidueIdsAligned(
+            molstarB.getResidueIds(structureRefBAligned)
+        );
+    }, [viewerB.moleculeAligned, structureRefBAligned]);
+    
     /**
-     * Creates a handler to zoom to a chain.
-     * @param structureIndex The index of the structure in the viewer hierarchy to zoom to.
-     * @return An object with a handleButtonClick method.
+     * Creates a handler to zoom to a selection based on a structure property.
+     * @param pluginRef The plugin ref (viewerA.ref or viewerB.ref).
+     * @param structureRefs Array of structure refs (e.g., [structureRefAAlignedTo, structureRefAAligned]).
+     * @param structureIndex Index in the structureRefs array.
+     * @param propertyBuilder A MolScriptBuilder property function (e.g., MolScriptBuilder.struct.atomProperty.macromolecular.auth_asym_id).
+     * @param value The value to match (e.g., chain, rnaId, paralogId).
+     * @param sync Whether to sync zoom to the other viewer.
+     * @param syncPluginRef The other plugin ref (optional, for sync).
      */
-    function createZoomA(structureIndex: number, chain: string) {
+    function createZoomHandler(
+        pluginRef: React.RefObject<PluginUIContext | null>,
+        structureRefs: (string | null | undefined)[],
+        structureIndex: number,
+        property: 'entity-test' | 'chain-test' | 'residue-test' | 'atom-test' | 'group-by',
+        propertyBuilder: () => any,
+        value: string,
+        sync: boolean = false,
+        syncPluginRef?: React.RefObject<PluginUIContext | null>
+    ) {
         return {
             handleButtonClick: async () => {
-                const pluginA = viewerA.ref.current;
-                let structureRef = null;
-                if (structureIndex === 0) structureRef = structureRefAAlignedTo;
-                else if (structureIndex === 1) structureRef = structureRefAAligned;
-                if (!pluginA || !structureRef) return;
-                const structureObj = pluginA.managers.structure.hierarchy.current.structures.find(s => s.cell.transform.ref === structureRef)?.cell.obj?.data;
-                if (!structureObj) {
-                    console.warn('No structure data found for alignedTo/aligned.');
-                    return;
-                }
+                const plugin = pluginRef.current;
+                const structureRef = structureRefs[structureIndex];
+                if (!plugin || !structureRef) return;
+                const structureObj = plugin.managers.structure.hierarchy.current.structures.find(s => s.cell.transform.ref === structureRef)?.cell.obj?.data;
+                if (!structureObj) return;
                 const qb = MolScriptBuilder.struct.generator.atomGroups({
-                    'chain-test': MolScriptBuilder.core.rel.eq([
-                        MolScriptBuilder.struct.atomProperty.macromolecular.auth_asym_id(),
-                        chain
+                    [property]: MolScriptBuilder.core.rel.eq([
+                        propertyBuilder(),
+                        value
                     ])
                 });
                 const compiled = compile(qb);
                 const ctx = new QueryContext(structureObj);
                 const selection = compiled(ctx);
                 const loci = StructureSelection.toLociWithSourceUnits(selection);
-                // Zoom
-                pluginA.managers.camera.focusLoci(loci);
-                if (syncEnabled) {
-                    const pluginB = viewerB.ref.current;
-                    if (!pluginB) return;
-                    pluginB.managers.camera.focusLoci(loci);
+                plugin.managers.camera.focusLoci(loci);
+                if (sync && syncPluginRef?.current) {
+                    syncPluginRef.current.managers.camera.focusLoci(loci);
                 }
             }
         };
     }
 
-    // Create zoomA handlers.
-    const zoomAAlignedTo = createZoomA(0, selectedChainIdAlignedTo);
-    const zoomAAligned = createZoomA(1, selectedChainIdAligned);
+    // /**
+    //  * Creates a handler to zoom to a chain.
+    //  * @param structureIndex The index of the structure in the viewer hierarchy to zoom to.
+    //  * @param chain The chain identifier to zoom to.
+    //  * @return An object with a handleButtonClick method.
+    //  */
+    // function createChainZoomA(structureIndex: number, chain: string) {
+    //     return {
+    //         handleButtonClick: async () => {
+    //             const pluginA = viewerA.ref.current;
+    //             let structureRef = null;
+    //             if (structureIndex === 0) structureRef = structureRefAAlignedTo;
+    //             else if (structureIndex === 1) structureRef = structureRefAAligned;
+    //             if (!pluginA || !structureRef) return;
+    //             const structureObj = pluginA.managers.structure.hierarchy.current.structures.find(s => s.cell.transform.ref === structureRef)?.cell.obj?.data;
+    //             if (!structureObj) {
+    //                 console.warn('No structure data found for alignedTo/aligned.');
+    //                 return;
+    //             }
+    //             const qb = MolScriptBuilder.struct.generator.atomGroups({
+    //                 'chain-test': MolScriptBuilder.core.rel.eq([
+    //                     MolScriptBuilder.struct.atomProperty.macromolecular.auth_asym_id(),
+    //                     chain
+    //                 ])
+    //             });
+    //             const compiled = compile(qb);
+    //             const ctx = new QueryContext(structureObj);
+    //             const selection = compiled(ctx);
+    //             const loci = StructureSelection.toLociWithSourceUnits(selection);
+    //             // Zoom
+    //             pluginA.managers.camera.focusLoci(loci);
+    //             if (syncEnabled) {
+    //                 const pluginB = viewerB.ref.current;
+    //                 if (!pluginB) return;
+    //                 pluginB.managers.camera.focusLoci(loci);
+    //             }
+    //         }
+    //     };
+    // }
+    // // Create chain zoomA handlers.
+    // const chainZoomAAlignedTo = createChainZoomA(0, selectedChainIdAlignedTo);
+    // const chainZoomAAligned = createChainZoomA(1, selectedChainIdAligned);
 
-    /**
-     * Creates a handler to zoom to a chain.
-     * @return An object with a handleButtonClick method.
-     * 
-     * @param structureIndex The index of the structure in the viewer hierarchy to zoom to.
-     * @return An object with a handleButtonClick method.
-     */
-    function createZoomB(structureIndex: number, chain: string) {
-        return {
-            handleButtonClick: async () => {
-                const pluginB = viewerB.ref.current;
-                let structureRef = null;
-                if (structureIndex === 0) structureRef = structureRefBAlignedTo;
-                else if (structureIndex === 1) structureRef = structureRefBAligned;
-                if (!pluginB || !structureRef) return;
-                const structureObj = pluginB.managers.structure.hierarchy.current.structures.find(s => s.cell.transform.ref === structureRef)?.cell.obj?.data;
-                if (!structureObj) {
-                    console.warn('No structure data found for alignedTo/aligned.');
-                    return;
-                }
-                const qb = MolScriptBuilder.struct.generator.atomGroups({
-                    'chain-test': MolScriptBuilder.core.rel.eq([
-                        MolScriptBuilder.struct.atomProperty.macromolecular.auth_asym_id(),
-                        chain
-                    ])
-                });
-                const compiled = compile(qb);
-                const ctx = new QueryContext(structureObj);
-                const selection = compiled(ctx);
-                const loci = StructureSelection.toLociWithSourceUnits(selection);
+    // Create chain zoomA handlers.
+    const chainZoomAAlignedTo = createZoomHandler(
+        viewerA.ref,
+        [structureRefAAlignedTo, structureRefAAligned],
+        0,
+        'chain-test',
+        () => MolScriptBuilder.struct.atomProperty.macromolecular.auth_asym_id,
+        selectedChainIdAlignedTo,
+        syncEnabled,
+        viewerB.ref
+    );
+    const chainZoomAAligned = createZoomHandler(
+        viewerA.ref,
+        [structureRefAAlignedTo, structureRefAAligned],
+        1,
+        'chain-test',
+        () => MolScriptBuilder.struct.atomProperty.macromolecular.auth_asym_id,
+        selectedChainIdAligned,
+        syncEnabled,
+        viewerB.ref
+    );
 
-                pluginB.managers.camera.focusLoci(loci);
-                if (syncEnabled) {
-                    const pluginA = viewerA.ref.current;
-                    if (!pluginA) return;
-                    pluginA.managers.camera.focusLoci(loci);
-                }
-            }
-        };
-    }
+    // /**
+    //  * Creates a handler to zoom to a chain.
+    //  * @param structureIndex The index of the structure in the viewer hierarchy to zoom to.
+    //  * @param chain The chain identifier to zoom to.
+    //  * @return An object with a handleButtonClick method.
+    //  */
+    // function createChainZoomB(structureIndex: number, chain: string) {
+    //     return {
+    //         handleButtonClick: async () => {
+    //             const pluginB = viewerB.ref.current;
+    //             let structureRef = null;
+    //             if (structureIndex === 0) structureRef = structureRefBAlignedTo;
+    //             else if (structureIndex === 1) structureRef = structureRefBAligned;
+    //             if (!pluginB || !structureRef) return;
+    //             const structureObj = pluginB.managers.structure.hierarchy.current.structures.find(s => s.cell.transform.ref === structureRef)?.cell.obj?.data;
+    //             if (!structureObj) {
+    //                 console.warn('No structure data found for alignedTo/aligned.');
+    //                 return;
+    //             }
+    //             const qb = MolScriptBuilder.struct.generator.atomGroups({
+    //                 'chain-test': MolScriptBuilder.core.rel.eq([
+    //                     MolScriptBuilder.struct.atomProperty.macromolecular.auth_asym_id(),
+    //                     chain
+    //                 ])
+    //             });
+    //             const compiled = compile(qb);
+    //             const ctx = new QueryContext(structureObj);
+    //             const selection = compiled(ctx);
+    //             const loci = StructureSelection.toLociWithSourceUnits(selection);
+    //             pluginB.managers.camera.focusLoci(loci);
+    //             if (syncEnabled) {
+    //                 const pluginA = viewerA.ref.current;
+    //                 if (!pluginA) return;
+    //                 pluginA.managers.camera.focusLoci(loci);
+    //             }
+    //         }
+    //     };
+    // }
+    // // Create zoomB handlers.
+    // const chainZoomBAlignedTo = createChainZoomB(0, selectedChainIdAlignedTo);
+    // const chainZoomBAligned = createChainZoomB(1, selectedChainIdAligned);
 
     // Create zoomB handlers.
-    const zoomBAlignedTo = createZoomB(0, selectedChainIdAlignedTo);
-    const zoomBAligned = createZoomB(1, selectedChainIdAligned);
+    const chainZoomBAlignedTo = createZoomHandler(
+        viewerB.ref,
+        [structureRefBAlignedTo, structureRefBAligned],
+        0,
+        'chain-test',
+        () => MolScriptBuilder.struct.atomProperty.macromolecular.auth_asym_id,
+        selectedChainIdAlignedTo,
+        syncEnabled,
+        viewerA.ref
+    );
+    const chainZoomBAligned = createZoomHandler(
+        viewerB.ref,
+        [structureRefBAlignedTo, structureRefBAligned],
+        1,
+        'chain-test',
+        () => MolScriptBuilder.struct.atomProperty.macromolecular.auth_asym_id,
+        selectedChainIdAligned,
+        syncEnabled,
+        viewerA.ref
+    );
+
+    // Create Residue zoomA handlers.
+    const residueZoomAAlignedTo = createZoomHandler(
+        viewerA.ref,
+        [structureRefAAlignedTo, structureRefAAligned],
+        0,
+        'residue-test',
+        () => MolScriptBuilder.struct.atomProperty.macromolecular.auth_comp_id,
+        selectedResidueIdAlignedTo,
+        syncEnabled,
+        viewerB.ref
+    );
+    const residueZoomAAligned = createZoomHandler(
+        viewerA.ref,
+        [structureRefAAlignedTo, structureRefAAligned],
+        1,
+        'residue-test',
+        () => MolScriptBuilder.struct.atomProperty.macromolecular.auth_comp_id,
+        selectedResidueIdAligned,
+        syncEnabled,
+        viewerB.ref
+    );
+    
+    // Create Residue zoomB handlers.
+    const residueZoomBAlignedTo = createZoomHandler(
+        viewerB.ref,
+        [structureRefBAlignedTo, structureRefBAligned],
+        0,
+        'residue-test',
+        () => MolScriptBuilder.struct.atomProperty.macromolecular.auth_comp_id,
+        selectedResidueIdAlignedTo,
+        syncEnabled,
+        viewerA.ref
+    );
+    const residueZoomBAligned = createZoomHandler(
+        viewerB.ref,
+        [structureRefBAlignedTo, structureRefBAligned],
+        1,
+        'residue-test',
+        () => MolScriptBuilder.struct.atomProperty.macromolecular.auth_comp_id,
+        selectedResidueIdAligned,
+        syncEnabled,
+        viewerA.ref
+    );
 
     // Unified robust delete handler for any representation
     const deleteRepresentation = async (ref: string, key: string, molstar: any, doForceUpdate = true) => {
@@ -611,7 +769,7 @@ const App: React.FC = () => {
             <div className="App">
                 <h1 className="app-title">RiboCode Mol* Viewer 0.5.1 (please see <a href="https://github.com/ribocode-slola/ribocode1/?tab=readme-ov-file#ribocode" target="_blank">README</a> for information).</h1>
                 <div className="General-Controls">
-                    <SelectButton
+                    <RepresentationSelectButton
                         label="Select Sync"
                         options={['On', 'Off']}
                         selected={syncEnabled ? 'On' : 'Off'}
@@ -661,7 +819,7 @@ const App: React.FC = () => {
                             onRepresentationTypeChange={setRepresentationTypeAlignedTo}
                             representationTypeDisabled={!viewerA.isMoleculeAlignedToLoaded}
                             representationTypeSelector={
-                                <SelectButton
+                                <RepresentationSelectButton
                                     label="Select Representation"
                                     options={[...allowedRepresentationTypes]}
                                     selected={representationTypeAlignedTo}
@@ -707,6 +865,10 @@ const App: React.FC = () => {
                             selectedChainId={selectedChainIdAlignedTo}
                             onSelectChainId={setSelectedChainIdAlignedTo}
                             chainSelectDisabled={!viewerA.isMoleculeAlignedToLoaded}
+                            residueIds={residueIdsAlignedTo}
+                            selectedResidueId={selectedResidueIdAlignedTo}
+                            onSelectResidueId={setSelectedResidueIdAlignedTo}
+                            residueSelectDisabled={!viewerA.isMoleculeAlignedToLoaded}
                         />
                         <MoleculeRow
                             key={molstarA.representationRefs[s_AlignedTo]?.join('-') || 'A-AlignedTo'}
@@ -714,46 +876,15 @@ const App: React.FC = () => {
                             plugin={viewerA.ref.current}
                             isVisible={viewerA.isMoleculeAlignedToVisible}
                             onToggleVisibility={toggleViewerAAlignedTo.handleButtonClick}
-                            zoomLabel={selectedChainIdAlignedTo}
-                            onZoom={zoomAAlignedTo.handleButtonClick}
-                            zoomDisabled={!selectedChainIdAlignedTo}
+                            chainZoomLabel={selectedChainIdAlignedTo}
+                            onChainZoom={chainZoomAAlignedTo.handleButtonClick}
+                            chainZoomDisabled={!selectedChainIdAlignedTo}
+                            residueZoomLabel={selectedResidueIdAlignedTo}
+                            onResidueZoom={residueZoomAAlignedTo.handleButtonClick}
+                            residueZoomDisabled={!selectedResidueIdAlignedTo}
                             isLoaded={viewerA.isMoleculeAlignedToLoaded}
                             forceUpdate={forceUpdate}
                             representationRefs={molstarA.representationRefs[s_AlignedTo] || []}
-                            onUpdateRepresentation={ref => {
-                                // Use repId for robust sync
-                                const repId = Object.entries(molstarA.repIdMap[s_AlignedTo]).find(([id, r]) => r === ref)?.[0];
-                                [molstarA, molstarB].forEach(molstar => {
-                                    let repRef = repId ? molstar.repIdMap[s_AlignedTo][repId] : ref;
-                                    if (!repRef) {
-                                        const idx = molstar.representationRefs[s_AlignedTo].indexOf(ref);
-                                        if (idx >= 0) repRef = molstar.representationRefs[s_AlignedTo][idx];
-                                    }
-                                    if (repRef) {
-                                        const plugin = molstar.pluginRef.current;
-                                        if (!plugin) return;
-                                        plugin.canvas3d?.requestDraw?.();
-                                        forceUpdate();
-                                    }
-                                });
-                            }}
-                            onApplyAction={ref => {
-                                // Use repId for robust sync
-                                const repId = Object.entries(molstarA.repIdMap[s_AlignedTo]).find(([id, r]) => r === ref)?.[0];
-                                [molstarA, molstarB].forEach(molstar => {
-                                    let repRef = repId ? molstar.repIdMap[s_AlignedTo][repId] : ref;
-                                    if (!repRef) {
-                                        const idx = molstar.representationRefs[s_AlignedTo].indexOf(ref);
-                                        if (idx >= 0) repRef = molstar.representationRefs[s_AlignedTo][idx];
-                                    }
-                                    if (repRef) {
-                                        const plugin = molstar.pluginRef.current;
-                                        if (!plugin) return;
-                                        plugin.canvas3d?.requestDraw?.();
-                                        forceUpdate();
-                                    }
-                                });
-                            }}
                             onDeleteRepresentation={ref => {
                                 // Always use repId from molstarA for viewerA's row
                                 const repId = Object.entries(molstarA.repIdMap[s_AlignedTo]).find(([id, r]) => r === ref)?.[0];
@@ -797,6 +928,7 @@ const App: React.FC = () => {
                                     }
                                 }
                             }}
+                            // Removed invalid zoomToRna/zoomToParalog props for MoleculeRow
                         />
                         <MoleculeRow
                             key={molstarA.representationRefs[s_Aligned]?.join('-') || 'A-Aligned'}
@@ -804,18 +936,15 @@ const App: React.FC = () => {
                             plugin={viewerA.ref.current}
                             isVisible={viewerA.isMoleculeAlignedVisible}
                             onToggleVisibility={toggleViewerAAligned.handleButtonClick}
-                            zoomLabel={selectedChainIdAligned}
-                            onZoom={zoomAAligned.handleButtonClick}
-                            zoomDisabled={!selectedChainIdAligned}
+                            chainZoomLabel={selectedChainIdAligned}
+                            onChainZoom={chainZoomAAligned.handleButtonClick}
+                            chainZoomDisabled={!selectedChainIdAligned}
+                            residueZoomLabel={selectedResidueIdAligned}
+                            onResidueZoom={residueZoomAAligned.handleButtonClick}
+                            residueZoomDisabled={!selectedResidueIdAligned}
                             isLoaded={viewerA.isMoleculeAlignedLoaded}
                             forceUpdate={forceUpdate}
                             representationRefs={molstarA.representationRefs[s_Aligned] || []}
-                            onUpdateRepresentation={ref => {
-                                // TODO: Sync update 3D rep for both viewers
-                            }}
-                            onApplyAction={ref => {
-                                // TODO: Sync apply action for both viewers
-                            }}
                             onDeleteRepresentation={ref => {
                                 // Always use repId from molstarA for viewerA's row
                                 const repId = Object.entries(molstarA.repIdMap[s_Aligned]).find(([id, r]) => r === ref)?.[0];
@@ -880,7 +1009,7 @@ const App: React.FC = () => {
                             onRepresentationTypeChange={setRepresentationTypeAligned}
                             representationTypeDisabled={!viewerB.isMoleculeAlignedLoaded}
                             representationTypeSelector={
-                                <SelectButton
+                                <RepresentationSelectButton
                                     label="Select Representation"
                                     options={[...allowedRepresentationTypes]}
                                     selected={representationTypeAligned}
@@ -926,6 +1055,10 @@ const App: React.FC = () => {
                             selectedChainId={selectedChainIdAligned}
                             onSelectChainId={setSelectedChainIdAligned}
                             chainSelectDisabled={!viewerB.isMoleculeAlignedLoaded}
+                            residueIds={residueIdsAligned}
+                            selectedResidueId={selectedResidueIdAligned}
+                            onSelectResidueId={setSelectedResidueIdAligned}
+                            residueSelectDisabled={!viewerB.isMoleculeAlignedLoaded}
                         />
                         <MoleculeRow
                             key={molstarB.representationRefs[s_AlignedTo]?.join('-') || 'B-AlignedTo'}
@@ -933,28 +1066,15 @@ const App: React.FC = () => {
                             plugin={viewerB.ref.current}
                             isVisible={viewerB.isMoleculeAlignedToVisible}
                             onToggleVisibility={toggleViewerBAlignedTo.handleButtonClick}
-                            zoomLabel={selectedChainIdAlignedTo}
-                            onZoom={zoomBAlignedTo.handleButtonClick}
-                            zoomDisabled={!selectedChainIdAlignedTo}
+                            chainZoomLabel={selectedChainIdAlignedTo}
+                            onChainZoom={chainZoomBAlignedTo.handleButtonClick}
+                            chainZoomDisabled={!selectedChainIdAlignedTo}
+                            residueZoomLabel={selectedResidueIdAlignedTo}
+                            onResidueZoom={residueZoomBAlignedTo.handleButtonClick}
+                            residueZoomDisabled={!selectedResidueIdAlignedTo}
                             isLoaded={viewerB.isMoleculeAlignedToLoaded}
                             forceUpdate={forceUpdate}
                             representationRefs={molstarB.representationRefs[s_AlignedTo] || []}
-                            onUpdateRepresentation={ref => {
-                                [molstarA, molstarB].forEach(molstar => {
-                                    const plugin = molstar.pluginRef.current;
-                                    if (!plugin) return;
-                                    plugin.canvas3d?.requestDraw?.();
-                                    forceUpdate();
-                                });
-                            }}
-                            onApplyAction={ref => {
-                                [molstarA, molstarB].forEach(molstar => {
-                                    const plugin = molstar.pluginRef.current;
-                                    if (!plugin) return;
-                                    plugin.canvas3d?.requestDraw?.();
-                                    forceUpdate();
-                                });
-                            }}
                             onDeleteRepresentation={ref => {
                                 // Always use repId from molstarB for viewerB's row
                                 const repId = Object.entries(molstarB.repIdMap[s_AlignedTo]).find(([id, r]) => r === ref)?.[0];
@@ -1004,28 +1124,15 @@ const App: React.FC = () => {
                             plugin={viewerB.ref.current}
                             isVisible={viewerB.isMoleculeAlignedVisible}
                             onToggleVisibility={toggleViewerBAligned.handleButtonClick}
-                            zoomLabel={selectedChainIdAligned}
-                            onZoom={zoomBAligned.handleButtonClick}
-                            zoomDisabled={!selectedChainIdAligned}
+                            chainZoomLabel={selectedChainIdAligned}
+                            onChainZoom={chainZoomBAligned.handleButtonClick}
+                            chainZoomDisabled={!selectedChainIdAligned}
+                            residueZoomLabel={selectedResidueIdAligned}
+                            onResidueZoom={residueZoomBAligned.handleButtonClick}
+                            residueZoomDisabled={!selectedResidueIdAligned}
                             isLoaded={viewerB.isMoleculeAlignedLoaded}
                             forceUpdate={forceUpdate}
                             representationRefs={molstarB.representationRefs[s_Aligned] || []}
-                            onUpdateRepresentation={ref => {
-                                [molstarA, molstarB].forEach(molstar => {
-                                    const plugin = molstar.pluginRef.current;
-                                    if (!plugin) return;
-                                    plugin.canvas3d?.requestDraw?.();
-                                    forceUpdate();
-                                });
-                            }}
-                            onApplyAction={ref => {
-                                [molstarA, molstarB].forEach(molstar => {
-                                    const plugin = molstar.pluginRef.current;
-                                    if (!plugin) return;
-                                    plugin.canvas3d?.requestDraw?.();
-                                    forceUpdate();
-                                });
-                            }}
                             onDeleteRepresentation={ref => {
                                 // Always use repId from molstarB for viewerB's row
                                 const repId = Object.entries(molstarB.repIdMap[s_Aligned]).find(([id, r]) => r === ref)?.[0];
