@@ -62,7 +62,7 @@ From the Ribocode root directory run:
 ## Development
 Ribocode project participants are encouraged to get involved in development by providing feedback.
 
-Please look at [issues](https://github.com/ribocode-slola/ribocode1/issues), comment on these and create new ones as approriate.
+One way to provide feedback is to look at open [issues](https://github.com/ribocode-slola/ribocode1/issues), comment on these and create new ones as appropriate.
 
 To contribute source code, please submit `pull requests` against your fork.
 
