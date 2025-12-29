@@ -1,7 +1,8 @@
 ## [v0.5.1] - 2025-12-28
 
 - General update to css styles and layout.
-- Functionality to delete representions added.
+- Functionality to delete representations added.
+- Functionality for zooming to residue.
 
 ## [v0.5.0] - 2025-12-24
 

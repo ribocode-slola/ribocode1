@@ -4,7 +4,8 @@
  * @author Andy Turner <agdturner@gmail.com>
  */
 import React from 'react';
-import ChainSelectButton from './ChainSelectButton';
+import ChainSelectButton from './select/ChainSelectButton';
+import ResidueSelectButton from './select/ResidueSelectButton';
 import { allowedRepresentationTypes, AllowedRepresentationType } from '../types/Representation';
 
 /**
@@ -43,10 +44,17 @@ interface LoadDataRowProps {
     addColorsDisabled: boolean;
     colorsInputRef: React.RefObject<HTMLInputElement | null>;
     onColorsFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    // Chain selection
     chainIds: string[];
     selectedChainId: string;
     onSelectChainId: (id: string) => void;
     chainSelectDisabled: boolean;
+    // Residue selection
+    residueIds: string[];
+    selectedResidueId: string;
+    onSelectResidueId: (id: string) => void;
+    residueSelectDisabled: boolean;
+    // Optional representation type selector
     representationTypeSelector?: React.ReactNode;
     onAddRepresentationClick: () => void;
     addRepresentationDisabled: boolean;
@@ -97,9 +105,13 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
     selectedChainId,
     onSelectChainId,
     chainSelectDisabled,
+    residueIds,
+    selectedResidueId,
+    onSelectResidueId,
+    residueSelectDisabled,
     representationTypeSelector,
     onAddRepresentationClick = () => { },
-    addRepresentationDisabled = false,
+    addRepresentationDisabled = false
 }) => (
     <div className="load-data-row">
         <div className="viewer-title">{viewerTitle}</div>
@@ -124,12 +136,18 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
                 />
             </div>
         )}
-        <div className="load-data-controls">            
+        <div className="load-data-controls">
             <ChainSelectButton
                 disabled={chainSelectDisabled}
                 chainIds={chainIds}
                 selectedChainId={selectedChainId}
                 onSelect={onSelectChainId}
+            />
+            <ResidueSelectButton
+                disabled={residueSelectDisabled}
+                residueIds={residueIds}
+                selectedResidueId={selectedResidueId}
+                onSelect={onSelectResidueId}
             />
             <div>
                 <button
