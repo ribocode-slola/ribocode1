@@ -124,7 +124,13 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
                 />
             </div>
         )}
-        <div className="load-data-controls">
+        <div className="load-data-controls">            
+            <ChainSelectButton
+                disabled={chainSelectDisabled}
+                chainIds={chainIds}
+                selectedChainId={selectedChainId}
+                onSelect={onSelectChainId}
+            />
             <div>
                 <button
                     type="button"
@@ -182,12 +188,6 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
                     </button>
                 </span>
             )}
-            <ChainSelectButton
-                disabled={chainSelectDisabled}
-                chainIds={chainIds}
-                selectedChainId={selectedChainId}
-                onSelect={onSelectChainId}
-            />
         </div>
     </div>
 );
