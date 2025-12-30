@@ -69,10 +69,9 @@ Ribocode is being developed as part of the [Ribocode project](https://ribocode.o
   - `serviceWorkerRegistration.ts` contains the code responsible for (un)registering the service worker. It contains code that checks if service workers are supported, and then registers the service-worker.ts file so the Web browser knows to use it.
   
 
-## Building and Running
-Main dev dependencies:
-- [Git](https://git-scm.com/)
-- [Node](https://nodejs.org/)
+## Building
+You will need [Git](https://git-scm.com/) to clone the repository and [Node](https://nodejs.org/). It is recommended to use Node version 24.11.0 or later. With these installed you can make a start by cloning from https://github.com/ribocode-slola/ribocode1 e.g.:
+* ```git clone https://github.com/ribocode-slola/ribocode1.git```
 
 ### Recommended set up
 1. Fork the Ribocode repository.
@@ -91,16 +90,16 @@ From the Ribocode root directory run:
 
 
 ## Development
-Ribocode project participants are encouraged to get involved in development by providing feedback.
+Ribocode project participants and Scientific Advisory Board members are encouraged to get involved in development by providing feedback.
 
-One way to provide feedback is to look at open [issues](https://github.com/ribocode-slola/ribocode1/issues), comment on these and create new ones as appropriate.
+One way to provide feedback is to comment on/create [issues](https://github.com/ribocode-slola/ribocode1/issues) either explaining something not working as expected, or requsting a feature or change to the UI.
 
 To contribute source code, please submit `pull requests` against your fork.
 
 Serve out the `gh-pages` branch for your fork on `GitHub Pages` to create a PWA deployment. Deploy to this using the following command:
 * ```npm run deploy```
 
-The [Ribocode Mol*](https://github.com/ribocode-slola/molstar) is essentially Mol* 5.4.2 with some files added for Ribocode that might be generally useful for Mol* and are in [Mol* Pull Request #1726](https://github.com/molstar/molstar/pull/1726).
+[Ribocode Mol*](https://github.com/ribocode-slola/molstar) is essentially Mol* Version 5.4.2 with some files added for Ribocode that might be generally useful for Mol*. These are being contributed via [Mol* Pull Request #1726](https://github.com/molstar/molstar/pull/1726), but if this does not happen, they will be folded back into Ribocode to make it easier to build on the later versions of Mol*.
 
 It is perhaps a good idea to organise automated checks to manage contributions...
 
