@@ -63,6 +63,7 @@ Ribocode is being developed as part of the [Ribocode project](https://ribocode.o
     - `Colors.tsx` - code for creating Mol* colour themes.
     - `Data.tsx` - code for loading data into Mol* viewers.
     - `Dictionary.tsx` - code for mapping across datasets.
+  - `public` is a directory containing static assets needed for the PWA function correctly.
   - `main.tsx` is the entry point for the React application. It is responsible for rendering the root App component into the HTML element with the id root. It applies global styles (like App.css), and wraps the app in React connects it to the [DOM](https://developer.mozilla.org/en-US/docs/Web/API/Document_Object_Model).
   - `service-worker.ts` contains the code for the [PWA service worker](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API), which is a script that runs in the background of the user's Web browser. It caches assets, enables offline functionality, and handles push notifications.
   - `serviceWorkerRegistration.ts` contains the code responsible for (un)registering the service worker. It contains code that checks if service workers are supported, and then registers the service-worker.ts file so the Web browser knows to use it.
