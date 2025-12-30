@@ -9,12 +9,12 @@
  */
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
-import { s_AlignedTo, s_Aligned} from '../App';
-import { AllowedRepresentationType } from '../types/Representation';
+import { AlignedTo, Aligned } from '../App';
+import { AllowedRepresentationType } from '../components/buttons/select/Representation';
 import { StateTransforms } from 'molstar/lib/mol-plugin-state/transforms';
 import { StructureComponentRef } from 'molstar/lib/mol-plugin-state/manager/structure/hierarchy-state';
 import { getChainIdsFromStructure } from '../utils/Chain';
-import { getResidueIdsForChain } from '../utils/Residue';
+import { getResidueIdsAndAtomLookup as getResidueIdsAndAtomIdsLookupForChain } from '../utils/Residue';
 
 /**
  * State and helper functions for managing a Mol* viewer instance.
@@ -52,7 +52,10 @@ export interface MolstarViewerState {
     getChainIds: (structureRef: string) => string[];
     repIdMap: Record<string, Record<string, string>>;
     setRepIdMap: (key: string, map: Record<string, string>) => void;
-    getResidueIds: (structureRef: string, chainId: string) => string[];
+    getResidueIdsAndAtomIdsLookup: (structureRef: string, chainId: string) => {
+        residueIds: string[];
+        residueToAtomIds: Record<string, string[]>;
+    };
 }
 
 /**
@@ -71,7 +74,7 @@ export function useMolstarViewer(pluginRef: React.RefObject<PluginUIContext | nu
 
     // Keys representing the two main structure slots in the app (alignedTo and aligned).
     // Extend this array if more tracked structures are needed.
-    const INITIAL_KEYS = [s_AlignedTo, s_Aligned] as const;
+    const INITIAL_KEYS = [AlignedTo, Aligned] as const;
 
     // Maps structure keys to all representation refs for that structure.
     const [representationRefs, setRepresentationRefsState] = useState<Record<string, string[]>>(
@@ -122,7 +125,7 @@ export function useMolstarViewer(pluginRef: React.RefObject<PluginUIContext | nu
     const debouncedRefreshAlignedTo = useRef<((key: string, structureRef: string) => void) | null>(null);
 
     // --- END HOOKS ---
-    
+
     /**
      * Color theme definition for representations.
      */
@@ -210,7 +213,7 @@ export function useMolstarViewer(pluginRef: React.RefObject<PluginUIContext | nu
         },
         [pluginRef, representationRefs, setRepresentationRefs, repIdMapState, setRepIdMap]
     );
-    
+
     // --- waitForPluginReady removed (unused) ---
 
     /**
@@ -283,7 +286,7 @@ export function useMolstarViewer(pluginRef: React.RefObject<PluginUIContext | nu
      * direct refresh for other keys.
      */
     const refreshRepresentationRefs = useCallback((key: string, structureRef: string): void => {
-        if (key === s_AlignedTo) {
+        if (key === AlignedTo) {
             debouncedRefreshAlignedTo.current?.(key, structureRef);
         } else {
             _refreshRepresentationRefs(key, structureRef);
@@ -318,19 +321,21 @@ export function useMolstarViewer(pluginRef: React.RefObject<PluginUIContext | nu
     }
 
     /**
-     * Extracts Residue IDs from a structure ref.
+     * Extracts residue IDs and atom ID lookup for a given chain in a structure.
      * @param structureRef The structure reference string.
      * @param chainId The chain ID to filter residues by.
-     * @returns Array of Residue IDs, or empty array if not found.
+     * @returns An object containing an array of residue IDs and a mapping from residue IDs to arrays of atom IDs.
      */
-    function getResidueIds(structureRef: string, chainId: string): string[] {
-        if (!pluginRef.current) return [];
+    function getResidueIds(structureRef: string, chainId: string): {
+        residueIds: string[],
+        residueToAtomIds: Record<string, string[]> } {
+        if (!pluginRef.current) return { residueIds: [], residueToAtomIds: {} };
         const plugin = pluginRef.current;
         const structureObj = plugin.managers.structure.hierarchy.current.structures.find(s => s.cell.transform.ref === structureRef)?.cell.obj?.data;
-        if (!structureObj) return [];
-        return getResidueIdsForChain(structureObj, chainId);
+        if (!structureObj) return { residueIds: [], residueToAtomIds: {} };
+        return getResidueIdsAndAtomIdsLookupForChain(structureObj, chainId);
     }
-    
+
     // Add more state and logic as needed (e.g., color theme registration)
 
     // Expose all state and helper functions needed by consuming components.
@@ -347,6 +352,6 @@ export function useMolstarViewer(pluginRef: React.RefObject<PluginUIContext | nu
         getChainIds,
         repIdMap: repIdMapState,
         setRepIdMap,
-        getResidueIds
+        getResidueIdsAndAtomIdsLookup: getResidueIds
     };
 }

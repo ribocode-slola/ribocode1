@@ -6,7 +6,7 @@
  * @author Andy Turner <agdturner@gmail.com>
  */
 import { Structure } from 'molstar/lib/mol-model/structure';
-import { RibosomeSubunitType } from '../components/select/SubunitSelectButton';
+import { RibosomeSubunitType } from '../components/buttons/select/Subunit';
 
 /**
  * Extracts unique chain IDs from a Mol* Structure object.

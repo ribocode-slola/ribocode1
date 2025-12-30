@@ -29,7 +29,8 @@ David Sehnal, Sebastian Bittrich, Mandar Deshpande, Radka Svobodová, Karel Berk
 - Mol* is a workpackage in the `src/workpackage/molstar` directory.
 - There are the following directories:
   - `components` contains code for different components.
-  - `hooks` contains code for interacting with Mol* viewers.
+  - `context` is for code that defines and exports React Contexts and their provider such as for synchronization.
+  - `hooks` for custom React hooks — reusable functions that encapsulate stateful logic or side effects such as for interacting with Mol* viewers.
   - `types` contains code for types.
   - `utils` directory contains:
     - `Chain.tsx` - code for getting chain identifiers for molecules.
