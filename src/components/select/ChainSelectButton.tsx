@@ -46,7 +46,7 @@ const ChainSelectButton: React.FC<ChainSelectButtonProps> = ({
 		selected={selectedChainId || ''}
 		onSelect={onSelect}
 		disabled={disabled}
-		placeholder="Select a chain"
+		placeholder="Select a Chain"
 	/>
 );
 
