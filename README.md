@@ -1,43 +1,72 @@
 [![License](http://img.shields.io/badge/license-MIT-blue.svg?style=flat)](./LICENSE)
 
 # Ribocode
-Ribocode is for comparing [ribosome](https://en.wikipedia.org/wiki/Ribosome) data in [3D](https://en.wikipedia.org/wiki/Three-dimensional_space). There is a [Progressive Web App (PWA)](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps) deployment via GitHub Pages that is generally available for use and can be easily duplicated:
+Ribocode provides a User Interface (UI) and algorithms for visualising and comparing [ribosome](https://en.wikipedia.org/wiki/Ribosome) data in [3D](https://en.wikipedia.org/wiki/Three-dimensional_space). It is deployed as a [Progressive Web App (PWA)](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps) via GitHub Pages that can be easily duplicated. The latest vesion is released at the following URL:
 * https://ribocode-slola.github.io/ribocode1/
 
-Users require a recent [Web browser](https://en.wikipedia.org/wiki/Web_browser) (e.g. [Firefox](https://www.firefox.com/)) that will run [JavaScript](https://developer.mozilla.org/en-US/docs/Web/JavaScript).
+The user requires a recent [Web browser](https://en.wikipedia.org/wiki/Web_browser) (e.g. [Firefox](https://www.firefox.com/)) that will run [JavaScript](https://developer.mozilla.org/en-US/docs/Web/JavaScript).
 
-Installed as a PWA, Ribocode can be used offline. Ribocode development is based on [Node](https://nodejs.org/), [React](https://react.dev/) and [Vite](https://vite.dev/). Ribocode uses [Mol*](https://github.com/molstar/molstar) extensively, and is mostly written in [TypeScript](https://www.typescriptlang.org/).
+Once installed as a PWA, Ribocode can be used offline.
 
-The interface is best displayed on a landscape computer screen with a width of 1200 pixels. Interaction is generally easiest with a 3 button mouse and keyboard.
+Ribocode uses [Mol*](https://github.com/molstar/molstar) extensively. If you use Ribocode, please cite Mol* as follows:
 
-Start by loading a ribosome dataset in [CIF](https://www.iucr.org/resources/cif/spec/version1.1) file format. Two Mol* containers should display the data in 3D in a default `cartoon` style. More representation styles can be added. The first molecule loaded is `Aligned To`. Custom colours for representations can be loaded from file. Representations can be removed. The user can rotate and zoom. An `Aligned` dataset can be loaded. This is automatically aligned with the `Aligned To` dataset using an algorithm.
+David Sehnal, Sebastian Bittrich, Mandar Deshpande, Radka Svobodová, Karel Berka, Václav Bazgier, Sameer Velankar, Stephen K Burley, Jaroslav Koča, Alexander S Rose: [Mol* Viewer: modern web app for 3D visualization and analysis of large biomolecular structures](https://doi.org/10.1093/nar/gkab314), *Nucleic Acids Research*, 2021; https://doi.org/10.1093/nar/gkab314.
+
+Ribocode source code is mostly [TypeScript](https://www.typescriptlang.org/). Development and deployment uses [Node](https://nodejs.org/), [React](https://react.dev/), [Vite](https://vite.dev/), [Git](https://git-scm.com/) and [GitHub](https://github.com/). 
+
+The Ribocode UI is best displayed on a screen at a width of 1200 pixels and a height of at least 800 pixels. Users are generally expected to interact via a mouse and keyboard. At the top of the UI is a title containing the version with a link to this README. Next is a `General Controls` component containing a `Select Sync` control for synchronization, a `Load Dictionary` button and a `Load Alignment` button. The rest of the UI is in two columns: `A` and `B`. In column `A`, the `Load Molecule` section contains a `Load AlignedTo` button. In column `B`, the `Load Molecule` section contains a `Load Aligned` button. These are for loading the dataset to align to and the dataset that is aligned respectively. The `Load Molecule` components also contain a `Select Chain` control, a `Select Residue` control, a `Load Colours` button, and a `Select Representation` control. After the `Load Molecule` component thers is a `MoleculeUI` component in each column. Each `MoleculeUI` component is comprised of an `AlignedTo` and `Aligned` component. After each `MoleculeUI` component is a `Molstar Container` each containing a `Mol* viewer`. The `Mol* viewer` in column `A` is referred to as `Viewer A` and the `Mol* viewer` in column `B` is referred to as `Viewer B`. 
+
+A user session starts by loading a dataset in [CIF](https://www.iucr.org/resources/cif/spec/version1.1) file format via the `Load AlignedTo` button. As the data load, the coordinates for all the atoms are centralized so that the coordinate origin is at the centre.
+
+When that dataset is loaded several things happen:
+  - The `Select Sync` control becomes actionable.
+  - The `Load AlignedTo` button is replaced by the name of the dataset loaded.
+  - The `AlignedTo` `Select Chain` button becomes actionable.
+  - The `Load Aligned` button becomes actionable.
+  - The `MoleculeUI` for `AlignedTo` in both columns populates and becomes actionable.
+  - A default `cartoon` style 3D visual representation of the dataset should appear in `Viewer A` and `Viewer B`.
+
+So, the user can do several things next:
+  - Additional representations can be added via the `+` button in the `Representation` component of the `LoadMoleculeUI`.
+  - Representations can be removed from the `MoleculeUI` components using the `x` button.
+  - Custom colours for `AlignedTo` representations can be loaded from file via the actionable `Load Colours` button.
+  - The 3D representation of the dataset in `Viewer A` can be rotated/zoomed.
+  - The 3D representation of the dataset in `Viewer A` can be rotated/zoomed.
+  - The `Select Sync` can be changed to `On`.
+  - An `Aligned` dataset can be loaded via the `Load Aligned` button.
+  
+If an `Aligned` dataset is loaded, it's atom posisitons are centralized and aligned with the loaded `AlignedTo` atom positions using an algorithm.
 
 Ribosome data can be downloaded from the [RCSB Protein Data Bank](https://www.rcsb.org/pages/about-us/index) in CIF format. Two datasets which align quite well are: [4ug0](https://files.rcsb.org/download/4UG0.cif); and [6xu8](https://files.rcsb.org/download/6XU8.cif).
 
-Sychronization is `Off` by default. If selected to be `On`, rotation/zoom in one `Mol* 3D Canvas` triggers rotation/zoom in the other. Please refer to the [Mol* Viewer Documentation](https://molstar.org/viewer-docs/) for information on Mol* user interface elements and how to zoom/rotate using the mouse and keyboard. In Ribocode, the `Mol* 3D Canvas` appears above the other Mol* panels: sequence, main menu, control and log.
+Sychronization is `Off` by default. If selected to be `On`, rotation/zoom in one `Mol* 3D Canvas` triggers rotation/zoom in the other.
+
+Please refer to the [Mol* viewer Documentation](https://molstar.org/viewer-docs/) for details of the Mol* UI. In the Ribocode `Molstar Container`, the `Mol* 3D Canvas` is at the top followed by the `Mol* Sequence Panel`, `Mol* Main Menu`, `Mol* Control Panal` and `Mol* Log Panel`.
 
 Ribocode is being developed as part of the [Ribocode project](https://ribocode.org/) funded by [UKRI](https://www.ukri.org/) under research grant [BB/X003086/1](https://gtr.ukri.org/projects?ref=BB%2FX003086%2F1).
-
-If you use Ribocode, please also cite Mol* using the following:
-
-David Sehnal, Sebastian Bittrich, Mandar Deshpande, Radka Svobodová, Karel Berka, Václav Bazgier, Sameer Velankar, Stephen K Burley, Jaroslav Koča, Alexander S Rose: [Mol* Viewer: modern web app for 3D visualization and analysis of large biomolecular structures](https://doi.org/10.1093/nar/gkab314), *Nucleic Acids Research*, 2021; https://doi.org/10.1093/nar/gkab314.
 
 
 ## Source Code Overview
 
-- The main application code is in `App.tsx`. The `App` contains a title, some genral controls, then two columns each containing a `LoadDataRow`, an `Aligned To` `MoleculeRow` and an `Aligned` `Molecule Row`, and a `MolstarContainer` containing a Mol* viewer.
-- Mol* is a workpackage in the `src/workpackage/molstar` directory.
-- There are the following directories:
-  - `components` contains code for different components.
-  - `context` is for code that defines and exports React Contexts and their provider such as for synchronization.
-  - `hooks` for custom React hooks — reusable functions that encapsulate stateful logic or side effects such as for interacting with Mol* viewers.
-  - `types` contains code for types.
-  - `utils` directory contains:
-    - `Chain.tsx` - code for getting chain identifiers for molecules.
-    - `Colors.tsx` - code for creating colour themes.
-    - `Data.tsx` - code for loading data into the Mol* viewers.
-    - `Dictionary.tsx` - code for mapping across ribosomes of different species.
-
+- Configuration files are in the top level directory which will also contain directories for dependencies and built artefacts. There is also a `packages` directory and a `src` directory.
+- Mol* is in the `packages/molstar` directory.
+- The `src` directory contains:
+  - `App.tsx` contains the top level application code and UI [JSX](https://www.typescriptlang.org/docs/handbook/jsx.html).
+  - `App.css` a [CSS](https://developer.mozilla.org/en-US/docs/Web/CSS) for styling all components.
+  - `components` is a directory containing code for UI components.
+  - `context` is a directory for React context files that define and export context objects and providers, which allow for sharing state and functions across different components. This contains `SyncContext.tsx` which is the basis for synchronization between `Mol* viewers`.
+  - `hooks` is a directory for [custom React hooks](https://react.dev/learn/reusing-logic-with-custom-hooks#extracting-your-own-custom-hook-from-a-component) code — reusable functions that encapsulate stateful logic or side effects such as for interaction with `Mol* viewers`.
+  - `types` is a directory dependency types and contains `molstar.d.ts` - the types for `Mol*`. 
+  - `utils` is a directory containing:
+    - `Chain.tsx` - code for processing molecule assembly chains.
+    - `Residue.tsx` - code for processing molecule assmebly residues.
+    - `Colors.tsx` - code for creating Mol* colour themes.
+    - `Data.tsx` - code for loading data into Mol* viewers.
+    - `Dictionary.tsx` - code for mapping across datasets.
+  - `main.tsx` is the entry point for the React application. It is responsible for rendering the root App component into the HTML element with the id root. It applies global styles (like App.css), and wraps the app in React connects it to the [DOM](https://developer.mozilla.org/en-US/docs/Web/API/Document_Object_Model).
+  - `service-worker.ts` contains the code for the [PWA service worker](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API), which is a script that runs in the background of the user's Web browser. It caches assets, enables offline functionality, and handles push notifications.
+  - `serviceWorkerRegistration.ts` contains the code responsible for (un)registering the service worker. It contains code that checks if service workers are supported, and then registers the service-worker.ts file so the Web browser knows to use it.
+  
 
 ## Building and Running
 Main dev dependencies:
@@ -47,8 +76,8 @@ Main dev dependencies:
 ### Recommended set up
 1. Fork the Ribocode repository.
 2. Clone the fork into a local directory (Ribocode root).
-3. Change to the `src/packages` directory.
-4. Clone [Ribocode Mol*](https://github.com/ribocode-slola/molstar) into `src/packages`.
+3. Change to the `packages` directory.
+4. Clone [Ribocode Mol*](https://github.com/ribocode-slola/molstar) into `packages`.
 
 ### Build and run locally
 From the Ribocode root directory run:
