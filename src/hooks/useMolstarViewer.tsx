@@ -14,7 +14,7 @@ import { AllowedRepresentationType } from '../types/Representation';
 import { StateTransforms } from 'molstar/lib/mol-plugin-state/transforms';
 import { StructureComponentRef } from 'molstar/lib/mol-plugin-state/manager/structure/hierarchy-state';
 import { getChainIdsFromStructure } from '../utils/Chain';
-import { getResidueIdsFromStructure } from '../utils/Residue';
+import { getResidueIdsForChain } from '../utils/Residue';
 
 /**
  * State and helper functions for managing a Mol* viewer instance.
@@ -25,6 +25,12 @@ import { getResidueIdsFromStructure } from '../utils/Residue';
  * @param setRepresentationRefs Function to set representation references by structure key.
  * @param lastAddedRepresentationRef Mapping of structure keys to the last added representation reference.
  * @param setLastAddedRepresentationRef Function to set the last added representation reference by structure key.
+ * @param refreshRepresentationRefs Function to refresh representation references for a given structure key.
+ * @param addRepresentation Function to add a new representation to a structure.
+ * @param getChainIds Function to retrieve chain IDs from a structure reference.
+ * @param repIdMap Mapping of structure keys to representation ID-to-reference mappings.
+ * @param setRepIdMap Function to set the representation ID-to-reference mapping for a structure key.
+ * @param getResidueIds Function to retrieve residue IDs for a given chain in a structure reference.
  * @return An object containing the Mol* viewer state and helper functions.
  */
 export interface MolstarViewerState {
@@ -46,7 +52,7 @@ export interface MolstarViewerState {
     getChainIds: (structureRef: string) => string[];
     repIdMap: Record<string, Record<string, string>>;
     setRepIdMap: (key: string, map: Record<string, string>) => void;
-    getResidueIds: (structureRef: string) => string[];
+    getResidueIds: (structureRef: string, chainId: string) => string[];
 }
 
 /**
@@ -314,14 +320,15 @@ export function useMolstarViewer(pluginRef: React.RefObject<PluginUIContext | nu
     /**
      * Extracts Residue IDs from a structure ref.
      * @param structureRef The structure reference string.
+     * @param chainId The chain ID to filter residues by.
      * @returns Array of Residue IDs, or empty array if not found.
      */
-    function getResidueIds(structureRef: string): string[] {
+    function getResidueIds(structureRef: string, chainId: string): string[] {
         if (!pluginRef.current) return [];
         const plugin = pluginRef.current;
         const structureObj = plugin.managers.structure.hierarchy.current.structures.find(s => s.cell.transform.ref === structureRef)?.cell.obj?.data;
         if (!structureObj) return [];
-        return getResidueIdsFromStructure(structureObj);
+        return getResidueIdsForChain(structureObj, chainId);
     }
     
     // Add more state and logic as needed (e.g., color theme registration)

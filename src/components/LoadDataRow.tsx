@@ -6,6 +6,7 @@
 import React from 'react';
 import ChainSelectButton from './select/ChainSelectButton';
 import ResidueSelectButton from './select/ResidueSelectButton';
+import SubunitSelectButton, { RibosomeSubunitType } from './select/SubunitSelectButton';
 import { allowedRepresentationTypes, AllowedRepresentationType } from '../types/Representation';
 
 /**
@@ -24,6 +25,9 @@ import { allowedRepresentationTypes, AllowedRepresentationType } from '../types/
  * @param addColorsDisabled Whether the add colors button is disabled.
  * @param colorsInputRef Ref for the hidden colors file input element.
  * @param onColorsFileChange Function to handle colors file input change event.
+ * @param selectedSubunit Currently selected subunit.
+ * @param onSelectSubunit Function to handle subunit selection.
+ * @param subunitSelectDisabled Whether the subunit select button is disabled.
  * @param chainIds Array of chain IDs.
  * @param selectedChainId Currently selected chain ID.
  * @param onSelectChainId Function to handle chain ID selection.
@@ -44,6 +48,10 @@ interface LoadDataRowProps {
     addColorsDisabled: boolean;
     colorsInputRef: React.RefObject<HTMLInputElement | null>;
     onColorsFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    // // Subunit selection
+    // selectedSubunit: RibosomeSubunitType;
+    // onSelectSubunit: (subunit: RibosomeSubunitType) => void;
+    // subunitSelectDisabled: boolean;
     // Chain selection
     chainIds: string[];
     selectedChainId: string;
@@ -77,15 +85,16 @@ interface LoadDataRowProps {
  * @param addColorsDisabled Whether the add colors button is disabled.
  * @param colorsInputRef Ref for the hidden colors file input element.
  * @param onColorsFileChange Function to handle colors file input change event.
+ * @param subunitOptions Array of subunit options.
+ * @param selectedSubunit Currently selected subunit.
+ * @param onSelectSubunit Function to handle subunit selection.
+ * @param subunitSelectDisabled Whether the subunit select button is disabled.
  * @param chainIds Array of chain IDs.
  * @param selectedChainId Currently selected chain ID.
  * @param onSelectChainId Function to handle chain ID selection.
  * @param chainSelectDisabled Whether the chain select button is disabled.
  * @returns The LoadDataRow component.
  */
-
-// import '../../src/css/controls.css'; // Now loaded globally via index.css
-
 const LoadDataRow: React.FC<LoadDataRowProps> = ({
     viewerTitle,
     isLoaded,
@@ -101,6 +110,9 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
     addColorsDisabled,
     colorsInputRef,
     onColorsFileChange,
+    //selectedSubunit,
+    //onSelectSubunit,
+    //subunitSelectDisabled,
     chainIds,
     selectedChainId,
     onSelectChainId,
@@ -137,6 +149,17 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
             </div>
         )}
         <div className="load-data-controls">
+            {/* <SubunitSelectButton
+                disabled={subunitSelectDisabled}
+                selectedSubunit={selectedSubunit}
+                onSelect={onSelectSubunit}
+            />
+            <ChainSelectButton
+                disabled={chainSelectDisabled || !selectedSubunit}
+                chainIds={chainIds}
+                selectedChainId={selectedChainId}
+                onSelect={onSelectChainId}
+            /> */}
             <ChainSelectButton
                 disabled={chainSelectDisabled}
                 chainIds={chainIds}
@@ -144,7 +167,7 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
                 onSelect={onSelectChainId}
             />
             <ResidueSelectButton
-                disabled={residueSelectDisabled}
+                disabled={residueSelectDisabled || !selectedChainId}
                 residueIds={residueIds}
                 selectedResidueId={selectedResidueId}
                 onSelect={onSelectResidueId}
