@@ -1,0 +1,66 @@
+/**
+ * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
+ *
+ * @author Andy Turner <agdturner@gmail.com>
+ */
+import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { PluginContext } from 'molstar/lib/mol-plugin/context';
+import { ViewerKey } from '../components/RibocodeViewer';
+
+/**
+ * Holds the state and setters for synchronizing two Mol* viewers.
+ * Includes references to both viewers, sync status, and active viewer.
+ */
+interface SyncContextType {
+    viewerA: PluginContext | null;
+    setViewerA: React.Dispatch<React.SetStateAction<PluginContext | null>>;
+    viewerB: PluginContext | null;
+    setViewerB: React.Dispatch<React.SetStateAction<PluginContext | null>>;
+    syncEnabled: boolean;
+    setSyncEnabled: React.Dispatch<React.SetStateAction<boolean>>;
+    activeViewer: ViewerKey | null;
+    setActiveViewer: React.Dispatch<React.SetStateAction<ViewerKey | null>>;
+}
+
+// Create SyncContext with default undefined value.
+const SyncContext = createContext<SyncContextType | undefined>(undefined);
+
+// Props for SyncProvider component.
+interface SyncProviderProps {
+    children: ReactNode;
+}
+
+// SyncProvider component to manage synchronization state between two viewers.
+export const SyncProvider: React.FC<SyncProviderProps> = ({ children }) => {
+    const [viewerA, setViewerA] = useState<PluginContext | null>(null);
+    const [viewerB, setViewerB] = useState<PluginContext | null>(null);
+    const [syncEnabled, setSyncEnabled] = useState<boolean>(false);
+    const [activeViewer, setActiveViewer] = useState<ViewerKey | null>(null);
+    // Effect to log changes to activeViewer for debugging.
+    useEffect(() => {
+        console.log('[SyncContext] activeViewer changed:', activeViewer);
+    }, [activeViewer]);
+    // Return a SyncContext provider with state values and setters.
+    return (
+        <SyncContext.Provider value={{
+             viewerA, setViewerA, 
+             viewerB, setViewerB, 
+             syncEnabled, setSyncEnabled,
+             activeViewer, setActiveViewer }}>
+            {children}
+        </SyncContext.Provider>
+    );
+};
+
+/**
+ * This hook provides access to the SyncContext.
+ * @returns The SyncContext value.
+ * @throws Error if used outside of a SyncProvider.
+ */
+export const useSync = () => {
+    const context = useContext(SyncContext);
+    if (context === undefined) {
+        throw new Error('useSync must be used within a SyncProvider');
+    }
+    return context;
+};
