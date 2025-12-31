@@ -8,6 +8,7 @@ import ChainSelectButton from './buttons/select/Chain';
 import ResidueSelectButton from './buttons/select/Residue';
 import SubunitSelectButton, { RibosomeSubunitType } from './buttons/select/Subunit';
 import { allowedRepresentationTypes, AllowedRepresentationType } from './buttons/select/Representation';
+import { ResidueLabelInfo } from 'src/utils/Residue';
 
 /**
  * Props for LoadDataRow component.
@@ -58,9 +59,10 @@ interface LoadDataRowProps {
     onSelectChainId: (id: string) => void;
     chainSelectDisabled: boolean;
     // Residue selection
-    residueIdsAndAtomIdsLookup: {
+    residueInfo: {
         residueIds: string[];
         residueToAtomIds: Record<string, string[]>;
+        residueLabels: ResidueLabelInfo[];
     };
     selectedResidueId: string;
     onSelectResidueId: (id: string) => void;
@@ -120,7 +122,7 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
     selectedChainId,
     onSelectChainId,
     chainSelectDisabled,
-    residueIdsAndAtomIdsLookup,
+    residueInfo,
     selectedResidueId,
     onSelectResidueId,
     residueSelectDisabled,
@@ -171,7 +173,7 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
             />
             <ResidueSelectButton
                 disabled={residueSelectDisabled || !selectedChainId}
-                residueIds={residueIdsAndAtomIdsLookup.residueIds}
+                residueIds={residueInfo.residueIds}
                 selectedResidueId={selectedResidueId}
                 onSelect={onSelectResidueId}
             />

@@ -41,9 +41,9 @@ const GenericSelectButton: React.FC<GenericSelectButtonProps> = ({
 	selected,
 	onSelect,
 	disabled = false,
-	placeholder = 'Select...'
+	placeholder = '...'
 }) => (
-	<label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5em' }}>
+	<label>
 		{label}
 		<select
 			className="msp-select msp-form-control"

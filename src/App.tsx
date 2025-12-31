@@ -25,6 +25,7 @@ import { useMolstarViewer } from './hooks/useMolstarViewer';
 import { inferRibosomeSubunitChainIds } from './utils/Chain';
 import { chain } from 'lodash';
 import SyncButton from './components/buttons/Sync';
+import { ResidueLabelInfo } from './utils/Residue';
 //import { RibosomeSubunitType, RibosomeSubunitTypes } from './components/select/SubunitSelectButton';
 
 // Viewer keys
@@ -158,15 +159,17 @@ const App: React.FC = () => {
     const [chainIdsAligned, setChainIdsAligned] = useState<string[]>([]);
     const [selectedChainIdAligned, setSelectedChainIdAligned] = useState<string>('');
     // Residue ID selection state.
-    const [residueIdsAndAtomIdsLookupAlignedTo, setResidueIdsAndAtomIdsLookupAlignedTo] = useState<{
+    const [residueInfoAlignedTo, setResidueInfoAlignedTo] = useState<{
         residueIds: string[];
         residueToAtomIds: Record<string, string[]>;
-    }>({ residueIds: [], residueToAtomIds: {} });
+        residueLabels: ResidueLabelInfo[];
+    }>({ residueIds: [], residueToAtomIds: {}, residueLabels: [] });
     const [selectedResidueIdAlignedTo, setSelectedResidueIdAlignedTo] = useState<string>('');
-    const [residueIdsAndAtomIdsLookupAligned, setResidueIdsAndAtomIdsLookupAligned] = useState<{
+    const [residueInfoAligned, setResidueInfoAligned] = useState<{
         residueIds: string[];
         residueToAtomIds: Record<string, string[]>;
-    }>({ residueIds: [], residueToAtomIds: {} });
+        residueLabels: ResidueLabelInfo[];
+    }>({ residueIds: [], residueToAtomIds: {}, residueLabels: [] });
     const [selectedResidueIdAligned, setSelectedResidueIdAligned] = useState<string>('');
 
     // Handle file changes for molecule loading.
@@ -491,7 +494,7 @@ const App: React.FC = () => {
         structureRef: string | null,
         molstar: ReturnType<typeof useMolstarViewer>,
         selectedChainId: string,
-        setResidueIdsAndAtomIdsLookup: React.Dispatch<React.SetStateAction<{ residueIds: string[]; residueToAtomIds: Record<string, string[]> }>>,
+        setResidueInfo: React.Dispatch<React.SetStateAction<{ residueIds: string[]; residueToAtomIds: Record<string, string[]>; residueLabels: ResidueLabelInfo[] }>>,
         selectedResidueId: string,
         setSelectedResidueId: React.Dispatch<React.SetStateAction<string>>,
         label: string
@@ -499,7 +502,7 @@ const App: React.FC = () => {
         useEffect(() => {
             // Only update residue IDs when a chain is selected
             if (!selectedChainId) {
-                setResidueIdsAndAtomIdsLookup({ residueIds: [], residueToAtomIds: {} });
+                setResidueInfo({ residueIds: [], residueToAtomIds: {}, residueLabels: [] });
                 setSelectedResidueId('');
                 return;
             }
@@ -509,10 +512,10 @@ const App: React.FC = () => {
             const structureObj = plugin.managers.structure.hierarchy.current.structures.find(s => s.cell.transform.ref === structureRef)?.cell.obj?.data;
             if (!structureObj) return;
             // Filter residue IDs to only those in the selected chain
-            const residueIdsAndAtomIdsLookup = molstar.getResidueIdsAndAtomIdsLookup(structureRef, selectedChainId);
-            setResidueIdsAndAtomIdsLookup(residueIdsAndAtomIdsLookup);
+            const residueInfo = molstar.getResidueInfo(structureRef, selectedChainId);
+            setResidueInfo(residueInfo);
             // Reset selected residue if not in new list
-            if (!residueIdsAndAtomIdsLookup.residueIds.includes(selectedResidueId)) {
+            if (!residueInfo.residueIds.includes(selectedResidueId)) {
                 setSelectedResidueId('');
             }
         }, [viewerRef, structureRef, selectedChainId]);
@@ -525,7 +528,7 @@ const App: React.FC = () => {
         structureRefAAlignedTo,
         molstarA,
         selectedChainIdAlignedTo,
-        setResidueIdsAndAtomIdsLookupAlignedTo,
+        setResidueInfoAlignedTo,
         selectedResidueIdAlignedTo,
         setSelectedResidueIdAlignedTo,
         AlignedTo
@@ -536,7 +539,7 @@ const App: React.FC = () => {
         structureRefBAligned,
         molstarB,
         selectedChainIdAligned,
-        setResidueIdsAndAtomIdsLookupAligned,
+        setResidueInfoAligned,
         selectedResidueIdAligned,
         setSelectedResidueIdAligned,
         Aligned
@@ -848,7 +851,7 @@ const App: React.FC = () => {
                             selectedChainId={selectedChainIdAlignedTo}
                             onSelectChainId={setSelectedChainIdAlignedTo}
                             chainSelectDisabled={!viewerA.isMoleculeAlignedToLoaded}
-                            residueIdsAndAtomIdsLookup={residueIdsAndAtomIdsLookupAlignedTo}
+                            residueInfo={residueInfoAlignedTo}
                             selectedResidueId={selectedResidueIdAlignedTo}
                             onSelectResidueId={setSelectedResidueIdAlignedTo}
                             residueSelectDisabled={!viewerA.isMoleculeAlignedToLoaded}
@@ -1040,7 +1043,7 @@ const App: React.FC = () => {
                             selectedChainId={selectedChainIdAligned}
                             onSelectChainId={setSelectedChainIdAligned}
                             chainSelectDisabled={!viewerB.isMoleculeAlignedLoaded}
-                            residueIdsAndAtomIdsLookup={residueIdsAndAtomIdsLookupAligned}
+                            residueInfo={residueInfoAligned}
                             selectedResidueId={selectedResidueIdAligned}
                             onSelectResidueId={setSelectedResidueIdAligned}
                             residueSelectDisabled={!viewerB.isMoleculeAlignedLoaded}
