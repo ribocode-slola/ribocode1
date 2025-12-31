@@ -86,7 +86,6 @@ const SyncButton: React.FC<SyncButtonProps> = ({
             selected={syncEnabled ? 'On' : 'Off'}
             onSelect={option => setSyncEnabled(option === 'On')}
             disabled={disabled}
-            placeholder="Select Sync option"
         />
     );
 };

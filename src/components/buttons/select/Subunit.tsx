@@ -48,7 +48,6 @@ const SubunitSelectButton: React.FC<SubunitSelectButtonProps> = ({
         selected={selectedSubunit || ''}
         onSelect={(value: string) => onSelect(value as RibosomeSubunitType)}
         disabled={disabled}
-        placeholder="Select a Subunit"
     />
 );
 

@@ -14,7 +14,7 @@ import { AllowedRepresentationType } from '../components/buttons/select/Represen
 import { StateTransforms } from 'molstar/lib/mol-plugin-state/transforms';
 import { StructureComponentRef } from 'molstar/lib/mol-plugin-state/manager/structure/hierarchy-state';
 import { getChainIdsFromStructure } from '../utils/Chain';
-import { getResidueIdsAndAtomLookup as getResidueIdsAndAtomIdsLookupForChain } from '../utils/Residue';
+import { getResidueInfo, ResidueLabelInfo } from '../utils/Residue';
 
 /**
  * State and helper functions for managing a Mol* viewer instance.
@@ -52,9 +52,10 @@ export interface MolstarViewerState {
     getChainIds: (structureRef: string) => string[];
     repIdMap: Record<string, Record<string, string>>;
     setRepIdMap: (key: string, map: Record<string, string>) => void;
-    getResidueIdsAndAtomIdsLookup: (structureRef: string, chainId: string) => {
+    getResidueInfo: (structureRef: string, chainId: string) => {
         residueIds: string[];
         residueToAtomIds: Record<string, string[]>;
+        residueLabels: ResidueLabelInfo[];
     };
 }
 
@@ -328,12 +329,14 @@ export function useMolstarViewer(pluginRef: React.RefObject<PluginUIContext | nu
      */
     function getResidueIds(structureRef: string, chainId: string): {
         residueIds: string[],
-        residueToAtomIds: Record<string, string[]> } {
-        if (!pluginRef.current) return { residueIds: [], residueToAtomIds: {} };
+        residueToAtomIds: Record<string, string[]>,
+        residueLabels: ResidueLabelInfo[]
+    } {
+        if (!pluginRef.current) return { residueIds: [], residueToAtomIds: {}, residueLabels: [] };
         const plugin = pluginRef.current;
         const structureObj = plugin.managers.structure.hierarchy.current.structures.find(s => s.cell.transform.ref === structureRef)?.cell.obj?.data;
-        if (!structureObj) return { residueIds: [], residueToAtomIds: {} };
-        return getResidueIdsAndAtomIdsLookupForChain(structureObj, chainId);
+        if (!structureObj) return { residueIds: [], residueToAtomIds: {}, residueLabels: [] };
+        return getResidueInfo(structureObj, chainId);
     }
 
     // Add more state and logic as needed (e.g., color theme registration)
@@ -352,6 +355,6 @@ export function useMolstarViewer(pluginRef: React.RefObject<PluginUIContext | nu
         getChainIds,
         repIdMap: repIdMapState,
         setRepIdMap,
-        getResidueIdsAndAtomIdsLookup: getResidueIds
+        getResidueInfo: getResidueIds
     };
 }

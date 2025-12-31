@@ -46,7 +46,6 @@ const ResidueSelectButton: React.FC<ResidueSelectButtonProps> = ({
 		selected={selectedResidueId || ''}
 		onSelect={onSelect}
 		disabled={disabled}
-		placeholder="Select a Residue"
 	/>
 );
 

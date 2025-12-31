@@ -53,7 +53,6 @@ const RepresentationSelectButton: React.FC<RepresentationSelectButtonProps> = ({
 		selected={selected}
 		onSelect={onSelect}
 		disabled={disabled}
-		placeholder="Select a Representation"
 	/>
 );
 
