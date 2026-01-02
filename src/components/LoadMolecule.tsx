@@ -6,12 +6,17 @@
 import React from 'react';
 import ChainSelectButton from './buttons/select/Chain';
 import ResidueSelectButton from './buttons/select/Residue';
-import SubunitSelectButton, { RibosomeSubunitType } from './buttons/select/Subunit';
+import SubunitSelectButton from './buttons/select/Subunit';
 import { allowedRepresentationTypes, AllowedRepresentationType } from './buttons/select/Representation';
-import { ResidueLabelInfo } from 'src/utils/Residue';
+import { ResidueLabelInfo } from '../utils/Residue';
+import { RibosomeSubunitType } from '../utils/Subunit';
 
 /**
  * Props for LoadDataRow component.
+ * @param cameraNear Camera near clipping plane distance.
+ * @param cameraFar Camera far clipping plane distance.
+ * @param onCameraNearChange Function to handle changes to camera near distance.
+ * @param onCameraFarChange Function to handle changes to camera far distance.
  * @param viewerTitle The title of the viewer.
  * @param isLoaded Whether the data is loaded.
  * @param onFileInputClick Function to handle file input button click.
@@ -33,13 +38,21 @@ import { ResidueLabelInfo } from 'src/utils/Residue';
  * @param selectedChainId Currently selected chain ID.
  * @param onSelectChainId Function to handle chain ID selection.
  * @param chainSelectDisabled Whether the chain select button is disabled.
+ * @param residueInfo Information about residues for selection.
+ * @param selectedResidueId Currently selected residue ID.
+ * @param onSelectResidueId Function to handle residue ID selection.
+ * @param residueSelectDisabled Whether the residue select button is disabled.
+ * @param representationTypeSelector Optional custom representation type selector component.
+ * @param onAddRepresentationClick Function to handle add representation button click.
+ * @param addRepresentationDisabled Whether the add representation button is disabled.
+ * @param fogEnabled Whether fog is enabled.
+ * @param fogNear Fog near distance.
+ * @param fogFar Fog far distance.
+ * @param onFogEnabledChange Function to handle changes to fog enabled state.
+ * @param onFogNearChange Function to handle changes to fog near distance.
+ * @param onFogFarChange Function to handle changes to fog far distance.
  */
 interface LoadDataRowProps {
-        // Camera near/far controls
-        cameraNear: number;
-        cameraFar: number;
-        onCameraNearChange: (value: number) => void;
-        onCameraFarChange: (value: number) => void;
     viewerTitle: string;
     isLoaded: boolean;
     onFileInputClick: () => void;
@@ -54,10 +67,11 @@ interface LoadDataRowProps {
     addColorsDisabled: boolean;
     colorsInputRef: React.RefObject<HTMLInputElement | null>;
     onColorsFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-    // // Subunit selection
-    // selectedSubunit: RibosomeSubunitType;
-    // onSelectSubunit: (subunit: RibosomeSubunitType) => void;
-    // subunitSelectDisabled: boolean;
+    // Subunit selection
+    subunitToChainIds: Map<string, Set<string>>;
+    selectedSubunit: RibosomeSubunitType;
+    onSelectSubunit: (subunit: RibosomeSubunitType) => void;
+    subunitSelectDisabled: boolean;
     // Chain
     chainInfo: { chainLabels: Map<string, string>; };
     selectedChainId: string;
@@ -82,6 +96,20 @@ interface LoadDataRowProps {
     onFogEnabledChange: (enabled: boolean) => void;
     onFogNearChange: (value: number) => void;
     onFogFarChange: (value: number) => void;
+    // Camera near/far controls
+    cameraNear: number;
+    cameraFar: number;
+    onCameraNearChange: (value: number) => void;
+    onCameraFarChange: (value: number) => void;
+}
+
+
+// Helper to filter chain labels by subunit selection
+function getFilteredChainLabels(selectedSubunit: RibosomeSubunitType, chainLabels: Map<string, string>, subunitToChainIds: Map<string, Set<string>>): Map<string, string> {
+    if (selectedSubunit === 'All') return chainLabels;
+    const allowedIds = subunitToChainIds.get(selectedSubunit);
+    if (!allowedIds) return new Map();
+    return new Map([...chainLabels].filter(([id]) => allowedIds.has(id)));
 }
 
 /**
@@ -101,7 +129,7 @@ interface LoadDataRowProps {
  * @param addColorsDisabled Whether the add colors button is disabled.
  * @param colorsInputRef Ref for the hidden colors file input element.
  * @param onColorsFileChange Function to handle colors file input change event.
- * @param subunitOptions Array of subunit options.
+ * @param subunitToChainIds Map of subunit types to their associated chain IDs.
  * @param selectedSubunit Currently selected subunit.
  * @param onSelectSubunit Function to handle subunit selection.
  * @param subunitSelectDisabled Whether the subunit select button is disabled.
@@ -109,13 +137,26 @@ interface LoadDataRowProps {
  * @param selectedChainId Currently selected chain ID.
  * @param onSelectChainId Function to handle chain ID selection.
  * @param chainSelectDisabled Whether the chain select button is disabled.
+ * @param residueInfo Information about residues for selection.
+ * @param selectedResidueId Currently selected residue ID.
+ * @param onSelectResidueId Function to handle residue ID selection.
+ * @param residueSelectDisabled Whether the residue select button is disabled.
+ * @param representationTypeSelector Optional custom representation type selector component.
+ * @param onAddRepresentationClick Function to handle add representation button click.
+ * @param addRepresentationDisabled Whether the add representation button is disabled.
+ * @param fogEnabled Whether fog is enabled.
+ * @param fogNear Fog near distance.
+ * @param fogFar Fog far distance.
+ * @param onFogEnabledChange Function to handle changes to fog enabled state.
+ * @param onFogNearChange Function to handle changes to fog near distance.
+ * @param onFogFarChange Function to handle changes to fog far distance.
  * @returns The LoadDataRow component.
  */
 const LoadDataRow: React.FC<LoadDataRowProps> = ({
-        cameraNear,
-        cameraFar,
-        onCameraNearChange,
-        onCameraFarChange,
+    cameraNear,
+    cameraFar,
+    onCameraNearChange,
+    onCameraFarChange,
     viewerTitle,
     isLoaded,
     onFileInputClick,
@@ -130,9 +171,10 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
     addColorsDisabled,
     colorsInputRef,
     onColorsFileChange,
-    //selectedSubunit,
-    //onSelectSubunit,
-    //subunitSelectDisabled,
+    subunitToChainIds,
+    selectedSubunit,
+    onSelectSubunit,
+    subunitSelectDisabled,
     chainInfo,
     selectedChainId,
     onSelectChainId,
@@ -151,6 +193,7 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
     onFogNearChange,
     onFogFarChange
 }) => (
+
     <div className="load-data-row">
         <div className="viewer-title">{viewerTitle}</div>
         {!isLoaded && (
@@ -175,20 +218,14 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
             </div>
         )}
         <div className="load-data-controls">
-            {/* <SubunitSelectButton
+            <SubunitSelectButton
                 disabled={subunitSelectDisabled}
                 selectedSubunit={selectedSubunit}
                 onSelect={onSelectSubunit}
             />
             <ChainSelectButton
                 disabled={chainSelectDisabled || !selectedSubunit}
-                chainIds={chainIds}
-                selectedChainId={selectedChainId}
-                onSelect={onSelectChainId}
-            /> */}
-            <ChainSelectButton
-                disabled={chainSelectDisabled}
-                chainLabels={chainInfo.chainLabels}
+                chainLabels={getFilteredChainLabels(selectedSubunit, chainInfo.chainLabels, subunitToChainIds)}
                 selectedChainId={selectedChainId}
                 onSelect={onSelectChainId}
             />
@@ -256,7 +293,8 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
                 </span>
             )}
         </div>
-        {/* Fog controls */}
+        {/*
+        Fog controls
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
             <label>
                 Fog:
@@ -318,6 +356,7 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
                 />
             </label>
         </div>
+        */}
     </div>
 );
 

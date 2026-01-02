@@ -24,10 +24,10 @@ import { MolScriptBuilder } from 'molstar/lib/mol-script/language/builder';
 import { compile } from 'molstar/lib/mol-script/runtime/query/base';
 import { allowedRepresentationTypes, AllowedRepresentationType } from './components/buttons/select/Representation';
 import { useMolstarViewer } from './hooks/useMolstarViewer';
-import { inferRibosomeSubunitChainIds } from './utils/Chain';
 import SyncButton from './components/buttons/Sync';
 import { ResidueLabelInfo } from './utils/Residue';
-//import { RibosomeSubunitType, RibosomeSubunitTypes } from './components/select/SubunitSelectButton';
+import { RibosomeSubunitType, RibosomeSubunitTypes } from './utils/Subunit';
+import { getSubunitToChainIds } from './utils/Subunit';
 
 // Viewer keys
 export const A: ViewerKey = 'A';
@@ -155,10 +155,21 @@ const App: React.FC = () => {
     // Chain color map state.
     const [chainColorMaps] = useState<Map<string, Map<string, Color>>>(new Map());
     // // Subunit selection state.
-    // const [subunitOptionsAlignedTo, setSubunitOptionsAlignedTo] = useState<RibosomeSubunitType[]>([]);
-    // const [selectedSubunitAlignedTo, setSelectedSubunitAlignedTo] = useState<RibosomeSubunitType>('Neither');
-    // const [subunitOptionsAligned, setSubunitOptionsAligned] = useState<RibosomeSubunitType[]>([]);
-    // const [selectedSubunitAligned, setSelectedSubunitAligned] = useState<RibosomeSubunitType>('Neither');
+    // Add state for subunitToChainIds
+    const [subunitToChainIdsAlignedTo, setSubunitToChainIdsAlignedTo] = useState<Map<RibosomeSubunitType, Set<string>>>(new Map([
+        ['All', new Set()],
+        ['Large', new Set()],
+        ['Small', new Set()],
+        ['Other', new Set()],
+    ]));
+    const [selectedSubunitAlignedTo, setSelectedSubunitAlignedTo] = useState<RibosomeSubunitType>('All');
+    const [subunitToChainIdsAligned, setSubunitToChainIdsAligned] = useState<Map<RibosomeSubunitType, Set<string>>>(new Map([
+        ['All', new Set()],
+        ['Large', new Set()],
+        ['Small', new Set()],
+        ['Other', new Set()],
+    ]));
+    const [selectedSubunitAligned, setSelectedSubunitAligned] = useState<RibosomeSubunitType>('All');
     // Chain ID selection state.
     const [chainInfoAlignedTo, setChainInfoAlignedTo] = useState<{
         chainLabels: Map<string, string>;
@@ -515,6 +526,7 @@ const App: React.FC = () => {
         structureRef: string | null,
         molstar: ReturnType<typeof useMolstarViewer>,
         setChainInfo: React.Dispatch<React.SetStateAction<{ chainLabels: Map<string, string>; }>>,
+        setSubunitToChainIds: React.Dispatch<React.SetStateAction<Map<RibosomeSubunitType, Set<string>>>>,
         label: string
     ) {
         useEffect(() => {
@@ -526,16 +538,21 @@ const App: React.FC = () => {
             )?.cell.obj?.data;
             if (!structureObj) return;
             setChainInfo(molstar.getChainInfo(structureObj));
-        }, [pluginRef, structureRef]);
+            // Memoize subunitToChainIds for this structureObj
+            const subunitMap = React.useMemo(() => getSubunitToChainIds(structureObj).subunitToChainIds, [structureObj]);
+            console.log(`[Subunit Debug] subunitToChainIds for ${label}:`, subunitMap);
+            for (const [subunit, ids] of subunitMap.entries()) {
+                console.log(`[Subunit Debug] ${subunit}:`, Array.from(ids));
+            }
+            setSubunitToChainIds(subunitMap);
+        }, [pluginRef, structureRef, molstar, setChainInfo, setSubunitToChainIds, label]);
     }
 
-    // Use useUpdateChainIds
-    // viewerA AlignedTo
+    // Use useUpdateChainInfo for both viewers
     useUpdateChainInfo(viewerA.ref, structureRefAAlignedTo, molstarA,
-        setChainInfoAlignedTo, AlignedTo);
-    // viewerB Aligned
-    useUpdateChainInfo(viewerB.ref, structureRefBAligned, molstarB,
-        setChainInfoAligned, Aligned);
+        setChainInfoAlignedTo, setSubunitToChainIdsAlignedTo, AlignedTo);
+    useUpdateChainInfo(viewerB.ref, structureRefBAligned, molstarB, 
+        setChainInfoAligned, setSubunitToChainIdsAligned, Aligned);
 
     // Generalized effect for residue ID selection
     function useUpdateResidueInfo(
@@ -1042,11 +1059,22 @@ const App: React.FC = () => {
         }
     };
 
+    // --- Debug: Log subunit selection and filtered chain IDs ---
+    useEffect(() => {
+        const chains = subunitToChainIdsAlignedTo.get(selectedSubunitAlignedTo);
+        console.log('[Subunit Select Debug][AlignedTo] selectedSubunit:', selectedSubunitAlignedTo, 'chain IDs:', chains ? Array.from(chains) : []);
+    }, [selectedSubunitAlignedTo, subunitToChainIdsAlignedTo]);
+
+    useEffect(() => {
+        const chains = subunitToChainIdsAligned.get(selectedSubunitAligned);
+        console.log('[Subunit Select Debug][Aligned] selectedSubunit:', selectedSubunitAligned, 'chain IDs:', chains ? Array.from(chains) : []);
+    }, [selectedSubunitAligned, subunitToChainIdsAligned]);
+
     // Return the main app component.
     return (
         <SyncProvider>
             <div className="App">
-                <h1 className="app-title">RiboCode Mol* Viewer 0.6.0 (please see <a href="https://github.com/ribocode-slola/ribocode1/?tab=readme-ov-file#ribocode" target="_blank">README</a> for information).</h1>
+                <h1 className="app-title">RiboCode Mol* Viewer 0.7.0 (please see <a href="https://github.com/ribocode-slola/ribocode1/?tab=readme-ov-file#ribocode" target="_blank">README</a> for information).</h1>
                 <div className="General-Controls">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                         <label>
@@ -1173,9 +1201,9 @@ const App: React.FC = () => {
                             addRepresentationDisabled={!viewerA.isMoleculeAlignedToLoaded || !structureRefAAlignedTo}
                             colorsInputRef={colorsAlignedToFile.inputRef}
                             onColorsFileChange={colorsAlignedToFile.handleFileChange}
-                            //selectedSubunit={selectedSubunitAlignedTo}
-                            //onSelectSubunit={setSelectedSubunitAlignedTo}
-                            //subunitSelectDisabled={!viewerA.isMoleculeAlignedToLoaded}
+                            selectedSubunit={selectedSubunitAlignedTo}
+                            onSelectSubunit={setSelectedSubunitAlignedTo}
+                            subunitSelectDisabled={!viewerA.isMoleculeAlignedToLoaded}
                             chainInfo={chainInfoAlignedTo}
                             selectedChainId={selectedChainIdAlignedTo}
                             onSelectChainId={setSelectedChainIdAlignedTo}
@@ -1209,6 +1237,7 @@ const App: React.FC = () => {
                                 setCameraAFar(val);
                                 updateFog(viewerA.ref.current, viewerB.ref.current, fogAEnabled, fogANear, fogAFar, cameraANear, val);
                             }}
+                            subunitToChainIds={subunitToChainIdsAlignedTo}
                         />
                         <MoleculeUI
                             key={molstarA.representationRefs[AlignedTo]?.join('-') || A + '-' + AlignedTo}
@@ -1390,13 +1419,13 @@ const App: React.FC = () => {
                             addRepresentationDisabled={!viewerB.isMoleculeAlignedLoaded || !structureRefBAligned}
                             colorsInputRef={colorsAlignedFile.inputRef}
                             onColorsFileChange={colorsAlignedFile.handleFileChange}
-                            //selectedSubunit={selectedSubunitAligned}
-                            //onSelectSubunit={setSelectedSubunitAligned}
-                            //subunitSelectDisabled={!viewerB.isMoleculeAlignedLoaded}
+                            selectedSubunit={selectedSubunitAligned}
+                            onSelectSubunit={setSelectedSubunitAligned}
+                            subunitSelectDisabled={!viewerB.isMoleculeAlignedLoaded}
                             chainInfo={chainInfoAligned}
                             selectedChainId={selectedChainIdAligned}
                             onSelectChainId={setSelectedChainIdAligned}
-                            chainSelectDisabled={!viewerB.isMoleculeAlignedLoaded}
+                            chainSelectDisabled={!viewerB.isMoleculeAlignedToLoaded}
                             residueInfo={residueInfoAligned}
                             selectedResidueId={selectedResidueIdAligned}
                             onSelectResidueId={setSelectedResidueIdAligned}
@@ -1426,6 +1455,7 @@ const App: React.FC = () => {
                                 setCameraBFar(val);
                                 updateFog(viewerA.ref.current, viewerB.ref.current, fogBEnabled, fogBNear, fogBFar, cameraBNear, val);
                             }}
+                            subunitToChainIds={subunitToChainIdsAligned}
                         />
                         <MoleculeUI
                             key={molstarB.representationRefs[AlignedTo]?.join('-') || B + `-` + AlignedTo}
