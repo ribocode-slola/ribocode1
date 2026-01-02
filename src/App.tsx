@@ -4,6 +4,7 @@
  * @author Andy Turner <agdturner@gmail.com>
  */
 import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { extractAtomData } from './utils/Data';
 import MoleculeUI from './components/Molecule';
 import RepresentationSelectButton from './components/buttons/select/Representation';
 import LoadDataRow from './components/LoadMolecule';
@@ -13,6 +14,7 @@ import { parseColorFileContent, createChainColorTheme } from './utils/Colors';
 import { parseDictionaryFileContent } from './utils/Dictionary';
 import { toggleVisibility, ViewerKey, ViewerState } from './components/RibocodeViewer';
 import { loadMoleculeFileToViewer, Molecule } from 'molstar/lib/extensions/ribocode/structure';
+import { alignDatasetUsingChains } from 'molstar/lib/extensions/ribocode/utils/geometry';
 import { Asset } from 'molstar/lib/mol-util/assets';
 import { Color } from 'molstar/lib/mol-util/color';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
@@ -23,7 +25,6 @@ import { compile } from 'molstar/lib/mol-script/runtime/query/base';
 import { allowedRepresentationTypes, AllowedRepresentationType } from './components/buttons/select/Representation';
 import { useMolstarViewer } from './hooks/useMolstarViewer';
 import { inferRibosomeSubunitChainIds } from './utils/Chain';
-import { chain } from 'lodash';
 import SyncButton from './components/buttons/Sync';
 import { ResidueLabelInfo } from './utils/Residue';
 //import { RibosomeSubunitType, RibosomeSubunitTypes } from './components/select/SubunitSelectButton';
@@ -42,6 +43,9 @@ export const Aligned: FileChangeMode = 'Aligned';
  * @returns The main App component.
  */
 const App: React.FC = () => {
+    // State for zoom-to-residue options
+    const [zoomExtraRadius, setZoomExtraRadius] = useState<number>(20);
+    const [zoomMinRadius, setZoomMinRadius] = useState<number>(16);
 
     // Create plugin refs and pass to useMolstarViewers
     const pluginRefA: React.RefObject<PluginUIContext | null> = useRef<PluginUIContext | null>(null);
@@ -154,22 +158,22 @@ const App: React.FC = () => {
     // const [subunitOptionsAligned, setSubunitOptionsAligned] = useState<RibosomeSubunitType[]>([]);
     // const [selectedSubunitAligned, setSelectedSubunitAligned] = useState<RibosomeSubunitType>('Neither');
     // Chain ID selection state.
-    const [chainIdsAlignedTo, setChainIdsAlignedTo] = useState<string[]>([]);
+    const [chainInfoAlignedTo, setChainInfoAlignedTo] = useState<{
+        chainLabels: Map<string, string>;}>({ chainLabels: new Map() });
     const [selectedChainIdAlignedTo, setSelectedChainIdAlignedTo] = useState<string>('');
-    const [chainIdsAligned, setChainIdsAligned] = useState<string[]>([]);
+    const [chainInfoAligned, setChainInfoAligned] = useState<{
+        chainLabels: Map<string, string>;}>({ chainLabels: new Map() });
     const [selectedChainIdAligned, setSelectedChainIdAligned] = useState<string>('');
     // Residue ID selection state.
     const [residueInfoAlignedTo, setResidueInfoAlignedTo] = useState<{
-        residueIds: string[];
+        residueLabels: Map<string, ResidueLabelInfo>;
         residueToAtomIds: Record<string, string[]>;
-        residueLabels: ResidueLabelInfo[];
-    }>({ residueIds: [], residueToAtomIds: {}, residueLabels: [] });
+    }>({ residueLabels: new Map(), residueToAtomIds: {} });
     const [selectedResidueIdAlignedTo, setSelectedResidueIdAlignedTo] = useState<string>('');
     const [residueInfoAligned, setResidueInfoAligned] = useState<{
-        residueIds: string[];
+        residueLabels: Map<string, ResidueLabelInfo>;
         residueToAtomIds: Record<string, string[]>;
-        residueLabels: ResidueLabelInfo[];
-    }>({ residueIds: [], residueToAtomIds: {}, residueLabels: [] });
+    }>({ residueLabels: new Map(), residueToAtomIds: {} });
     const [selectedResidueIdAligned, setSelectedResidueIdAligned] = useState<string>('');
 
     // Handle file changes for molecule loading.
@@ -203,6 +207,7 @@ const App: React.FC = () => {
                         name: viewerAMoleculeAlignedTo.name,
                         filename: viewerAMoleculeAlignedTo.filename ?? prev?.filename ?? "",
                         presetResult: viewerAMoleculeAlignedTo.presetResult ?? "Unknown",
+                        trajectory: viewerAMoleculeAlignedTo.trajectory,
                         alignmentData: viewerAMoleculeAlignedTo.alignmentData
                     }));
                     // Set structureRef for robust lookup and start robust polling
@@ -214,7 +219,7 @@ const App: React.FC = () => {
                     viewerA.setIsMoleculeAlignedToLoaded(true);
                     viewerA.setIsMoleculeAlignedToVisible(true);
                     // Viewer B
-                    const viewerBMoleculeAlignedTo = await loadMoleculeFileToViewer(
+                    const viewerBMoleculeAlignedTo: Molecule | undefined = await loadMoleculeFileToViewer(
                         pluginB, assetFile, false, true
                     );
                     if (!viewerBMoleculeAlignedTo) {
@@ -226,6 +231,7 @@ const App: React.FC = () => {
                         name: viewerBMoleculeAlignedTo.name,
                         filename: viewerBMoleculeAlignedTo.filename ?? prev?.filename ?? "",
                         presetResult: viewerBMoleculeAlignedTo.presetResult ?? "Unknown",
+                        trajectory: viewerBMoleculeAlignedTo.trajectory,
                     }));
                     const structureB = pluginB.managers.structure.hierarchy.current.structures[0];
                     if (structureB) {
@@ -242,7 +248,7 @@ const App: React.FC = () => {
                     }
                     const alignmentData = viewerA.moleculeAlignedTo.alignmentData;
                     // Load aligned molecule into both viewers using alignment data
-                    const viewerAMoleculeAligned = await loadMoleculeFileToViewer(
+                    const viewerAMoleculeAligned: Molecule | undefined = await loadMoleculeFileToViewer(
                         pluginA, assetFile, false, true, alignmentData
                     );
                     if (!viewerAMoleculeAligned) {
@@ -254,6 +260,7 @@ const App: React.FC = () => {
                         name: viewerAMoleculeAligned.name,
                         filename: viewerAMoleculeAligned.filename ?? prev?.filename ?? "",
                         presetResult: viewerAMoleculeAligned.presetResult ?? "Unknown",
+                        trajectory: viewerAMoleculeAligned.trajectory,
                     }));
                     const structureA = pluginA.managers.structure.hierarchy.current.structures[1];
                     if (structureA) {
@@ -263,7 +270,7 @@ const App: React.FC = () => {
                     viewerA.setIsMoleculeAlignedLoaded(true);
                     viewerA.setIsMoleculeAlignedVisible(true);
 
-                    const viewerBMoleculeAligned = await loadMoleculeFileToViewer(
+                    const viewerBMoleculeAligned: Molecule | undefined = await loadMoleculeFileToViewer(
                         pluginB, assetFile, false, true, alignmentData
                     );
                     if (!viewerBMoleculeAligned) {
@@ -275,6 +282,7 @@ const App: React.FC = () => {
                         name: viewerBMoleculeAligned.name,
                         filename: viewerBMoleculeAligned.filename ?? prev?.filename ?? "",
                         presetResult: viewerBMoleculeAligned.presetResult ?? "Unknown",
+                        trajectory: viewerBMoleculeAligned.trajectory,
                     }));
                     const structureB = pluginB.managers.structure.hierarchy.current.structures[1];
                     if (structureB) {
@@ -457,15 +465,15 @@ const App: React.FC = () => {
      * @param pluginRef The plugin ref (viewerA.ref or viewerB.ref).
      * @param structureRef The structure ref to get chain IDs from.
      * @param molstar The molstar viewer hook instance.
-     * @param setChainIds Function to set the chain IDs state.
+     * @param setChainInfo Function to set the chain IDs state.
      * @param label Label for logging purposes.
      * @param deps Additional dependencies for the effect.
      */
-    function useUpdateChainIds(
+    function useUpdateChainInfo(
         pluginRef: React.RefObject<PluginUIContext | null>,
         structureRef: string | null,
         molstar: ReturnType<typeof useMolstarViewer>,
-        setChainIds: React.Dispatch<React.SetStateAction<string[]>>,
+        setChainInfo: React.Dispatch<React.SetStateAction<{ chainLabels: Map<string, string>; }>>,
         label: string
     ) {
         useEffect(() => {
@@ -476,25 +484,25 @@ const App: React.FC = () => {
                 s => s.cell.transform.ref === structureRef
             )?.cell.obj?.data;
             if (!structureObj) return;
-            setChainIds(molstar.getChainIds(structureRef));
+            setChainInfo(molstar.getChainInfo(structureObj));
         }, [pluginRef, structureRef]);
     }
 
     // Use useUpdateChainIds
     // viewerA AlignedTo
-    useUpdateChainIds(viewerA.ref, structureRefAAlignedTo, molstarA, 
-        setChainIdsAlignedTo, AlignedTo);
+    useUpdateChainInfo(viewerA.ref, structureRefAAlignedTo, molstarA,
+        setChainInfoAlignedTo, AlignedTo);
     // viewerB Aligned
-    useUpdateChainIds(viewerB.ref, structureRefBAligned, molstarB,
-         setChainIdsAligned, Aligned);
+    useUpdateChainInfo(viewerB.ref, structureRefBAligned, molstarB,
+        setChainInfoAligned, Aligned);
 
     // Generalized effect for residue ID selection
-    function useUpdateResidueIds(
+    function useUpdateResidueInfo(
         viewerRef: React.RefObject<PluginUIContext | null>,
         structureRef: string | null,
         molstar: ReturnType<typeof useMolstarViewer>,
         selectedChainId: string,
-        setResidueInfo: React.Dispatch<React.SetStateAction<{ residueIds: string[]; residueToAtomIds: Record<string, string[]>; residueLabels: ResidueLabelInfo[] }>>,
+        setResidueInfo: React.Dispatch<React.SetStateAction<{ residueLabels: Map<string, ResidueLabelInfo>; residueToAtomIds: Record<string, string[]> }>>,
         selectedResidueId: string,
         setSelectedResidueId: React.Dispatch<React.SetStateAction<string>>,
         label: string
@@ -502,20 +510,22 @@ const App: React.FC = () => {
         useEffect(() => {
             // Only update residue IDs when a chain is selected
             if (!selectedChainId) {
-                setResidueInfo({ residueIds: [], residueToAtomIds: {}, residueLabels: [] });
+                setResidueInfo({ residueLabels: new Map(), residueToAtomIds: {} });
                 setSelectedResidueId('');
                 return;
             }
             console.log(`Updating Residue IDs for ${label}, chain:`, selectedChainId);
             const plugin = viewerRef.current;
-            if (!plugin || !structureRef) return;
-            const structureObj = plugin.managers.structure.hierarchy.current.structures.find(s => s.cell.transform.ref === structureRef)?.cell.obj?.data;
+            if (!plugin) return;
+            const structureObj = plugin.managers.structure.hierarchy.current.structures.find(
+                s => s.cell.transform.ref === structureRef
+            )?.cell.obj?.data;
             if (!structureObj) return;
             // Filter residue IDs to only those in the selected chain
-            const residueInfo = molstar.getResidueInfo(structureRef, selectedChainId);
+            const residueInfo = molstar.getResidueInfo(structureObj, selectedChainId);
             setResidueInfo(residueInfo);
             // Reset selected residue if not in new list
-            if (!residueInfo.residueIds.includes(selectedResidueId)) {
+            if (!residueInfo.residueLabels.has(selectedResidueId)) {
                 setSelectedResidueId('');
             }
         }, [viewerRef, structureRef, selectedChainId]);
@@ -523,7 +533,7 @@ const App: React.FC = () => {
 
     // Use useUpdateResidueIds
     // viewerA AlignedTo
-    useUpdateResidueIds(
+    useUpdateResidueInfo(
         viewerA.ref,
         structureRefAAlignedTo,
         molstarA,
@@ -534,7 +544,7 @@ const App: React.FC = () => {
         AlignedTo
     );
     // viewerB Aligned
-    useUpdateResidueIds(
+    useUpdateResidueInfo(
         viewerB.ref,
         structureRefBAligned,
         molstarB,
@@ -545,17 +555,175 @@ const App: React.FC = () => {
         Aligned
     );
 
+    // --- Shared chain/residue loci and focus utilities ---
+    /**
+     * Get the loci for a given chain in a structure.
+     */
+    function getChainLoci(plugin: PluginUIContext, structureRef: string, chainId: string) {
+        const structureObj = plugin.managers.structure.hierarchy.current.structures.find(
+            s => s.cell.transform.ref === structureRef
+        )?.cell.obj?.data;
+        if (!structureObj) return null;
+        const qb = MolScriptBuilder.struct.generator.atomGroups({
+            'chain-test': MolScriptBuilder.core.rel.eq([
+                MolScriptBuilder.struct.atomProperty.macromolecular.auth_asym_id(),
+                chainId
+            ])
+        });
+        const compiled = compile(qb);
+        const ctx = new QueryContext(structureObj);
+        const selection = compiled(ctx);
+        return StructureSelection.toLociWithSourceUnits(selection);
+    }
+
+    /**
+     * Focus the camera on a chain loci, with optional sync to another plugin.
+     */
+    function focusLociOnChain(
+        plugin: PluginUIContext,
+        structureRef: string,
+        chainId: string,
+        syncPlugin?: PluginUIContext
+    ) {
+        const loci = getChainLoci(plugin, structureRef, chainId);
+        if (!loci) return;
+        plugin.managers.camera.focusLoci(loci);
+        if (syncPlugin) {
+            syncPlugin.managers.camera.focusLoci(loci);
+        }
+    }
+
+    /**
+     * Get the loci for a given residue in a chain.
+     * Enhanced to allow optional insertion code for precise selection.
+     * @param plugin The Mol* plugin instance.
+     * @param structureRef The structure reference.
+     * @param chainId The chain identifier.
+     * @param residueId The residue identifier.
+     * @param insCode Optional insertion code for the residue.
+     * @returns The loci for the specified residue, or null if not found.
+     */
+    function getResidueLoci(
+        plugin: PluginUIContext,
+        structureRef: string,
+        chainId: string,
+        residueId: string,
+        insCode?: string
+    ) {
+        const structureObj = plugin.managers.structure.hierarchy.current.structures.find(
+            s => s.cell.transform.ref === structureRef
+        )?.cell.obj?.data;
+        if (!structureObj) return null;
+        // Build query with optional insertion code
+        const parsedResidueId = (typeof residueId === 'string' && !isNaN(Number(residueId))) ? Number(residueId) : residueId;
+        const tests: any = {
+            'chain-test': MolScriptBuilder.core.rel.eq([
+                MolScriptBuilder.struct.atomProperty.macromolecular.auth_asym_id(),
+                chainId
+            ]),
+            'residue-test': MolScriptBuilder.core.rel.eq([
+                MolScriptBuilder.struct.atomProperty.macromolecular.auth_seq_id(),
+                parsedResidueId
+            ])
+        };
+        if (typeof insCode === 'string' && insCode.length > 0) {
+            tests['inscode-test'] = MolScriptBuilder.core.rel.eq([
+                MolScriptBuilder.struct.atomProperty.macromolecular.pdbx_PDB_ins_code(),
+                insCode
+            ]);
+        }
+        console.log('[getResidueLoci] Query params:', { chainId, residueId, insCode });
+        const qb = MolScriptBuilder.struct.generator.atomGroups(tests);
+        const compiled = compile(qb);
+        const ctx = new QueryContext(structureObj);
+        const selection = compiled(ctx);
+        // Debug: log selection size
+        let selectionSize = 0;
+        try {
+            if (selection?.groups) {
+                selectionSize = selection.groups.length;
+            }
+        } catch (e) {
+            // ignore
+        }
+        console.log('[getResidueLoci] Selection size:', selectionSize, selection);
+        
+        // DEBUG: Log all auth_asym_id and auth_seq_id for the selected chain
+            try {
+                if (structureObj && structureObj.units) {
+                    let found = false;
+                    for (const unit of structureObj.units) {
+                        if (unit.kind !== 0) continue; // Only atomic units
+                        const { chainIndex, residueIndex, elements, model } = unit;
+                        const chains = model.atomicHierarchy.chains;
+                        const residues = model.atomicHierarchy.residues;
+                        for (let i = 0; i < elements.length; i++) {
+                            const atomIdx = elements[i];
+                            const chainIdx = chainIndex[atomIdx];
+                            let asymId = '';
+                            if (chains && chains.auth_asym_id) {
+                                if (typeof chains.auth_asym_id.value === 'function') {
+                                    asymId = (chains.auth_asym_id.value as (idx: number) => string)(chainIdx);
+                                } else if (Array.isArray(chains.auth_asym_id.value)) {
+                                    asymId = (chains.auth_asym_id.value as unknown as any[])[chainIdx];
+                                }
+                            }
+                            if (asymId !== chainId) continue;
+                            const resIdx = residueIndex[atomIdx];
+                            let seqId = '';
+                            if (residues && residues.auth_seq_id) {
+                                if (typeof residues.auth_seq_id.value === 'function') {
+                                    seqId = (residues.auth_seq_id.value as (idx: number) => any)(resIdx)?.toString();
+                                } else if (Array.isArray(residues.auth_seq_id.value)) {
+                                    seqId = (residues.auth_seq_id.value as unknown as any[])[resIdx]?.toString();
+                                }
+                            }
+                            let insCode = '';
+                            if (residues && residues.pdbx_PDB_ins_code) {
+                                if (typeof residues.pdbx_PDB_ins_code.value === 'function') {
+                                    insCode = (residues.pdbx_PDB_ins_code.value as (idx: number) => any)(resIdx) || '';
+                                } else if (Array.isArray(residues.pdbx_PDB_ins_code.value)) {
+                                    insCode = (residues.pdbx_PDB_ins_code.value as unknown as any[])[resIdx] || '';
+                                }
+                            }
+                            if (!found) {
+                                found = true;
+                                console.log('[getResidueLoci] Listing all residues for chain', chainId);
+                            }
+                            console.log(`[getResidueLoci] chainId: ${asymId}, auth_seq_id: ${seqId}, insCode: '${insCode}'`);
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn('[getResidueLoci] Error logging residues:', e);
+            }
+        
+        return StructureSelection.toLociWithSourceUnits(selection);
+    }
+
+    /**
+     * Focus the camera on a residue loci, with optional sync to another plugin.
+     */
+    function focusLociOnResidue(
+        plugin: PluginUIContext,
+        structureRef: string,
+        chainId: string,
+        residueId: string,
+        insCode?: string,
+        syncPlugin?: PluginUIContext
+    ) {
+        const loci = getResidueLoci(plugin, structureRef, chainId, residueId, insCode);
+        if (!loci) return;
+        const focusOptions = { extraRadius: zoomExtraRadius, minRadius: zoomMinRadius };
+        plugin.managers.camera.focusLoci(loci, focusOptions);
+        if (syncPlugin) {
+            syncPlugin.managers.camera.focusLoci(loci, focusOptions);
+        }
+    }
+
     /**
      * Creates a handler to zoom to a selection based on a structure property.
-     * @param pluginRef The plugin ref (viewerA.ref or viewerB.ref).
-     * @param structureRefs Array of structure refs (e.g., [structureRefAAlignedTo, structureRefAAligned]).
-     * @param structureIndex Index in the structureRefs array.
-     * @param propertyBuilder A MolScriptBuilder property function (e.g., MolScriptBuilder.struct.atomProperty.macromolecular.auth_asym_id).
-     * @param chainId The chain ID to zoom to.
-     * @param sync Whether to sync zoom to the other viewer.
-     * @param syncPluginRef The other plugin ref (optional, for sync).
-     * @param residueId The residue ID to zoom to (optional, for residue zoom).
-     * @return An object with a handleButtonClick function.
+     * Uses shared chain/residue loci/focus utilities.
      */
     function createZoomHandler(
         pluginRef: React.RefObject<PluginUIContext | null>,
@@ -564,58 +732,37 @@ const App: React.FC = () => {
         chainId: string,
         sync: boolean = false,
         syncPluginRef?: React.RefObject<PluginUIContext | null>,
-        residueId?: string
+        residueId?: string,
+        insCode?: string
     ) {
         return {
             handleButtonClick: async () => {
                 const plugin = pluginRef.current;
                 if (!plugin || !structureRef) return;
-                const structureObj = plugin.managers.structure.hierarchy.current.structures.find(s => s.cell.transform.ref === structureRef)?.cell.obj?.data;
-                if (!structureObj) return;
-                let qb;
-                if (property === 'residue-test') {
-                    // For residue zoom, match both chain and residue
-                    console.log('[Zoom to Residue] chainId:', chainId, 'residueId:', residueId);
-                    // Log available residue IDs for the selected chain
-                    const residues = structureObj.model.atomicHierarchy.residues;
-                    console.log('residues:', residues);
-                    const authSeqIds = residues.auth_seq_id.toArray();
-                    console.log('residues.auth_seq_id.toArray():', authSeqIds);
-                    qb = MolScriptBuilder.struct.generator.atomGroups({
-                        'chain-test': MolScriptBuilder.core.rel.eq(
-                            [MolScriptBuilder.struct.atomProperty.macromolecular.auth_asym_id(), chainId]),
-                        'residue-test': MolScriptBuilder.core.rel.eq(
-                            [MolScriptBuilder.struct.atomProperty.macromolecular.auth_seq_id(), residueId])
-                    });
-                } else {
-                    qb = MolScriptBuilder.struct.generator.atomGroups({
-                        [property]: MolScriptBuilder.core.rel.eq([
-                            MolScriptBuilder.struct.atomProperty.macromolecular.auth_asym_id(),
-                            chainId
-                        ])
-                    });
-                }
-                const compiled = compile(qb!);
-                const ctx = new QueryContext(structureObj);
-                const selection = compiled(ctx);
-                const loci = StructureSelection.toLociWithSourceUnits(selection);
-                // Log the selection size for debugging
-                if (property === 'residue-test') {
-                    const lociSize = loci.elements?.length ?? 0;
-                    console.log('[Zoom to Residue] loci elements:', lociSize, loci);
-                }
-                if (property === 'residue-test') {
-                    const focusOptions = { extraRadius: 20, minRadius: 16 };
-                    plugin.managers.camera.focusLoci(loci, focusOptions);
-                    if (sync && syncPluginRef?.current) {
-                        syncPluginRef.current.managers.camera.focusLoci(loci, focusOptions);
-                    }
-                }
                 if (property === 'chain-test') {
-                    plugin.managers.camera.focusLoci(loci);
-                    if (sync && syncPluginRef?.current) {
-                        syncPluginRef.current.managers.camera.focusLoci(loci);
-                    }
+                    focusLociOnChain(
+                        plugin,
+                        structureRef,
+                        chainId,
+                        sync && syncPluginRef?.current ? syncPluginRef.current : undefined
+                    );
+                } else if (property === 'residue-test') {
+                    focusLociOnResidue(
+                        plugin,
+                        structureRef,
+                        chainId,
+                        residueId ?? '',
+                        insCode,
+                        sync && syncPluginRef?.current ? syncPluginRef.current : undefined
+                    );
+                } else {
+                    // fallback: use chain loci for other property types for now
+                    focusLociOnChain(
+                        plugin,
+                        structureRef,
+                        chainId,
+                        sync && syncPluginRef?.current ? syncPluginRef.current : undefined
+                    );
                 }
             }
         };
@@ -665,7 +812,8 @@ const App: React.FC = () => {
         selectedChainIdAlignedTo,
         syncEnabled,
         viewerB.ref,
-        selectedResidueIdAlignedTo
+        selectedResidueIdAlignedTo,
+        residueInfoAlignedTo.residueLabels.get(selectedResidueIdAlignedTo)?.insCode
     );
     const residueZoomAAligned = createZoomHandler(
         viewerA.ref,
@@ -674,7 +822,8 @@ const App: React.FC = () => {
         selectedChainIdAligned,
         syncEnabled,
         viewerB.ref,
-        selectedResidueIdAligned
+        selectedResidueIdAligned,
+        residueInfoAligned.residueLabels.get(selectedResidueIdAligned)?.insCode
     );
 
     // Create Residue zoomB handlers.
@@ -685,7 +834,8 @@ const App: React.FC = () => {
         selectedChainIdAlignedTo,
         syncEnabled,
         viewerA.ref,
-        selectedResidueIdAlignedTo
+        selectedResidueIdAlignedTo,
+        residueInfoAlignedTo.residueLabels.get(selectedResidueIdAlignedTo)?.insCode
     );
     const residueZoomBAligned = createZoomHandler(
         viewerB.ref,
@@ -694,7 +844,8 @@ const App: React.FC = () => {
         selectedChainIdAligned,
         syncEnabled,
         viewerA.ref,
-        selectedResidueIdAligned
+        selectedResidueIdAligned,
+        residueInfoAligned.residueLabels.get(selectedResidueIdAligned)?.insCode
     );
 
     // Unified robust delete handler for any representation
@@ -745,12 +896,143 @@ const App: React.FC = () => {
         });
     };
 
+    // Realign handler using selected chains
+    const handleRealignToChains = () => {
+        const pluginA = viewerA.ref.current;
+        if (!pluginA) {
+            console.warn('Viewer A not initialized.');
+            return;
+        }
+        // Step 1: Extract atom data for selected chains in both structures
+        if (!structureRefAAlignedTo || !selectedChainIdAlignedTo) {
+            console.warn('Viewer A, structure, or chain not selected.');
+            return;
+        }
+        // Get objects
+        const structureAlignedTo = pluginA.managers.structure.hierarchy.current.structures.find(
+            s => s.cell.transform.ref === structureRefAAlignedTo
+        )?.cell.obj?.data;
+        console.log('structureAlignedTo:', structureAlignedTo);
+        if (!viewerA.moleculeAlignedTo) {
+            console.warn('Viewer A moleculeAlignedTo not available.');
+            return;
+        }
+        const trajectoryAlignedTo = viewerA.moleculeAlignedTo.trajectory;
+        if (!viewerA.moleculeAligned) {
+            console.warn('Viewer A moleculeAligned not available.');
+            return;
+        }
+        const trajectoryAligned = viewerA.moleculeAligned.trajectory;
+        const structureAligned = pluginA.managers.structure.hierarchy.current.structures.find(
+            s => s.cell.transform.ref === structureRefAAligned
+        )?.cell.obj?.data;
+        console.log('structureAligned:', structureAligned);
+        if (!structureAlignedTo || !structureAligned) {
+            console.warn('Could not find structure objects for selected refs.');
+            return;
+        }
+        // Get model from first unit in structure object
+        const modelAlignedTo = structureAlignedTo?.units?.[0]?.model;
+        const modelAligned = structureAligned?.units?.[0]?.model;
+        if (!modelAlignedTo || !modelAligned) {
+            console.warn('Could not find models in structures.');
+            return;
+        }
+
+        // Extract atom data for each structure using atomicHierarchy and atomicConformation from model
+        const atomDataAlignedTo = extractAtomData(pluginA, trajectoryAlignedTo);
+        const atomDataAligned = extractAtomData(pluginA, trajectoryAligned);
+        // Filter atoms by selected chain
+        const indicesAlignedTo = atomDataAlignedTo.chain_ids
+            .map((id: string, i: number) => id === selectedChainIdAlignedTo ? i : -1)
+            .filter((i: number) => i !== -1);
+        const indicesAligned = atomDataAligned.chain_ids
+            .map((id: string, i: number) => id === selectedChainIdAligned ? i : -1)
+            .filter((i: number) => i !== -1);
+        const filteredAlignedTo = {
+            symbol_type: indicesAlignedTo.map((i: number) => atomDataAlignedTo.symbol_type[i]),
+            chain_ids: indicesAlignedTo.map((i: number) => atomDataAlignedTo.chain_ids[i]),
+            xs: indicesAlignedTo.map((i: number) => atomDataAlignedTo.xs[i]),
+            ys: indicesAlignedTo.map((i: number) => atomDataAlignedTo.ys[i]),
+            zs: indicesAlignedTo.map((i: number) => atomDataAlignedTo.zs[i]),
+        };
+        const filteredAligned = {
+            symbol_type: indicesAligned.map((i: number) => atomDataAligned.symbol_type[i]),
+            chain_ids: indicesAligned.map((i: number) => atomDataAligned.chain_ids[i]),
+            xs: indicesAligned.map((i: number) => atomDataAligned.xs[i]),
+            ys: indicesAligned.map((i: number) => atomDataAligned.ys[i]),
+            zs: indicesAligned.map((i: number) => atomDataAligned.zs[i]),
+        };
+        console.log('Filtered atom data for alignment:');
+        console.log('AlignedTo atoms:', filteredAlignedTo);
+        console.log('Aligned atoms:', filteredAligned);
+        // Step 2: Debug: show atom selection for alignment
+        const selectedAtomTypes: { [key: string]: boolean } = { 'P': true };
+        // Count atoms in selected chains and atom types
+        const movingSelected = atomDataAlignedTo.symbol_type
+            .map((type, i) => (atomDataAlignedTo.chain_ids[i] === selectedChainIdAligned && selectedAtomTypes[type]) ? i : -1)
+            .filter(i => i !== -1);
+        const referenceSelected = atomDataAligned.symbol_type
+            .map((type, i) => (atomDataAligned.chain_ids[i] === selectedChainIdAligned && selectedAtomTypes[type]) ? i : -1)
+            .filter(i => i !== -1);
+        console.log('Moving atoms selected for alignment:', movingSelected.length);
+        console.log('Reference atoms selected for alignment:', referenceSelected.length);
+        console.log('Atom types in moving chain:', Array.from(new Set(atomDataAlignedTo.symbol_type.filter((type, i) => atomDataAlignedTo.chain_ids[i] === selectedChainIdAligned))));
+        console.log('Atom types in reference chain:', Array.from(new Set(atomDataAligned.symbol_type.filter((type, i) => atomDataAligned.chain_ids[i] === selectedChainIdAligned))));
+        // Step 3: Call alignment function
+        try {
+            const result = alignDatasetUsingChains(
+                atomDataAlignedTo.symbol_type,
+                atomDataAlignedTo.chain_ids,
+                atomDataAlignedTo.xs,
+                atomDataAlignedTo.ys,
+                atomDataAlignedTo.zs,
+                atomDataAligned.symbol_type,
+                atomDataAligned.chain_ids,
+                atomDataAligned.xs,
+                atomDataAligned.ys,
+                atomDataAligned.zs,
+                selectedChainIdAligned,
+                selectedAtomTypes
+            );
+            console.log('Aligned coordinates:', result);
+        } catch (err) {
+            console.error('Alignment error:', err);
+        }
+    };
+
     // Return the main app component.
     return (
         <SyncProvider>
             <div className="App">
-                <h1 className="app-title">RiboCode Mol* Viewer 0.5.1 (please see <a href="https://github.com/ribocode-slola/ribocode1/?tab=readme-ov-file#ribocode" target="_blank">README</a> for information).</h1>
+                <h1 className="app-title">RiboCode Mol* Viewer 0.6.0 (please see <a href="https://github.com/ribocode-slola/ribocode1/?tab=readme-ov-file#ribocode" target="_blank">README</a> for information).</h1>
                 <div className="General-Controls">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                        <label>
+                            Residue Zoom extraRadius:
+                            <input
+                                type="number"
+                                value={zoomExtraRadius}
+                                min={0}
+                                max={100}
+                                step={1}
+                                style={{ width: 60, marginLeft: 4 }}
+                                onChange={e => setZoomExtraRadius(Number(e.target.value))}
+                            />
+                        </label>
+                        <label>
+                            minRadius:
+                            <input
+                                type="number"
+                                value={zoomMinRadius}
+                                min={0}
+                                max={100}
+                                step={1}
+                                style={{ width: 60, marginLeft: 4 }}
+                                onChange={e => setZoomMinRadius(Number(e.target.value))}
+                            />
+                        </label>
+                    </div>
                     <SyncButton
                         viewerA={viewerA.ref.current}
                         viewerB={viewerB.ref.current}
@@ -759,34 +1041,40 @@ const App: React.FC = () => {
                         syncEnabled={syncEnabled}
                         setSyncEnabled={setSyncEnabled}
                     />
-                    <div>
-                        <button
-                            onClick={dictionaryFile.handleButtonClick}
-                            disabled={!viewerB.isMoleculeAlignedLoaded}
-                        >
-                            Load Dictionary
-                        </button>
-                        <input
-                            type="file"
-                            accept=".csv,.txt"
-                            style={{ display: 'none' }}
-                            ref={dictionaryFile.inputRef}
-                            onChange={dictionaryFile.handleFileChange}
-                        />
-                        <button
-                            onClick={alignmentFile.handleButtonClick}
-                            disabled={!viewerB.isMoleculeAlignedLoaded}
-                        >
-                            Load Alignment
-                        </button>
-                        <input
-                            type="file"
-                            accept=".csv,.txt"
-                            style={{ display: 'none' }}
-                            ref={alignmentFile.inputRef}
-                            onChange={alignmentFile.handleFileChange}
-                        />
-                    </div>
+                    <button
+                        disabled={!selectedChainIdAlignedTo || !selectedChainIdAligned}
+                        onClick={handleRealignToChains}
+                    >
+                        {selectedChainIdAlignedTo && selectedChainIdAligned
+                            ? `Re-Align: ${selectedChainIdAlignedTo} → ${selectedChainIdAligned}`
+                            : 'Re-Align to Chains'}
+                    </button>
+                    <button
+                        onClick={dictionaryFile.handleButtonClick}
+                        disabled={!viewerB.isMoleculeAlignedLoaded}
+                    >
+                        Load Dictionary
+                    </button>
+                    <input
+                        type="file"
+                        accept=".csv,.txt"
+                        style={{ display: 'none' }}
+                        ref={dictionaryFile.inputRef}
+                        onChange={dictionaryFile.handleFileChange}
+                    />
+                    <button
+                        onClick={alignmentFile.handleButtonClick}
+                        disabled={!viewerB.isMoleculeAlignedLoaded}
+                    >
+                        Load Alignment
+                    </button>
+                    <input
+                        type="file"
+                        accept=".csv,.txt"
+                        style={{ display: 'none' }}
+                        ref={alignmentFile.inputRef}
+                        onChange={alignmentFile.handleFileChange}
+                    />
                 </div>
                 <div className="Two-Columns-Container">
                     <div className="Column">
@@ -847,7 +1135,7 @@ const App: React.FC = () => {
                             //selectedSubunit={selectedSubunitAlignedTo}
                             //onSelectSubunit={setSelectedSubunitAlignedTo}
                             //subunitSelectDisabled={!viewerA.isMoleculeAlignedToLoaded}
-                            chainIds={chainIdsAlignedTo}
+                            chainInfo={chainInfoAlignedTo}
                             selectedChainId={selectedChainIdAlignedTo}
                             onSelectChainId={setSelectedChainIdAlignedTo}
                             chainSelectDisabled={!viewerA.isMoleculeAlignedToLoaded}
@@ -862,10 +1150,10 @@ const App: React.FC = () => {
                             plugin={viewerA.ref.current}
                             isVisible={viewerA.isMoleculeAlignedToVisible}
                             onToggleVisibility={toggleViewerAAlignedTo.handleButtonClick}
-                            chainZoomLabel={selectedChainIdAlignedTo}
+                            chainZoomLabel={chainInfoAlignedTo.chainLabels.get(selectedChainIdAlignedTo)!}
                             onChainZoom={chainZoomAAlignedTo.handleButtonClick}
                             chainZoomDisabled={!selectedChainIdAlignedTo}
-                            residueZoomLabel={selectedResidueIdAlignedTo}
+                            residueZoomLabel={residueInfoAlignedTo.residueLabels.get(selectedResidueIdAlignedTo)?.name || ''}
                             onResidueZoom={residueZoomAAlignedTo.handleButtonClick}
                             residueZoomDisabled={!selectedResidueIdAlignedTo}
                             isLoaded={viewerA.isMoleculeAlignedToLoaded}
@@ -921,10 +1209,10 @@ const App: React.FC = () => {
                             plugin={viewerA.ref.current}
                             isVisible={viewerA.isMoleculeAlignedVisible}
                             onToggleVisibility={toggleViewerAAligned.handleButtonClick}
-                            chainZoomLabel={selectedChainIdAligned}
+                            chainZoomLabel={chainInfoAligned.chainLabels.get(selectedChainIdAligned)!}
                             onChainZoom={chainZoomAAligned.handleButtonClick}
                             chainZoomDisabled={!selectedChainIdAligned}
-                            residueZoomLabel={selectedResidueIdAligned}
+                            residueZoomLabel={residueInfoAligned.residueLabels.get(selectedResidueIdAligned)?.name || ''}
                             onResidueZoom={residueZoomAAligned.handleButtonClick}
                             residueZoomDisabled={!selectedResidueIdAligned}
                             isLoaded={viewerA.isMoleculeAlignedLoaded}
@@ -1039,7 +1327,7 @@ const App: React.FC = () => {
                             //selectedSubunit={selectedSubunitAligned}
                             //onSelectSubunit={setSelectedSubunitAligned}
                             //subunitSelectDisabled={!viewerB.isMoleculeAlignedLoaded}
-                            chainIds={chainIdsAligned}
+                            chainInfo={chainInfoAligned}
                             selectedChainId={selectedChainIdAligned}
                             onSelectChainId={setSelectedChainIdAligned}
                             chainSelectDisabled={!viewerB.isMoleculeAlignedLoaded}
@@ -1054,10 +1342,10 @@ const App: React.FC = () => {
                             plugin={viewerB.ref.current}
                             isVisible={viewerB.isMoleculeAlignedToVisible}
                             onToggleVisibility={toggleViewerBAlignedTo.handleButtonClick}
-                            chainZoomLabel={selectedChainIdAlignedTo}
+                            chainZoomLabel={chainInfoAlignedTo.chainLabels.get(selectedChainIdAlignedTo)!}
                             onChainZoom={chainZoomBAlignedTo.handleButtonClick}
                             chainZoomDisabled={!selectedChainIdAlignedTo}
-                            residueZoomLabel={selectedResidueIdAlignedTo}
+                            residueZoomLabel={residueInfoAlignedTo.residueLabels.get(selectedResidueIdAlignedTo)?.name || ''}
                             onResidueZoom={residueZoomBAlignedTo.handleButtonClick}
                             residueZoomDisabled={!selectedResidueIdAlignedTo}
                             isLoaded={viewerB.isMoleculeAlignedToLoaded}
@@ -1112,10 +1400,10 @@ const App: React.FC = () => {
                             plugin={viewerB.ref.current}
                             isVisible={viewerB.isMoleculeAlignedVisible}
                             onToggleVisibility={toggleViewerBAligned.handleButtonClick}
-                            chainZoomLabel={selectedChainIdAligned}
+                            chainZoomLabel={chainInfoAligned.chainLabels.get(selectedChainIdAligned)!}
                             onChainZoom={chainZoomBAligned.handleButtonClick}
                             chainZoomDisabled={!selectedChainIdAligned}
-                            residueZoomLabel={selectedResidueIdAligned}
+                            residueZoomLabel={residueInfoAligned.residueLabels.get(selectedResidueIdAligned)?.name || ''}
                             onResidueZoom={residueZoomBAligned.handleButtonClick}
                             residueZoomDisabled={!selectedResidueIdAligned}
                             isLoaded={viewerB.isMoleculeAlignedLoaded}

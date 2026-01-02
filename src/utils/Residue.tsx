@@ -5,13 +5,9 @@
  *
  * @author Andy Turner <agdturner@gmail.com>
  */
-import { Structure } from 'molstar/lib/mol-model/structure';
 
 /**
- * Get residue IDs and a lookup of residue IDs to atom IDs for a given chain in a model.
- * @param structure The Molstar structure.
- * @param chainId The chain ID to get residue IDs for.
- * @returns An object containing an array of residue IDs and a mapping from residue IDs to arrays of atom IDs.
+ * Information about a residue for labeling purposes.
  */
 export interface ResidueLabelInfo {
     id: string; // residue id (auth_seq_id as string)
@@ -21,209 +17,139 @@ export interface ResidueLabelInfo {
     insCode: string; // insertion code, if any
 }
 
-export function getResidueInfo(structure: Structure, chainId: string): {
-    residueIds: string[],
-    residueToAtomIds: Record<string, string[]>,
-    residueLabels: ResidueLabelInfo[]
-} {
-    console.log('getResidueInfo called for chainId:', chainId);
-    if (!structure.units) {
-        console.warn('No units found in structure.');
-        return { residueIds: [], residueToAtomIds: {}, residueLabels: [] };
-    }
-    console.log('Structure units:', structure.units);
-    const model = structure.model;
-    model._dynamicPropertyData;
-    model._staticPropertyData;
-    model.atomicChainOperatorMappinng;
-    const ac = model.atomicConformation;
-    ac.B_iso_or_equiv;
-    ac.atomId;
-    ac.id;
-    ac.occupancy;
-    ac.x;
-    ac.xyzDefined;
-    ac.y;
-    ac.z;
-    const ah = model.atomicHierarchy;
-    ah.atomSourceIndex;
-    const atoms = ah.atoms;
-    atoms._columns;
-    atoms._rowCount;
-    atoms._schema;
-    atoms.auth_atom_id;
-    atoms.auth_comp_id;
-    atoms.label_alt_id;
-    atoms.label_atom_id;
-    atoms.label_comp_id;
-    atoms.pdbx_formal_charge;
-    atoms.type_symbol;
-    const cas = ah.chainAtomSegments;
-    const chains = ah.chains;
-    const derived = ah.derived;
-    derived.atom;
-    derived.residue;
-    const index = ah.index;
-    index.findAtom;
-    index.findAtomAuth;
-    index.findAtomOnResidue;
-    index.findAtomsOnResidue;
-    index.findChainAuth;
-    index.findChainLabel;
-    index.findElementOnResidue;
-    index.findEntity;
-    index.findResidue;
-    index.findResidueAuth;
-    index.findResidueInsertion;
-    index.findResidueLabel;
-    index.getEntityFromChain;
-    const ras = ah.residueAtomSegments;
-    ah.residueSourceIndex;
-    const residues = ah.residues;
-    residues._columns;
-    residues._rowCount;
-    residues._schema;
-    residues.auth_seq_id;
-    residues.group_PDB;
-    residues.label_seq_id;
-    residues.pdbx_PDB_ins_code;
-    model.atomicRanges;
-    model.coarseConformation;
-    model.coarseHierarchy;
-    model.customProperties;
-    model.entities;
-    model.entry;
-    model.entryId;
-    model.id;
-    model.label;
-    model.modelNum;
-    model.parent;
-    model.properties;
-    model.sequence;
-    model.sourceData;
-
-    // Find the chain index for the requested chainId
-    const authAsymIds = chains.auth_asym_id ? Array.from({length: chains._rowCount}, (_, i) => chains.auth_asym_id.value(i)) : [];
-    const labelAsymIds = chains.label_asym_id ? Array.from({length: chains._rowCount}, (_, i) => chains.label_asym_id.value(i)) : [];
-    console.info('[Residue] chainId argument:', chainId);
-    console.info('[Residue] chains.auth_asym_id:', authAsymIds);
-    console.info('[Residue] chains.label_asym_id:', labelAsymIds);
-
-    const chainIdCol = chains.auth_asym_id ?? chains.label_asym_id;
-    if (!chainIdCol) throw new Error('No chain ID column found in chains');
-    let targetChainIdx = -1;
-    for (let i = 0; i < chains._rowCount; i++) {
-        if (chainIdCol.value(i) === chainId) {
-            targetChainIdx = i;
-            break;
-        }
-    }
-    if (targetChainIdx === -1) {
-        console.warn('[Residue] No matching chain found for chainId:', chainId);
-        return { residueIds: [], residueToAtomIds: {}, residueLabels: [] };
-    }
-
-    // Use cas.offsets to get residue indices for this chain
-    const residueIds: string[] = [];
+/**
+ * Get residue labels and mapping from residue IDs to atom IDs for a given chain in a molecule.
+ * @param plugin The Molstar plugin UI context.
+ * @param molecule The molecule object.
+ * @param chainId The chain ID to extract residue information for.
+ * @returns An object containing:
+ *   - residueLabels: Map from residue ID to ResidueLabelInfo
+ *   - residueToAtomIds: Record mapping residue ID to array of atom IDs
+ */
+export function getResidueInfo(
+    structure: any,
+    chainId: string): {
+        residueLabels: Map<string, ResidueLabelInfo>,
+        residueToAtomIds: Record<string, string[]>
+    } {
+    const residueLabels: Map<string, ResidueLabelInfo> = new Map();
     const residueToAtomIds: Record<string, string[]> = {};
-    const residueLabels: ResidueLabelInfo[] = [];
-    const seenResidueIds = new Set<string>();
-    let warningCount = 0;
-    const MAX_WARNINGS = 10;
-    const residueIndices: number[] = [];
-    const start = cas.offsets[targetChainIdx];
-    const end = cas.offsets[targetChainIdx + 1];
-    for (let resIdx = start; resIdx < end; resIdx++) {
-        residueIndices.push(resIdx);
+    const units = structure.units;
+    if (!units || units.length === 0) {
+        console.warn('No units found in structure.');
+        return { residueLabels, residueToAtomIds };
     }
-    if (residueIndices.length === 0) {
-        console.warn(`[Residue] No residues found for chainId: ${chainId}`);
+    //console.log('Structure units:', structure.units);
+    // Use the first atomic unit's model as reference for residue/chain info
+    let model = undefined;
+    for (const unit of units) {
+        if (unit.kind === 0 && unit.model) { model = unit.model; break; }
     }
-
-    // Minimal diagnostics: only log if indices are out of bounds or fallback is possible
-    const hasLabelSeqId = typeof residues.label_seq_id !== 'undefined';
-    if (residueIndices.length > 0) {
-        const minIdx = Math.min(...residueIndices);
-        const maxIdx = Math.max(...residueIndices);
-        if (minIdx < 0 || maxIdx >= residues._rowCount) {
-            console.warn(`[Residue][Diag] residueIndices out of bounds: min=${minIdx}, max=${maxIdx}, residues._rowCount=${residues._rowCount}`);
+    if (!model) {
+        console.warn('No atomic unit with model found in molecule.units.');
+        return { residueLabels, residueToAtomIds };
+    }
+    console.log('[getResidueInfo] Using model:', model);
+    const chains = model.atomicHierarchy.chains;
+    const residues = model.atomicHierarchy.residues;
+    // Find chain index for the requested chainId
+    let chainIdx: number | undefined = undefined;
+    if (chains && chains.auth_asym_id && typeof chains.auth_asym_id.value === 'function') {
+        for (let i = 0; i < chains._rowCount; i++) {
+            if (chains.auth_asym_id.value(i) === chainId) { chainIdx = i; break; }
+        }
+    } else if (chains && chains.auth_asym_id && Array.isArray(chains.auth_asym_id.value)) {
+        for (let i = 0; i < chains._rowCount; i++) {
+            if (chains.auth_asym_id.value[i] === chainId) { chainIdx = i; break; }
         }
     }
-    if (hasLabelSeqId) {
-        console.info(`[Residue][Diag] residues.label_seq_id present, will log fallback usage if needed.`);
+    console.log('[getResidueInfo] chainIdx for chainId', chainId, ':', chainIdx);
+    if (chainIdx === undefined) {
+        console.warn('Chain ID not found in model.atomicHierarchy.chains:', chainId);
+        return { residueLabels, residueToAtomIds };
     }
-
-    for (const resIdx of residueIndices) {
-        // Only log if out of bounds or fallback is used
-        if (resIdx < 0 || resIdx >= residues._rowCount) {
-            if (warningCount < MAX_WARNINGS) {
-                console.warn(`[Residue][Diag] resIdx ${resIdx} out of bounds (0, ${residues._rowCount - 1})`);
-                warningCount++;
-                if (warningCount === MAX_WARNINGS) {
-                    console.warn('Further residue index warnings suppressed.');
-                }
+    // Iterate over all units and collect residue/atom info for this chain
+    for (const unit of units) {
+        if (unit.kind !== 0) continue; // Only atomic units
+        const { chainIndex, residueIndex, elements } = unit;
+        //console.log('[getResidueInfo] Processing unit:', unit, 'elements.length:', elements.length);
+        for (let i = 0; i < elements.length; i++) {
+            const atomIdx = elements[i];
+            if (chainIndex[atomIdx] !== chainIdx) continue;
+            const resIdx = residueIndex[atomIdx];
+            // Get residue auth_seq_id
+            let residueId = '';
+            if (residues && residues.auth_seq_id && typeof residues.auth_seq_id.value === 'function') {
+                residueId = residues.auth_seq_id.value(resIdx)?.toString();
+            } else if (residues && residues.auth_seq_id && Array.isArray(residues.auth_seq_id.value)) {
+                residueId = residues.auth_seq_id.value[resIdx]?.toString();
             }
-            continue;
-        }
-        const resIdValue = residues.auth_seq_id.value(resIdx);
-        // Use ras.offsets to get atom indices for this residue
-        let compIdValue = '';
-        const atomStart = ras.offsets[resIdx];
-        const atomEnd = ras.offsets[resIdx + 1];
-        if (atomStart < atoms._rowCount) {
-            compIdValue = atoms.auth_comp_id?.value(atomStart) ?? '';
-        }
-        const insCodeValue = residues.pdbx_PDB_ins_code?.value(resIdx) || '';
-        if (resIdValue === undefined) {
-            if (hasLabelSeqId) {
-                const labelSeqIdValue = residues.label_seq_id.value(resIdx);
-                if (warningCount < MAX_WARNINGS) {
-                    console.warn(`[Residue][Diag] auth_seq_id undefined for resIdx ${resIdx}, label_seq_id:`, labelSeqIdValue);
-                    warningCount++;
-                    if (warningCount === MAX_WARNINGS) {
-                        console.warn('Further auth_seq_id warnings suppressed.');
-                    }
-                }
-            } else if (warningCount < MAX_WARNINGS) {
-                console.warn('auth_seq_id is undefined for residue index', resIdx);
-                warningCount++;
-                if (warningCount === MAX_WARNINGS) {
-                    console.warn('Further auth_seq_id warnings suppressed.');
-                }
+            if (!residueId) continue;
+            // Atom ID (use atomIdx as string)
+            if (!residueToAtomIds[residueId]) residueToAtomIds[residueId] = [];
+            residueToAtomIds[residueId].push(atomIdx.toString());
+            //console.log('[getResidueInfo] Atom', atomIdx, 'added to residue', residueId);
+            // Build enhanced residue label info
+            let label_comp_id = '';
+            let label_seq_id = '';
+            let auth_comp_id = '';
+            let auth_seq_id = '';
+            let group_PDB = '';
+            let insCode = '';
+            // Canonical (label) fields
+            if (residues && residues.label_comp_id && typeof residues.label_comp_id.value === 'function') {
+                label_comp_id = residues.label_comp_id.value(resIdx) || '';
+            } else if (residues && residues.label_comp_id && Array.isArray(residues.label_comp_id.value)) {
+                label_comp_id = residues.label_comp_id.value[resIdx] || '';
             }
-            continue;
-        }
-        const resId = resIdValue.toString();
-        if (!seenResidueIds.has(resId)) {
-            residueIds.push(resId);
-            seenResidueIds.add(resId);
-            residueToAtomIds[resId] = [];
-            // Add residue label info
-            residueLabels.push({
-                id: resId,
-                name: `${compIdValue} ${resId}${insCodeValue ? ' ' + insCodeValue : ''}`,
-                compId: compIdValue,
-                seqNumber: Number(resId),
-                insCode: insCodeValue
+            if (residues && residues.label_seq_id && typeof residues.label_seq_id.value === 'function') {
+                label_seq_id = residues.label_seq_id.value(resIdx)?.toString() || '';
+            } else if (residues && residues.label_seq_id && Array.isArray(residues.label_seq_id.value)) {
+                label_seq_id = residues.label_seq_id.value[resIdx]?.toString() || '';
+            }
+            // Author fields
+            if (residues && residues.auth_comp_id && typeof residues.auth_comp_id.value === 'function') {
+                auth_comp_id = residues.auth_comp_id.value(resIdx) || '';
+            } else if (residues && residues.auth_comp_id && Array.isArray(residues.auth_comp_id.value)) {
+                auth_comp_id = residues.auth_comp_id.value[resIdx] || '';
+            }
+            if (residues && residues.auth_seq_id && typeof residues.auth_seq_id.value === 'function') {
+                auth_seq_id = residues.auth_seq_id.value(resIdx)?.toString() || '';
+            } else if (residues && residues.auth_seq_id && Array.isArray(residues.auth_seq_id.value)) {
+                auth_seq_id = residues.auth_seq_id.value[resIdx]?.toString() || '';
+            }
+            // group_PDB fallback (rare, but for legacy/mmCIF)
+            if (residues && residues.group_PDB && typeof residues.group_PDB.value === 'function') {
+                group_PDB = residues.group_PDB.value(resIdx) || '';
+            } else if (residues && residues.group_PDB && Array.isArray(residues.group_PDB.value)) {
+                group_PDB = residues.group_PDB.value[resIdx] || '';
+            }
+            // Insertion code
+            if (residues && residues.pdbx_PDB_ins_code && typeof residues.pdbx_PDB_ins_code.value === 'function') {
+                insCode = residues.pdbx_PDB_ins_code.value(resIdx) || '';
+            } else if (residues && residues.pdbx_PDB_ins_code && Array.isArray(residues.pdbx_PDB_ins_code.value)) {
+                insCode = residues.pdbx_PDB_ins_code.value[resIdx] || '';
+            }
+            // Fallback logic for residue name (Mol* style): label_comp_id > auth_comp_id > group_PDB
+            let residueName = label_comp_id || auth_comp_id || group_PDB || '?';
+            let seqNum = label_seq_id || auth_seq_id || '';
+            let label = `${residueName} ${seqNum}`.trim();
+            if (insCode) {
+                label += ` (${insCode})`;
+            }
+            residueLabels.set(residueId, {
+                id: residueId,
+                name: label,
+                compId: residueName,
+                seqNumber: Number(seqNum),
+                insCode: insCode
             });
         }
-        // Use ras.offsets for this residue
-        for (let atomIdx = atomStart; atomIdx < atomEnd; atomIdx++) {
-            const atomId = atoms.label_atom_id?.value(atomIdx) ?? atoms.auth_atom_id?.value(atomIdx) ?? atomIdx.toString();
-            if (residueToAtomIds[resId]) {
-                residueToAtomIds[resId].push(atomId);
-            }
-        }
-        // No per-residue logging
     }
-
-    // Concise summary
-    console.info(`[Residue] chainId ${chainId}: ${residueIds.length} valid residue IDs returned.`);
-    console.info(`residueToAtomIds:`, residueToAtomIds);
-    console.info(`residueLabels`, residueLabels);
+    console.log('[getResidueInfo] residueLabels:', residueLabels);
+    console.log('[getResidueInfo] residueToAtomIds:', residueToAtomIds);
     return {
-        residueIds: Array.from(residueIds).sort(),
-        residueToAtomIds: residueToAtomIds,
-        residueLabels: residueLabels
+        residueLabels: residueLabels,
+        residueToAtomIds: residueToAtomIds
     };
 }

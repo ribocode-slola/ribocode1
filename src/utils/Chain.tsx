@@ -9,27 +9,31 @@ import { Structure } from 'molstar/lib/mol-model/structure';
 import { RibosomeSubunitType } from '../components/buttons/select/Subunit';
 
 /**
- * Extracts unique chain IDs from a Mol* Structure object.
+ * Extracts chain IDs and labels from a Mol* Structure object.
  * @param structure The Mol* Structure object.
- * @returns Array of unique chain IDs (strings).
+ * @returns An object containing a Map of chain IDs to their labels.
  */
-export function getChainIdsFromStructure(structure: Structure): string[] {
-    console.log('getChainIdsFromStructure called');
-    if (!structure.units) {
+export function getChainInfo(structure: Structure):
+ { chainLabels: Map<string, string> } {
+    const chainLabels: Map<string, string> = new Map();
+    const units = structure.units;
+    if (!units || units.length === 0) {
         console.warn('No units found in structure.');
-        return [];
+        return { chainLabels };
     }
-    console.log('Structure units:', structure.units);
-    const chainIds = new Set<string>();
-    structure.units.forEach(unit => {
+    //console.log('Structure units:', structure.units);
+    units.forEach(unit => {
         const chains = unit.model.atomicHierarchy.chains;
-        const { auth_asym_id } = chains;
+        const { auth_asym_id, label_asym_id } = chains;
         for (let i = 0; i < chains._rowCount; i++) {
-            chainIds.add(auth_asym_id.value(i));
+            const authId = auth_asym_id.value(i);
+            const labelId = label_asym_id?.value ? label_asym_id.value(i) : '';
+            const label = labelId ? `${labelId} [auth ${authId}]` : `[auth ${authId}]`;
+            chainLabels.set(authId, label);
         }
     });
-    console.log('Extracted chain IDs:', Array.from(chainIds));
-    return Array.from(chainIds).sort();
+    console.log('chainLabels', chainLabels);
+    return { chainLabels };
 }
 
 /**
