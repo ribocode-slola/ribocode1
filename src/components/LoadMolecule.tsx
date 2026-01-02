@@ -53,16 +53,15 @@ interface LoadDataRowProps {
     // selectedSubunit: RibosomeSubunitType;
     // onSelectSubunit: (subunit: RibosomeSubunitType) => void;
     // subunitSelectDisabled: boolean;
-    // Chain selection
-    chainIds: string[];
+    // Chain
+    chainInfo: { chainLabels: Map<string, string>; };
     selectedChainId: string;
     onSelectChainId: (id: string) => void;
     chainSelectDisabled: boolean;
-    // Residue selection
+    // Residue
     residueInfo: {
-        residueIds: string[];
+        residueLabels: Map<string, ResidueLabelInfo>;
         residueToAtomIds: Record<string, string[]>;
-        residueLabels: ResidueLabelInfo[];
     };
     selectedResidueId: string;
     onSelectResidueId: (id: string) => void;
@@ -118,7 +117,7 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
     //selectedSubunit,
     //onSelectSubunit,
     //subunitSelectDisabled,
-    chainIds,
+    chainInfo,
     selectedChainId,
     onSelectChainId,
     chainSelectDisabled,
@@ -167,13 +166,13 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
             /> */}
             <ChainSelectButton
                 disabled={chainSelectDisabled}
-                chainIds={chainIds}
+                chainLabels={chainInfo.chainLabels}
                 selectedChainId={selectedChainId}
                 onSelect={onSelectChainId}
             />
             <ResidueSelectButton
                 disabled={residueSelectDisabled || !selectedChainId}
-                residueIds={residueInfo.residueIds}
+                residueLabels={residueInfo.residueLabels}
                 selectedResidueId={selectedResidueId}
                 onSelect={onSelectResidueId}
             />

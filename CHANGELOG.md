@@ -1,3 +1,7 @@
+## [v0.6.0] - 2026-01-01
+
+- Added zoom to residue controls for setting extraRadius and minRadius.
+
 ## [v0.5.1] - 2025-12-28
 
 - General update to css styles and layout.

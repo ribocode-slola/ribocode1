@@ -13,7 +13,7 @@ import { AlignedTo, Aligned } from '../App';
 import { AllowedRepresentationType } from '../components/buttons/select/Representation';
 import { StateTransforms } from 'molstar/lib/mol-plugin-state/transforms';
 import { StructureComponentRef } from 'molstar/lib/mol-plugin-state/manager/structure/hierarchy-state';
-import { getChainIdsFromStructure } from '../utils/Chain';
+import { getChainInfo } from '../utils/Chain';
 import { getResidueInfo, ResidueLabelInfo } from '../utils/Residue';
 
 /**
@@ -49,13 +49,13 @@ export interface MolstarViewerState {
         colorTheme: { name: string; params?: Record<string, unknown> },
         repId?: string
     ) => Promise<string>;
-    getChainIds: (structureRef: string) => string[];
+    getChainInfo: (structure: any) => { 
+        chainLabels: Map<string, string>;};
     repIdMap: Record<string, Record<string, string>>;
     setRepIdMap: (key: string, map: Record<string, string>) => void;
-    getResidueInfo: (structureRef: string, chainId: string) => {
-        residueIds: string[];
+    getResidueInfo: (molecule: any, chainId: string) => {
+        residueLabels: Map<string, ResidueLabelInfo>;
         residueToAtomIds: Record<string, string[]>;
-        residueLabels: ResidueLabelInfo[];
     };
 }
 
@@ -308,36 +308,18 @@ export function useMolstarViewer(pluginRef: React.RefObject<PluginUIContext | nu
         // Only run when structureRefs or pluginRef changes
     }, [structureRefs, pluginRef, refreshRepresentationRefs]);
 
-    /**
-     * Extracts chain IDs from a structure ref.
-     * @param structureRef The structure reference string.
-     * @returns Array of chain IDs, or empty array if not found.
-     */
-    function getChainIds(structureRef: string): string[] {
-        if (!pluginRef.current) return [];
-        const plugin = pluginRef.current;
-        const structureObj = plugin.managers.structure.hierarchy.current.structures.find(s => s.cell.transform.ref === structureRef)?.cell.obj?.data;
-        if (!structureObj) return [];
-        return getChainIdsFromStructure(structureObj);
-    }
-
-    /**
-     * Extracts residue IDs and atom ID lookup for a given chain in a structure.
-     * @param structureRef The structure reference string.
-     * @param chainId The chain ID to filter residues by.
-     * @returns An object containing an array of residue IDs and a mapping from residue IDs to arrays of atom IDs.
-     */
-    function getResidueIds(structureRef: string, chainId: string): {
-        residueIds: string[],
-        residueToAtomIds: Record<string, string[]>,
-        residueLabels: ResidueLabelInfo[]
-    } {
-        if (!pluginRef.current) return { residueIds: [], residueToAtomIds: {}, residueLabels: [] };
-        const plugin = pluginRef.current;
-        const structureObj = plugin.managers.structure.hierarchy.current.structures.find(s => s.cell.transform.ref === structureRef)?.cell.obj?.data;
-        if (!structureObj) return { residueIds: [], residueToAtomIds: {}, residueLabels: [] };
-        return getResidueInfo(structureObj, chainId);
-    }
+    // /**
+    //  * Extracts chain IDs from a structure ref.
+    //  * @param structureRef The structure reference string.
+    //  * @returns Array of chain IDs, or empty array if not found.
+    //  */
+    // function getChainIds(structureRef: string): string[] {
+    //     if (!pluginRef.current) return [];
+    //     const plugin = pluginRef.current;
+    //     const structureObj = plugin.managers.structure.hierarchy.current.structures.find(s => s.cell.transform.ref === structureRef)?.cell.obj?.data;
+    //     if (!structureObj) return [];
+    //     return getChainInfo(structureObj);
+    // }
 
     // Add more state and logic as needed (e.g., color theme registration)
 
@@ -352,9 +334,9 @@ export function useMolstarViewer(pluginRef: React.RefObject<PluginUIContext | nu
         setLastAddedRepresentationRef,
         refreshRepresentationRefs,
         addRepresentation,
-        getChainIds,
+        getChainInfo,
         repIdMap: repIdMapState,
         setRepIdMap,
-        getResidueInfo: getResidueIds
+        getResidueInfo
     };
 }
