@@ -43,9 +43,11 @@ export const Aligned: FileChangeMode = 'Aligned';
  * @returns The main App component.
  */
 const App: React.FC = () => {
-    // State for zoom-to-residue options
-    const [zoomExtraRadius, setZoomExtraRadius] = useState<number>(20);
-    const [zoomMinRadius, setZoomMinRadius] = useState<number>(16);
+    // Camera near/far state for each dataset
+    const [cameraANear, setCameraANear] = useState(0.1);
+    const [cameraAFar, setCameraAFar] = useState(100);
+    const [cameraBNear, setCameraBNear] = useState(0.1);
+    const [cameraBFar, setCameraBFar] = useState(100);
 
     // Create plugin refs and pass to useMolstarViewers
     const pluginRefA: React.RefObject<PluginUIContext | null> = useRef<PluginUIContext | null>(null);
@@ -159,10 +161,12 @@ const App: React.FC = () => {
     // const [selectedSubunitAligned, setSelectedSubunitAligned] = useState<RibosomeSubunitType>('Neither');
     // Chain ID selection state.
     const [chainInfoAlignedTo, setChainInfoAlignedTo] = useState<{
-        chainLabels: Map<string, string>;}>({ chainLabels: new Map() });
+        chainLabels: Map<string, string>;
+    }>({ chainLabels: new Map() });
     const [selectedChainIdAlignedTo, setSelectedChainIdAlignedTo] = useState<string>('');
     const [chainInfoAligned, setChainInfoAligned] = useState<{
-        chainLabels: Map<string, string>;}>({ chainLabels: new Map() });
+        chainLabels: Map<string, string>;
+    }>({ chainLabels: new Map() });
     const [selectedChainIdAligned, setSelectedChainIdAligned] = useState<string>('');
     // Residue ID selection state.
     const [residueInfoAlignedTo, setResidueInfoAlignedTo] = useState<{
@@ -298,6 +302,43 @@ const App: React.FC = () => {
         },
         [viewerA, viewerB]
     );
+
+    // Fog state for each dataset (shared between viewers)
+    const [fogAEnabled, setFogAEnabled] = useState(true);
+    const [fogANear, setFogANear] = useState(0.5);
+    const [fogAFar, setFogAFar] = useState(2.0);
+    const [fogBEnabled, setFogBEnabled] = useState(true);
+    const [fogBNear, setFogBNear] = useState(0.5);
+    const [fogBFar, setFogBFar] = useState(2.0);
+
+    // Helper to update fog in both viewers for a dataset
+    const updateFog = useCallback((pluginA: any, pluginB: any, enabled: any, near: any, far: any, cameraNear: any, cameraFar: any) => {
+        const fogProps = { camera: { fog: enabled, fogNear: near, fogFar: far, near: cameraNear, far: cameraFar } };
+        [pluginA, pluginB].forEach((plugin, idx) => {
+            if (plugin?.canvas3d) {
+                plugin.canvas3d.setProps(fogProps);
+                // Try to set camera near/far directly if possible
+                if (plugin.canvas3d.camera) {
+                    if (typeof plugin.canvas3d.camera.near === 'number') plugin.canvas3d.camera.near = cameraNear;
+                    if (typeof plugin.canvas3d.camera.far === 'number') plugin.canvas3d.camera.far = cameraFar;
+                    if (typeof plugin.canvas3d.camera.updateProjectionMatrix === 'function') plugin.canvas3d.camera.updateProjectionMatrix();
+                }
+                // Force redraw
+                if (typeof plugin.canvas3d.requestDraw === 'function') plugin.canvas3d.requestDraw();
+                // Log camera parameters for debugging
+                const camProps = plugin.canvas3d.props?.camera;
+                let camNear = undefined, camFar = undefined;
+                if (plugin.canvas3d.camera) {
+                    camNear = plugin.canvas3d.camera.near;
+                    camFar = plugin.canvas3d.camera.far;
+                }
+                console.log(`[updateFog] Viewer ${idx === 0 ? 'A' : 'B'} camera props:`, camProps, 'actual near:', camNear, 'actual far:', camFar);
+            }
+        });
+    }, []);
+    // State for zoom-to-residue options
+    const [zoomExtraRadius, setZoomExtraRadius] = useState<number>(20);
+    const [zoomMinRadius, setZoomMinRadius] = useState<number>(16);
 
     /**
      * Handle toggling visibility of a molecule.
@@ -632,7 +673,7 @@ const App: React.FC = () => {
                 insCode
             ]);
         }
-        console.log('[getResidueLoci] Query params:', { chainId, residueId, insCode });
+        //console.log('[getResidueLoci] Query params:', { chainId, residueId, insCode });
         const qb = MolScriptBuilder.struct.generator.atomGroups(tests);
         const compiled = compile(qb);
         const ctx = new QueryContext(structureObj);
@@ -646,58 +687,58 @@ const App: React.FC = () => {
         } catch (e) {
             // ignore
         }
-        console.log('[getResidueLoci] Selection size:', selectionSize, selection);
-        
+        //console.log('[getResidueLoci] Selection size:', selectionSize, selection);
+
         // DEBUG: Log all auth_asym_id and auth_seq_id for the selected chain
-            try {
-                if (structureObj && structureObj.units) {
-                    let found = false;
-                    for (const unit of structureObj.units) {
-                        if (unit.kind !== 0) continue; // Only atomic units
-                        const { chainIndex, residueIndex, elements, model } = unit;
-                        const chains = model.atomicHierarchy.chains;
-                        const residues = model.atomicHierarchy.residues;
-                        for (let i = 0; i < elements.length; i++) {
-                            const atomIdx = elements[i];
-                            const chainIdx = chainIndex[atomIdx];
-                            let asymId = '';
-                            if (chains && chains.auth_asym_id) {
-                                if (typeof chains.auth_asym_id.value === 'function') {
-                                    asymId = (chains.auth_asym_id.value as (idx: number) => string)(chainIdx);
-                                } else if (Array.isArray(chains.auth_asym_id.value)) {
-                                    asymId = (chains.auth_asym_id.value as unknown as any[])[chainIdx];
-                                }
+        try {
+            if (structureObj && structureObj.units) {
+                let found = false;
+                for (const unit of structureObj.units) {
+                    if (unit.kind !== 0) continue; // Only atomic units
+                    const { chainIndex, residueIndex, elements, model } = unit;
+                    const chains = model.atomicHierarchy.chains;
+                    const residues = model.atomicHierarchy.residues;
+                    for (let i = 0; i < elements.length; i++) {
+                        const atomIdx = elements[i];
+                        const chainIdx = chainIndex[atomIdx];
+                        let asymId = '';
+                        if (chains && chains.auth_asym_id) {
+                            if (typeof chains.auth_asym_id.value === 'function') {
+                                asymId = (chains.auth_asym_id.value as (idx: number) => string)(chainIdx);
+                            } else if (Array.isArray(chains.auth_asym_id.value)) {
+                                asymId = (chains.auth_asym_id.value as unknown as any[])[chainIdx];
                             }
-                            if (asymId !== chainId) continue;
-                            const resIdx = residueIndex[atomIdx];
-                            let seqId = '';
-                            if (residues && residues.auth_seq_id) {
-                                if (typeof residues.auth_seq_id.value === 'function') {
-                                    seqId = (residues.auth_seq_id.value as (idx: number) => any)(resIdx)?.toString();
-                                } else if (Array.isArray(residues.auth_seq_id.value)) {
-                                    seqId = (residues.auth_seq_id.value as unknown as any[])[resIdx]?.toString();
-                                }
-                            }
-                            let insCode = '';
-                            if (residues && residues.pdbx_PDB_ins_code) {
-                                if (typeof residues.pdbx_PDB_ins_code.value === 'function') {
-                                    insCode = (residues.pdbx_PDB_ins_code.value as (idx: number) => any)(resIdx) || '';
-                                } else if (Array.isArray(residues.pdbx_PDB_ins_code.value)) {
-                                    insCode = (residues.pdbx_PDB_ins_code.value as unknown as any[])[resIdx] || '';
-                                }
-                            }
-                            if (!found) {
-                                found = true;
-                                console.log('[getResidueLoci] Listing all residues for chain', chainId);
-                            }
-                            console.log(`[getResidueLoci] chainId: ${asymId}, auth_seq_id: ${seqId}, insCode: '${insCode}'`);
                         }
+                        if (asymId !== chainId) continue;
+                        const resIdx = residueIndex[atomIdx];
+                        let seqId = '';
+                        if (residues && residues.auth_seq_id) {
+                            if (typeof residues.auth_seq_id.value === 'function') {
+                                seqId = (residues.auth_seq_id.value as (idx: number) => any)(resIdx)?.toString();
+                            } else if (Array.isArray(residues.auth_seq_id.value)) {
+                                seqId = (residues.auth_seq_id.value as unknown as any[])[resIdx]?.toString();
+                            }
+                        }
+                        let insCode = '';
+                        if (residues && residues.pdbx_PDB_ins_code) {
+                            if (typeof residues.pdbx_PDB_ins_code.value === 'function') {
+                                insCode = (residues.pdbx_PDB_ins_code.value as (idx: number) => any)(resIdx) || '';
+                            } else if (Array.isArray(residues.pdbx_PDB_ins_code.value)) {
+                                insCode = (residues.pdbx_PDB_ins_code.value as unknown as any[])[resIdx] || '';
+                            }
+                        }
+                        if (!found) {
+                            found = true;
+                            //console.log('[getResidueLoci] Listing all residues for chain', chainId);
+                        }
+                        //console.log(`[getResidueLoci] chainId: ${asymId}, auth_seq_id: ${seqId}, insCode: '${insCode}'`);
                     }
                 }
-            } catch (e) {
-                console.warn('[getResidueLoci] Error logging residues:', e);
             }
-        
+        } catch (e) {
+            console.warn('[getResidueLoci] Error logging residues:', e);
+        }
+
         return StructureSelection.toLociWithSourceUnits(selection);
     }
 
@@ -1143,6 +1184,31 @@ const App: React.FC = () => {
                             selectedResidueId={selectedResidueIdAlignedTo}
                             onSelectResidueId={setSelectedResidueIdAlignedTo}
                             residueSelectDisabled={!viewerA.isMoleculeAlignedToLoaded}
+                            fogEnabled={fogAEnabled}
+                            fogNear={fogANear}
+                            fogFar={fogAFar}
+                            onFogEnabledChange={val => {
+                                setFogAEnabled(val);
+                                updateFog(viewerA.ref.current, viewerB.ref.current, val, fogANear, fogAFar, cameraANear, cameraAFar);
+                            }}
+                            onFogNearChange={val => {
+                                setFogANear(val);
+                                updateFog(viewerA.ref.current, viewerB.ref.current, fogAEnabled, val, fogAFar, cameraANear, cameraAFar);
+                            }}
+                            onFogFarChange={val => {
+                                setFogAFar(val);
+                                updateFog(viewerA.ref.current, viewerB.ref.current, fogAEnabled, fogANear, val, cameraANear, cameraAFar);
+                            }}
+                            cameraNear={cameraANear}
+                            cameraFar={cameraAFar}
+                            onCameraNearChange={val => {
+                                setCameraANear(val);
+                                updateFog(viewerA.ref.current, viewerB.ref.current, fogAEnabled, fogANear, fogAFar, val, cameraAFar);
+                            }}
+                            onCameraFarChange={val => {
+                                setCameraAFar(val);
+                                updateFog(viewerA.ref.current, viewerB.ref.current, fogAEnabled, fogANear, fogAFar, cameraANear, val);
+                            }}
                         />
                         <MoleculeUI
                             key={molstarA.representationRefs[AlignedTo]?.join('-') || A + '-' + AlignedTo}
@@ -1335,6 +1401,31 @@ const App: React.FC = () => {
                             selectedResidueId={selectedResidueIdAligned}
                             onSelectResidueId={setSelectedResidueIdAligned}
                             residueSelectDisabled={!viewerB.isMoleculeAlignedLoaded}
+                            fogEnabled={fogBEnabled}
+                            fogNear={fogBNear}
+                            fogFar={fogBFar}
+                            onFogEnabledChange={val => {
+                                setFogBEnabled(val);
+                                updateFog(viewerA.ref.current, viewerB.ref.current, val, fogBNear, fogBFar, cameraBNear, cameraBFar);
+                            }}
+                            onFogNearChange={val => {
+                                setFogBNear(val);
+                                updateFog(viewerA.ref.current, viewerB.ref.current, fogBEnabled, val, fogBFar, cameraBNear, cameraBFar);
+                            }}
+                            onFogFarChange={val => {
+                                setFogBFar(val);
+                                updateFog(viewerA.ref.current, viewerB.ref.current, fogBEnabled, fogBNear, val, cameraBNear, cameraBFar);
+                            }}
+                            cameraNear={cameraBNear}
+                            cameraFar={cameraBFar}
+                            onCameraNearChange={val => {
+                                setCameraBNear(val);
+                                updateFog(viewerA.ref.current, viewerB.ref.current, fogBEnabled, fogBNear, fogBFar, val, cameraBFar);
+                            }}
+                            onCameraFarChange={val => {
+                                setCameraBFar(val);
+                                updateFog(viewerA.ref.current, viewerB.ref.current, fogBEnabled, fogBNear, fogBFar, cameraBNear, val);
+                            }}
                         />
                         <MoleculeUI
                             key={molstarB.representationRefs[AlignedTo]?.join('-') || B + `-` + AlignedTo}

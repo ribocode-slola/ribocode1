@@ -35,6 +35,11 @@ import { ResidueLabelInfo } from 'src/utils/Residue';
  * @param chainSelectDisabled Whether the chain select button is disabled.
  */
 interface LoadDataRowProps {
+        // Camera near/far controls
+        cameraNear: number;
+        cameraFar: number;
+        onCameraNearChange: (value: number) => void;
+        onCameraFarChange: (value: number) => void;
     viewerTitle: string;
     isLoaded: boolean;
     onFileInputClick: () => void;
@@ -70,6 +75,13 @@ interface LoadDataRowProps {
     representationTypeSelector?: React.ReactNode;
     onAddRepresentationClick: () => void;
     addRepresentationDisabled: boolean;
+    // Fog controls
+    fogEnabled: boolean;
+    fogNear: number;
+    fogFar: number;
+    onFogEnabledChange: (enabled: boolean) => void;
+    onFogNearChange: (value: number) => void;
+    onFogFarChange: (value: number) => void;
 }
 
 /**
@@ -100,6 +112,10 @@ interface LoadDataRowProps {
  * @returns The LoadDataRow component.
  */
 const LoadDataRow: React.FC<LoadDataRowProps> = ({
+        cameraNear,
+        cameraFar,
+        onCameraNearChange,
+        onCameraFarChange,
     viewerTitle,
     isLoaded,
     onFileInputClick,
@@ -127,7 +143,13 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
     residueSelectDisabled,
     representationTypeSelector,
     onAddRepresentationClick = () => { },
-    addRepresentationDisabled = false
+    addRepresentationDisabled = false,
+    fogEnabled,
+    fogNear,
+    fogFar,
+    onFogEnabledChange,
+    onFogNearChange,
+    onFogFarChange
 }) => (
     <div className="load-data-row">
         <div className="viewer-title">{viewerTitle}</div>
@@ -233,6 +255,68 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
                     </button>
                 </span>
             )}
+        </div>
+        {/* Fog controls */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+            <label>
+                Fog:
+                <input
+                    type="checkbox"
+                    checked={fogEnabled}
+                    onChange={e => onFogEnabledChange(e.target.checked)}
+                    style={{ marginLeft: 4 }}
+                />
+            </label>
+            <label>
+                Near:
+                <input
+                    type="number"
+                    min={0}
+                    max={2}
+                    step={0.01}
+                    value={fogNear}
+                    onChange={e => onFogNearChange(Number(e.target.value))}
+                    style={{ width: 60, marginLeft: 4 }}
+                    disabled={!fogEnabled}
+                />
+            </label>
+            <label>
+                Far:
+                <input
+                    type="number"
+                    min={0}
+                    max={5}
+                    step={0.01}
+                    value={fogFar}
+                    onChange={e => onFogFarChange(Number(e.target.value))}
+                    style={{ width: 60, marginLeft: 4 }}
+                    disabled={!fogEnabled}
+                />
+            </label>
+            <label>
+                Camera Near:
+                <input
+                    type="number"
+                    min={0.001}
+                    max={10}
+                    step={0.001}
+                    value={cameraNear}
+                    onChange={e => onCameraNearChange(Number(e.target.value))}
+                    style={{ width: 70, marginLeft: 4 }}
+                />
+            </label>
+            <label>
+                Camera Far:
+                <input
+                    type="number"
+                    min={1}
+                    max={1000}
+                    step={1}
+                    value={cameraFar}
+                    onChange={e => onCameraFarChange(Number(e.target.value))}
+                    style={{ width: 70, marginLeft: 4 }}
+                />
+            </label>
         </div>
     </div>
 );
