@@ -49,7 +49,7 @@ export function getResidueInfo(
         console.warn('No atomic unit with model found in molecule.units.');
         return { residueLabels, residueToAtomIds };
     }
-    console.log('[getResidueInfo] Using model:', model);
+    //console.log('[getResidueInfo] Using model:', model);
     const chains = model.atomicHierarchy.chains;
     const residues = model.atomicHierarchy.residues;
     // Find chain index for the requested chainId
@@ -63,7 +63,7 @@ export function getResidueInfo(
             if (chains.auth_asym_id.value[i] === chainId) { chainIdx = i; break; }
         }
     }
-    console.log('[getResidueInfo] chainIdx for chainId', chainId, ':', chainIdx);
+    //console.log('[getResidueInfo] chainIdx for chainId', chainId, ':', chainIdx);
     if (chainIdx === undefined) {
         console.warn('Chain ID not found in model.atomicHierarchy.chains:', chainId);
         return { residueLabels, residueToAtomIds };
@@ -146,8 +146,8 @@ export function getResidueInfo(
             });
         }
     }
-    console.log('[getResidueInfo] residueLabels:', residueLabels);
-    console.log('[getResidueInfo] residueToAtomIds:', residueToAtomIds);
+    console.info('[getResidueInfo] residueLabels:', residueLabels);
+    console.info('[getResidueInfo] residueToAtomIds:', residueToAtomIds);
     return {
         residueLabels: residueLabels,
         residueToAtomIds: residueToAtomIds
