@@ -58,37 +58,42 @@ The UI layout is as follows:
      - `Control Panel`
      - `Log Panel`
 ```
-+----------------------------------------------------------+
-|          RiboCode Mol* Viewer, Version, README           |
-+----------------------------------------------------------+
-|   [General Controls: Subunit Select | Sync | Re-align]   |
-+----------------------------+-----------------------------+
-|   Load Molecule AlignedTo  |    Load Molecule Aligned    |
-+----------------------------+-----------------------------+
-|    MoleculeUI AlignedTo    |    MoleculeUI AlignedTo     |
-|     MoleculeUI Aligned     |     MoleculeUI Aligned      |
-|    MoleculeUI Re-aligned   |    MoleculeUI Re-aligned    |
-|             ...            |            ...              |
-+----------------------------+-----------------------------+
-|       Mol* Viewer A        |        Mol* Viewer B        |
-|  +----------------------+  |  +-----------------------+  |
-|  |                      |  |  |                       |  |
-|  |                      |  |  |                       |  |
-|  |       3D Canvas      |  |  |        3D Canvas      |  |
-|  |                      |  |  |                       |  |
-|  |                      |  |  |                       |  |
-|  +----------------------+  |  +-----------------------+  |
-|  |    Sequence Panel    |  |  |     Sequence Panel    |  |
-|  +----------------------+  |  +-----------------------+  |
-|  |       Main Menu      |  |  |        Main Menu      |  |
-|  +----------------------+  |  +-----------------------+  |
-|  |     Control Panel    |  |  |      Control Panel    |  |
-|  +----------------------+  |  +-----------------------+  |
-|  |       Log Panel      |  |  |        Log Panel      |  |
-|  +----------------------+  |  +-----------------------+  |
-+----------------------------------------------------------+
++-------------------------------------------------------------+
+|           RiboCode Mol* Viewer, Version, README             |
++-------------------------------------------------------------+
+|     [General Controls: Residue Zoom | Sync | Re-align]      |
++------------------------------+------------------------------+
+|          Column A            |           Column B           |
++------------------------------+------------------------------+
+|         Load AlignedTo       |          Load Aligned        |
+| Select Subunit/Chain/Residue | Select Subunit/Chain/Residue |
+|          Load Colours        |          Load Colours        |
++------------------------------+------------------------------+
+|     MoleculeUI AlignedTo     |     MoleculeUI AlignedTo     |
+|      MoleculeUI Aligned      |      MoleculeUI Aligned      |
+|     MoleculeUI Re-aligned    |     MoleculeUI Re-aligned    |
+|              ...             |             ...              |
++------------------------------+------------------------------+
+|         Mol* Viewer A        |         Mol* Viewer B        |
+|  +------------------------+  |  +------------------------+  |
+|  |                        |  |  |                        |  |
+|  |                        |  |  |                        |  |
+|  |        3D Canvas       |  |  |        3D Canvas       |  |
+|  |                        |  |  |                        |  |
+|  |                        |  |  |                        |  |
+|  +------------------------+  |  +------------------------+  |
+|  |     Sequence Panel     |  |  |     Sequence Panel     |  |
+|  +------------------------+  |  +------------------------+  |
+|  |       Main Menu        |  |  |        Main Menu       |  |
+|  +------------------------+  |  +------------------------+  |
+|  |      Control Panel     |  |  |      Control Panel     |  |
+|  +------------------------+  |  +------------------------+  |
+|  |        Log Panel       |  |  |        Log Panel       |  |
+|  +------------------------+  |  +------------------------+  |
++-------------------------------------------------------------+
 ```
-A user session starts by loading a dataset in [CIF](https://www.iucr.org/resources/cif/spec/version1.1) file format via the `Load AlignedTo` button. As the data load, the coordinates for all the atoms are centralized so that the coordinate origin is at the centre.
+
+A user session starts by loading a dataset in [CIF](https://www.iucr.org/resources/cif/spec/version1.1) file format via the `Load AlignedTo` button. As the data load, the coordinates for all the atoms are centralised so that the coordinate origin is at the centre.
 
 When the `AlignedTo` dataset is loaded several things happen:
   - The `Select Sync` control becomes actionable.
