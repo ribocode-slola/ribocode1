@@ -48,6 +48,8 @@ interface MoleculeUIProps {
     representationRefs?: string[];
     onDeleteRepresentation?: (ref: string) => void;
     onToggleRepVisibility?: (ref: string) => void;
+    extraControls?: React.ReactNode;
+    onRemove?: () => void;
 }
 
 /**
@@ -85,6 +87,7 @@ const MoleculeUI: React.FC<MoleculeUIProps> = ({
     representationRefs = [],
     onDeleteRepresentation,
     onToggleRepVisibility,
+    onRemove,
 }) => {
     // Helper to get visibility state and type for a representation
     const getRepType = (ref: string): string | null => {
@@ -184,6 +187,17 @@ const MoleculeUI: React.FC<MoleculeUIProps> = ({
             >
                 Zoom to Residue: {residueZoomLabel}
             </button>
+            {/* Remove button for realigned molecules */}
+            {onRemove && (
+                <button
+                    onClick={onRemove}
+                    className="msp-btn msp-btn-danger msp-form-control"
+                    aria-label={`Remove ${label}`}
+                    style={{ fontSize: '1.5em', lineHeight: 1 }}
+                >
+                    &#x2716;
+                </button>
+            )}
         </div>
     );
 };

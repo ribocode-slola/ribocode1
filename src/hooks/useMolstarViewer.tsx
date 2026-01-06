@@ -8,13 +8,13 @@
  * @author Andy Turner <agdturner@gmail.com>
  */
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
-import { AlignedTo, Aligned } from '../App';
+import { getChainInfo } from '../utils/chain';
+import { getResidueInfo, ResidueLabelInfo } from '../utils/residue';
+import { AlignedTo, Aligned } from '../types/molecule';
 import { AllowedRepresentationType } from '../components/buttons/select/Representation';
-import { StateTransforms } from 'molstar/lib/mol-plugin-state/transforms';
 import { StructureComponentRef } from 'molstar/lib/mol-plugin-state/manager/structure/hierarchy-state';
-import { getChainInfo } from '../utils/Chain';
-import { getResidueInfo, ResidueLabelInfo } from '../utils/Residue';
+import { StateTransforms } from 'molstar/lib/mol-plugin-state/transforms';
+import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 
 /**
  * State and helper functions for managing a Mol* viewer instance.
@@ -67,45 +67,23 @@ export function useMolstarViewer(pluginRef: React.RefObject<PluginUIContext | nu
 
     // --- HOOKS: All hooks must be at the top level ---
 
-    // Maps structure keys to their current structure reference (Mol* state ref).
+    // Generalized state for arbitrary structure keys (including realigned IDs)
     const [structureRefs, setStructureRefs] = useState<Record<string, string | null>>({});
     const setStructureRef = useCallback((key: string, ref: string | null) => {
         setStructureRefs(prev => ({ ...prev, [key]: ref }));
     }, []);
 
-    // Keys representing the two main structure slots in the app (alignedTo and aligned).
-    // Extend this array if more tracked structures are needed.
-    const INITIAL_KEYS = [AlignedTo, Aligned] as const;
-
-    // Maps structure keys to all representation refs for that structure.
-    const [representationRefs, setRepresentationRefsState] = useState<Record<string, string[]>>(
-        INITIAL_KEYS.reduce<Record<string, string[]>>((acc, k) => {
-            acc[k] = [];
-            return acc;
-        }, {})
-    );
+    const [representationRefs, setRepresentationRefsState] = useState<Record<string, string[]>>({});
     const setRepresentationRefs = useCallback((key: string, refs: string[]): void => {
         setRepresentationRefsState(prev => ({ ...prev, [key]: refs }));
     }, []);
 
-    // Tracks the last-added representation ref for each structure key.
-    const [lastAddedRepresentationRef, setLastAddedRepresentationRefState] = useState<Record<string, string | null>>(
-        INITIAL_KEYS.reduce<Record<string, string | null>>((acc, k) => {
-            acc[k] = null;
-            return acc;
-        }, {})
-    );
+    const [lastAddedRepresentationRef, setLastAddedRepresentationRefState] = useState<Record<string, string | null>>({});
     const setLastAddedRepresentationRef = useCallback((key: string, ref: string | null): void => {
         setLastAddedRepresentationRefState(prev => ({ ...prev, [key]: ref }));
     }, []);
 
-    // Map: structureKey -> repId -> repRef
-    const [repIdMapState, setRepIdMapState] = useState<Record<string, Record<string, string>>>(
-        INITIAL_KEYS.reduce<Record<string, Record<string, string>>>((acc, k) => {
-            acc[k] = {};
-            return acc;
-        }, {})
-    );
+    const [repIdMapState, setRepIdMapState] = useState<Record<string, Record<string, string>>>({});
     const setRepIdMap = useCallback((key: string, map: Record<string, string>) => {
         setRepIdMapState(prev => ({ ...prev, [key]: map }));
     }, []);
@@ -189,7 +167,7 @@ export function useMolstarViewer(pluginRef: React.RefObject<PluginUIContext | nu
                 const pluginStructs = plugin.managers.structure.hierarchy.current.structures;
                 const struct = pluginStructs.find((s: { cell: { transform: { ref: string } } }) => s.cell.transform.ref === structureRef);
                 let allRefs: string[] = [];
-                let idMap: Record<string, string> = { ...repIdMapState[key] };
+                let idMap: Record<string, string> = { ...(repIdMapState[key] || {}) };
                 // Find the most recently added representation ref
                 let newRepRef: string | undefined;
                 if (struct && Array.isArray(struct.components) && struct.components.length > 0) {
@@ -249,7 +227,7 @@ export function useMolstarViewer(pluginRef: React.RefObject<PluginUIContext | nu
         }
         traverse(structureRef);
         // Assign repIds to any untracked representations
-        let idMap: Record<string, string> = { ...repIdMapState[key] };
+        let idMap: Record<string, string> = { ...(repIdMapState[key] || {}) };
         reps.forEach((repRef, i) => {
             // For the first rep, always assign deterministic 'default' repId
             if (i === 0) {
@@ -308,22 +286,6 @@ export function useMolstarViewer(pluginRef: React.RefObject<PluginUIContext | nu
         // Only run when structureRefs or pluginRef changes
     }, [structureRefs, pluginRef, refreshRepresentationRefs]);
 
-    // /**
-    //  * Extracts chain IDs from a structure ref.
-    //  * @param structureRef The structure reference string.
-    //  * @returns Array of chain IDs, or empty array if not found.
-    //  */
-    // function getChainIds(structureRef: string): string[] {
-    //     if (!pluginRef.current) return [];
-    //     const plugin = pluginRef.current;
-    //     const structureObj = plugin.managers.structure.hierarchy.current.structures.find(s => s.cell.transform.ref === structureRef)?.cell.obj?.data;
-    //     if (!structureObj) return [];
-    //     return getChainInfo(structureObj);
-    // }
-
-    // Add more state and logic as needed (e.g., color theme registration)
-
-    // Expose all state and helper functions needed by consuming components.
     return {
         pluginRef,
         structureRefs,

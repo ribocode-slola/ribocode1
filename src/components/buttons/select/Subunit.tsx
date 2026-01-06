@@ -7,12 +7,7 @@
  */
 import React from 'react';
 import GenericSelectButton from './Select';
-
-/**
- * Types of ribosome subunits.
- */
-export type RibosomeSubunitType = 'Large' | 'Small' | 'Neither';
-export const RibosomeSubunitTypes: RibosomeSubunitType[] = ['Large', 'Small', 'Neither'];
+import { RibosomeSubunitType, RibosomeSubunitTypes } from '../../../utils/subunit';
 
 /**
  * Props for the SubunitSelectButton component.
