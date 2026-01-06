@@ -49,6 +49,21 @@ The UI layout is as follows:
    - `Mol* Viewer B`
 
 ```mermaid
+grid
+    title "RiboCode Mol* Viewer UI Layout"
+    row
+      col[App Title, Version, README link]
+    row
+      col[General Controls]
+    row
+      col[
+        Load Molecule AlignedTo
+      ]
+      col[
+        Load Molecule AlignedTo
+      ]
+```
+```
 flowchart TD
     A[App Title, Version, README link]
     B[General Controls]
