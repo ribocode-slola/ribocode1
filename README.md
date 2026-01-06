@@ -48,7 +48,7 @@ The UI layout is as follows:
      - `Aligned`
    - `Mol* Viewer B`
 
-mermaid
+```mermaid
 flowchart TD
     A[App Title, Version, README link]
     B[General Controls<br/>(Subunit Select, Sync, Re-align)]
