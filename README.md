@@ -51,7 +51,7 @@ The UI layout is as follows:
 ```mermaid
 flowchart TD
     A[App Title, Version, README link]
-    B[General Controls<br/>(Subunit Select, Sync, Re-align)]
+    B[General Controls]
     C1[Column A]
     C2[Column B]
     D1[Load Molecule AlignedTo]
