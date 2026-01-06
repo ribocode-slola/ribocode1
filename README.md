@@ -49,19 +49,17 @@ The UI layout is as follows:
    - `Mol* Viewer B`
 
 ```mermaid
-grid
-    title "RiboCode Mol* Viewer UI Layout"
-    row
-      col[App Title, Version, README link]
-    row
-      col[General Controls]
-    row
-      col[
-        Load Molecule AlignedTo
-      ]
-      col[
-        Load Molecule AlignedTo
-      ]
+flowchart TD
+    A[App Title & Version]
+    B[General Controls<br/>(Subunit Select, Sync, Re-align, etc.)]
+    subgraph VIEWERS[ ]
+        direction LR
+        C1[Viewer A<br/>MoleculeUI<br/>[Representations, Zoom, Remove]]
+        C2[Viewer B<br/>MoleculeUI<br/>[Representations, Zoom, Remove]]
+    end
+
+    A --> B
+    B --> VIEWERS
 ```
 ```
 flowchart TD
