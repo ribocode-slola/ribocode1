@@ -34,6 +34,11 @@ The UI layout is as follows:
      - `AlignedTo`
      - `Aligned`
    - `Mol* Viewer A`
+     - `3D Canvas`
+     - `Sequence Panel`
+     - `Main Menu`
+     - `Control Panel`
+     - `Log Panel`
  - Column `B`
    - `Load Molecule` 
      - `Load Aligned` button for loading the dataset to be aligned (`Aligned`)
@@ -47,43 +52,41 @@ The UI layout is as follows:
      - `AlignedTo`
      - `Aligned`
    - `Mol* Viewer B`
+     - `3D Canvas`
+     - `Sequence Panel`
+     - `Main Menu`
+     - `Control Panel`
+     - `Log Panel`
 
-```mermaid
-flowchart TD
-    A[App Title & Version]
-    B[General Controls]
-    subgraph Columns[ ]
-        direction TD
-        C1[Load Molecule AlignedTo]
-        C2[Load Molecule Aligned]
-    end
-
-    A --> B
-    B --> Columns
-```
-```mermaid
-flowchart TD
-    A[App Title, Version, README link]
-    B[General Controls]
-    C1[Column A]
-    C2[Column B]
-    D1[Load Molecule AlignedTo]
-    D2[Load Molecule Aligned]
-    E1[MoleculeUI]
-    E2[MoleculeUI]
-    F1[Molstar Viewer A]
-    F2[Molstar Viewer B]
-
-    A --> B
-    B --> C1
-    B --> C2
-    C1 --> D1
-    C2 --> D2
-    D1 --> E1
-    D2 --> E2
-    E1 --> F1
-    E2 --> F2
-```
++----------------------------------------------------------+
+|          RiboCode Mol* Viewer, Version, README           |
++----------------------------------------------------------+
+|   [General Controls: Subunit Select | Sync | Re-align]   |
++----------------------------+-----------------------------+
+|   Load Molecule AlignedTo  |    Load Molecule Aligned    |
++----------------------------+-----------------------------+
+|    MoleculeUI AlignedTo    |    MoleculeUI AlignedTo     |
+|     MoleculeUI Aligned     |     MoleculeUI Aligned      |
+|    MoleculeUI Re-aligned   |    MoleculeUI Re-aligned    |
+|             ...            |            ...              |
++----------------------------+-----------------------------+
+|       Mol* Viewer A        |        Mol* Viewer B        |
+|  +----------------------+  |  +-----------------------+  |
+|  |                      |  |  |                       |  |
+|  |                      |  |  |                       |  |
+|  |       3D Canvas      |  |  |        3D Canvas      |  |
+|  |                      |  |  |                       |  |
+|  |                      |  |  |                       |  |
+|  +----------------------+  |  +-----------------------+  |
+|  |    Sequence Panel    |  |  |     Sequence Panel    |  |
+|  +----------------------+  |  +-----------------------+  |
+|  |       Main Menu      |  |  |        Main Menu      |  |
+|  +----------------------+  |  +-----------------------+  |
+|  |     Control Panel    |  |  |      Control Panel    |  |
+|  +----------------------+  |  +-----------------------+  |
+|  |       Log Panel      |  |  |        Log Panel      |  |
+|  +----------------------+  |  +-----------------------+  |
++----------------------------------------------------------+
 
 A user session starts by loading a dataset in [CIF](https://www.iucr.org/resources/cif/spec/version1.1) file format via the `Load AlignedTo` button. As the data load, the coordinates for all the atoms are centralized so that the coordinate origin is at the centre.
 
@@ -115,7 +118,7 @@ Ribosome data can be downloaded from the [RCSB Protein Data Bank](https://www.rc
 
 Sychronization is `Off` by default. If selected to be `On`, rotation/zoom in one `Mol* 3D Canvas` triggers rotation/zoom in the other.
 
-Please refer to the [Mol* viewer Documentation](https://molstar.org/viewer-docs/) for details of the Mol* UI. In the Ribocode `Molstar Container`, the `Mol* 3D Canvas` is at the top followed by the `Mol* Sequence Panel`, `Mol* Main Menu`, `Mol* Control Panel` and `Mol* Log Panel`. The Mol* viewer style is adapted so that the UI fits in a column of 600 pixels in width. 
+Please refer to the [Mol* viewer Documentation](https://molstar.org/viewer-docs/) for details of the Mol* UI. The Mol* viewer style is adapted so that the UI fits in a column of 600 pixels in width.
 
 Ribocode is being developed as part of the [Ribocode project](https://ribocode.org/) funded by [UKRI](https://www.ukri.org/) under research grant [BB/X003086/1](https://gtr.ukri.org/projects?ref=BB%2FX003086%2F1).
 
