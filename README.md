@@ -54,8 +54,8 @@ flowchart TD
     B[General Controls]
     subgraph Columns[ ]
         direction LR
-        C1[MoleculeUI [Representations, Zoom, Remove]]
-        C2[MoleculeUI[Representations, Zoom, Remove]]
+        C1[MoleculeUI]
+        C2[MoleculeUI]
     end
 
     A --> B
