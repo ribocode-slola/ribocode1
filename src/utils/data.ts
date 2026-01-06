@@ -7,6 +7,7 @@
  */
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 import { Asset } from 'molstar/lib/mol-util/assets';
+import { Vec3 } from 'molstar/lib/mol-math/linear-algebra';
 
 /**
  * Load a molecule from a URL into the Molstar viewer.
@@ -46,86 +47,19 @@ export async function loadMoleculeFileToViewer(viewer: PluginUIContext, file: As
     return { trajectory, model, structure };
 }
 
-// /**
-//  * Extracts atom types, chain IDs, and coordinates from Mol* atomicHierarchy and atomicConformation objects.
-//  *
-//  * @param plugin The Mol* PluginUIContext instance.
-//  * @param trajectory The Mol* trajectory object.
-//  * @returns An object containing arrays of atom types, chain IDs, and x, y, z coordinates.
-//  */
-// export function getAtomData(plugin: PluginUIContext, trajectory: any, filterChainId?: string): { symbolTypes: string[]; chainIds: string[]; xs: number[]; ys: number[]; zs: number[] } {
-//     let symbolTypes: string[] = [];
-//     let chainIds: string[] = [];
-//     let xs: number[] = [];
-//     let ys: number[] = [];
-//     let zs: number[] = [];
-//     // Step 1: Get the cell from the state using trajectory.ref
-//     const trajCell = plugin.state.data.cells.get(trajectory.ref);
-//     // Step 2: Inspect the cell and its data
-//     // console.log('trajCell:', trajCell);
-//     // console.log('trajCell.obj:', trajCell?.obj);
-//     if (trajCell?.obj?.data) {
-//         // console.log('trajCell.obj.data:', trajCell?.obj?.data);
-//         // Inspect the first frame and representative
-//         const frames = trajCell.obj.data.frames;
-//         const nframes = frames.length;
-//         if (nframes === 0) {
-//             console.warn('No frames found in trajectory data.');
-//             return { symbolTypes, chainIds, xs, ys, zs };
-//         } else if (nframes > 1) {
-//             console.warn(`Multiple frames (${nframes}) found in trajectory data. Centralisation/alignment will be applied only to the first frame.`);
-//         }
-//         // console.log('Representative:', trajCell.obj.data.representative);
-//         const frame = frames[0];
-//         if (frame) {
-//             if (frame.atomicConformation && frame.atomicHierarchy) {
-//                 xs = Array.from(frame.atomicConformation.x);
-//                 ys = Array.from(frame.atomicConformation.y);
-//                 zs = Array.from(frame.atomicConformation.z);
-//                 const atoms = frame.atomicHierarchy.atoms;
-//                 const chains = frame.atomicHierarchy.chains;
-//                 for (let i = 0; i < atoms._rowCount; i++) {
-//                     let chainId = '';
-//                     if (i === 0) {
-//                         console.log('[getAtomData] atoms:', atoms);
-//                         console.log('[getAtomData] atoms.chainIndex:', atoms.chainIndex);
-//                         console.log('[getAtomData] chains.auth_asym_id:', chains.auth_asym_id);
-//                     }
-//                     if (
-//                         atoms.chainIndex &&
-//                         typeof atoms.chainIndex.value === 'function' &&
-//                         chains &&
-//                         chains.auth_asym_id &&
-//                         typeof chains.auth_asym_id.value === 'function'
-//                     ) {
-//                         const chainIdx = atoms.chainIndex.value(i);
-//                         chainId = chains.auth_asym_id.value(chainIdx);
-//                         if (i < 10) {
-//                             console.log(`[getAtomData] atom ${i}: chainIdx=${chainIdx}, chainId='${chainId}'`);
-//                         }
-//                     } else {
-//                         if (i < 10) {
-//                             console.warn(`[getAtomData] atom ${i}: Missing chainIndex or auth_asym_id`);
-//                         }
-//                     }
-//                     chainIds.push(chainId);
-//                     if (atoms.type_symbol && typeof atoms.type_symbol.value === 'function') {
-//                         symbolTypes.push(atoms.type_symbol.value(i));
-//                     } else {
-//                         symbolTypes.push('');
-//                     }
-//                 }
-//             }
-//         }
-//     }
-//     return { symbolTypes, chainIds, xs, ys, zs };
-// }
-
 /**
- * Robustly extract atom data (symbol type, chain ID, coordinates) from a Mol* structure object using structure.units.
- * Optionally filter by chainId.
+ * Extract atom data (symbol type, chain ID, coordinates) from a Mol* structure.
+ * @param structure The Mol* structure object.
+ * @param filterChainId Optional chain ID to filter atoms by.
+ * @returns An object containing arrays of symbol types, chain IDs, and coordinates (xs, ys, zs).
  */
-export function getAtomDataFromStructureUnits(structure: any, filterChainId?: string) {
+export function getAtomDataFromStructureUnits(structure: any, filterChainId?: string): {
+    symbolTypes: string[];
+    chainIds: string[];
+    xs: number[];
+    ys: number[];
+    zs: number[];
+} {
     const symbolTypes: string[] = [];
     const chainIds: string[] = [];
     const xs: number[] = [];
@@ -188,4 +122,52 @@ export function getAtomDataFromStructureUnits(structure: any, filterChainId?: st
     }
     console.log('[getAtomDataFromStructureUnits] Unique chain IDs in structure:', Array.from(uniqueChainIds));
     return { symbolTypes, chainIds, xs, ys, zs };
+}
+
+/**
+ * Update atom coordinates and log before/after for verification.
+ * @param model The Mol* model object
+ * @param xs Array of x coordinates
+ * @param ys Array of y coordinates
+ * @param zs Array of z coordinates
+ */
+export function updateAndLogAtomCoordinates(model: any, centroid: Vec3, rotmat: number[]) {
+    const xs = model.atomicConformation.x;
+    const ys = model.atomicConformation.y;
+    const zs = model.atomicConformation.z;
+    const n = xs.length;
+    const np = Math.floor(n / 3);
+    // Log before update
+    console.log('Preparing to update atom coordinates:');
+    for (let i = 0; i < n; i++) {
+        if (i % np === 0) {
+            console.log(`Preparing to update atom ${i}: new coords x=${xs[i]}, y=${ys[i]}, z=${zs[i]}`);
+        }
+    }
+    // Recentering
+    for (let i = 0; i < n; i++) {
+        xs[i] = xs[i] - centroid[0];
+        ys[i] = ys[i] - centroid[1];
+        zs[i] = zs[i] - centroid[2];
+    }
+    // Rotation
+    for (let i = 0; i < n; i++) {
+        const x = xs[i];
+        const y = ys[i];
+        const z = zs[i];
+        xs[i] = rotmat[0] * x + rotmat[1] * y + rotmat[2] * z;
+        ys[i] = rotmat[3] * x + rotmat[4] * y + rotmat[5] * z;
+        zs[i] = rotmat[6] * x + rotmat[7] * y + rotmat[8] * z;
+    }
+    // Reassign updated coordinates
+    model.atomicConformation.x = xs;
+    model.atomicConformation.y = ys;
+    model.atomicConformation.z = zs;
+    // Log after update
+    console.log('Atom coordinates updated.');
+    for (let i = 0; i < n; i++) {
+        if (i % np === 0) {
+            console.log(`Updated atom ${i}: new coords x=${model.atomicConformation.x[i]}, y=${model.atomicConformation.y[i]}, z=${model.atomicConformation.z[i]}`);
+        }
+    }
 }

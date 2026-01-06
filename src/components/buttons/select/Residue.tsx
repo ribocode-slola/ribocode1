@@ -7,7 +7,7 @@
  */
 import React from 'react';
 import GenericSelectButton from './Select';
-import { ResidueLabelInfo } from 'src/utils/Residue';
+import { ResidueLabelInfo } from 'src/utils/residue';
 
 /**
  * Props for the ResidueSelectButton component.

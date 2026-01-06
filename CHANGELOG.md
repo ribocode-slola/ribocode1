@@ -1,9 +1,10 @@
 ## [v0.7.0] - 2026-01-02
-- Added camera controls but these are not working and are hidden by a conidtional.
-- Added Select Subunit control.
+- Added control to select a subunit to help filter chain selection.
+- Commented out `Load Dictionary` and `Load Alignment` buttons.
+- Added `Re-align` functionality.
 
 ## [v0.6.0] - 2026-01-01
-- Added zoom to residue controls for setting extraRadius and minRadius.
+- Added `Residue Zoom` controls for setting `extraRadius` and `minRadius`.
 
 ## [v0.5.1] - 2025-12-28
 - General update to css styles and layout.

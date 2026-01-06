@@ -7,7 +7,7 @@
  */
 import React from 'react';
 import GenericSelectButton from './Select';
-import { RibosomeSubunitType, RibosomeSubunitTypes } from '../../../utils/Subunit';
+import { RibosomeSubunitType, RibosomeSubunitTypes } from '../../../utils/subunit';
 
 /**
  * Props for the SubunitSelectButton component.

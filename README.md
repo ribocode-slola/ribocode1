@@ -38,7 +38,8 @@ Next, the user can do several things:
   
 * As an `Aligned` dataset is loaded, it's atom positions are centralized and aligned with the centralized `AlignedTo` atom positions using an algorithm.
 * If a chain is selected, the `Select Residue` control becomes actionable and in the `Zoom to Chain` control becomes actionable to zoom to the selected chain.
-* If a residue is selected, the `Zoom to Residue` control becomes actionable to zoom to the selected residue within the chain. The selected residue will be in the viewer centre. How much is displayed around that depends on the `Residue Zoom` settings. 
+* If a residue is selected, the `Zoom to Residue` control becomes actionable to zoom to the selected residue within the chain. The selected residue will be in the viewer centre. How much is displayed around that depends on the `Residue Zoom` settings.
+* If chains are selected for both `AlignedTo` and `Aligned` molecules, the `Re-align` button can be actioned to add a new re-aligned representation to the viewers. Multiple ones of these can be created. They can also be removed.
 
 Ribosome data can be downloaded from the [RCSB Protein Data Bank](https://www.rcsb.org/pages/about-us/index) in CIF format. Two datasets which align well are: [4ug0](https://files.rcsb.org/download/4UG0.cif); and [6xu8](https://files.rcsb.org/download/6XU8.cif).
 
@@ -52,7 +53,7 @@ Ribocode is being developed as part of the [Ribocode project](https://ribocode.o
 ## Source Code Overview
 
 - Configuration files are in the top level directory. There is also a `packages` directory and a `src` directory.
-- Mol* is to be located in the `packages/molstar` directory.
+- [Ribocode Mol*](https://github.com/ribocode-slola/molstar) is to be located in the `packages/molstar` directory.
 - The `src` directory contains:
   - `App.tsx` contains the top level application code and UI [JSX](https://www.typescriptlang.org/docs/handbook/jsx.html).
   - `App.css` a [CSS](https://developer.mozilla.org/en-US/docs/Web/CSS) for styling all components.
@@ -70,6 +71,9 @@ Ribocode is being developed as part of the [Ribocode project](https://ribocode.o
   - `main.tsx` is the entry point for the React application. It is responsible for rendering the root App component into the HTML element with the id root. It applies global styles (like App.css), and wraps the app in React connects it to the [DOM](https://developer.mozilla.org/en-US/docs/Web/API/Document_Object_Model).
   - `service-worker.ts` contains the code for the [PWA service worker](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API), which is a script that runs in the background of the user's Web browser. It caches assets, enables offline functionality, and handles push notifications.
   - `serviceWorkerRegistration.ts` contains the code responsible for (un)registering the service worker. It contains code that checks if service workers are supported, and then registers the service-worker.ts file so the Web browser knows to use it.
+- There is code written that is in the code base, but is currently not being used:
+* `Load Dictionary` and `Load Alignment` components have been written to load dictionary data and alignment data, but other than loading the data and logging it, nothing was being done with it, so the button components are currently hidden.
+* There are also UI components to control visualisation including controls for `fog` and `near` and `far` planes. These are not working properly yet and the UI components re hidden.
   
 
 ## Building
@@ -95,17 +99,17 @@ From the Ribocode root directory run:
 
 
 ## Development
-Ribocode project participants and Scientific Advisory Board members are encouraged to get involved in development by providing feedback.
+Ribocode project participants and Scientific Advisory Board members are encouraged to get involved in development by providing feedback, in particular describing what can be improved and what additional features are wanted.
 
-One way to provide feedback is to comment on/create [issues](https://github.com/ribocode-slola/ribocode1/issues) either explaining something not working as expected, or requsting a feature or change to the UI.
+A good way to provide feedback is to comment on and create [issues](https://github.com/ribocode-slola/ribocode1/issues).
 
-To contribute source code, please submit pull requests.
+If you want help getting set up with a development environment or help contributing via a `pull request`, please let it be known.
 
 To serve out the `gh-pages` branch for your fork on `GitHub Pages` to create a PWA deployment use the following command:
 * ```npm run deploy```
 
-[Ribocode Mol*](https://github.com/ribocode-slola/molstar) is essentially Mol* Version 5.4.2 with some files added for Ribocode that might be generally useful for Mol*. These are being contributed via [Mol* Pull Request #1726](https://github.com/molstar/molstar/pull/1726), but if this does not happen, they will be folded back into Ribocode to make it easier to build on the later versions of Mol*.
+[Ribocode Mol*](https://github.com/ribocode-slola/molstar) is essentially [Mol*](https://github.com/molstar/molstar) Version 5.4.2 with some files added for Ribocode that might be generally useful for Mol*. These are being contributed via [Mol* Pull Request #1726](https://github.com/molstar/molstar/pull/1726), but if this does not happen, they will be folded back into Ribocode to make it easier to build on later versions of Mol*.
 
 It is perhaps a good idea to organise automated checks to manage contributions...
 
-As of [v0.4.3] there is a [CHANGELOG](./CHANGELOG.md) which focuses on User Interface changes, but might mention major refactoring. Full details of development is captured on GitHub.
+As of [v0.4.3] there is a [CHANGELOG](./CHANGELOG.md) which summarises changes, particularly changes to the UI or key underlying functionaility.

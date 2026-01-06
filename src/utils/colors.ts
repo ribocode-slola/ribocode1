@@ -10,6 +10,7 @@ import { ThemeDataContext } from 'molstar/lib/mol-theme/theme';
 //import { ColorType } from 'molstar/lib/mol-geo/geometry/color-data';
 import { ColorTheme } from 'molstar/lib/mol-theme/color';
 import { ChainIdColorThemeParams } from 'molstar/lib/mol-theme/color/chain-id';
+import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 
 // Define a type for the data structure
 export type Data = Record<string, string>;
@@ -39,9 +40,9 @@ export async function readJSONFile(file: File): Promise<Data[]> {
                     // Handle object format: { "4ug0_LY": "#FF0000", ... }
                     transformedData = Object.entries(data).map(
                         ([pdb_chain, color]) => ({
-                        pdb_chain,
-                        color: color as string
-                    }));
+                            pdb_chain,
+                            color: color as string
+                        }));
                 }
                 resolve(transformedData);
             } catch (error) {
@@ -245,4 +246,37 @@ export function createChainColorTheme(
         defaultValues: {},
         isApplicable: () => true,
     };
+}
+
+/**
+ * Registers a custom chain color theme if it is not already registered.
+ * @param plugin The Mol* plugin instance.
+ * @param themeName The name of the theme to register.
+ * @param chainColorMaps A map of theme names to their corresponding chain color maps.
+ * @returns A promise that resolves when the theme is registered.
+ */
+export function registerThemeIfNeeded(
+    plugin: PluginUIContext,
+    themeName: string,
+    chainColorMaps: Map<string, Map<string, Color>>
+) {
+    if (!plugin) return;
+    // Get color theme registry.
+    const colorThemeRegistry = plugin.representation.structure.themes.colorThemeRegistry;
+    if (!colorThemeRegistry) {
+        console.warn('No colorThemeRegistry found in representation structure themes.');
+        return;
+    }
+    console.log('ColorThemeRegistry:', colorThemeRegistry);
+    // Remove the old theme if it exists.
+    const existingTheme = colorThemeRegistry.get(themeName);
+    if (existingTheme) {
+        colorThemeRegistry.remove(existingTheme);
+        console.log(`Removed old ${themeName} theme.`);
+    }
+    // Add the new theme.
+    colorThemeRegistry.add(
+        createChainColorTheme(themeName, chainColorMaps.get(themeName)!) as any
+    );
+    console.log(`Registered ${themeName} theme.`);
 }
