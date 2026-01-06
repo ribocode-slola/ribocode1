@@ -53,15 +53,15 @@ flowchart TD
     A[App Title & Version]
     B[General Controls]
     subgraph Columns[ ]
-        direction LR
-        C1[MoleculeUI]
-        C2[MoleculeUI]
+        direction TD
+        C1[Load Molecule AlignedTo]
+        C2[Load Molecule Aligned]
     end
 
     A --> B
     B --> Columns
 ```
-```
+```mermaid
 flowchart TD
     A[App Title, Version, README link]
     B[General Controls]
