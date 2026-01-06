@@ -51,15 +51,15 @@ The UI layout is as follows:
 ```mermaid
 flowchart TD
     A[App Title & Version]
-    B[General Controls<br/>(Subunit Select, Sync, Re-align, etc.)]
-    subgraph VIEWERS[ ]
+    B[General Controls]
+    subgraph Columns[ ]
         direction LR
-        C1[Viewer A<br/>MoleculeUI<br/>[Representations, Zoom, Remove]]
-        C2[Viewer B<br/>MoleculeUI<br/>[Representations, Zoom, Remove]]
+        C1[MoleculeUI [Representations, Zoom, Remove]]
+        C2[MoleculeUI[Representations, Zoom, Remove]]
     end
 
     A --> B
-    B --> VIEWERS
+    B --> Columns
 ```
 ```
 flowchart TD
