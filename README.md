@@ -57,7 +57,7 @@ The UI layout is as follows:
      - `Main Menu`
      - `Control Panel`
      - `Log Panel`
-
+```
 +----------------------------------------------------------+
 |          RiboCode Mol* Viewer, Version, README           |
 +----------------------------------------------------------+
@@ -87,7 +87,7 @@ The UI layout is as follows:
 |  |       Log Panel      |  |  |        Log Panel      |  |
 |  +----------------------+  |  +-----------------------+  |
 +----------------------------------------------------------+
-
+```
 A user session starts by loading a dataset in [CIF](https://www.iucr.org/resources/cif/spec/version1.1) file format via the `Load AlignedTo` button. As the data load, the coordinates for all the atoms are centralized so that the coordinate origin is at the centre.
 
 When the `AlignedTo` dataset is loaded several things happen:
