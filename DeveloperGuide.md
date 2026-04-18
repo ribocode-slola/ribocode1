@@ -155,4 +155,6 @@ test('renders the component', () => {
 
 ## Contributing
 
-If you contribute changes, please submit a Pull Request that includes documentation updates and if appropriate includes tests. Please add you details to the list of contributors and to the list of authors in the header of any source files modified.
+If you contribute changes, please submit a Pull Request that includes documentation updates and, if appropriate, includes tests. Please add your details to the list of contributors and to the list of authors in the header of any source files modified.
+
+For contribution ideas, bug reports, or feature requests, please visit the [GitHub Issues page](https://github.com/ribocode-slola/ribocode1/issues).

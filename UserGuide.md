@@ -4,12 +4,12 @@ Welcome to the ribocode1 User Guide!
 
 ## Table of Contents
 
-- [Data and Mol* Aknowledgements](#data-and-mol-aknowledgements)
+- [Data and Mol* Acknowledgements](#data-and-mol-acknowledgements)
 - [User Interface](#user-interface)
 - [Sessions](#sessions)
 
 
-## Data and Mol* Aknowledgements
+## Data and Mol* Acknowledgements
 
 In publications, users should acknowledge the data sources used, and the underlying [Mol*](https://github.com/molstar/molstar) technology using a citation along the following lines:
 - David Sehnal, Sebastian Bittrich, Mandar Deshpande, Radka Svobodová, Karel Berka, Václav Bazgier, Sameer Velankar, Stephen K Burley, Jaroslav Koča, Alexander S Rose: [Mol* Viewer: modern web app for 3D visualization and analysis of large biomolecular structures](https://doi.org/10.1093/nar/gkab314), *Nucleic Acids Research*, 2021; https://doi.org/10.1093/nar/gkab314.

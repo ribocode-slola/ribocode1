@@ -11,4 +11,8 @@ module.exports = {
   ],
   setupFilesAfterEnv: ['@testing-library/jest-dom'],
   testMatch: ['**/?(*.)+(test).[tj]s?(x)'],
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/packages/molstar/'
+  ],
 };
