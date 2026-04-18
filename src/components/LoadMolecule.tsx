@@ -8,8 +8,8 @@ import ChainSelectButton from './buttons/select/Chain';
 import ResidueSelectButton from './buttons/select/Residue';
 import SubunitSelectButton from './buttons/select/Subunit';
 import { allowedRepresentationTypes, AllowedRepresentationType } from './buttons/select/Representation';
-import { ResidueLabelInfo } from '../utils/Residue';
-import { RibosomeSubunitType } from '../utils/Subunit';
+import { ResidueLabelInfo } from '../utils/residue';
+import { RibosomeSubunitType } from '../utils/subunit';
 
 /**
  * Props for LoadDataRow component.

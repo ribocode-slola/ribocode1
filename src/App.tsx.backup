@@ -4,7 +4,6 @@
  * @author Andy Turner <agdturner@gmail.com>
  */
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import RealignedMoleculeList from './components/RealignedMoleculeList';
 import { MoleculeMode, AlignedTo, Aligned, ReAligned } from './types/molecule';
 import { parseColorFileContent, registerThemeIfNeeded } from './utils/colors';
 import { getAtomDataFromStructureUnits } from './utils/data';
@@ -45,9 +44,18 @@ const selectedAtomTypes: { [key: string]: boolean } = { 'P': true, 'C': true };
  * @returns The main App component.
  */
 const App: React.FC = () => {
+        // --- Session Load Modal State ---
+        const [sessionLoadModal, setSessionLoadModal] = useState<{
+            open: boolean;
+            sessionData: any | null;
+            requiredFiles: Array<{ key: string; label: string; filename: string; file?: File|null }>;
+            step: number;
+        }>({ open: false, sessionData: null, requiredFiles: [], step: 0 });
 
-    // Store File for aligned molecule reloads.
-    const [alignedFile, setAlignedFile] = useState<any | null>(null);
+    // Enforce required filename for AlignedTo after session restore
+    const [expectedAlignedToFilename, setExpectedAlignedToFilename] = useState<string | null>(null);
+
+    // (Removed: handled by sessionLoadModal state/UI)
 
     // Create plugin refs and pass to useMolstarViewers
     const pluginRefA: React.RefObject<PluginUIContext | null> = useRef<PluginUIContext | null>(null);
@@ -195,6 +203,392 @@ const App: React.FC = () => {
     }>({ residueLabels: new Map(), residueToAtomIds: {} });
     const [selectedResidueIdAligned, setSelectedResidueIdAligned] = useState<string>('');
 
+    // --- Session Save/Load ---
+    // Save session: gather loaded datasets for both viewers and download as JSON
+    function handleSaveSession() {
+        // Helper to get all representations and their visibility for a given molstar instance and key
+        function getReprStates(
+            molstar: ReturnType<typeof useMolstarViewer>,
+            key: string
+        ): Array<{ ref: string; type: string | null; isVisible: boolean }> {
+            const plugin = molstar.pluginRef?.current;
+            const repRefs: string[] = molstar.representationRefs[key] || [];
+            if (!plugin) return [];
+            return repRefs.map((ref: string) => {
+                const cell = plugin.state?.data?.cells?.get(ref);
+                return {
+                    ref,
+                    type: cell?.params?.values?.type?.name || null,
+                    isVisible: cell?.state?.isHidden !== true
+                };
+            });
+        }
+        const session = {
+            viewerA: viewerA.moleculeAlignedTo ? {
+                alignedTo: {
+                    name: viewerA.moleculeAlignedTo.name,
+                    label: viewerA.moleculeAlignedTo.label,
+                    filename: viewerA.moleculeAlignedTo.filename
+                },
+                isMoleculeAlignedToVisible: viewerA.isMoleculeAlignedToVisible,
+                isMoleculeAlignedVisible: viewerA.isMoleculeAlignedVisible,
+                representationsAlignedTo: getReprStates(molstarA, AlignedTo),
+                representationsAligned: getReprStates(molstarA, Aligned)
+            } : {},
+            viewerB: viewerB.moleculeAligned ? {
+                aligned: {
+                    name: viewerB.moleculeAligned.name,
+                    label: viewerB.moleculeAligned.label,
+                    filename: viewerB.moleculeAligned.filename
+                },
+                isMoleculeAlignedToVisible: viewerB.isMoleculeAlignedToVisible,
+                isMoleculeAlignedVisible: viewerB.isMoleculeAlignedVisible,
+                representationsAlignedTo: getReprStates(molstarB, AlignedTo),
+                representationsAligned: getReprStates(molstarB, Aligned)
+            } : {}
+        };
+        console.log('[Session] Saving session:', session);
+        const blob = new Blob([JSON.stringify(session, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'ribocode-session.json';
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    // Load session: parse JSON and reload datasets (stub for now)
+
+    // (Removed: replaced by modal-based session loader)
+
+    // --- Session Load Handler (Step 1: Parse session, Step 2: Show modal for file selection) ---
+    function handleLoadSession(event: React.ChangeEvent<HTMLInputElement>) {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            let session;
+            try {
+                session = JSON.parse(e.target?.result as string);
+            } catch (err) {
+                alert('Failed to parse session: ' + err);
+                return;
+            }
+            // Determine required files from session
+            const requiredFiles: Array<{ key: string; label: string; filename: string; file?: File|null }> = [];
+            if (session.viewerA && session.viewerA.alignedTo && session.viewerA.alignedTo.filename) {
+                requiredFiles.push({ key: 'alignedToA', label: 'AlignedTo (Viewer A)', filename: session.viewerA.alignedTo.filename });
+            }
+            if (session.viewerB && session.viewerB.aligned && session.viewerB.aligned.filename) {
+                requiredFiles.push({ key: 'alignedB', label: 'Aligned (Viewer B)', filename: session.viewerB.aligned.filename });
+            } else if (session.viewerA && session.viewerA.aligned && session.viewerA.aligned.filename) {
+                requiredFiles.push({ key: 'alignedA', label: 'Aligned (Viewer A)', filename: session.viewerA.aligned.filename });
+            }
+            setSessionLoadModal({ open: true, sessionData: session, requiredFiles, step: 0 });
+        };
+        reader.readAsText(file);
+    }
+
+    // --- Session Load Modal UI ---
+    function handleSessionFileChange(idx: number, file: File | null) {
+        setSessionLoadModal(prev => {
+            const requiredFiles = [...prev.requiredFiles];
+            if (file && file.name === requiredFiles[idx].filename) {
+                requiredFiles[idx] = { ...requiredFiles[idx], file };
+            } else {
+                alert(`Selected file name (${file?.name}) does not match required file (${requiredFiles[idx].filename}). Please try again.`);
+                return prev;
+            }
+            return { ...prev, requiredFiles };
+        });
+    }
+
+    async function handleSessionLoadProceed() {
+        // Only proceed if all files are selected
+        if (!sessionLoadModal.requiredFiles.every(f => f.file)) {
+            alert('Please select all required files.');
+            return;
+        }
+        // Map files to expected variables
+        let alignedToFile: File | undefined;
+        let alignedFile: File | undefined;
+        for (const f of sessionLoadModal.requiredFiles) {
+            if (f.key === 'alignedToA') alignedToFile = f.file!;
+            if (f.key === 'alignedB' || f.key === 'alignedA') alignedFile = f.file!;
+        }
+        // Hide modal
+        setSessionLoadModal({ open: false, sessionData: null, requiredFiles: [], step: 0 });
+        // Now proceed with session load logic (re-using your existing code, but using these files)
+        const session = sessionLoadModal.sessionData;
+        let loadedAny = false;
+        setExpectedAlignedToFilename(session.viewerA?.alignedTo?.filename || null);
+        try {
+            if (alignedToFile) {
+                const alignedToMolecule = await loadMoleculeIntoViewers(alignedToFile, AlignedTo);
+                loadedAny = true;
+                if (alignedFile) {
+                    if (!alignedToMolecule || !alignedToMolecule.alignmentData) {
+                        alert('AlignedTo alignment data not available after load. Cannot load Aligned file.');
+                    } else {
+                        await loadMoleculeIntoViewers(alignedFile, Aligned, alignedToMolecule.alignmentData);
+                    }
+                }
+            } else if (alignedFile) {
+                await loadMoleculeIntoViewers(alignedFile, Aligned);
+                loadedAny = true;
+            }
+            // Restore visibility and representations as before
+            setTimeout(async () => {
+                if (session.viewerA) {
+                    if (typeof session.viewerA.isMoleculeAlignedToVisible === 'boolean') {
+                        viewerA.setIsMoleculeAlignedToVisible(session.viewerA.isMoleculeAlignedToVisible);
+                    }
+                    if (typeof session.viewerA.isMoleculeAlignedVisible === 'boolean') {
+                        viewerA.setIsMoleculeAlignedVisible(session.viewerA.isMoleculeAlignedVisible);
+                    }
+                    await ensureAndRestoreReprVisibility(molstarA, AlignedTo, molstarA.structureRefs[AlignedTo], session.viewerA.representationsAlignedTo);
+                    await ensureAndRestoreReprVisibility(molstarA, Aligned, molstarA.structureRefs[Aligned], session.viewerA.representationsAligned);
+                }
+                if (session.viewerB) {
+                    if (typeof session.viewerB.isMoleculeAlignedToVisible === 'boolean') {
+                        viewerB.setIsMoleculeAlignedToVisible(session.viewerB.isMoleculeAlignedToVisible);
+                    }
+                    if (typeof session.viewerB.isMoleculeAlignedVisible === 'boolean') {
+                        viewerB.setIsMoleculeAlignedVisible(session.viewerB.isMoleculeAlignedVisible);
+                    }
+                    await ensureAndRestoreReprVisibility(molstarB, AlignedTo, molstarB.structureRefs[AlignedTo], session.viewerB.representationsAlignedTo);
+                    await ensureAndRestoreReprVisibility(molstarB, Aligned, molstarB.structureRefs[Aligned], session.viewerB.representationsAligned);
+                }
+                if (!loadedAny) {
+                    alert('Session loaded, but could not automatically reload datasets. Please reload the required files manually.');
+                }
+            }, 500);
+        } catch (e) {
+            alert('Error loading session: ' + e);
+        }
+    }
+
+            // --- Render Session Load Modal ---
+            function SessionLoadModal() {
+                if (!sessionLoadModal.open) return null;
+                return (
+                    <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.4)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ background: '#fff', padding: 32, borderRadius: 8, minWidth: 320, boxShadow: '0 2px 16px rgba(0,0,0,0.2)' }}>
+                            <h2>Load Session: Select Required Files</h2>
+                            <ol>
+                                {sessionLoadModal.requiredFiles.map((f, idx) => (
+                                    <li key={f.key} style={{ marginBottom: 16 }}>
+                                        <div><b>{f.label}</b>: <span style={{ color: '#555' }}>{f.filename}</span></div>
+                                        <input type="file" style={{ marginTop: 8 }}
+                                            onChange={e => handleSessionFileChange(idx, e.target.files?.[0] || null)}
+                                            accept={undefined}
+                                        />
+                                        {f.file && <span style={{ color: 'green', marginLeft: 8 }}>✓ Selected</span>}
+                                    </li>
+                                ))}
+                            </ol>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                                <button onClick={() => setSessionLoadModal({ open: false, sessionData: null, requiredFiles: [], step: 0 })}>Cancel</button>
+                                <button onClick={handleSessionLoadProceed} disabled={!sessionLoadModal.requiredFiles.every(f => f.file)}>Load Session</button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+        console.log('[Session] Load Session button clicked.');
+        if (!window.confirm('Loading a session will overwrite your current session. Please save your work first if needed. Continue?')) {
+            // Reset the input so the user can select the same file again if needed
+            event.target.value = '';
+            console.log('[Session] Load session cancelled by user.');
+            return;
+        }
+        const file = event.target.files?.[0];
+        if (!file) {
+            console.log('[Session] No file selected for loading.');
+            return;
+        }
+        console.log('[Session] Loading session file:', file.name);
+        const reader = new FileReader();
+        // Prompt for all required files synchronously before any async logic
+        let alignedToFile: File | undefined = undefined;
+        let alignedFile: File | undefined = undefined;
+        let session: any = undefined;
+        reader.onload = async (e) => {
+            try {
+                session = JSON.parse(e.target?.result as string);
+                console.log('[Session] Loaded session:', session);
+            } catch (err) {
+                console.error('[Session] Failed to parse session:', err);
+                alert('Failed to parse session: ' + err);
+                return;
+            }
+            // Prompt for files synchronously
+            if (session.viewerA && session.viewerA.alignedTo && session.viewerA.alignedTo.filename) {
+                setExpectedAlignedToFilename(session.viewerA.alignedTo.filename);
+                alert(`Please select the file '${session.viewerA.alignedTo.filename}' for AlignedTo.`);
+                alignedToFile = await promptForFileSync(session.viewerA.alignedTo.filename);
+                if (!alignedToFile || alignedToFile.name !== session.viewerA.alignedTo.filename) {
+                    alert(`The selected file for AlignedTo does not match the session. Aborting load.`);
+                    alignedToFile = undefined;
+                }
+            } else {
+                setExpectedAlignedToFilename(null);
+            }
+            let alignedFilename = (session.viewerB && session.viewerB.aligned && session.viewerB.aligned.filename) ? session.viewerB.aligned.filename : (session.viewerA && session.viewerA.aligned && session.viewerA.aligned.filename ? session.viewerA.aligned.filename : undefined);
+            if (alignedFilename) {
+                alert(`Please select the file '${alignedFilename}' for Aligned.`);
+                alignedFile = await promptForFileSync(alignedFilename);
+                if (!alignedFile || alignedFile.name !== alignedFilename) {
+                    alert(`The selected file for Aligned does not match the session. Aborting load.`);
+                    alignedFile = undefined;
+                }
+            }
+            // Now proceed with async logic
+            try {
+                let loadedAny = false;
+
+                // Now load the files in sequence
+                if (alignedToFile) {
+                    const alignedToMolecule = await loadMoleculeIntoViewers(alignedToFile, AlignedTo);
+                    loadedAny = true;
+                    if (alignedFile) {
+                        if (!alignedToMolecule || !alignedToMolecule.alignmentData) {
+                            alert('AlignedTo alignment data not available after load. Cannot load Aligned file.');
+                        } else {
+                            await loadMoleculeIntoViewers(alignedFile, Aligned, alignedToMolecule.alignmentData);
+                            loadedAny = true;
+                        }
+                    }
+                } else if (session.viewerA && session.viewerA.alignedTo && session.viewerA.alignedTo.filename) {
+                    console.warn('[Session] Could not find file for viewerA alignedTo:', session.viewerA.alignedTo.filename);
+                } else if (alignedFile) {
+                    // If only alignedFile is present (should not happen, but fallback)
+                    await loadMoleculeIntoViewers(alignedFile, Aligned);
+                    loadedAny = true;
+                    console.log('[Session] Reloaded aligned for viewerB from file:', alignedFile.name);
+                } else if (alignedFilename) {
+                    console.warn('[Session] Could not find file for aligned:', alignedFilename);
+                }
+
+                // Restore visibility for both viewers after both loads
+                setTimeout(async () => {
+                    // Helper to ensure all saved representations exist, then restore their visibility
+                    async function ensureAndRestoreReprVisibility(
+                        molstar: ReturnType<typeof useMolstarViewer>,
+                        key: string,
+                        structureRef: string | null,
+                        reprStates: Array<{ ref: string; type: string | null; isVisible: boolean }> | undefined
+                    ) {
+                        const plugin = molstar.pluginRef?.current;
+                        if (!plugin || !reprStates || !structureRef) return;
+                        // Map from saved ref to actual ref in current state
+                        const refMap: Record<string, string> = {};
+                        // 1. Ensure all representations exist (by ref)
+                        for (const repr of reprStates) {
+                            let cell = plugin.state?.data?.cells?.get(repr.ref);
+                            let repRef = repr.ref;
+                            if (!cell && repr.type) {
+                                // Try to find a representation of the same type that is not already mapped
+                                const existingEntry = Object.entries(molstar.representationRefs[key] || []).find(([_, ref]) => {
+                                    if (Object.values(refMap).includes(ref)) return false;
+                                    const c = plugin.state?.data?.cells?.get(ref);
+                                    return c?.params?.values?.type?.name === repr.type;
+                                });
+                                if (existingEntry) {
+                                    repRef = existingEntry[1];
+                                    cell = plugin.state?.data?.cells?.get(repRef);
+                                } else {
+                                    // Add representation if missing
+                                    try {
+                                        await molstar.addRepresentation(
+                                            key,
+                                            structureRef,
+                                            repr.type as AllowedRepresentationType,
+                                            { name: 'default', params: {} }
+                                        );
+                                        // Wait for the new representation to appear in plugin state
+                                        let tries = 0;
+                                        while (tries < 20) { // up to 2 seconds
+                                            molstar.refreshRepresentationRefs(key, structureRef);
+                                            // Find a new representation of this type not already mapped
+                                            const newEntry = Object.entries(molstar.representationRefs[key] || []).find(([_, ref]) => {
+                                                if (Object.values(refMap).includes(ref)) return false;
+                                                const c = plugin.state?.data?.cells?.get(ref);
+                                                return c?.params?.values?.type?.name === repr.type;
+                                            });
+                                            if (newEntry) {
+                                                repRef = newEntry[1];
+                                                cell = plugin.state?.data?.cells?.get(repRef);
+                                                break;
+                                            }
+                                            await new Promise(res => setTimeout(res, 100));
+                                            tries++;
+                                        }
+                                    } catch (e) {
+                                        console.warn('Failed to add representation', repr.type, e);
+                                    }
+                                }
+                            }
+                            if (cell) {
+                                refMap[repr.ref] = repRef;
+                            }
+                        }
+
+                        // 2. Restore visibility for each representation by ref
+                        for (const repr of reprStates) {
+                            const repRef = refMap[repr.ref] || repr.ref;
+                            const cell = plugin.state?.data?.cells?.get(repRef);
+                            if (!cell) continue;
+                            const currentlyVisible = cell.state?.isHidden !== true;
+                            if (repr.isVisible !== currentlyVisible) {
+                                await import('molstar/lib/mol-plugin/commands').then(({ PluginCommands }) =>
+                                    PluginCommands.State.ToggleVisibility.apply(plugin, [plugin, { state: plugin.state.data, ref: repRef }])
+                                );
+                                plugin.canvas3d?.requestDraw?.();
+                            }
+                        }
+                    }
+                    if (session.viewerA) {
+                        if (typeof session.viewerA.isMoleculeAlignedToVisible === 'boolean') {
+                            viewerA.setIsMoleculeAlignedToVisible(session.viewerA.isMoleculeAlignedToVisible);
+                        }
+                        if (typeof session.viewerA.isMoleculeAlignedVisible === 'boolean') {
+                            viewerA.setIsMoleculeAlignedVisible(session.viewerA.isMoleculeAlignedVisible);
+                        }
+                        // Ensure and restore per-representation visibility
+                        await ensureAndRestoreReprVisibility(molstarA, AlignedTo, molstarA.structureRefs[AlignedTo], session.viewerA.representationsAlignedTo);
+                        await ensureAndRestoreReprVisibility(molstarA, Aligned, molstarA.structureRefs[Aligned], session.viewerA.representationsAligned);
+                    }
+                    if (session.viewerB) {
+                        if (typeof session.viewerB.isMoleculeAlignedToVisible === 'boolean') {
+                            viewerB.setIsMoleculeAlignedToVisible(session.viewerB.isMoleculeAlignedToVisible);
+                        }
+                        if (typeof session.viewerB.isMoleculeAlignedVisible === 'boolean') {
+                            viewerB.setIsMoleculeAlignedVisible(session.viewerB.isMoleculeAlignedVisible);
+                        }
+                        // Ensure and restore per-representation visibility
+                        await ensureAndRestoreReprVisibility(molstarB, AlignedTo, molstarB.structureRefs[AlignedTo], session.viewerB.representationsAlignedTo);
+                        await ensureAndRestoreReprVisibility(molstarB, Aligned, molstarB.structureRefs[Aligned], session.viewerB.representationsAligned);
+                    }
+                }, 500);
+                if (!loadedAny) {
+                    alert('Session loaded, but could not automatically reload datasets. Please reload the required files manually.');
+                } else {
+                    alert('Session loaded and datasets restored (if files were available or selected).');
+                }
+            } catch (err) {
+                console.error('[Session] Failed to load session:', err);
+                alert('Failed to load session: ' + err);
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    const loadInputRef = useRef<HTMLInputElement>(null);
+    const triggerLoadInput = () => {
+        loadInputRef.current?.click();
+    };
+
     /**
      * Generalized utility to load molecule into both viewers
      * @param file The file to load.
@@ -207,13 +601,15 @@ const App: React.FC = () => {
         const pluginA = viewerA.ref.current!;
         const pluginB = viewerB.ref.current!;
         if (mode === AlignedTo) {
+            setAlignedToFile(file);
+            setAlignedToFilename(file.name);
             // Viewer A
             const viewerAMoleculeAlignedTo = await loadMoleculeFileToViewer(
                 pluginA, assetFile, true, true
             );
             if (!viewerAMoleculeAlignedTo) {
                 console.error('Failed to load molecule into viewer A.');
-                return;
+                return undefined;
             }
             viewerA.setMoleculeAlignedTo(prev => ({
                 label: viewerAMoleculeAlignedTo.label,
@@ -252,14 +648,17 @@ const App: React.FC = () => {
             }
             viewerB.setIsMoleculeAlignedToLoaded(true);
             viewerB.setIsMoleculeAlignedToVisible(true);
+            return viewerAMoleculeAlignedTo;
         } else if (mode === Aligned) {
-            // Require alignedTo data to be loaded
-            if (!viewerA.moleculeAlignedTo?.alignmentData) {
+            setAlignedFile(file);
+            setAlignedFilename(file.name);
+            // Use alignmentData passed in, do not check state
+            if (!alignmentData) {
                 console.error(AlignedTo + ' molecule must be loaded before loading aligned molecule.');
                 return;
             }
             setAlignedFile(file); // Store File for reloads
-            const alignData = alignmentData ?? viewerA.moleculeAlignedTo.alignmentData;
+            const alignData = alignmentData;
             // Viewer A
             const viewerAMoleculeAligned: Molecule | undefined = await loadMoleculeFileToViewer(
                 pluginA, assetFile, false, true, alignData
@@ -362,12 +761,34 @@ const App: React.FC = () => {
             try {
                 const file = e.target.files?.[0];
                 if (!file) return;
-                await loadMoleculeIntoViewers(file, mode, undefined);
+                // Enforce session-required filename for AlignedTo
+                if (mode === AlignedTo && expectedAlignedToFilename && file.name !== expectedAlignedToFilename) {
+                    alert(`You must select the file '${expectedAlignedToFilename}' for AlignedTo as required by the loaded session.`);
+                    return;
+                }
+                if (mode === Aligned && alignedFilename && file.name !== alignedFilename) {
+                    alert(`Selected file name (${file.name}) does not match the expected Aligned file (${alignedFilename}). Please select the correct file.`);
+                    return;
+                }
+                if (mode === AlignedTo) {
+                    setAlignedToFile(file);
+                    setAlignedToFilename(file.name);
+                    if (expectedAlignedToFilename) setExpectedAlignedToFilename(null); // Clear after successful load
+                } else if (mode === Aligned) {
+                    setAlignedFile(file);
+                    setAlignedFilename(file.name);
+                }
+                // For Aligned, pass alignmentData from viewerA.moleculeAlignedTo if available
+                let alignmentData = undefined;
+                if (mode === Aligned) {
+                    alignmentData = viewerA.moleculeAlignedTo?.alignmentData;
+                }
+                await loadMoleculeIntoViewers(file, mode, alignmentData);
             } catch (err) {
                 console.error('Error loading molecule:', err);
             }
         },
-        [viewerA, viewerB]
+        [viewerA, viewerB, alignedToFilename, alignedFilename, expectedAlignedToFilename]
     );
 
     // Fog control state and updater
@@ -816,35 +1237,33 @@ const App: React.FC = () => {
         residueId?: string,
         insCode?: string
     ) {
-        return {
-            handleButtonClick: async () => {
-                const plugin = pluginRef.current;
-                if (!plugin || !structureRef) return;
-                if (property === 'chain-test') {
-                    focusLociOnChain(
-                        plugin,
-                        structureRef,
-                        chainId,
-                        sync && syncPluginRef?.current ? syncPluginRef.current : undefined
-                    );
-                } else if (property === 'residue-test') {
-                    focusLociOnResidue(
-                        plugin,
-                        structureRef,
-                        chainId,
-                        residueId ?? '',
-                        insCode,
-                        sync && syncPluginRef?.current ? syncPluginRef.current : undefined
-                    );
-                } else {
-                    // fallback: use chain loci for other property types for now
-                    focusLociOnChain(
-                        plugin,
-                        structureRef,
-                        chainId,
-                        sync && syncPluginRef?.current ? syncPluginRef.current : undefined
-                    );
-                }
+        return () => {
+            const plugin = pluginRef.current;
+            if (!plugin || !structureRef) return;
+            if (property === 'chain-test') {
+                focusLociOnChain(
+                    plugin,
+                    structureRef,
+                    chainId,
+                    sync && syncPluginRef?.current ? syncPluginRef.current : undefined
+                );
+            } else if (property === 'residue-test') {
+                focusLociOnResidue(
+                    plugin,
+                    structureRef,
+                    chainId,
+                    residueId ?? '',
+                    insCode,
+                    sync && syncPluginRef?.current ? syncPluginRef.current : undefined
+                );
+            } else {
+                // fallback: use chain loci for other property types for now
+                focusLociOnChain(
+                    plugin,
+                    structureRef,
+                    chainId,
+                    sync && syncPluginRef?.current ? syncPluginRef.current : undefined
+                );
             }
         };
     }
@@ -1076,6 +1495,10 @@ const App: React.FC = () => {
             }
             // Load aligned structure in Viewers A and B.
             (async () => {
+                if (!alignedFile) {
+                    console.warn('No aligned file available for realignment.');
+                    return;
+                }
                 const file = new File([alignedFile], alignedFile.name);
                 const pluginA = viewerA.ref.current;
                 if (!pluginA) {
@@ -1108,55 +1531,89 @@ const App: React.FC = () => {
         console.log('[Subunit Select Debug][Aligned] selectedSubunit:', selectedSubunitAligned, 'chain IDs:', chains ? Array.from(chains) : []);
     }, [selectedSubunitAligned, subunitToChainIdsAligned]);
 
-    // Menu bar handlers
-
-    // Save Session handler - saves current session state to a JSON file
-    const handleSaveSession = () => {
-        // Example: Save session state as JSON
-        try {
-            // Gather session state (customize as needed)
-            const session = {
-                // Add relevant state here; this is a minimal example
-                viewerA: {
-                    moleculeAlignedTo: viewerA.moleculeAlignedTo,
-                    moleculeAligned: viewerA.moleculeAligned,
-                },
-                viewerB: {
-                    moleculeAlignedTo: viewerB.moleculeAlignedTo,
-                    moleculeAligned: viewerB.moleculeAligned,
-                },
-                // Add more state as needed
-            };
-            const blob = new Blob([JSON.stringify(session, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'ribocode-session.json';
-            document.body.appendChild(a);
-            a.click();
-            setTimeout(() => {
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-            }, 0);
-        } catch (err) {
-            alert('Failed to save session: ' + (err instanceof Error ? err.message : err));
-        }
-    };
-
-    // Load Session handler - for loading session state from a JSON file
-    const handleLoadSession = () => {
-        // Placeholder, will add logic next
-    };
-
     // Return the main app component.
     return (
         <SyncProvider>
             <div className="App">
-                <h1 className="app-title">RiboCode Mol* Viewer 0.7.0 (<a href="https://github.com/ribocode-slola/ribocode1/?tab=readme-ov-file#ribocode" target="_blank">README</a>)</h1>
-                <div className="menu-bar">
-                    <button className="menu-btn" onClick={handleSaveSession}>Save Session</button>
-                    <button className="menu-btn" onClick={handleLoadSession}>Load Session</button>
-                </div>
+                <h1 className="app-title">RiboCode Mol* Viewer 0.8.0 (<a href="https://github.com/ribocode-slola/ribocode1/?tab=readme-ov-file#ribocode" target="_blank">README</a>)</h1>
+                {/* Session menu */}
+                <nav className="session-menu-bar">
+                    <div className="session-menu-container">
+                        <button
+                            className="session-menu-btn"
+                            onClick={e => {
+                                const menu = document.getElementById('session-menu-dropdown');
+                                if (menu) menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+                            }}
+                            onBlur={e => {
+                                setTimeout(() => {
+                                    const menu = document.getElementById('session-menu-dropdown');
+                                    if (menu) menu.style.display = 'none';
+                                }, 150);
+                            }}
+                        >
+                            Session ▾
+                        </button>
+                        <div
+                            id="session-menu-dropdown"
+                            className="session-menu-dropdown"
+                        >
+                            <div
+                                className="session-menu-item session-menu-item-border"
+                                onClick={() => {
+                                    handleSaveSession();
+                                    document.getElementById('session-menu-dropdown')!.style.display = 'none';
+                                }}
+                                tabIndex={0}
+                                onKeyDown={e => { if (e.key === 'Enter') handleSaveSession(); }}
+                            >
+                                Save
+                            </div>
+                            <div
+                                className="session-menu-item session-menu-item-border"
+                                onClick={() => {
+                                    triggerLoadInput();
+                                    setTimeout(() => {
+                                        document.getElementById('session-menu-dropdown')!.style.display = 'none';
+                                    }, 0);
+                                }}
+                                tabIndex={0}
+                                onKeyDown={e => { if (e.key === 'Enter') triggerLoadInput(); }}
+                            >
+                                Load
+                            </div>
+                            <div
+                                className="session-menu-item"
+                                onClick={() => {
+                                    if (window.confirm('Restarting will unload all data and reset the session. Please save your work first if needed. Continue?')) {
+                                        window.location.reload();
+                                    } else {
+                                        document.getElementById('session-menu-dropdown')!.style.display = 'none';
+                                    }
+                                }}
+                                tabIndex={0}
+                                onKeyDown={e => {
+                                    if (e.key === 'Enter') {
+                                        if (window.confirm('Restarting will unload all data and reset the session. Please save your work first if needed. Continue?')) {
+                                            window.location.reload();
+                                        } else {
+                                            document.getElementById('session-menu-dropdown')!.style.display = 'none';
+                                        }
+                                    }
+                                }}
+                            >
+                                Restart
+                            </div>
+                        </div>
+                        <input
+                            type="file"
+                            accept="application/json"
+                            ref={loadInputRef}
+                            style={{ display: 'none' }}
+                            onChange={handleLoadSession}
+                        />
+                    </div>
+                </nav>
                 <div className="General-Controls">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                         <label>
@@ -1446,26 +1903,121 @@ const App: React.FC = () => {
                                 }
                             }}
                         />
-                        {/* Render all re-aligned molecules for Viewer A using extracted component */}
-                        <RealignedMoleculeList
-                            molecules={realignedMoleculesA}
-                            molstar={molstarA}
-                            // pluginRef removed: RealignedMoleculeList uses molstar.pluginRef internally
-                            chainInfo={chainInfoAligned}
-                            residueInfo={residueInfoAligned}
-                            selectedResidueId={selectedResidueIdAligned}
-                            realignedStructRefs={realignedStructRefsA}
-                            setRealignedMolecules={setRealignedMoleculesA}
-                            setRealignedRepRefs={setRealignedRepRefsA}
-                            setRealignedStructRefs={setRealignedStructRefsA}
-                            forceUpdate={forceUpdate}
-                            viewerKey="A"
-                            otherMolstar={molstarB}
-                            otherRealignedStructRefs={realignedStructRefsB}
-                            setOtherRealignedMolecules={setRealignedMoleculesB}
-                            setOtherRealignedRepRefs={setRealignedRepRefsB}
-                            setOtherRealignedStructRefs={setRealignedStructRefsB}
-                        />
+                        {/* Render all re-aligned molecules for Viewer A */}
+                        {realignedMoleculesA.map(mol => {
+                            const plugin = viewerA.ref.current;
+                            const repRefs = molstarA.representationRefs[mol.id] || [];
+                            let isVisible = false;
+                            if (plugin && repRefs.length > 0) {
+                                isVisible = repRefs.some(ref => {
+                                    const cell = plugin.state?.data?.cells?.get(ref);
+                                    return cell?.state?.isHidden !== true;
+                                });
+                            }
+                            // Use 'to' chain for zoom
+                            const chainId = mol.to;
+                            const chainLabel = chainInfoAligned.chainLabels.get(chainId) || chainId || '';
+                            const chainZoomHandler = createZoomHandler(
+                                viewerA.ref,
+                                realignedStructRefsA[mol.id],
+                                'chain-test',
+                                chainId,
+                                false
+                            );
+                            // Residue zoom: use selected residue for aligned chain if available
+                            const residueId = selectedResidueIdAligned;
+                            const residueLabel = residueInfoAligned.residueLabels.get(residueId)?.name || '';
+                            const residueZoomHandler = createZoomHandler(
+                                viewerA.ref,
+                                realignedStructRefsA[mol.id],
+                                'residue-test',
+                                chainId,
+                                false,
+                                undefined,
+                                residueId,
+                                residueInfoAligned.residueLabels.get(residueId)?.insCode
+                            );
+                            return (
+                                <MoleculeUI
+                                    key={mol.id}
+                                    label={mol.label}
+                                    plugin={plugin}
+                                    isVisible={isVisible}
+                                    onToggleVisibility={() => {
+                                        repRefs.forEach(ref => {
+                                            const plugin = molstarA.pluginRef.current;
+                                            if (!plugin) return;
+                                            const cell = plugin.state?.data?.cells?.get(ref);
+                                            if (cell) {
+                                                import('molstar/lib/mol-plugin/commands').then(({ PluginCommands }) => {
+                                                    PluginCommands.State.ToggleVisibility.apply(plugin, [plugin, { state: plugin.state.data, ref }]);
+                                                    plugin.canvas3d?.requestDraw?.();
+                                                    forceUpdate();
+                                                });
+                                            }
+                                        });
+                                    }}
+                                    chainZoomLabel={chainLabel}
+                                    onChainZoom={chainZoomHandler.handleButtonClick}
+                                    chainZoomDisabled={!chainId}
+                                    residueZoomLabel={residueLabel}
+                                    onResidueZoom={residueZoomHandler.handleButtonClick}
+                                    residueZoomDisabled={!residueId}
+                                    isLoaded={true}
+                                    forceUpdate={forceUpdate}
+                                    representationRefs={repRefs}
+                                    onDeleteRepresentation={ref => {
+                                        const repId = Object.entries(molstarA.repIdMap[mol.id] || {}).find(([id, r]) => r === ref)?.[0];
+                                        if (repId) {
+                                            deleteRepresentation(molstarA.repIdMap[mol.id][repId], mol.id, molstarA);
+                                        } else {
+                                            deleteRepresentation(ref, mol.id, molstarA);
+                                        }
+                                        if (realignedStructRefsA[mol.id]) molstarA.refreshRepresentationRefs(mol.id, realignedStructRefsA[mol.id]);
+                                        forceUpdate();
+                                    }}
+                                    onToggleRepVisibility={ref => {
+                                        const plugin = molstarA.pluginRef.current;
+                                        if (!plugin) return;
+                                        const cell = plugin.state?.data?.cells?.get(ref);
+                                        if (cell) {
+                                            import('molstar/lib/mol-plugin/commands').then(({ PluginCommands }) => {
+                                                PluginCommands.State.ToggleVisibility.apply(plugin, [plugin, { state: plugin.state.data, ref }]);
+                                                plugin.canvas3d?.requestDraw?.();
+                                                forceUpdate();
+                                            });
+                                        }
+                                    }}
+                                    onRemove={async () => {
+                                        async function removeTopNode(molstar: any, structRef: any) {
+                                            if (!structRef || !molstar.pluginRef.current) return;
+                                            const plugin = molstar.pluginRef.current;
+                                            const state = plugin.state.data;
+                                            const cell = state.cells.get(structRef);
+                                            if (cell) {
+                                                console.log('Mol* REMOVE: structRef', structRef, 'type:', cell.obj?.type?.name, 'label:', cell.obj?.label);
+                                            } else {
+                                                console.warn('Mol* REMOVE: structRef', structRef, 'not found in state.cells');
+                                            }
+                                            await import('molstar/lib/mol-plugin/commands').then(async ({ PluginCommands }) => {
+                                                await PluginCommands.State.RemoveObject.apply(plugin, [plugin, { state: plugin.state.data, ref: structRef }]);
+                                            });
+                                        }
+                                        await Promise.all([
+                                            removeTopNode(molstarA, realignedStructRefsA[mol.id]),
+                                            removeTopNode(molstarB, realignedStructRefsB[mol.id])
+                                        ]);
+                                        setRealignedMoleculesA(prev => prev.filter(m => m.id !== mol.id));
+                                        setRealignedMoleculesB(prev => prev.filter(m => m.id !== mol.id));
+                                        setRealignedRepRefsA(prev => { const copy = { ...prev }; delete copy[mol.id]; return copy; });
+                                        setRealignedRepRefsB(prev => { const copy = { ...prev }; delete copy[mol.id]; return copy; });
+                                        setRealignedStructRefsA(prev => { const copy = { ...prev }; delete copy[mol.id]; return copy; });
+                                        setRealignedStructRefsB(prev => { const copy = { ...prev }; delete copy[mol.id]; return copy; });
+                                        forceUpdate();
+                                    }}
+                                />
+                            );
+                        })}
                         <MolstarContainer
                             ref={pluginRefA}
                             viewerKey={viewerA.viewerKey}
@@ -1706,26 +2258,133 @@ const App: React.FC = () => {
                                 });
                             }}
                         />
-                        {/* Render all re-aligned molecules for Viewer B using extracted component */}
-                        <RealignedMoleculeList
-                            molecules={realignedMoleculesB}
-                            molstar={molstarB}
-                            // pluginRef removed: RealignedMoleculeList uses molstar.pluginRef internally
-                            chainInfo={chainInfoAligned}
-                            residueInfo={residueInfoAligned}
-                            selectedResidueId={selectedResidueIdAligned}
-                            realignedStructRefs={realignedStructRefsB}
-                            setRealignedMolecules={setRealignedMoleculesB}
-                            setRealignedRepRefs={setRealignedRepRefsB}
-                            setRealignedStructRefs={setRealignedStructRefsB}
-                            forceUpdate={forceUpdate}
-                            viewerKey="B"
-                            otherMolstar={molstarA}
-                            otherRealignedStructRefs={realignedStructRefsA}
-                            setOtherRealignedMolecules={setRealignedMoleculesA}
-                            setOtherRealignedRepRefs={setRealignedRepRefsA}
-                            setOtherRealignedStructRefs={setRealignedStructRefsA}
-                        />
+                        {/* Render all re-aligned molecules for Viewer B */}
+                        {realignedMoleculesB.map(mol => {
+                            const plugin = viewerB.ref.current;
+                            const repRefs = molstarB.representationRefs[mol.id] || [];
+                            let isVisible = false;
+                            if (plugin && repRefs.length > 0) {
+                                isVisible = repRefs.some(ref => {
+                                    const cell = plugin.state?.data?.cells?.get(ref);
+                                    return cell?.state?.isHidden !== true;
+                                });
+                            }
+                            // Use 'to' chain for zoom
+                            const chainId = mol.to;
+                            const chainLabel = chainInfoAligned.chainLabels.get(chainId) || chainId || '';
+                            const chainZoomHandler = createZoomHandler(
+                                viewerB.ref,
+                                realignedStructRefsB[mol.id],
+                                'chain-test',
+                                chainId,
+                                false
+                            );
+                            // Residue zoom: use selected residue for aligned chain if available
+                            const residueId = selectedResidueIdAligned;
+                            const residueLabel = residueInfoAligned.residueLabels.get(residueId)?.name || '';
+                            const residueZoomHandler = createZoomHandler(
+                                viewerB.ref,
+                                realignedStructRefsB[mol.id],
+                                'residue-test',
+                                chainId,
+                                false,
+                                undefined,
+                                residueId,
+                                residueInfoAligned.residueLabels.get(residueId)?.insCode
+                            );
+                            return (
+                                <MoleculeUI
+                                    key={mol.id}
+                                    label={mol.label}
+                                    plugin={plugin}
+                                    isVisible={isVisible}
+                                    onToggleVisibility={() => {
+                                        repRefs.forEach(ref => {
+                                            const plugin = molstarB.pluginRef.current;
+                                            if (!plugin) return;
+                                            const cell = plugin.state?.data?.cells?.get(ref);
+                                            if (cell) {
+                                                import('molstar/lib/mol-plugin/commands').then(({ PluginCommands }) => {
+                                                    PluginCommands.State.ToggleVisibility.apply(plugin, [plugin, { state: plugin.state.data, ref }]);
+                                                    plugin.canvas3d?.requestDraw?.();
+                                                    forceUpdate();
+                                                });
+                                            }
+                                        });
+                                    }}
+                                    chainZoomLabel={chainLabel}
+                                    onChainZoom={chainZoomHandler.handleButtonClick}
+                                    chainZoomDisabled={!chainId}
+                                    residueZoomLabel={residueLabel}
+                                    onResidueZoom={residueZoomHandler.handleButtonClick}
+                                    residueZoomDisabled={!residueId}
+                                    isLoaded={true}
+                                    forceUpdate={forceUpdate}
+                                    representationRefs={repRefs}
+                                    onDeleteRepresentation={ref => {
+                                        const repId = Object.entries(molstarB.repIdMap[mol.id] || {}).find(([id, r]) => r === ref)?.[0];
+                                        if (repId) {
+                                            deleteRepresentation(molstarB.repIdMap[mol.id][repId], mol.id, molstarB);
+                                        } else {
+                                            deleteRepresentation(ref, mol.id, molstarB);
+                                        }
+                                        if (realignedStructRefsB[mol.id]) molstarB.refreshRepresentationRefs(mol.id, realignedStructRefsB[mol.id]);
+                                        forceUpdate();
+                                    }}
+                                    onToggleRepVisibility={ref => {
+                                        const plugin = molstarB.pluginRef.current;
+                                        if (!plugin) return;
+                                        const cell = plugin.state?.data?.cells?.get(ref);
+                                        if (cell) {
+                                            import('molstar/lib/mol-plugin/commands').then(({ PluginCommands }) => {
+                                                PluginCommands.State.ToggleVisibility.apply(plugin, [plugin, { state: plugin.state.data, ref }]);
+                                                plugin.canvas3d?.requestDraw?.();
+                                                forceUpdate();
+                                            });
+                                        }
+                                    }}
+                                    onRemove={async () => {
+                                        async function removeAllReps(molstar: any, structRef: any) {
+                                            if (!structRef || !molstar.pluginRef.current) return;
+                                            const plugin = molstar.pluginRef.current;
+                                            const state = plugin.state.data;
+                                            const repsToRemove = [];
+                                            const children = state.tree.children.get(structRef)?.toArray?.() || [];
+                                            for (const childRef of children) {
+                                                const cell = state.cells.get(childRef);
+                                                if (cell?.obj?.type?.name === 'Structure Component') {
+                                                    const compChildren = state.tree.children.get(childRef)?.toArray?.() || [];
+                                                    for (const repRef of compChildren) {
+                                                        const repCell = state.cells.get(repRef);
+                                                        if (repCell?.obj?.type?.name === 'Representation3D') {
+                                                            repsToRemove.push(repRef);
+                                                        }
+                                                    }
+                                                } else if (cell?.obj?.type?.name === 'Representation3D') {
+                                                    repsToRemove.push(childRef);
+                                                }
+                                            }
+                                            for (const repRef of repsToRemove) {
+                                                await deleteRepresentation(repRef, mol.id, molstar, false);
+                                            }
+                                        }
+                                        await Promise.all([
+                                            removeAllReps(molstarA, realignedStructRefsA[mol.id]),
+                                            removeAllReps(molstarB, realignedStructRefsB[mol.id])
+                                        ]);
+                                        if (realignedStructRefsA[mol.id]) molstarA.refreshRepresentationRefs(mol.id, realignedStructRefsA[mol.id]);
+                                        if (realignedStructRefsB[mol.id]) molstarB.refreshRepresentationRefs(mol.id, realignedStructRefsB[mol.id]);
+                                        setRealignedMoleculesA(prev => prev.filter(m => m.id !== mol.id));
+                                        setRealignedMoleculesB(prev => prev.filter(m => m.id !== mol.id));
+                                        setRealignedRepRefsA(prev => { const copy = { ...prev }; delete copy[mol.id]; return copy; });
+                                        setRealignedRepRefsB(prev => { const copy = { ...prev }; delete copy[mol.id]; return copy; });
+                                        setRealignedStructRefsA(prev => { const copy = { ...prev }; delete copy[mol.id]; return copy; });
+                                        setRealignedStructRefsB(prev => { const copy = { ...prev }; delete copy[mol.id]; return copy; });
+                                        forceUpdate();
+                                    }}
+                                />
+                            );
+                        })}
                         <MolstarContainer
                             ref={pluginRefB}
                             viewerKey={viewerB.viewerKey}

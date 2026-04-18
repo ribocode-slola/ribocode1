@@ -6,8 +6,6 @@
 - Added control to select a subunit to help filter chain selection.
 - Commented out `Load Dictionary` and `Load Alignment` buttons.
 - Added `Re-align` functionality.
-- Added [User Guide](./UserGuide.md) and [Developer Guide](./DeveloperGuide.md).
-- Started using [TypeDoc](https://typedoc.org/) to generate API documentation from TypeScript source code and comments.
 
 ## [v0.6.0] - 2026-01-01
 - Added `Residue Zoom` controls for setting `extraRadius` and `minRadius`.

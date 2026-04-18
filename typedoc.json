@@ -1,0 +1,9 @@
+{
+  "entryPoints": ["src"],
+  "out": "docs",
+  "includeVersion": true,
+  "excludePrivate": true,
+  "excludeExternals": true,
+  "excludeNotDocumented": true,
+  "readme": "README.md"
+}
