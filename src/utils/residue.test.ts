@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { getResidueInfo } from './residue';
 
 describe('getResidueInfo', () => {
@@ -6,8 +7,8 @@ describe('getResidueInfo', () => {
     beforeAll(() => {
         originalWarn = console.warn;
         originalInfo = console.info;
-        console.warn = jest.fn();
-        console.info = jest.fn();
+        console.warn = vi.fn();
+        console.info = vi.fn();
     });
     afterAll(() => {
         console.warn = originalWarn;

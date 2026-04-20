@@ -7,7 +7,7 @@ describe('RepresentationSelectButton', () => {
     it('renders with default label and allowed options', () => {
         const { getByLabelText, getByText } = render(
             <RepresentationSelectButton
-                options={allowedRepresentationTypes as string[]}
+                options={Array.from(allowedRepresentationTypes)}
                 selected=""
                 onSelect={() => {}}
             />
@@ -31,7 +31,7 @@ describe('RepresentationSelectButton', () => {
     });
 
     it('calls onSelect when option is chosen', () => {
-        const onSelect = jest.fn();
+        const onSelect = vi.fn();
         const { getByLabelText } = render(
             <RepresentationSelectButton
                 options={['cartoon', 'line']}

@@ -1,10 +1,11 @@
+import { vi } from 'vitest';
 import { getColourTheme } from './colors';
 
 describe('getColourTheme', () => {
     let originalWarn: any;
     beforeAll(() => {
         originalWarn = console.warn;
-        console.warn = jest.fn();
+        console.warn = vi.fn();
     });
     afterAll(() => {
         console.warn = originalWarn;

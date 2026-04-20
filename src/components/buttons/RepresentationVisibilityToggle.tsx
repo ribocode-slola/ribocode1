@@ -17,9 +17,10 @@ import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
  * @param forceUpdate A function to force the parent component to re-render.
  */
 interface RepresentationVisibilityToggleProps {
-    plugin: PluginUIContext | null;
-    rep: any;
-    forceUpdate: () => void;
+    plugin: PluginUIContext | null
+    rep: any
+    forceUpdate: () => void
+    toggleVisibility?: (plugin: PluginUIContext, repRef: any) => Promise<void>
 }
 
 /**
@@ -29,13 +30,17 @@ interface RepresentationVisibilityToggleProps {
  * @param forceUpdate A function to force the parent component to re-render.
  * @returns The RepresentationVisibilityToggle component.
  */
-const RepresentationVisibilityToggle: React.FC<RepresentationVisibilityToggleProps> = ({ plugin, rep, forceUpdate }) => {
+const RepresentationVisibilityToggle: React.FC<RepresentationVisibilityToggleProps> = ({ plugin, rep, forceUpdate, toggleVisibility }) => {
     if (!plugin || !rep) return null;
     const cell = plugin.state.data.cells.get(rep.cell.transform.ref);
     // Treat undefined isHidden as visible (Mol* default)
     const isVisible = cell?.state?.isHidden !== true;
     const handleToggle = async () => {
-        await PluginCommands.State.ToggleVisibility.apply(plugin, [plugin, { state: plugin.state.data, ref: rep.cell.transform.ref }]);
+        if (toggleVisibility) {
+            await toggleVisibility(plugin, rep.cell.transform.ref);
+        } else {
+            await PluginCommands.State.ToggleVisibility.apply(plugin, [plugin, { state: plugin.state.data, ref: rep.cell.transform.ref }]);
+        }
         plugin.canvas3d?.requestDraw?.();
         forceUpdate();
     };

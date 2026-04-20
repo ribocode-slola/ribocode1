@@ -33,7 +33,7 @@ describe('GenericSelectButton', () => {
     });
 
     it('calls onSelect when option is chosen', () => {
-        const onSelect = jest.fn();
+        const onSelect = vi.fn();
         const { getByLabelText } = render(
             <GenericSelectButton
                 label="Pick"

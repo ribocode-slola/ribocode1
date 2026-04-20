@@ -7,11 +7,11 @@ import { RibosomeSubunitTypes, RibosomeSubunitType } from '../../../utils/subuni
 describe('SubunitSelectButton', () => {
     it('renders with default label and all subunit options', () => {
         const { getByLabelText, getByText } = render(
-            <SubunitSelectButton
-                disabled={false}
-                selectedSubunit={''}
-                onSelect={() => {}}
-            />
+                <SubunitSelectButton
+                    disabled={false}
+                    selectedSubunit={undefined}
+                    onSelect={() => {}}
+                />
         );
         expect(getByLabelText('Select Subunit')).toBeInTheDocument();
         RibosomeSubunitTypes.forEach(opt => {
@@ -21,12 +21,12 @@ describe('SubunitSelectButton', () => {
 
     it('renders with custom label', () => {
         const { getByLabelText } = render(
-            <SubunitSelectButton
-                disabled={false}
-                selectedSubunit={''}
-                onSelect={() => {}}
-                label="Pick Subunit"
-            />
+                <SubunitSelectButton
+                    disabled={false}
+                    selectedSubunit={undefined}
+                    onSelect={() => {}}
+                    label="Pick Subunit"
+                />
         );
         expect(getByLabelText('Pick Subunit')).toBeInTheDocument();
     });
@@ -39,17 +39,17 @@ describe('SubunitSelectButton', () => {
                 onSelect={() => {}}
             />
         );
-        expect(getByLabelText('Select Subunit').value).toBe('Large');
+        expect((getByLabelText('Select Subunit') as HTMLSelectElement).value).toBe('Large');
     });
 
     it('calls onSelect with subunit when option is chosen', () => {
-        const onSelect = jest.fn();
+        const onSelect = vi.fn();
         const { getByLabelText } = render(
-            <SubunitSelectButton
-                disabled={false}
-                selectedSubunit={''}
-                onSelect={onSelect}
-            />
+                <SubunitSelectButton
+                    disabled={false}
+                    selectedSubunit={undefined}
+                    onSelect={onSelect}
+                />
         );
         fireEvent.change(getByLabelText('Select Subunit'), { target: { value: 'Small' } });
         expect(onSelect).toHaveBeenCalledWith('Small');
@@ -59,7 +59,7 @@ describe('SubunitSelectButton', () => {
         const { getByLabelText } = render(
             <SubunitSelectButton
                 disabled={true}
-                selectedSubunit={''}
+                selectedSubunit={undefined}
                 onSelect={() => {}}
             />
         );

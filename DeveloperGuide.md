@@ -30,15 +30,37 @@ If you are a member of the Ribocode project and want help getting set up with a 
 
 ### Build and run locally
 
-From the Ribocode root directory run:
-* ```npm install```
-  - This should install all the other Ribocode dependencies.
-  - The root directory will be populated with dependencies.
-* ```npm run dev```
-  - This should build and start the development server.
-  - The root directory will be populated with built artefacts. 
-* ```npm run preview```
-  - This should launch a preview in your default Web browser.
+
+#### Local Development
+
+From the Ribocode root directory:
+
+* `npm install`
+  - Installs all dependencies.
+* `npm run dev`
+  - Starts the Vite development server using settings from `.env` (base path is `/`).
+  - Visit the local URL shown in the terminal (usually http://localhost:5173/).
+
+#### Production Build & Preview
+
+* `npm run build`
+  - Builds the app for production using settings from `.env.production` (base path is `/ribocode1/`).
+  - Output is placed in the `dist/` directory.
+* `npm run preview`
+  - Serves the production build locally for testing (simulates deployment).
+  - Visit the local preview URL (usually http://localhost:4173/ribocode1/).
+
+#### Notes on Environment Files
+
+- `.env` is used for local development (base path `/`).
+- `.env.production` is used for production builds (base path `/ribocode1/`).
+- The correct environment file is automatically picked up by the npm scripts.
+
+#### Deployment
+
+* `npm run deploy`
+  - Builds and deploys the app to the `gh-pages` branch for GitHub Pages.
+  - The app will be available at `https://<username>.github.io/ribocode1/`.
 
 
 ## Source Code Overview
@@ -113,7 +135,7 @@ To serve out the `gh-pages` branch for your fork on `GitHub Pages` to create a P
 
 ## Tests
 
-This project uses [Jest](https://jestjs.io/) and [@testing-library/react](https://testing-library.com/docs/react-testing-library/intro/) for unit and component testing.
+This project uses [Vitest](https://vitest.dev/) and [@testing-library/react](https://testing-library.com/docs/react-testing-library/intro/) for unit and component testing. Vitest is a modern, fast test runner with native ESM support, ideal for Vite-based projects.
 
 
 ### Creating Tests
@@ -135,21 +157,25 @@ test('renders the component', () => {
 ### Running Tests
 
 - To run all tests:
-	```sh
-	npm test
-	```
+  ```sh
+  npm test
+  ```
 - To run tests in watch mode (re-runs on file changes):
-	```sh
-	npm test -- --watch
-	```
+  ```sh
+  npm test -- --watch
+  ```
+- To run the interactive UI test runner:
+  ```sh
+  npm run test:ui
+  ```
 - To run a specific test file:
-	```sh
-	npm test -- src/components/MyComponent.test.tsx
-	```
+  ```sh
+  npm test -- src/components/MyComponent.test.tsx
+  ```
 
 ### Additional Resources
 
-- [Jest documentation](https://jestjs.io/docs/getting-started)
+- [Vitest documentation](https://vitest.dev/guide/)
 - [Testing Library docs](https://testing-library.com/docs/)
 
 

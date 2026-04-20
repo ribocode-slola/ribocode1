@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import React from 'react';
 import { render, screen, act } from '@testing-library/react';
 import { SyncProvider, useSync } from './SyncContext';
@@ -16,14 +17,14 @@ describe('SyncContext', () => {
     let originalLog: any;
     beforeAll(() => {
         originalLog = console.log;
-        console.log = jest.fn();
+        console.log = vi.fn();
     });
     afterAll(() => {
         console.log = originalLog;
     });
     it('throws if used outside provider', () => {
         // Suppress error output for this test
-        const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
+        const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
         expect(() => {
             render(<ConsumerComponent />);
         }).toThrow('useSync must be used within a SyncProvider');

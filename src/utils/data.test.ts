@@ -1,10 +1,11 @@
+import { vi } from 'vitest';
 import * as dataUtils from './data';
 
 describe('data.ts utility functions', () => {
     let originalLog: any;
     beforeAll(() => {
         originalLog = console.log;
-        console.log = jest.fn();
+        console.log = vi.fn();
     });
     afterAll(() => {
         console.log = originalLog;
@@ -62,7 +63,7 @@ describe('data.ts utility functions', () => {
                     z: [7, 8, 9]
                 }
             };
-            const centroid = [1, 4, 7];
+            const centroid = [1, 4, 7] as any; // Vec3 type workaround for test
             const rotmat = [1,0,0, 0,1,0, 0,0,1]; // Identity
             dataUtils.updateAndLogAtomCoordinates(model, centroid, rotmat);
             expect(model.atomicConformation.x).toEqual([0, 1, 2]);

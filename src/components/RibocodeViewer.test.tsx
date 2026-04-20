@@ -1,14 +1,14 @@
 import React from 'react';
 import { render } from '@testing-library/react';
 // Mock Molstar PluginUIContext to avoid import issues
-jest.mock('molstar/lib/mol-plugin-ui/context', () => ({}));
+vi.mock('molstar/lib/mol-plugin-ui/context', () => ({}));
 import RibocodeViewer from './RibocodeViewer';
 
 describe('RibocodeViewer', () => {
     let originalLog: any;
     beforeAll(() => {
         originalLog = console.log;
-        console.log = jest.fn();
+        console.log = vi.fn();
     });
     afterAll(() => {
         console.log = originalLog;
@@ -20,14 +20,14 @@ describe('RibocodeViewer', () => {
     });
 
     it('calls onReady when plugin is provided', () => {
-        const onReady = jest.fn();
+        const onReady = vi.fn();
         const mockPlugin = {} as any;
         render(<RibocodeViewer plugin={mockPlugin} viewerKey="A" onReady={onReady} />);
         expect(onReady).toHaveBeenCalledWith(mockPlugin);
     });
 
     it('calls onReady with null on cleanup', () => {
-        const onReady = jest.fn();
+        const onReady = vi.fn();
         const mockPlugin = {} as any;
         const { unmount } = render(<RibocodeViewer plugin={mockPlugin} viewerKey="A" onReady={onReady} />);
         unmount();

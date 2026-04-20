@@ -48,11 +48,11 @@ describe('ResidueSelectButton', () => {
                 onSelect={() => {}}
             />
         );
-        expect(getByLabelText('Select Residue').value).toBe('ALA 20');
+        expect((getByLabelText('Select Residue') as HTMLSelectElement).value).toBe('ALA 20');
     });
 
     it('calls onSelect with residueId when option is chosen', () => {
-        const onSelect = jest.fn();
+        const onSelect = vi.fn();
         const { getByLabelText } = render(
             <ResidueSelectButton
                 disabled={false}

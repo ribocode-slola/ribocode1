@@ -1,5 +1,10 @@
+import { vi } from 'vitest';
 import React from 'react';
 import { render, fireEvent } from '@testing-library/react';
+
+
+
+
 import RepresentationVisibilityToggle from './RepresentationVisibilityToggle';
 
 describe('RepresentationVisibilityToggle', () => {
@@ -9,9 +14,9 @@ describe('RepresentationVisibilityToggle', () => {
     });
 
     it('shows visible icon and toggles visibility', async () => {
-        const mockToggle = jest.fn().mockResolvedValue(undefined);
-        const mockRequestDraw = jest.fn();
-        const mockForceUpdate = jest.fn();
+        const mockToggleVisibility = vi.fn().mockResolvedValue(undefined);
+        const mockRequestDraw = vi.fn();
+        const mockForceUpdate = vi.fn();
         const repRef = 'rep-123';
         const rep = {
             cell: {
@@ -23,21 +28,27 @@ describe('RepresentationVisibilityToggle', () => {
             state: {
                 data: {
                     cells: {
-                        get: jest.fn(() => ({ state: { isHidden: false } }))
+                        get: vi.fn(() => ({ state: { isHidden: false } }))
                     }
                 }
             },
-            canvas3d: { requestDraw: mockRequestDraw }
+            canvas3d: { requestDraw: mockRequestDraw },
+            commands: {
+                dispatch: vi.fn()
+            }
         };
-        // Patch PluginCommands.State.ToggleVisibility.apply
-        jest.spyOn(require('molstar/lib/mol-plugin/commands').PluginCommands.State.ToggleVisibility, 'apply').mockImplementation(async () => { mockToggle(); });
         const { getByRole, getByText } = render(
-            <RepresentationVisibilityToggle plugin={plugin as any} rep={rep} forceUpdate={mockForceUpdate} />
+            <RepresentationVisibilityToggle
+                plugin={plugin as any}
+                rep={rep}
+                forceUpdate={mockForceUpdate}
+                toggleVisibility={mockToggleVisibility}
+            />
         );
         expect(getByRole('button')).toBeInTheDocument();
         expect(getByText('cartoon')).toBeInTheDocument();
         await fireEvent.click(getByRole('button'));
-        expect(mockToggle).toHaveBeenCalled();
+        expect(mockToggleVisibility).toHaveBeenCalledWith(plugin, repRef);
         expect(mockRequestDraw).toHaveBeenCalled();
         expect(mockForceUpdate).toHaveBeenCalled();
     });

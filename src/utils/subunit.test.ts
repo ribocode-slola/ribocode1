@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { getSubunitToChainIds, RibosomeSubunitType } from './subunit';
 
 describe('getSubunitToChainIds', () => {
@@ -6,8 +7,8 @@ describe('getSubunitToChainIds', () => {
     beforeAll(() => {
         originalWarn = console.warn;
         originalLog = console.log;
-        console.warn = jest.fn();
-        console.log = jest.fn();
+        console.warn = vi.fn();
+        console.log = vi.fn();
     });
     afterAll(() => {
         console.warn = originalWarn;

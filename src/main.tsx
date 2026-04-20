@@ -8,9 +8,13 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './App.css';
 
+import * as serviceWorkerRegistration from './serviceWorkerRegistration';
 // Render the main App component into the root element.
 ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
         <App />
     </React.StrictMode>
 );
+
+// Register the service worker for PWA support
+serviceWorkerRegistration.register();

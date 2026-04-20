@@ -1,6 +1,7 @@
+import { vi } from 'vitest';
 import React from 'react';
 import { render, fireEvent } from '@testing-library/react';
-import '@testing-library/jest-dom';
+// ...existing code...
 import SyncButton from './Sync';
 
 describe('SyncButton', () => {
@@ -31,7 +32,7 @@ describe('SyncButton', () => {
                 setSyncEnabled={() => {}}
             />
         );
-        expect(getByLabelText('Select Sync').value).toBe('Off');
+        expect((getByLabelText('Select Sync') as HTMLSelectElement).value).toBe('Off');
         rerender(
             <SyncButton
                 viewerA={null}
@@ -42,11 +43,11 @@ describe('SyncButton', () => {
                 setSyncEnabled={() => {}}
             />
         );
-        expect(getByLabelText('Select Sync').value).toBe('On');
+        expect((getByLabelText('Select Sync') as HTMLSelectElement).value).toBe('On');
     });
 
     it('calls setSyncEnabled when option is changed', () => {
-        const setSyncEnabled = jest.fn();
+        const setSyncEnabled = vi.fn();
         const { getByLabelText } = render(
             <SyncButton
                 viewerA={null}

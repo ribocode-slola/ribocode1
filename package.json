@@ -9,18 +9,18 @@
     "clean": "rm -rf node_modules && npm cache clean --force",
     "preview": "vite preview",
     "start": "vite",
-    "dev": "DOTENV_CONFIG_PATH=.env vite build",
+    "dev": "DOTENV_CONFIG_PATH=.env vite",
     "build": "DOTENV_CONFIG_PATH=.env.production vite build",
     "serve": "vite preview",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist",
-    "test": "jest",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
     "docs": "typedoc --out docs src"
   },
   "eslintConfig": {
     "extends": [
-      "react-app",
-      "react-app/jest"
+      "react-app"
     ]
   },
   "browserslist": {
@@ -69,21 +69,19 @@
   "devDependencies": {
     "@babel/preset-env": "^7.29.2",
     "@babel/preset-react": "^7.28.5",
-    "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/big.js": "^6.2.2",
-    "@types/jest": "^30.0.0",
     "@types/lodash": "^4.17.20",
     "@types/node": "^24.10.0",
     "@vitejs/plugin-react": "^5.1.0",
+    "@vitest/ui": "^4.1.4",
     "dotenv": "^17.2.3",
     "gh-pages": "^6.3.0",
-    "jest-environment-jsdom": "^30.3.0",
+    "jsdom": "^29.0.2",
     "patch-package": "^8.0.1",
-    "ts-jest": "^29.4.9",
     "typedoc": "^0.28.19",
     "typescript": "^5.9.3",
     "vite": "^7.2.4",
-    "vite-plugin-pwa": "^1.1.0"
+    "vitest": "^4.1.4"
   }
 }

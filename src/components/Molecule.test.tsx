@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import MoleculeUI from './Molecule';
@@ -8,15 +9,15 @@ describe('MoleculeUI', () => {
         label: 'Test Molecule',
         plugin: mockPlugin,
         isVisible: true,
-        onToggleVisibility: jest.fn(),
+        onToggleVisibility: vi.fn(),
         chainZoomLabel: 'A',
-        onChainZoom: jest.fn(),
+        onChainZoom: vi.fn(),
         chainZoomDisabled: false,
         residueZoomLabel: '10',
-        onResidueZoom: jest.fn(),
+        onResidueZoom: vi.fn(),
         residueZoomDisabled: false,
         isLoaded: true,
-        forceUpdate: jest.fn(),
+        forceUpdate: vi.fn(),
         representationRefs: [],
     };
 
@@ -42,7 +43,7 @@ describe('MoleculeUI', () => {
     });
 
     it('renders and calls onRemove if provided', () => {
-        const onRemove = jest.fn();
+        const onRemove = vi.fn();
         render(<MoleculeUI {...baseProps} onRemove={onRemove} />);
         fireEvent.click(screen.getByLabelText('Remove Test Molecule'));
         expect(onRemove).toHaveBeenCalled();

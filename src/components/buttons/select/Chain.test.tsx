@@ -47,11 +47,11 @@ describe('ChainSelectButton', () => {
                 onSelect={() => {}}
             />
         );
-        expect(getByLabelText('Select Chain').value).toBe('Chain B');
+        expect((getByLabelText('Select Chain') as HTMLSelectElement).value).toBe('Chain B');
     });
 
     it('calls onSelect with chainId when option is chosen', () => {
-        const onSelect = jest.fn();
+        const onSelect = vi.fn();
         const { getByLabelText } = render(
             <ChainSelectButton
                 disabled={false}
