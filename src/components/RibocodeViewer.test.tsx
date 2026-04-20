@@ -5,6 +5,14 @@ jest.mock('molstar/lib/mol-plugin-ui/context', () => ({}));
 import RibocodeViewer from './RibocodeViewer';
 
 describe('RibocodeViewer', () => {
+    let originalLog: any;
+    beforeAll(() => {
+        originalLog = console.log;
+        console.log = jest.fn();
+    });
+    afterAll(() => {
+        console.log = originalLog;
+    });
     it('renders the container div', () => {
         render(<RibocodeViewer plugin={null} viewerKey="A" />);
         const container = document.querySelector('.molstar-container');
