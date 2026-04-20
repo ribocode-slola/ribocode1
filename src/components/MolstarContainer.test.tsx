@@ -11,6 +11,14 @@ jest.mock('molstar/lib/mol-plugin-ui/context', () => ({}));
 import MolstarContainer from './MolstarContainer';
 
 describe('MolstarContainer', () => {
+    let originalLog: any;
+    beforeAll(() => {
+        originalLog = console.log;
+        console.log = jest.fn();
+    });
+    afterAll(() => {
+        console.log = originalLog;
+    });
     it('renders the container div and calls setViewer', async () => {
         const setViewer = jest.fn();
         await act(async () => {
