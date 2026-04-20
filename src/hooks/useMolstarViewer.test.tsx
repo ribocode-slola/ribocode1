@@ -1,10 +1,18 @@
+/**
+ * Test suite for useMolstarViewer hook.
+ * 
+ * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
+ *
+ * @author Andy Turner <agdturner@gmail.com>
+ */
 import { renderHook, act } from '@testing-library/react';
 import { useMolstarViewer } from './useMolstarViewer';
 import React from 'react';
+import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 
 describe('useMolstarViewer', () => {
     it('initializes state and exposes API', () => {
-        const pluginRef = React.createRef();
+        const pluginRef = React.createRef<PluginUIContext | null>();
         const { result } = renderHook(() => useMolstarViewer(pluginRef));
         expect(result.current).toHaveProperty('structureRefs');
         expect(result.current).toHaveProperty('setStructureRef');
@@ -21,7 +29,7 @@ describe('useMolstarViewer', () => {
     });
 
     it('updates structureRefs and representationRefs state', () => {
-        const pluginRef = React.createRef();
+        const pluginRef = React.createRef<PluginUIContext | null>();
         const { result } = renderHook(() => useMolstarViewer(pluginRef));
         act(() => {
             result.current.setStructureRef('foo', 'bar');

@@ -7,6 +7,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import RealignedMoleculeList from './components/RealignedMoleculeList';
 import { MoleculeMode, AlignedTo, Aligned, ReAligned } from './types/molecule';
 import { parseColorFileContent, registerThemeIfNeeded } from './utils/colors';
+import { useFileInput } from './hooks/useFileInput';
 import { getAtomDataFromStructureUnits } from './utils/data';
 import { parseDictionaryFileContent } from './utils/dictionary';
 import { ResidueLabelInfo } from './utils/residue';
@@ -19,6 +20,7 @@ import MolstarContainer from './components/MolstarContainer';
 import { SyncProvider } from './context/SyncContext';
 import { toggleVisibility, ViewerKey, ViewerState } from './components/RibocodeViewer';
 import { useMolstarViewer } from './hooks/useMolstarViewer';
+import { useViewerState } from './hooks/useViewerState';
 import { loadMoleculeFileToViewer, Molecule } from 'molstar/lib/extensions/ribocode/structure';
 import { alignDatasetUsingChains } from 'molstar/lib/extensions/ribocode/utils/geometry';
 import { Asset } from 'molstar/lib/mol-util/assets';
@@ -71,79 +73,9 @@ const App: React.FC = () => {
     // Viewer state management
     // -----------------------
     const [activeViewer, setActiveViewer] = useState<ViewerKey>(A);
-    /**
-     * Custom hook to manage viewer state.
-     * @param viewerKey The key identifying the viewer ('A' or 'B').
-     * @returns The viewer state object.
-     */
-    function useViewerState(viewerKey: ViewerKey): ViewerState {
-        const [moleculeAlignedTo, setMoleculeAlignedTo] = useState<Molecule>();
-        const [moleculeAligned, setMoleculeAligned] = useState<Molecule>();
-        const [isMoleculeAlignedToLoaded, setIsMoleculeAlignedToLoaded] = useState(false);
-        const [isMoleculeAlignedLoaded, setIsMoleculeAlignedLoaded] = useState(false);
-        const [isMoleculeAlignedToVisible, setIsMoleculeAlignedToVisible] = useState(false);
-        const [isMoleculeAlignedVisible, setIsMoleculeAlignedVisible] = useState(false);
-        const ref = useRef<PluginUIContext | null>(null);
-        const fileInputRef = useRef<HTMLInputElement | null>(null);
-        const handleFileInputButtonClick = useCallback(() => {
-            fileInputRef.current?.click();
-        }, []);
-        const setViewerRef = useCallback((viewer: PluginUIContext) => {
-            ref.current = viewer;
-        }, []);
-        return {
-            moleculeAlignedTo: moleculeAlignedTo,
-            setMoleculeAlignedTo: setMoleculeAlignedTo,
-            moleculeAligned: moleculeAligned,
-            setMoleculeAligned: setMoleculeAligned,
-            isMoleculeAlignedToLoaded: isMoleculeAlignedToLoaded,
-            setIsMoleculeAlignedToLoaded: setIsMoleculeAlignedToLoaded,
-            isMoleculeAlignedLoaded: isMoleculeAlignedLoaded,
-            setIsMoleculeAlignedLoaded: setIsMoleculeAlignedLoaded,
-            isMoleculeAlignedToVisible: isMoleculeAlignedToVisible,
-            setIsMoleculeAlignedToVisible: setIsMoleculeAlignedToVisible,
-            isMoleculeAlignedVisible: isMoleculeAlignedVisible,
-            setIsMoleculeAlignedVisible: setIsMoleculeAlignedVisible,
-            ref: ref,
-            fileInputRef: fileInputRef,
-            handleFileInputButtonClick: handleFileInputButtonClick,
-            setViewerRef: setViewerRef,
-            viewerKey: viewerKey
-        };
-    }
+    // useViewerState is now imported from hooks/useViewerState
 
-    /**
-     * Generic file input hook.
-     * @param parseFn Function to parse file content.
-     * @param initialValue Initial value for the data state.
-     * @returns An object containing data, setData, inputRef, handleButtonClick, and handleFileChange.
-     */
-    function useFileInput<T>(
-        parseFn: (text: string, file: File) => Promise<T>,
-        initialValue: T
-    ) {
-        // State and refs for file input handling.
-        const [data, setData] = useState<T>(initialValue);
-        const inputRef = useRef<HTMLInputElement>(null);
-        // Handlers for button click and file change.
-        const handleButtonClick = () => {
-            inputRef.current?.click();
-        };
-        const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-            const file = e.target.files?.[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = async () => {
-                    const text = reader.result as string;
-                    const parsed = await parseFn(text, file); // Pass both text and file
-                    setData(parsed);
-                    console.log('data:', parsed);
-                };
-                reader.readAsText(file);
-            }
-        };
-        return { data, setData, inputRef, handleButtonClick, handleFileChange };
-    }
+    // useFileInput is now imported from hooks/useFileInput
 
     // File inputs for dictionary and colors.
     const dictionaryFile = useFileInput<Array<Record<string, string>>>(parseDictionaryFileContent, []);
