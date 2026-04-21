@@ -7,6 +7,7 @@
  */
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import ViewerColumn from './components/ViewerColumn';
+import AppHeader from './components/AppHeader';
 import { MoleculeMode, AlignedTo, Aligned, ReAligned } from './types/molecule';
 import { parseColorFileContent, registerThemeIfNeeded } from './utils/colors';
 import { useFileInput } from './hooks/useFileInput';
@@ -1473,7 +1474,7 @@ const App: React.FC = () => {
     return (
         <SyncProvider>
             <div className="App">
-                <h1 className="app-title">RiboCode Mol* Viewer 0.7.0 (<a href="https://github.com/ribocode-slola/ribocode1/?tab=readme-ov-file#ribocode" target="_blank">README</a>)</h1>
+                <AppHeader />
                 <div className="menu-bar">
                     <button className="menu-btn" onClick={handleSaveSession}>Save Session</button>
                     <button className="menu-btn" onClick={handleLoadSession}>Load Session</button>

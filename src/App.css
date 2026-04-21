@@ -1,6 +1,12 @@
 /*
  * App.css: Centralized Stylesheet for Ribocode
  *
+ * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
+ *
+ * @author Andy Turner <agdturner@gmail.com>
+ *
+ * Overview:
+ *
  * This file contains all global styles for the Ribocode app, including:
  *   - App-level layout and UI styles
  *   - Mol* plugin UI overrides for containment and stacking
@@ -35,13 +41,6 @@
 	max-width: 1200px; /* Prevents the app from stretching too wide on large screens, improving readability and layout consistency */
 	margin: 0 auto;
 	background: #fafbfc;
-}
-
-.app-title {
-	text-align: center;
-	font-size: 2rem;
-	font-weight: bold;
-	margin-bottom: 12px;
 }
 
 .General-Controls {
