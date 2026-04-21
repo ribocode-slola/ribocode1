@@ -1,4 +1,11 @@
-import React from 'react';
+/**
+ * Test suite for SubunitSelectButton component.
+ * 
+ * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
+ *
+ * @author Andy Turner <agdturner@gmail.com>
+ */
+import { vi } from 'vitest';
 import { render, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import SubunitSelectButton from './Subunit';

@@ -1,3 +1,10 @@
+/**
+ * Test suite for getResidueInfo utility.
+ * 
+ * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
+ *
+ * @author Andy Turner <agdturner@gmail.com>
+ */
 import { vi } from 'vitest';
 import { getResidueInfo } from './residue';
 

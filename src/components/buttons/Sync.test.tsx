@@ -1,7 +1,12 @@
+/**
+ * Test suite for SyncButton component.
+ * 
+ * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
+ *
+ * @author Andy Turner <agdturner@gmail.com>
+ */
 import { vi } from 'vitest';
-import React from 'react';
 import { render, fireEvent } from '@testing-library/react';
-// ...existing code...
 import SyncButton from './Sync';
 
 describe('SyncButton', () => {

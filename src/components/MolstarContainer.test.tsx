@@ -1,6 +1,11 @@
+/**
+ * Test suite for MolstarContainer component.
+ * 
+ * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
+ *
+ * @author Andy Turner <agdturner@gmail.com>
+ */
 import { vi } from 'vitest';
-
-import React from 'react';
 import { render, act } from '@testing-library/react';
 
 // Mock Molstar and PluginUI imports to avoid Vitest parsing errors

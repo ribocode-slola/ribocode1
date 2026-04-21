@@ -1,4 +1,11 @@
-import React from 'react';
+/**
+ * Test suite for RibocodeViewer component.
+ * 
+ * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
+ *
+ * @author Andy Turner <agdturner@gmail.com>
+ */
+import { vi } from 'vitest';
 import { render } from '@testing-library/react';
 // Mock Molstar PluginUIContext to avoid import issues
 vi.mock('molstar/lib/mol-plugin-ui/context', () => ({}));

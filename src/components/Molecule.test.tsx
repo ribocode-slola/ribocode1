@@ -1,6 +1,11 @@
-import { vi } from 'vitest';
-import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+/**
+ * Test suite for Molecule component.
+ * 
+ * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
+ *
+ * @author Andy Turner <agdturner@gmail.com>
+ */
+import { vi } from 'vitest';import { render, screen, fireEvent } from '@testing-library/react';
 import MoleculeUI from './Molecule';
 
 describe('MoleculeUI', () => {
