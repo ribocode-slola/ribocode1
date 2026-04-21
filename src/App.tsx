@@ -7,6 +7,7 @@
  */
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import ViewerColumn from './components/ViewerColumn';
+import TwoColumnsContainer from './components/TwoColumnsContainer';
 import AppHeader from './components/AppHeader';
 import { MoleculeMode, AlignedTo, Aligned, ReAligned } from './types/molecule';
 import { parseColorFileContent, registerThemeIfNeeded } from './utils/colors';
@@ -347,54 +348,45 @@ const App: React.FC = () => {
         themeNameAlignedTo,
         [viewerA.moleculeAlignedTo, viewerB.moleculeAlignedTo, representationTypeAlignedTo, structureRefAAlignedTo, structureRefBAlignedTo]
     );
-    useUpdateColors(
-        colorsAlignedFile.data,
-        setIsMoleculeAlignedColoursLoaded,
-        themeNameAligned,
-        [viewerA.moleculeAligned, viewerB.moleculeAligned, representationTypeAligned, structureRefAAligned, structureRefBAligned]
-    );
 
-    /**
-     * Reusable effect for updating chain IDs.
+        /**
+     * Generalized effect for updating chain info and subunit-to-chain mapping.
      * @param pluginRef The plugin ref (viewerA.ref or viewerB.ref).
      * @param structureRef The structure ref to get chain IDs from.
      * @param molstar The molstar viewer hook instance.
      * @param setChainInfo Function to set the chain IDs state.
+     * @param setSubunitToChainIds Function to set the subunit-to-chain mapping.
      * @param label Label for logging purposes.
-     * @param deps Additional dependencies for the effect.
      */
     function useUpdateChainInfo(
         pluginRef: React.RefObject<PluginUIContext | null>,
         structureRef: string | null,
         molstar: ReturnType<typeof useMolstarViewer>,
-        setChainInfo: React.Dispatch<React.SetStateAction<{ chainLabels: Map<string, string>; }>>,
-        setSubunitToChainIds: React.Dispatch<React.SetStateAction<Map<RibosomeSubunitType, Set<string>>>>,
+        setChainInfo: React.Dispatch<React.SetStateAction<{ chainLabels: Map<string, string> }>>,
         label: string
     ) {
         useEffect(() => {
-            console.log(`Updating chain IDs for ${label}`);
+            if (!structureRef) {
+                setChainInfo({ chainLabels: new Map() });
+                return;
+            }
             const plugin = pluginRef.current;
-            if (!plugin || !structureRef) return;
+            if (!plugin) return;
             const structureObj = plugin.managers.structure.hierarchy.current.structures.find(
                 s => s.cell.transform.ref === structureRef
             )?.cell.obj?.data;
             if (!structureObj) return;
-            setChainInfo(molstar.getChainInfo(structureObj));
-            // Compute subunitToChainIds for this structureObj
-            const subunitMap = getSubunitToChainIds(structureObj).subunitToChainIds;
-            console.log(`[Subunit Debug] subunitToChainIds for ${label}:`, subunitMap);
-            for (const [subunit, ids] of subunitMap.entries()) {
-                console.log(`[Subunit Debug] ${subunit}:`, Array.from(ids));
-            }
-            setSubunitToChainIds(subunitMap);
-        }, [pluginRef, structureRef, label]);
+            // Get chain info from molstar utility
+            const { chainLabels } = molstar.getChainInfo(structureObj);
+            setChainInfo({ chainLabels });
+        }, [pluginRef, structureRef, molstar, label]);
     }
 
     // Use useUpdateChainInfo for both viewers
     useUpdateChainInfo(viewerA.ref, structureRefAAlignedTo, molstarA,
-        setChainInfoAlignedTo, setSubunitToChainIdsAlignedTo, AlignedTo);
+        setChainInfoAlignedTo, AlignedTo);
     useUpdateChainInfo(viewerB.ref, structureRefBAligned, molstarB,
-        setChainInfoAligned, setSubunitToChainIdsAligned, Aligned);
+        setChainInfoAligned, Aligned);
 
     // Generalized effect for residue ID selection
     function useUpdateResidueInfo(
@@ -1391,82 +1383,91 @@ const App: React.FC = () => {
     }
 
     /**
-     * Returns the props for the realigned molecule list component for viewer A.
-     * @returns Props for the realigned molecule list component for viewer A.
+     * Returns the props for the realigned molecule list component for a viewer.
+     * @param params Object containing all necessary props for the viewer and its counterpart.
+     * @returns Props for the realigned molecule list component for the viewer.
      */
-    function getRealignedMoleculeListPropsA() {
+    function getRealignedMoleculeListProps({
+        molecules,
+        molstar,
+        chainInfo,
+        residueInfo,
+        selectedResidueId,
+        realignedStructRefs,
+        setRealignedMolecules,
+        setRealignedRepRefs,
+        setRealignedStructRefs,
+        forceUpdate,
+        viewerKey,
+        otherMolstar,
+        otherRealignedStructRefs,
+        setOtherRealignedMolecules,
+        setOtherRealignedRepRefs,
+        setOtherRealignedStructRefs
+    }: {
+        molecules: any,
+        molstar: any,
+        chainInfo: any,
+        residueInfo: any,
+        selectedResidueId: any,
+        realignedStructRefs: any,
+        setRealignedMolecules: any,
+        setRealignedRepRefs: any,
+        setRealignedStructRefs: any,
+        forceUpdate: () => void,
+        viewerKey: string,
+        otherMolstar: any,
+        otherRealignedStructRefs: any,
+        setOtherRealignedMolecules: any,
+        setOtherRealignedRepRefs: any,
+        setOtherRealignedStructRefs: any
+    }) {
         return {
-            molecules: realignedMoleculesA,
-            molstar: molstarA,
-            chainInfo: chainInfoAligned,
-            residueInfo: residueInfoAligned,
-            selectedResidueId: selectedResidueIdAligned,
-            realignedStructRefs: realignedStructRefsA,
-            setRealignedMolecules: setRealignedMoleculesA,
-            setRealignedRepRefs: setRealignedRepRefsA,
-            setRealignedStructRefs: setRealignedStructRefsA,
+            molecules,
+            molstar,
+            chainInfo,
+            residueInfo,
+            selectedResidueId,
+            realignedStructRefs,
+            setRealignedMolecules,
+            setRealignedRepRefs,
+            setRealignedStructRefs,
             forceUpdate,
-            viewerKey: "A",
-            otherMolstar: molstarB,
-            otherRealignedStructRefs: realignedStructRefsB,
-            setOtherRealignedMolecules: setRealignedMoleculesB,
-            setOtherRealignedRepRefs: setRealignedRepRefsB,
-            setOtherRealignedStructRefs: setRealignedStructRefsB,
+            viewerKey,
+            otherMolstar,
+            otherRealignedStructRefs,
+            setOtherRealignedMolecules,
+            setOtherRealignedRepRefs,
+            setOtherRealignedStructRefs,
         };
     }
 
     /**
-     * Returns the props for the realigned molecule list component for viewer B.
-     * @returns Props for the realigned molecule list component for viewer B.
+     * Returns the props for the Molstar container component for a viewer.
+     *
+     * @param viewer The viewer state object (viewerA or viewerB).
+     * @param pluginRef The plugin ref for the viewer.
+     * @param setViewerWrapper The setViewer wrapper for the viewer.
+     * @param setViewerReady The setViewerReady setter for the viewer.
+     * @returns Props for the Molstar container component for the viewer.
      */
-    function getRealignedMoleculeListPropsB() {
+    function getMolstarContainerProps({
+        viewer,
+        pluginRef,
+        setViewerWrapper,
+        setViewerReady
+    }: {
+        viewer: typeof viewerA,
+        pluginRef: typeof pluginRefA,
+        setViewerWrapper: (viewer: any) => void,
+        setViewerReady: (ready: boolean) => void
+    }) {
         return {
-            molecules: realignedMoleculesB,
-            molstar: molstarB,
-            chainInfo: chainInfoAligned,
-            residueInfo: residueInfoAligned,
-            selectedResidueId: selectedResidueIdAligned,
-            realignedStructRefs: realignedStructRefsB,
-            setRealignedMolecules: setRealignedMoleculesB,
-            setRealignedRepRefs: setRealignedRepRefsB,
-            setRealignedStructRefs: setRealignedStructRefsB,
-            forceUpdate,
-            viewerKey: "B",
-            otherMolstar: molstarA,
-            otherRealignedStructRefs: realignedStructRefsA,
-            setOtherRealignedMolecules: setRealignedMoleculesA,
-            setOtherRealignedRepRefs: setRealignedRepRefsA,
-            setOtherRealignedStructRefs: setRealignedStructRefsA,
-        };
-    }
-
-    /**
-     * Returns the props for the Molstar container component for viewer A.
-     * 
-     * @returns Props for the Molstar container component for viewer A. 
-     */
-    function getMolstarContainerPropsA() {
-        return {
-            ref: pluginRefA,
-            viewerKey: viewerA.viewerKey,
-            setViewer: setViewerAWrapper,
-            onMouseDown: () => setActiveViewer(viewerA.viewerKey),
-            onReady: () => setViewerAReady(true),
-        };
-    }
-
-    /**
-     * Returns the props for the Molstar container component for viewer B.
-     * 
-     * @returns Props for the Molstar container component for viewer B. 
-     */
-    function getMolstarContainerPropsB() {
-        return {
-            ref: pluginRefB,
-            viewerKey: viewerB.viewerKey,
-            setViewer: setViewerBWrapper,
-            onMouseDown: () => setActiveViewer(viewerB.viewerKey),
-            onReady: () => setViewerBReady(true),
+            ref: pluginRef,
+            viewerKey: viewer.viewerKey,
+            setViewer: setViewerWrapper,
+            onMouseDown: () => setActiveViewer(viewer.viewerKey),
+            onReady: () => setViewerReady(true),
         };
     }
 
@@ -1494,116 +1495,164 @@ const App: React.FC = () => {
                   realignmentExists={realignmentExists}
                   handleRealignToChains={handleRealignToChains}
                 />
-                <div className="Two-Columns-Container">
-                                    <ViewerColumn
-                                        viewerKey={A}
-                                        loadDataRowProps={getLoadDataRowProps({
-                                            viewer: viewerA,
-                                            otherViewer: viewerB,
-                                            molstar: molstarA,
-                                            otherMolstar: molstarB,
-                                            realignedStructRefs: realignedStructRefsA,
-                                            otherRealignedStructRefs: realignedStructRefsB,
-                                            isMoleculeAlignedLoaded: viewerA.isMoleculeAlignedLoaded,
-                                            isMoleculeAlignedToLoaded: viewerA.isMoleculeAlignedToLoaded,
-                                            viewerReady: viewerAReady,
-                                            otherViewerReady: viewerBReady,
-                                            representationType: representationTypeAligned,
-                                            setRepresentationType: setRepresentationTypeAligned,
-                                            colorsFile: colorsAlignedFile,
-                                            isMoleculeColoursLoaded: isMoleculeAlignedColoursLoaded,
-                                            structureRef: structureRefAAligned,
-                                            otherStructureRef: structureRefBAligned,
-                                            selectedSubunit: selectedSubunitAligned,
-                                            setSelectedSubunit: setSelectedSubunitAligned,
-                                            subunitToChainIds: subunitToChainIdsAligned,
-                                            chainInfo: chainInfoAligned,
-                                            selectedChainId: selectedChainIdAligned,
-                                            setSelectedChainId: setSelectedChainIdAligned,
-                                            residueInfo: residueInfoAligned,
-                                            selectedResidueId: selectedResidueIdAligned,
-                                            setSelectedResidueId: setSelectedResidueIdAligned,
-                                            fogEnabled: fogBEnabled,
-                                            setFogEnabled: setFogBEnabled,
-                                            fogNear: fogBNear,
-                                            setFogNear: setFogBNear,
-                                            fogFar: fogBFar,
-                                            setFogFar: setFogBFar,
-                                            cameraNear: cameraBNear,
-                                            setCameraNear: setCameraBNear,
-                                            cameraFar: cameraBFar,
-                                            setCameraFar: setCameraBFar,
-                                            updateFog,
-                                            handleFileChange,
-                                            Aligned,
-                                            allowedRepresentationTypes,
-                                            syncEnabled,
-                                            realignedRepRefs: realignedRepRefsA,
-                                            setRealignedRepRefs: setRealignedRepRefsA,
-                                            setRealignedStructRefs: setRealignedStructRefsA,
-                                            cameraBNear,
-                                            cameraBFar,
-                                        })}
-                                        moleculeUIAlignedToProps={getMoleculeUIAlignedToPropsA()}
-                                        moleculeUIAlignedProps={getMoleculeUIAlignedPropsA()}
-                                        realignedMoleculeListProps={getRealignedMoleculeListPropsA()}
-                                        molstarContainerProps={getMolstarContainerPropsA()}
-                                    />
-                                    <ViewerColumn
-                                        viewerKey={B}
-                                        loadDataRowProps={getLoadDataRowProps({
-                                            viewer: viewerB,
-                                            otherViewer: viewerA,
-                                            molstar: molstarB,
-                                            otherMolstar: molstarA,
-                                            realignedStructRefs: realignedStructRefsB,
-                                            otherRealignedStructRefs: realignedStructRefsA,
-                                            isMoleculeAlignedLoaded: viewerB.isMoleculeAlignedLoaded,
-                                            isMoleculeAlignedToLoaded: viewerA.isMoleculeAlignedToLoaded,
-                                            viewerReady: viewerBReady,
-                                            otherViewerReady: viewerAReady,
-                                            representationType: representationTypeAligned,
-                                            setRepresentationType: setRepresentationTypeAligned,
-                                            colorsFile: colorsAlignedFile,
-                                            isMoleculeColoursLoaded: isMoleculeAlignedColoursLoaded,
-                                            structureRef: structureRefBAligned,
-                                            otherStructureRef: structureRefAAligned,
-                                            selectedSubunit: selectedSubunitAligned,
-                                            setSelectedSubunit: setSelectedSubunitAligned,
-                                            subunitToChainIds: subunitToChainIdsAligned,
-                                            chainInfo: chainInfoAligned,
-                                            selectedChainId: selectedChainIdAligned,
-                                            setSelectedChainId: setSelectedChainIdAligned,
-                                            residueInfo: residueInfoAligned,
-                                            selectedResidueId: selectedResidueIdAligned,
-                                            setSelectedResidueId: setSelectedResidueIdAligned,
-                                            fogEnabled: fogBEnabled,
-                                            setFogEnabled: setFogBEnabled,
-                                            fogNear: fogBNear,
-                                            setFogNear: setFogBNear,
-                                            fogFar: fogBFar,
-                                            setFogFar: setFogBFar,
-                                            cameraNear: cameraBNear,
-                                            setCameraNear: setCameraBNear,
-                                            cameraFar: cameraBFar,
-                                            setCameraFar: setCameraBFar,
-                                            updateFog,
-                                            handleFileChange,
-                                            Aligned,
-                                            allowedRepresentationTypes,
-                                            syncEnabled,
-                                            realignedRepRefs: realignedRepRefsB,
-                                            setRealignedRepRefs: setRealignedRepRefsB,
-                                            setRealignedStructRefs: setRealignedStructRefsB,
-                                            cameraBNear,
-                                            cameraBFar,
-                                        })}
-                                        moleculeUIAlignedToProps={getMoleculeUIAlignedToPropsB()}
-                                        moleculeUIAlignedProps={getMoleculeUIAlignedPropsB()}
-                                        realignedMoleculeListProps={getRealignedMoleculeListPropsB()}
-                                        molstarContainerProps={getMolstarContainerPropsB()}
-                                    />
-                </div>
+                <TwoColumnsContainer
+                    left={
+                        <ViewerColumn
+                            viewerKey={A}
+                            loadDataRowProps={getLoadDataRowProps({
+                                viewer: viewerA,
+                                otherViewer: viewerB,
+                                molstar: molstarA,
+                                otherMolstar: molstarB,
+                                realignedStructRefs: realignedStructRefsA,
+                                otherRealignedStructRefs: realignedStructRefsB,
+                                isMoleculeAlignedLoaded: viewerA.isMoleculeAlignedLoaded,
+                                isMoleculeAlignedToLoaded: viewerA.isMoleculeAlignedToLoaded,
+                                viewerReady: viewerAReady,
+                                otherViewerReady: viewerBReady,
+                                representationType: representationTypeAligned,
+                                setRepresentationType: setRepresentationTypeAligned,
+                                colorsFile: colorsAlignedFile,
+                                isMoleculeColoursLoaded: isMoleculeAlignedColoursLoaded,
+                                structureRef: structureRefAAligned,
+                                otherStructureRef: structureRefBAligned,
+                                selectedSubunit: selectedSubunitAligned,
+                                setSelectedSubunit: setSelectedSubunitAligned,
+                                subunitToChainIds: subunitToChainIdsAligned,
+                                chainInfo: chainInfoAligned,
+                                selectedChainId: selectedChainIdAligned,
+                                setSelectedChainId: setSelectedChainIdAligned,
+                                residueInfo: residueInfoAligned,
+                                selectedResidueId: selectedResidueIdAligned,
+                                setSelectedResidueId: setSelectedResidueIdAligned,
+                                fogEnabled: fogBEnabled,
+                                setFogEnabled: setFogBEnabled,
+                                fogNear: fogBNear,
+                                setFogNear: setFogBNear,
+                                fogFar: fogBFar,
+                                setFogFar: setFogBFar,
+                                cameraNear: cameraBNear,
+                                setCameraNear: setCameraBNear,
+                                cameraFar: cameraBFar,
+                                setCameraFar: setCameraBFar,
+                                updateFog,
+                                handleFileChange,
+                                Aligned,
+                                allowedRepresentationTypes,
+                                syncEnabled,
+                                realignedRepRefs: realignedRepRefsA,
+                                setRealignedRepRefs: setRealignedRepRefsA,
+                                setRealignedStructRefs: setRealignedStructRefsA,
+                                cameraBNear,
+                                cameraBFar,
+                            })}
+                            moleculeUIAlignedToProps={getMoleculeUIAlignedToPropsA()}
+                            moleculeUIAlignedProps={getMoleculeUIAlignedPropsA()}
+                            realignedMoleculeListProps={getRealignedMoleculeListProps({
+                                molecules: realignedMoleculesA,
+                                molstar: molstarA,
+                                chainInfo: chainInfoAligned,
+                                residueInfo: residueInfoAligned,
+                                selectedResidueId: selectedResidueIdAligned,
+                                realignedStructRefs: realignedStructRefsA,
+                                setRealignedMolecules: setRealignedMoleculesA,
+                                setRealignedRepRefs: setRealignedRepRefsA,
+                                setRealignedStructRefs: setRealignedStructRefsA,
+                                forceUpdate,
+                                viewerKey: "A",
+                                otherMolstar: molstarB,
+                                otherRealignedStructRefs: realignedStructRefsB,
+                                setOtherRealignedMolecules: setRealignedMoleculesB,
+                                setOtherRealignedRepRefs: setRealignedRepRefsB,
+                                setOtherRealignedStructRefs: setRealignedStructRefsB,
+                            })}
+                            molstarContainerProps={getMolstarContainerProps({
+                                viewer: viewerA,
+                                pluginRef: pluginRefA,
+                                setViewerWrapper: setViewerAWrapper,
+                                setViewerReady: setViewerAReady
+                            })}
+                        />
+                    }
+                    right={
+                        <ViewerColumn
+                            viewerKey={B}
+                            loadDataRowProps={getLoadDataRowProps({
+                                viewer: viewerB,
+                                otherViewer: viewerA,
+                                molstar: molstarB,
+                                otherMolstar: molstarA,
+                                realignedStructRefs: realignedStructRefsB,
+                                otherRealignedStructRefs: realignedStructRefsA,
+                                isMoleculeAlignedLoaded: viewerB.isMoleculeAlignedLoaded,
+                                isMoleculeAlignedToLoaded: viewerA.isMoleculeAlignedToLoaded,
+                                viewerReady: viewerBReady,
+                                otherViewerReady: viewerAReady,
+                                representationType: representationTypeAligned,
+                                setRepresentationType: setRepresentationTypeAligned,
+                                colorsFile: colorsAlignedFile,
+                                isMoleculeColoursLoaded: isMoleculeAlignedColoursLoaded,
+                                structureRef: structureRefBAligned,
+                                otherStructureRef: structureRefAAligned,
+                                selectedSubunit: selectedSubunitAligned,
+                                setSelectedSubunit: setSelectedSubunitAligned,
+                                subunitToChainIds: subunitToChainIdsAligned,
+                                chainInfo: chainInfoAligned,
+                                selectedChainId: selectedChainIdAligned,
+                                setSelectedChainId: setSelectedChainIdAligned,
+                                residueInfo: residueInfoAligned,
+                                selectedResidueId: selectedResidueIdAligned,
+                                setSelectedResidueId: setSelectedResidueIdAligned,
+                                fogEnabled: fogBEnabled,
+                                setFogEnabled: setFogBEnabled,
+                                fogNear: fogBNear,
+                                setFogNear: setFogBNear,
+                                fogFar: fogBFar,
+                                setFogFar: setFogBFar,
+                                cameraNear: cameraBNear,
+                                setCameraNear: setCameraBNear,
+                                cameraFar: cameraBFar,
+                                setCameraFar: setCameraBFar,
+                                updateFog,
+                                handleFileChange,
+                                Aligned,
+                                allowedRepresentationTypes,
+                                syncEnabled,
+                                realignedRepRefs: realignedRepRefsB,
+                                setRealignedRepRefs: setRealignedRepRefsB,
+                                setRealignedStructRefs: setRealignedStructRefsB,
+                                cameraBNear,
+                                cameraBFar,
+                            })}
+                            moleculeUIAlignedToProps={getMoleculeUIAlignedToPropsB()}
+                            moleculeUIAlignedProps={getMoleculeUIAlignedPropsB()}
+                            realignedMoleculeListProps={getRealignedMoleculeListProps({
+                                molecules: realignedMoleculesB,
+                                molstar: molstarB,
+                                chainInfo: chainInfoAligned,
+                                residueInfo: residueInfoAligned,
+                                selectedResidueId: selectedResidueIdAligned,
+                                realignedStructRefs: realignedStructRefsB,
+                                setRealignedMolecules: setRealignedMoleculesB,
+                                setRealignedRepRefs: setRealignedRepRefsB,
+                                setRealignedStructRefs: setRealignedStructRefsB,
+                                forceUpdate,
+                                viewerKey: "B",
+                                otherMolstar: molstarA,
+                                otherRealignedStructRefs: realignedStructRefsA,
+                                setOtherRealignedMolecules: setRealignedMoleculesA,
+                                setOtherRealignedRepRefs: setRealignedRepRefsA,
+                                setOtherRealignedStructRefs: setRealignedStructRefsB,
+                            })}
+                            molstarContainerProps={getMolstarContainerProps({
+                                viewer: viewerB,
+                                pluginRef: pluginRefB,
+                                setViewerWrapper: setViewerBWrapper,
+                                setViewerReady: setViewerBReady
+                            })}
+                        />
+                    }
+                />
             </div>
         </SyncProvider>
     );
