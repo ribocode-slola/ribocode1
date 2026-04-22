@@ -6,6 +6,7 @@
  * @author Andy Turner <agdturner@gmail.com>
  */
 import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { useUpdateChainInfo } from './hooks/useUpdateChainInfo';
 import ViewerColumn from './components/ViewerColumn';
 import TwoColumnsContainer from './components/TwoColumnsContainer';
 import AppHeader from './components/AppHeader';
@@ -99,14 +100,14 @@ const App: React.FC = () => {
     const [realignedRepRefsA, setRealignedRepRefsA] = useState<{ [id: string]: string[] }>({});
     const [realignedRepRefsB, setRealignedRepRefsB] = useState<{ [id: string]: string[] }>({});
     // Add state for subunitToChainIds
-    const [subunitToChainIdsAlignedTo, setSubunitToChainIdsAlignedTo] = useState<Map<RibosomeSubunitType, Set<string>>>(new Map([
+    const [subunitToChainIdsAlignedTo, setSubunitToChainIdsAlignedTo] = useState<Map<string, Set<string>>>(new Map([
         ['All', new Set()],
         ['Large', new Set()],
         ['Small', new Set()],
         ['Other', new Set()],
     ]));
     const [selectedSubunitAlignedTo, setSelectedSubunitAlignedTo] = useState<RibosomeSubunitType>('All');
-    const [subunitToChainIdsAligned, setSubunitToChainIdsAligned] = useState<Map<RibosomeSubunitType, Set<string>>>(new Map([
+    const [subunitToChainIdsAligned, setSubunitToChainIdsAligned] = useState<Map<string, Set<string>>>(new Map([
         ['All', new Set()],
         ['Large', new Set()],
         ['Small', new Set()],
@@ -358,35 +359,11 @@ const App: React.FC = () => {
      * @param setSubunitToChainIds Function to set the subunit-to-chain mapping.
      * @param label Label for logging purposes.
      */
-    function useUpdateChainInfo(
-        pluginRef: React.RefObject<PluginUIContext | null>,
-        structureRef: string | null,
-        molstar: ReturnType<typeof useMolstarViewer>,
-        setChainInfo: React.Dispatch<React.SetStateAction<{ chainLabels: Map<string, string> }>>,
-        label: string
-    ) {
-        useEffect(() => {
-            if (!structureRef) {
-                setChainInfo({ chainLabels: new Map() });
-                return;
-            }
-            const plugin = pluginRef.current;
-            if (!plugin) return;
-            const structureObj = plugin.managers.structure.hierarchy.current.structures.find(
-                s => s.cell.transform.ref === structureRef
-            )?.cell.obj?.data;
-            if (!structureObj) return;
-            // Get chain info from molstar utility
-            const { chainLabels } = molstar.getChainInfo(structureObj);
-            setChainInfo({ chainLabels });
-        }, [pluginRef, structureRef, molstar, label]);
-    }
 
-    // Use useUpdateChainInfo for both viewers
-    useUpdateChainInfo(viewerA.ref, structureRefAAlignedTo, molstarA,
-        setChainInfoAlignedTo, AlignedTo);
-    useUpdateChainInfo(viewerB.ref, structureRefBAligned, molstarB,
-        setChainInfoAligned, Aligned);
+
+    // Use custom hook for both viewers (with subunitToChainIds)
+    useUpdateChainInfo(viewerA.ref, structureRefAAlignedTo, molstarA, setChainInfoAlignedTo, setSubunitToChainIdsAlignedTo, AlignedTo);
+    useUpdateChainInfo(viewerB.ref, structureRefBAligned, molstarB, setChainInfoAligned, setSubunitToChainIdsAligned, Aligned);
 
     // Generalized effect for residue ID selection
     function useUpdateResidueInfo(
@@ -649,85 +626,113 @@ const App: React.FC = () => {
         };
     }
 
-    // Create chain zoomA handlers.
-    const chainZoomAAlignedTo = createZoomHandler(
-        viewerA.ref,
-        structureRefAAlignedTo,
-        'chain-test',
-        selectedChainIdAlignedTo,
-        syncEnabled,
-        viewerB.ref
-    );
-    const chainZoomAAligned = createZoomHandler(
-        viewerA.ref,
-        structureRefAAligned,
-        'chain-test',
-        selectedChainIdAligned,
-        syncEnabled,
-        viewerB.ref
-    );
+    // Helper to create zoom handlers for chain or residue
+    function makeZoomHandler({
+        pluginRef,
+        structureRef,
+        property,
+        chainId,
+        sync,
+        syncPluginRef,
+        residueId,
+        insCode
+    }: {
+        pluginRef: React.RefObject<PluginUIContext | null>,
+        structureRef: string | null,
+        property: 'entity-test' | 'chain-test' | 'residue-test' | 'atom-test' | 'group-by',
+        chainId: string,
+        sync: boolean,
+        syncPluginRef?: React.RefObject<PluginUIContext | null>,
+        residueId?: string,
+        insCode?: string
+    }) {
+        return createZoomHandler(
+            pluginRef,
+            structureRef,
+            property,
+            chainId,
+            sync,
+            syncPluginRef,
+            residueId,
+            insCode
+        );
+    }
 
-    // Create chain zoomB handlers.
-    const chainZoomBAlignedTo = createZoomHandler(
-        viewerB.ref,
-        structureRefBAlignedTo,
-        'chain-test',
-        selectedChainIdAlignedTo,
-        syncEnabled,
-        viewerA.ref
-    );
-    const chainZoomBAligned = createZoomHandler(
-        viewerB.ref,
-        structureRefBAligned,
-        'chain-test',
-        selectedChainIdAligned,
-        syncEnabled,
-        viewerA.ref
-    );
+    // Chain zoom handlers
+    const chainZoomAAlignedTo = makeZoomHandler({
+        pluginRef: viewerA.ref,
+        structureRef: structureRefAAlignedTo,
+        property: 'chain-test',
+        chainId: selectedChainIdAlignedTo,
+        sync: syncEnabled,
+        syncPluginRef: viewerB.ref
+    });
+    const chainZoomAAligned = makeZoomHandler({
+        pluginRef: viewerA.ref,
+        structureRef: structureRefAAligned,
+        property: 'chain-test',
+        chainId: selectedChainIdAligned,
+        sync: syncEnabled,
+        syncPluginRef: viewerB.ref
+    });
+    const chainZoomBAlignedTo = makeZoomHandler({
+        pluginRef: viewerB.ref,
+        structureRef: structureRefBAlignedTo,
+        property: 'chain-test',
+        chainId: selectedChainIdAlignedTo,
+        sync: syncEnabled,
+        syncPluginRef: viewerA.ref
+    });
+    const chainZoomBAligned = makeZoomHandler({
+        pluginRef: viewerB.ref,
+        structureRef: structureRefBAligned,
+        property: 'chain-test',
+        chainId: selectedChainIdAligned,
+        sync: syncEnabled,
+        syncPluginRef: viewerA.ref
+    });
 
-    // Create Residue zoomA handlers.
-    const residueZoomAAlignedTo = createZoomHandler(
-        viewerA.ref,
-        structureRefAAlignedTo,
-        'residue-test',
-        selectedChainIdAlignedTo,
-        syncEnabled,
-        viewerB.ref,
-        selectedResidueIdAlignedTo,
-        residueInfoAlignedTo.residueLabels.get(selectedResidueIdAlignedTo)?.insCode
-    );
-    const residueZoomAAligned = createZoomHandler(
-        viewerA.ref,
-        structureRefAAligned,
-        'residue-test',
-        selectedChainIdAligned,
-        syncEnabled,
-        viewerB.ref,
-        selectedResidueIdAligned,
-        residueInfoAligned.residueLabels.get(selectedResidueIdAligned)?.insCode
-    );
-
-    // Create Residue zoomB handlers.
-    const residueZoomBAlignedTo = createZoomHandler(
-        viewerB.ref,
-        structureRefBAlignedTo,
-        'residue-test',
-        selectedChainIdAlignedTo,
-        syncEnabled,
-        viewerA.ref,
-        selectedResidueIdAlignedTo,
-        residueInfoAlignedTo.residueLabels.get(selectedResidueIdAlignedTo)?.insCode
-    );
-    const residueZoomBAligned = createZoomHandler(
-        viewerB.ref,
-        structureRefBAligned,
-        'residue-test',
-        selectedChainIdAligned,
-        syncEnabled,
-        viewerA.ref,
-        selectedResidueIdAligned,
-        residueInfoAligned.residueLabels.get(selectedResidueIdAligned)?.insCode
-    );
+    // Residue zoom handlers
+    const residueZoomAAlignedTo = makeZoomHandler({
+        pluginRef: viewerA.ref,
+        structureRef: structureRefAAlignedTo,
+        property: 'residue-test',
+        chainId: selectedChainIdAlignedTo,
+        sync: syncEnabled,
+        syncPluginRef: viewerB.ref,
+        residueId: selectedResidueIdAlignedTo,
+        insCode: residueInfoAlignedTo.residueLabels.get(selectedResidueIdAlignedTo)?.insCode
+    });
+    const residueZoomAAligned = makeZoomHandler({
+        pluginRef: viewerA.ref,
+        structureRef: structureRefAAligned,
+        property: 'residue-test',
+        chainId: selectedChainIdAligned,
+        sync: syncEnabled,
+        syncPluginRef: viewerB.ref,
+        residueId: selectedResidueIdAligned,
+        insCode: residueInfoAligned.residueLabels.get(selectedResidueIdAligned)?.insCode
+    });
+    const residueZoomBAlignedTo = makeZoomHandler({
+        pluginRef: viewerB.ref,
+        structureRef: structureRefBAlignedTo,
+        property: 'residue-test',
+        chainId: selectedChainIdAlignedTo,
+        sync: syncEnabled,
+        syncPluginRef: viewerA.ref,
+        residueId: selectedResidueIdAlignedTo,
+        insCode: residueInfoAlignedTo.residueLabels.get(selectedResidueIdAlignedTo)?.insCode
+    });
+    const residueZoomBAligned = makeZoomHandler({
+        pluginRef: viewerB.ref,
+        structureRef: structureRefBAligned,
+        property: 'residue-test',
+        chainId: selectedChainIdAligned,
+        sync: syncEnabled,
+        syncPluginRef: viewerA.ref,
+        residueId: selectedResidueIdAligned,
+        insCode: residueInfoAligned.residueLabels.get(selectedResidueIdAligned)?.insCode
+    });
 
     // Unified robust delete handler for any representation
     const deleteRepresentation = async (ref: string, key: string, molstar: any, doForceUpdate = true) => {
@@ -1134,181 +1139,89 @@ const App: React.FC = () => {
         };
     }
 
-    /**
-     * Returns the props for the aligned molecule list component for viewer A.
-     * @returns The props for the aligned molecule list component for viewer A.
-     */
-    function getMoleculeUIAlignedToPropsA() {
-        return {
-            key: molstarA.representationRefs[AlignedTo]?.join('-') || A + `-` + AlignedTo,
-            label: viewerA.moleculeAlignedTo?.label ?? AlignedTo,
-            plugin: viewerA.ref.current,
-            isVisible: viewerA.isMoleculeAlignedToVisible,
-            onToggleVisibility: toggleViewerAAlignedTo.handleButtonClick,
-            chainZoomLabel: selectedChainIdAlignedTo && chainInfoAlignedTo.chainLabels.has(selectedChainIdAlignedTo)
-                ? chainInfoAlignedTo.chainLabels.get(selectedChainIdAlignedTo) ?? ''
-                : '',
-            onChainZoom: chainZoomAAlignedTo.handleButtonClick,
-            chainZoomDisabled: !selectedChainIdAlignedTo,
-            residueZoomLabel: residueInfoAlignedTo.residueLabels.get(selectedResidueIdAlignedTo)?.name || '',
-            onResidueZoom: residueZoomAAlignedTo.handleButtonClick,
-            residueZoomDisabled: !selectedResidueIdAlignedTo,
-            isLoaded: viewerA.isMoleculeAlignedToLoaded,
-            forceUpdate,
-            representationRefs: molstarA.representationRefs[AlignedTo] || [],
-            onDeleteRepresentation: (ref: string) => {
-                const repId = Object.entries(molstarA.repIdMap[AlignedTo]).find(([id, r]) => r === ref)?.[0];
-                if (syncEnabled && repId) {
-                    Promise.all([
-                        deleteRepresentation(molstarA.repIdMap[AlignedTo][repId], AlignedTo, molstarA, false),
-                        deleteRepresentation(molstarB.repIdMap[AlignedTo][repId], AlignedTo, molstarB, false)
-                    ]).then(forceUpdate);
-                } else if (repId) {
-                    deleteRepresentation(molstarB.repIdMap[AlignedTo][repId], AlignedTo, molstarB);
-                } else {
-                    if (syncEnabled) {
-                        Promise.all([
-                            deleteRepresentation(ref, AlignedTo, molstarA, false),
-                            deleteRepresentation(ref, AlignedTo, molstarB, false)
-                        ]).then(forceUpdate);
-                    } else {
-                        deleteRepresentation(ref, AlignedTo, molstarB);
-                    }
-                }
-            },
-            onToggleRepVisibility: (ref: string) => {
-                const repId = Object.entries(molstarB.repIdMap[Aligned]).find(([id, r]) => r === ref)?.[0];
-                let repRef = repId ? molstarB.repIdMap[Aligned][repId] : ref;
-                if (!repRef) {
-                    const idx = molstarB.representationRefs[Aligned].indexOf(ref);
-                    if (idx >= 0) repRef = molstarB.representationRefs[Aligned][idx];
-                }
-                if (repRef) {
-                    const plugin = molstarB.pluginRef.current;
-                    if (!plugin) return;
-                    const cell = plugin.state?.data?.cells?.get(ref);
-                    if (cell) {
-                        import('molstar/lib/mol-plugin/commands').then(({ PluginCommands }) => {
-                            PluginCommands.State.ToggleVisibility.apply(plugin, [plugin, { state: plugin.state.data, ref: repRef }]);
-                            plugin.canvas3d?.requestDraw?.();
-                            forceUpdate();
-                        });
-                    }
-                }
-            },
-        };
-    }
 
     /**
-     * Returns the props for the aligned molecule list component for viewer B.
-     * @returns The props for the aligned molecule list component for viewer B.
+     * Returns the props for the aligned molecule list component for a viewer (generalized).
+     * @param params Object containing all necessary props for the viewer and its counterpart.
+     * @returns Props for the aligned molecule list component for the viewer.
      */
-    function getMoleculeUIAlignedToPropsB() {
+    function getMoleculeUIAlignedToProps({
+        molstar,
+        otherMolstar,
+        viewer,
+        isVisible,
+        onToggleVisibility,
+        chainZoomLabel,
+        onChainZoom,
+        chainZoomDisabled,
+        residueZoomLabel,
+        onResidueZoom,
+        residueZoomDisabled,
+        isLoaded,
+        forceUpdate,
+        representationRefs,
+        syncEnabled,
+        deleteRepresentation,
+        repIdMap,
+        AlignedTo
+    }: {
+        molstar: any,
+        otherMolstar: any,
+        viewer: any,
+        isVisible: boolean,
+        onToggleVisibility: () => void,
+        chainZoomLabel: string,
+        onChainZoom: () => void,
+        chainZoomDisabled: boolean,
+        residueZoomLabel: string,
+        onResidueZoom: () => void,
+        residueZoomDisabled: boolean,
+        isLoaded: boolean,
+        forceUpdate: () => void,
+        representationRefs: any[],
+        syncEnabled: boolean,
+        deleteRepresentation: any,
+        repIdMap: any,
+        AlignedTo: string
+    }) {
         return {
-            key: molstarB.representationRefs[AlignedTo]?.join('-') || B + `-` + AlignedTo,
-            label: viewerB.moleculeAlignedTo?.label ?? AlignedTo,
-            plugin: viewerB.ref.current,
-            isVisible: viewerB.isMoleculeAlignedToVisible,
-            onToggleVisibility: toggleViewerBAlignedTo.handleButtonClick,
-            chainZoomLabel: selectedChainIdAlignedTo && chainInfoAlignedTo.chainLabels.has(selectedChainIdAlignedTo)
-                ? chainInfoAlignedTo.chainLabels.get(selectedChainIdAlignedTo) ?? ''
-                : '',
-            onChainZoom: chainZoomBAlignedTo.handleButtonClick,
-            chainZoomDisabled: !selectedChainIdAlignedTo,
-            residueZoomLabel: residueInfoAlignedTo.residueLabels.get(selectedResidueIdAlignedTo)?.name || '',
-            onResidueZoom: residueZoomBAlignedTo.handleButtonClick,
-            residueZoomDisabled: !selectedResidueIdAlignedTo,
-            isLoaded: viewerB.isMoleculeAlignedToLoaded,
+            key: representationRefs?.join('-') || viewer.viewerKey + `-` + AlignedTo,
+            label: viewer.moleculeAlignedTo?.label ?? AlignedTo,
+            plugin: viewer.ref.current,
+            isVisible,
+            onToggleVisibility,
+            chainZoomLabel,
+            onChainZoom,
+            chainZoomDisabled,
+            residueZoomLabel,
+            onResidueZoom,
+            residueZoomDisabled,
+            isLoaded,
             forceUpdate,
-            representationRefs: molstarB.representationRefs[AlignedTo] || [],
+            representationRefs: representationRefs || [],
             onDeleteRepresentation: (ref: string) => {
-                const repId = Object.entries(molstarB.repIdMap[AlignedTo]).find(([id, r]) => r === ref)?.[0];
+                const repId = Object.entries(repIdMap[AlignedTo]).find(([id, r]) => r === ref)?.[0];
                 if (syncEnabled && repId) {
                     Promise.all([
-                        deleteRepresentation(molstarA.repIdMap[AlignedTo][repId], AlignedTo, molstarA, false),
-                        deleteRepresentation(molstarB.repIdMap[AlignedTo][repId], AlignedTo, molstarB, false)
+                        deleteRepresentation(molstar.repIdMap[AlignedTo][repId], AlignedTo, molstar, false),
+                        deleteRepresentation(otherMolstar.repIdMap[AlignedTo][repId], AlignedTo, otherMolstar, false)
                     ]).then(forceUpdate);
                 } else if (repId) {
-                    deleteRepresentation(molstarB.repIdMap[AlignedTo][repId], AlignedTo, molstarB);
+                    deleteRepresentation(molstar.repIdMap[AlignedTo][repId], AlignedTo, molstar);
                 } else {
                     if (syncEnabled) {
                         Promise.all([
-                            deleteRepresentation(ref, AlignedTo, molstarA, false),
-                            deleteRepresentation(ref, AlignedTo, molstarB, false)
+                            deleteRepresentation(ref, AlignedTo, molstar, false),
+                            deleteRepresentation(ref, AlignedTo, otherMolstar, false)
                         ]).then(forceUpdate);
                     } else {
-                        deleteRepresentation(ref, AlignedTo, molstarB);
+                        deleteRepresentation(ref, AlignedTo, molstar);
                     }
                 }
             },
             onToggleRepVisibility: (ref: string) => {
-                const repId = Object.entries(molstarB.repIdMap[Aligned]).find(([id, r]) => r === ref)?.[0];
-                let repRef = repId ? molstarB.repIdMap[Aligned][repId] : ref;
-                if (!repRef) {
-                    const idx = molstarB.representationRefs[Aligned].indexOf(ref);
-                    if (idx >= 0) repRef = molstarB.representationRefs[Aligned][idx];
-                }
-                if (repRef) {
-                    const plugin = molstarB.pluginRef.current;
-                    if (!plugin) return;
-                    const cell = plugin.state?.data?.cells?.get(ref);
-                    if (cell) {
-                        import('molstar/lib/mol-plugin/commands').then(({ PluginCommands }) => {
-                            PluginCommands.State.ToggleVisibility.apply(plugin, [plugin, { state: plugin.state.data, ref: repRef }]);
-                            plugin.canvas3d?.requestDraw?.();
-                            forceUpdate();
-                        });
-                    }
-                }
-            },
-        };
-    }
-
-    /**
-     * Returns the props for the aligned molecule list component for viewer A.
-     * @returns Props for the aligned molecule list component for viewer A. 
-     */
-    function getMoleculeUIAlignedPropsA() {
-        return {
-            key: molstarA.representationRefs[Aligned]?.join('-') || A + `-` + Aligned,
-            label: viewerA.moleculeAligned?.label ?? Aligned,
-            plugin: viewerA.ref.current,
-            isVisible: viewerA.isMoleculeAlignedVisible,
-            onToggleVisibility: toggleViewerAAligned.handleButtonClick,
-            chainZoomLabel: selectedChainIdAligned && chainInfoAligned.chainLabels.has(selectedChainIdAligned)
-                ? chainInfoAligned.chainLabels.get(selectedChainIdAligned) ?? ''
-                : '',
-            onChainZoom: chainZoomAAligned.handleButtonClick,
-            chainZoomDisabled: !selectedChainIdAligned,
-            residueZoomLabel: residueInfoAligned.residueLabels.get(selectedResidueIdAligned)?.name || '',
-            onResidueZoom: residueZoomAAligned.handleButtonClick,
-            residueZoomDisabled: !selectedResidueIdAligned,
-            isLoaded: viewerA.isMoleculeAlignedLoaded,
-            forceUpdate,
-            representationRefs: molstarA.representationRefs[Aligned] || [],
-            onDeleteRepresentation: (ref: string) => {
-                const repId = Object.entries(molstarA.repIdMap[Aligned]).find(([id, r]) => r === ref)?.[0];
-                if (syncEnabled && repId) {
-                    Promise.all([
-                        deleteRepresentation(molstarA.repIdMap[Aligned][repId], Aligned, molstarA, false),
-                        deleteRepresentation(molstarB.repIdMap[Aligned][repId], Aligned, molstarB, false)
-                    ]).then(forceUpdate);
-                } else if (repId) {
-                    deleteRepresentation(molstarB.repIdMap[Aligned][repId], Aligned, molstarB);
-                } else {
-                    if (syncEnabled) {
-                        Promise.all([
-                            deleteRepresentation(ref, Aligned, molstarA, false),
-                            deleteRepresentation(ref, Aligned, molstarB, false)
-                        ]).then(forceUpdate);
-                    } else {
-                        deleteRepresentation(ref, Aligned, molstarB);
-                    }
-                }
-            },
-            onToggleRepVisibility: (ref: string) => {
-                [molstarA, molstarB].forEach(molstar => {
-                    const plugin = molstar.pluginRef.current;
+                [molstar, otherMolstar].forEach(molstarInstance => {
+                    const plugin = molstarInstance.pluginRef.current;
                     if (!plugin) return;
                     const cell = plugin.state?.data?.cells?.get(ref);
                     if (cell) {
@@ -1324,50 +1237,95 @@ const App: React.FC = () => {
     }
 
     /**
-     * Returns the props for the aligned molecule list component for viewer B.
-     * @returns Props for the aligned molecule list component for viewer B. 
+     * Returns the props for the aligned molecule list component for a viewer.
+     * @param params Object containing all necessary props for the viewer and its counterpart.
+     * @returns Props for the aligned molecule list component for the viewer.
      */
-    function getMoleculeUIAlignedPropsB() {
+    function getMoleculeUIAlignedProps({
+        molstar,
+        otherMolstar,
+        viewer,
+        isVisible,
+        onToggleVisibility,
+        chainZoomLabel,
+        onChainZoom,
+        chainZoomDisabled,
+        residueZoomLabel,
+        onResidueZoom,
+        residueZoomDisabled,
+        isLoaded,
+        forceUpdate,
+        representationRefs,
+        syncEnabled,
+        deleteRepresentation,
+        repIdMap,
+        Aligned,
+        chainInfoAligned,
+        selectedChainIdAligned,
+        residueInfoAligned,
+        selectedResidueIdAligned
+    }: {
+        molstar: any,
+        otherMolstar: any,
+        viewer: any,
+        isVisible: boolean,
+        onToggleVisibility: () => void,
+        chainZoomLabel: string,
+        onChainZoom: () => void,
+        chainZoomDisabled: boolean,
+        residueZoomLabel: string,
+        onResidueZoom: () => void,
+        residueZoomDisabled: boolean,
+        isLoaded: boolean,
+        forceUpdate: () => void,
+        representationRefs: any[],
+        syncEnabled: boolean,
+        deleteRepresentation: any,
+        repIdMap: any,
+        Aligned: string,
+        chainInfoAligned: any,
+        selectedChainIdAligned: any,
+        residueInfoAligned: any,
+        selectedResidueIdAligned: any
+    }) {
         return {
-            key: molstarB.representationRefs[Aligned]?.join('-') || B + `-` + Aligned,
-            label: viewerB.moleculeAligned?.label ?? Aligned,
-            plugin: viewerB.ref.current,
-            isVisible: viewerB.isMoleculeAlignedVisible,
-            onToggleVisibility: toggleViewerBAligned.handleButtonClick,
-            chainZoomLabel: selectedChainIdAligned && chainInfoAligned.chainLabels.has(selectedChainIdAligned)
-                ? chainInfoAligned.chainLabels.get(selectedChainIdAligned) ?? ''
-                : '',
-            onChainZoom: chainZoomBAligned.handleButtonClick,
-            chainZoomDisabled: !selectedChainIdAligned,
-            residueZoomLabel: residueInfoAligned.residueLabels.get(selectedResidueIdAligned)?.name || '',
-            onResidueZoom: residueZoomBAligned.handleButtonClick,
-            residueZoomDisabled: !selectedResidueIdAligned,
-            isLoaded: viewerB.isMoleculeAlignedLoaded,
+            key: representationRefs?.join('-') || viewer.viewerKey + `-` + Aligned,
+            label: viewer.moleculeAligned?.label ?? Aligned,
+            plugin: viewer.ref.current,
+            isVisible,
+            onToggleVisibility,
+            chainZoomLabel,
+            onChainZoom,
+            chainZoomDisabled,
+            residueZoomLabel,
+            onResidueZoom,
+            residueZoomDisabled,
+            isLoaded,
             forceUpdate,
-            representationRefs: molstarB.representationRefs[Aligned] || [],
+            representationRefs: representationRefs || [],
             onDeleteRepresentation: (ref: string) => {
-                const repId = Object.entries(molstarB.repIdMap[Aligned]).find(([id, r]) => r === ref)?.[0];
+                const repId = Object.entries(repIdMap[Aligned]).find(([id, r]) => r === ref)?.[0];
                 if (syncEnabled && repId) {
                     Promise.all([
-                        deleteRepresentation(molstarA.repIdMap[Aligned][repId], Aligned, molstarA, false),
-                        deleteRepresentation(molstarB.repIdMap[Aligned][repId], Aligned, molstarB, false)
+                        deleteRepresentation(molstar.repIdMap[Aligned][repId], Aligned, molstar, false),
+                        deleteRepresentation(otherMolstar.repIdMap[Aligned][repId], Aligned, otherMolstar, false)
                     ]).then(forceUpdate);
                 } else if (repId) {
-                    deleteRepresentation(molstarB.repIdMap[Aligned][repId], Aligned, molstarB);
+                    deleteRepresentation(molstar.repIdMap[Aligned][repId], Aligned, molstar);
                 } else {
                     if (syncEnabled) {
                         Promise.all([
-                            deleteRepresentation(ref, Aligned, molstarA, false),
-                            deleteRepresentation(ref, Aligned, molstarB, false)
+                            deleteRepresentation(ref, Aligned, molstar, false),
+                            deleteRepresentation(ref, Aligned, otherMolstar, false)
                         ]).then(forceUpdate);
                     } else {
-                        deleteRepresentation(ref, Aligned, molstarB);
+                        deleteRepresentation(ref, Aligned, molstar);
                     }
                 }
             },
             onToggleRepVisibility: (ref: string) => {
-                [molstarA, molstarB].forEach(molstar => {
-                    const plugin = molstar.pluginRef.current;
+                [molstar, otherMolstar].forEach(molstarInstance => {
+                    const plugin = molstarInstance.pluginRef.current;
                     if (!plugin) return;
                     const cell = plugin.state?.data?.cells?.get(ref);
                     if (cell) {
@@ -1546,8 +1504,54 @@ const App: React.FC = () => {
                                 cameraBNear,
                                 cameraBFar,
                             })}
-                            moleculeUIAlignedToProps={getMoleculeUIAlignedToPropsA()}
-                            moleculeUIAlignedProps={getMoleculeUIAlignedPropsA()}
+                            moleculeUIAlignedToProps={getMoleculeUIAlignedToProps({
+                                molstar: molstarA,
+                                otherMolstar: molstarB,
+                                viewer: viewerA,
+                                isVisible: viewerA.isMoleculeAlignedToVisible,
+                                onToggleVisibility: toggleViewerAAlignedTo.handleButtonClick,
+                                chainZoomLabel: selectedChainIdAlignedTo && chainInfoAlignedTo.chainLabels.has(selectedChainIdAlignedTo)
+                                    ? chainInfoAlignedTo.chainLabels.get(selectedChainIdAlignedTo) ?? ''
+                                    : '',
+                                onChainZoom: chainZoomAAlignedTo.handleButtonClick,
+                                chainZoomDisabled: !selectedChainIdAlignedTo,
+                                residueZoomLabel: residueInfoAlignedTo.residueLabels.get(selectedResidueIdAlignedTo)?.name || '',
+                                onResidueZoom: residueZoomAAlignedTo.handleButtonClick,
+                                residueZoomDisabled: !selectedResidueIdAlignedTo,
+                                isLoaded: viewerA.isMoleculeAlignedToLoaded,
+                                forceUpdate,
+                                representationRefs: molstarA.representationRefs[AlignedTo] || [],
+                                syncEnabled,
+                                deleteRepresentation,
+                                repIdMap: molstarA.repIdMap,
+                                AlignedTo
+                            })}
+                            moleculeUIAlignedProps={getMoleculeUIAlignedProps({
+                                molstar: molstarA,
+                                otherMolstar: molstarB,
+                                viewer: viewerA,
+                                isVisible: viewerA.isMoleculeAlignedVisible,
+                                onToggleVisibility: toggleViewerAAligned.handleButtonClick,
+                                chainZoomLabel: selectedChainIdAligned && chainInfoAligned.chainLabels.has(selectedChainIdAligned)
+                                    ? chainInfoAligned.chainLabels.get(selectedChainIdAligned) ?? ''
+                                    : '',
+                                onChainZoom: chainZoomAAligned.handleButtonClick,
+                                chainZoomDisabled: !selectedChainIdAligned,
+                                residueZoomLabel: residueInfoAligned.residueLabels.get(selectedResidueIdAligned)?.name || '',
+                                onResidueZoom: residueZoomAAligned.handleButtonClick,
+                                residueZoomDisabled: !selectedResidueIdAligned,
+                                isLoaded: viewerA.isMoleculeAlignedLoaded,
+                                forceUpdate,
+                                representationRefs: molstarA.representationRefs[Aligned] || [],
+                                syncEnabled,
+                                deleteRepresentation,
+                                repIdMap: molstarA.repIdMap,
+                                Aligned,
+                                chainInfoAligned,
+                                selectedChainIdAligned,
+                                residueInfoAligned,
+                                selectedResidueIdAligned
+                            })}
                             realignedMoleculeListProps={getRealignedMoleculeListProps({
                                 molecules: realignedMoleculesA,
                                 molstar: molstarA,
@@ -1624,8 +1628,54 @@ const App: React.FC = () => {
                                 cameraBNear,
                                 cameraBFar,
                             })}
-                            moleculeUIAlignedToProps={getMoleculeUIAlignedToPropsB()}
-                            moleculeUIAlignedProps={getMoleculeUIAlignedPropsB()}
+                            moleculeUIAlignedToProps={getMoleculeUIAlignedToProps({
+                                molstar: molstarB,
+                                otherMolstar: molstarA,
+                                viewer: viewerB,
+                                isVisible: viewerB.isMoleculeAlignedToVisible,
+                                onToggleVisibility: toggleViewerBAlignedTo.handleButtonClick,
+                                chainZoomLabel: selectedChainIdAlignedTo && chainInfoAlignedTo.chainLabels.has(selectedChainIdAlignedTo)
+                                    ? chainInfoAlignedTo.chainLabels.get(selectedChainIdAlignedTo) ?? ''
+                                    : '',
+                                onChainZoom: chainZoomBAlignedTo.handleButtonClick,
+                                chainZoomDisabled: !selectedChainIdAlignedTo,
+                                residueZoomLabel: residueInfoAlignedTo.residueLabels.get(selectedResidueIdAlignedTo)?.name || '',
+                                onResidueZoom: residueZoomBAlignedTo.handleButtonClick,
+                                residueZoomDisabled: !selectedResidueIdAlignedTo,
+                                isLoaded: viewerB.isMoleculeAlignedToLoaded,
+                                forceUpdate,
+                                representationRefs: molstarB.representationRefs[AlignedTo] || [],
+                                syncEnabled,
+                                deleteRepresentation,
+                                repIdMap: molstarB.repIdMap,
+                                AlignedTo
+                            })}
+                            moleculeUIAlignedProps={getMoleculeUIAlignedProps({
+                                molstar: molstarB,
+                                otherMolstar: molstarA,
+                                viewer: viewerB,
+                                isVisible: viewerB.isMoleculeAlignedVisible,
+                                onToggleVisibility: toggleViewerBAligned.handleButtonClick,
+                                chainZoomLabel: selectedChainIdAligned && chainInfoAligned.chainLabels.has(selectedChainIdAligned)
+                                    ? chainInfoAligned.chainLabels.get(selectedChainIdAligned) ?? ''
+                                    : '',
+                                onChainZoom: chainZoomBAligned.handleButtonClick,
+                                chainZoomDisabled: !selectedChainIdAligned,
+                                residueZoomLabel: residueInfoAligned.residueLabels.get(selectedResidueIdAligned)?.name || '',
+                                onResidueZoom: residueZoomBAligned.handleButtonClick,
+                                residueZoomDisabled: !selectedResidueIdAligned,
+                                isLoaded: viewerB.isMoleculeAlignedLoaded,
+                                forceUpdate,
+                                representationRefs: molstarB.representationRefs[Aligned] || [],
+                                syncEnabled,
+                                deleteRepresentation,
+                                repIdMap: molstarB.repIdMap,
+                                Aligned,
+                                chainInfoAligned,
+                                selectedChainIdAligned,
+                                residueInfoAligned,
+                                selectedResidueIdAligned
+                            })}
                             realignedMoleculeListProps={getRealignedMoleculeListProps({
                                 molecules: realignedMoleculesB,
                                 molstar: molstarB,
