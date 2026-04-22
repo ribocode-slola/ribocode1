@@ -6,6 +6,8 @@
  * @author Andy Turner <agdturner@gmail.com>
  */
 import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { useSessionSave } from './hooks/useSessionSave';
+import { useSessionLoadModal } from './hooks/useSessionLoadModal';
 import { useUpdateChainInfo } from './hooks/useUpdateChainInfo';
 import { useUpdateResidueInfo } from './hooks/useUpdateResidueInfo';
 import { useUpdateColors } from './hooks/useUpdateColors';
@@ -345,14 +347,11 @@ const App: React.FC = () => {
      */
 
 
-    // Use custom hook for both viewers (with subunitToChainIds)
+    // Custom hooks for updating chain info and subunit-to-chain mapping for both viewers.
     useUpdateChainInfo(viewerA.ref, structureRefAAlignedTo, molstarA, setChainInfoAlignedTo, setSubunitToChainIdsAlignedTo, AlignedTo);
     useUpdateChainInfo(viewerB.ref, structureRefBAligned, molstarB, setChainInfoAligned, setSubunitToChainIdsAligned, Aligned);
 
-    // Generalized effect for residue ID selection
-
-
-    // Use custom hook for residue info
+    // Generalized effect for residue ID selection and info update.
     useUpdateResidueInfo(viewerA.ref, structureRefAAlignedTo, molstarA, selectedChainIdAlignedTo, setResidueInfoAlignedTo, selectedResidueIdAlignedTo, setSelectedResidueIdAlignedTo, AlignedTo);
     useUpdateResidueInfo(viewerB.ref, structureRefBAligned, molstarB, selectedChainIdAligned, setResidueInfoAligned, selectedResidueIdAligned, setSelectedResidueIdAligned, Aligned);
 
@@ -816,43 +815,57 @@ const App: React.FC = () => {
 
     // Menu bar handlers
 
-    // Save Session handler - saves current session state to a JSON file
-    const handleSaveSession = () => {
-        // Example: Save session state as JSON
-        try {
-            // Gather session state (customize as needed)
-            const session = {
-                // Add relevant state here; this is a minimal example
-                viewerA: {
-                    moleculeAlignedTo: viewerA.moleculeAlignedTo,
-                    moleculeAligned: viewerA.moleculeAligned,
-                },
-                viewerB: {
-                    moleculeAlignedTo: viewerB.moleculeAlignedTo,
-                    moleculeAligned: viewerB.moleculeAligned,
-                },
-                // Add more state as needed
-            };
-            const blob = new Blob([JSON.stringify(session, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'ribocode-session.json';
-            document.body.appendChild(a);
-            a.click();
-            setTimeout(() => {
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-            }, 0);
-        } catch (err) {
-            alert('Failed to save session: ' + (err instanceof Error ? err.message : err));
-        }
-    };
+    // Session save: use custom hook
+    const handleSaveSession = useSessionSave(() => ({
+        viewerA: {
+            moleculeAlignedTo: viewerA.moleculeAlignedTo,
+            moleculeAligned: viewerA.moleculeAligned,
+        },
+        viewerB: {
+            moleculeAlignedTo: viewerB.moleculeAlignedTo,
+            moleculeAligned: viewerB.moleculeAligned,
+        },
+        // Add more state as needed
+    }));
 
-    // Load Session handler - for loading session state from a JSON file
-    const handleLoadSession = () => {
-        // Placeholder, will add logic next
-    };
+    // Session load: use custom hook
+    // Define a type for the loader return value
+    interface LoadedMolecule {
+        alignmentData?: any;
+        // Add other properties as needed
+    }
+
+    const onSessionLoaded = useCallback(async (session: any, files: Record<string, File>) => {
+        // Loads molecules and restores state from session. Expand as needed.
+        let loadedAny = false;
+        try {
+            if (files.alignedToA) {
+                // Explicitly type the result for clarity and type safety
+                const alignedToMolecule = await loadMoleculeIntoViewers(files.alignedToA, AlignedTo) as LoadedMolecule | undefined;
+                loadedAny = true;
+                if (files.alignedB || files.alignedA) {
+                    const alignedFile = files.alignedB || files.alignedA;
+                    // Defensive runtime check for alignmentData
+                    if (!alignedToMolecule || typeof alignedToMolecule !== 'object' || !('alignmentData' in alignedToMolecule) || !alignedToMolecule.alignmentData) {
+                        alert('AlignedTo alignment data not available after load. Cannot load Aligned file.');
+                    } else {
+                        await loadMoleculeIntoViewers(alignedFile, Aligned, alignedToMolecule.alignmentData);
+                    }
+                }
+            } else if (files.alignedB || files.alignedA) {
+                await loadMoleculeIntoViewers(files.alignedB || files.alignedA, Aligned);
+                loadedAny = true;
+            }
+            // TODO: Restore visibility and representations as needed
+            if (!loadedAny) {
+                alert('Session loaded, but could not automatically reload datasets. Please reload the required files manually.');
+            }
+        } catch (e) {
+            alert('Error loading session: ' + (e instanceof Error ? e.message : String(e)));
+        }
+    }, [loadMoleculeIntoViewers]);
+
+    const { handleLoadSession, SessionLoadModal } = useSessionLoadModal(onSessionLoaded);
     
     // Generic prop creator for LoadDataRow
     interface LoadDataRowPropsInput {
@@ -1368,8 +1381,12 @@ const App: React.FC = () => {
                 <AppHeader />
                 <div className="menu-bar">
                     <button className="menu-btn" onClick={handleSaveSession}>Save Session</button>
-                    <button className="menu-btn" onClick={handleLoadSession}>Load Session</button>
+                    <label className="menu-btn" style={{ cursor: 'pointer', marginBottom: 0 }}>
+                        Load Session
+                        <input type="file" style={{ display: 'none' }} onChange={handleLoadSession} accept="application/json" />
+                    </label>
                 </div>
+                {SessionLoadModal}
                 <GeneralControls
                   zoomExtraRadius={zoomExtraRadius}
                   setZoomExtraRadius={setZoomExtraRadius}

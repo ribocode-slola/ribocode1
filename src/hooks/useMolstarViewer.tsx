@@ -5,6 +5,7 @@
  * ribosome alignment/visualization apps.
  *
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
+ *
  * @author Andy Turner <agdturner@gmail.com>
  */
 import React, { useEffect, useState, useRef, useCallback } from 'react';
