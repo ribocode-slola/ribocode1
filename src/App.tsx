@@ -7,6 +7,8 @@
  */
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useUpdateChainInfo } from './hooks/useUpdateChainInfo';
+import { useUpdateResidueInfo } from './hooks/useUpdateResidueInfo';
+import { useUpdateColors } from './hooks/useUpdateColors';
 import ViewerColumn from './components/ViewerColumn';
 import TwoColumnsContainer from './components/TwoColumnsContainer';
 import AppHeader from './components/AppHeader';
@@ -309,45 +311,27 @@ const App: React.FC = () => {
      * @param themeName The name of the theme to register.
      * @param deps Additional dependencies for the effect.
      */
-    function useUpdateColors(
-        colorFileData: Array<Record<string, string>>,
-        setIsColorsLoaded: React.Dispatch<React.SetStateAction<boolean>>,
-        themeName: string,
-        deps: any[]
-    ) {
-        useEffect(() => {
-            if (colorFileData && colorFileData.length > 0) {
-                setIsColorsLoaded(true);
-                // Build and set the chain color map before registering the theme
-                const themeChainColorMap = new Map<string, Color>();
-                colorFileData.forEach(row => {
-                    if (row.pdb_chain && row.color) {
-                        try {
-                            themeChainColorMap.set(row.pdb_chain, Color.fromHexStyle(row.color));
-                        } catch {
-                            console.warn(`Invalid color: ${row.color}`);
-                        }
-                    }
-                });
-                chainColorMaps.set(themeName, themeChainColorMap);
-                // Register the custom theme on both plugins before updating representations
-                if (viewerA.ref.current) {
-                    registerThemeIfNeeded(viewerA.ref.current, themeName, chainColorMaps);
-                }
-                if (viewerB.ref.current) {
-                    registerThemeIfNeeded(viewerB.ref.current, themeName, chainColorMaps);
-                }
-                // Do not update representations here; only register the theme and set color map
-            }
-        }, [colorFileData, setIsColorsLoaded, themeName, ...deps]);
-    }
 
-    // Use the reusable effect for both color sets
+
+
+    // Use the custom hook for both color sets (AlignedTo)
     useUpdateColors(
+        viewerA.ref.current,
         colorsAlignedToFile.data,
         setIsMoleculeAlignedToColoursLoaded,
         themeNameAlignedTo,
+        chainColorMaps,
         [viewerA.moleculeAlignedTo, viewerB.moleculeAlignedTo, representationTypeAlignedTo, structureRefAAlignedTo, structureRefBAlignedTo]
+    );
+
+    // Use the custom hook for both color sets (Aligned)
+    useUpdateColors(
+        viewerA.ref.current,
+        colorsAlignedFile.data,
+        setIsMoleculeAlignedColoursLoaded,
+        themeNameAligned,
+        chainColorMaps,
+        [viewerA.moleculeAligned, viewerB.moleculeAligned, representationTypeAligned, structureRefAAligned, structureRefBAligned]
     );
 
         /**
@@ -366,63 +350,11 @@ const App: React.FC = () => {
     useUpdateChainInfo(viewerB.ref, structureRefBAligned, molstarB, setChainInfoAligned, setSubunitToChainIdsAligned, Aligned);
 
     // Generalized effect for residue ID selection
-    function useUpdateResidueInfo(
-        viewerRef: React.RefObject<PluginUIContext | null>,
-        structureRef: string | null,
-        molstar: ReturnType<typeof useMolstarViewer>,
-        selectedChainId: string,
-        setResidueInfo: React.Dispatch<React.SetStateAction<{ residueLabels: Map<string, ResidueLabelInfo>; residueToAtomIds: Record<string, string[]> }>>,
-        selectedResidueId: string,
-        setSelectedResidueId: React.Dispatch<React.SetStateAction<string>>,
-        label: string
-    ) {
-        useEffect(() => {
-            // Only update residue IDs when a chain is selected
-            if (!selectedChainId) {
-                setResidueInfo({ residueLabels: new Map(), residueToAtomIds: {} });
-                setSelectedResidueId('');
-                return;
-            }
-            console.log(`Updating Residue IDs for ${label}, chain:`, selectedChainId);
-            const plugin = viewerRef.current;
-            if (!plugin) return;
-            const structureObj = plugin.managers.structure.hierarchy.current.structures.find(
-                s => s.cell.transform.ref === structureRef
-            )?.cell.obj?.data;
-            if (!structureObj) return;
-            // Filter residue IDs to only those in the selected chain
-            const residueInfo = molstar.getResidueInfo(structureObj, selectedChainId);
-            setResidueInfo(residueInfo);
-            // Reset selected residue if not in new list
-            if (!residueInfo.residueLabels.has(selectedResidueId)) {
-                setSelectedResidueId('');
-            }
-        }, [viewerRef, structureRef, selectedChainId]);
-    }
 
-    // Use useUpdateResidueIds
-    // viewerA AlignedTo
-    useUpdateResidueInfo(
-        viewerA.ref,
-        structureRefAAlignedTo,
-        molstarA,
-        selectedChainIdAlignedTo,
-        setResidueInfoAlignedTo,
-        selectedResidueIdAlignedTo,
-        setSelectedResidueIdAlignedTo,
-        AlignedTo
-    );
-    // viewerB Aligned
-    useUpdateResidueInfo(
-        viewerB.ref,
-        structureRefBAligned,
-        molstarB,
-        selectedChainIdAligned,
-        setResidueInfoAligned,
-        selectedResidueIdAligned,
-        setSelectedResidueIdAligned,
-        Aligned
-    );
+
+    // Use custom hook for residue info
+    useUpdateResidueInfo(viewerA.ref, structureRefAAlignedTo, molstarA, selectedChainIdAlignedTo, setResidueInfoAlignedTo, selectedResidueIdAlignedTo, setSelectedResidueIdAlignedTo, AlignedTo);
+    useUpdateResidueInfo(viewerB.ref, structureRefBAligned, molstarB, selectedChainIdAligned, setResidueInfoAligned, selectedResidueIdAligned, setSelectedResidueIdAligned, Aligned);
 
     // --- Shared chain/residue loci and focus utilities ---
     /**
