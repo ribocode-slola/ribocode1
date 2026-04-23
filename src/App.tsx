@@ -55,6 +55,22 @@ const selectedAtomTypes: { [key: string]: boolean } = { 'P': true, 'C': true };
  * The main App component.
  * @returns The main App component.
  */
+// --- Helper functions for fog and camera setters ---
+function makeFogSetters(setFog: React.Dispatch<React.SetStateAction<{ enabled: boolean; near: number; far: number }>>) {
+    return {
+        setEnabled: (val: boolean) => setFog(fog => ({ ...fog, enabled: val })),
+        setNear: (val: number) => setFog(fog => ({ ...fog, near: val })),
+        setFar: (val: number) => setFog(fog => ({ ...fog, far: val })),
+    };
+}
+
+function makeCameraSetters(setCamera: React.Dispatch<React.SetStateAction<{ near: number; far: number }>>) {
+    return {
+        setNear: (val: number) => setCamera(camera => ({ ...camera, near: val })),
+        setFar: (val: number) => setCamera(camera => ({ ...camera, far: val })),
+    };
+}
+
 const App: React.FC = () => {
 
     // Store File for aligned molecule reloads.
@@ -1230,16 +1246,9 @@ const App: React.FC = () => {
                                     selectedResidueId: selectedResidueIdAligned,
                                     setSelectedResidueId: setSelectedResidueIdAligned,
                                     fog: fogA,
-                                    setFog: {
-                                        setEnabled: (val: boolean) => setFogA(fog => ({ ...fog, enabled: val })),
-                                        setNear: (val: number) => setFogA(fog => ({ ...fog, near: val })),
-                                        setFar: (val: number) => setFogA(fog => ({ ...fog, far: val })),
-                                    },
+                                    setFog: makeFogSetters(setFogA),
                                     camera: cameraA,
-                                    setCamera: {
-                                        setNear: (val: number) => setCameraA(camera => ({ ...camera, near: val })),
-                                        setFar: (val: number) => setCameraA(camera => ({ ...camera, far: val })),
-                                    },
+                                    setCamera: makeCameraSetters(setCameraA),
                                     updateFog,
                                     handleFileChange,
                                     Aligned,
@@ -1353,16 +1362,9 @@ const App: React.FC = () => {
                                     selectedResidueId: selectedResidueIdAligned,
                                     setSelectedResidueId: setSelectedResidueIdAligned,
                                     fog: fogB,
-                                    setFog: {
-                                        setEnabled: (val: boolean) => setFogB(fog => ({ ...fog, enabled: val })),
-                                        setNear: (val: number) => setFogB(fog => ({ ...fog, near: val })),
-                                        setFar: (val: number) => setFogB(fog => ({ ...fog, far: val })),
-                                    },
+                                    setFog: makeFogSetters(setFogB),
                                     camera: cameraB,
-                                    setCamera: {
-                                        setNear: (val: number) => setCameraB(camera => ({ ...camera, near: val })),
-                                        setFar: (val: number) => setCameraB(camera => ({ ...camera, far: val })),
-                                    },
+                                    setCamera: makeCameraSetters(setCameraB),
                                     updateFog,
                                     handleFileChange,
                                     Aligned,
