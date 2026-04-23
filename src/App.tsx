@@ -19,6 +19,7 @@ import AppHeader from './components/AppHeader';
 import { AlignedTo, Aligned, ReAligned } from './types/molecule';
 import { parseColorFileContent, registerThemeIfNeeded } from './utils/colors';
 import { useFileInput } from './hooks/useFileInput';
+import { useCameraControl } from './hooks/useCameraControl';
 import { useChainState } from './hooks/useChainState';
 import { getAtomDataFromStructureUnits } from './utils/data';
 import { parseDictionaryFileContent } from './utils/dictionary';
@@ -174,15 +175,15 @@ const App: React.FC = () => {
       fogBFar, setFogBFar,
       updateFog,
     } = useFogControl();
-    // State for zoom-to-residue options
-    const [zoomExtraRadius, setZoomExtraRadius] = useState<number>(20);
-    const [zoomMinRadius, setZoomMinRadius] = useState<number>(16);
-
-    // Camera near/far state for each dataset
-    const [cameraANear, setCameraANear] = useState(0.1);
-    const [cameraAFar, setCameraAFar] = useState(100);
-    const [cameraBNear, setCameraBNear] = useState(0.1);
-    const [cameraBFar, setCameraBFar] = useState(100);
+        // Camera and zoom state (custom hook)
+        const {
+            zoomExtraRadius, setZoomExtraRadius,
+            zoomMinRadius, setZoomMinRadius,
+            cameraANear, setCameraANear,
+            cameraAFar, setCameraAFar,
+            cameraBNear, setCameraBNear,
+            cameraBFar, setCameraBFar,
+        } = useCameraControl();
 
     /**
      * Handle toggling visibility of a molecule.
