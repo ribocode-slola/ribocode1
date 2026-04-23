@@ -20,7 +20,13 @@ describe('useResidueState', () => {
 
   it('should update residueInfo and selectedResidueId', () => {
     const { result } = renderHook(() => useResidueState());
-    const label: ResidueLabelInfo = { id: '1', label: 'ALA', chainId: 'A', seq: 1 };
+    const label: ResidueLabelInfo = {
+      id: '1',
+      name: 'ALA 1',
+      compId: 'ALA',
+      seqNumber: 1,
+      insCode: ''
+    };
     act(() => {
       result.current.setResidueInfo({
         residueLabels: new Map([['1', label]]),
