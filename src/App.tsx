@@ -6,6 +6,8 @@
  * @author Andy Turner <agdturner@gmail.com>
  */
 import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { useFogControl } from './hooks/useFogControl';
+import { useHandleFileChange, handleToggle } from './handlers/uiHandlers';
 import { useSessionSave } from './hooks/useSessionSave';
 import { useSessionLoadModal } from './hooks/useSessionLoadModal';
 import { useUpdateChainInfo } from './hooks/useUpdateChainInfo';
@@ -14,36 +16,25 @@ import { useUpdateColors } from './hooks/useUpdateColors';
 import ViewerColumn from './components/ViewerColumn';
 import TwoColumnsContainer from './components/TwoColumnsContainer';
 import AppHeader from './components/AppHeader';
-import { MoleculeMode, AlignedTo, Aligned, ReAligned } from './types/molecule';
+import { AlignedTo, Aligned, ReAligned } from './types/molecule';
 import { parseColorFileContent, registerThemeIfNeeded } from './utils/colors';
 import { useFileInput } from './hooks/useFileInput';
 import { getAtomDataFromStructureUnits } from './utils/data';
-// getStructureRepresentations is now in utils/structure and can be used for session save/restore if needed
-import { getStructureRepresentations } from './utils/structure';
 import { parseDictionaryFileContent } from './utils/dictionary';
 import { ResidueLabelInfo } from './utils/residue';
-import { RibosomeSubunitType, getSubunitToChainIds } from './utils/subunit';
+import { RibosomeSubunitType } from './utils/subunit';
 import RepresentationSelectButton, { allowedRepresentationTypes, AllowedRepresentationType } from './components/buttons/select/Representation';
 import GeneralControls from './components/GeneralControls';
-import LoadDataRow from './components/LoadMolecule';
-import MoleculeUI from './components/Molecule';
-import MolstarContainer from './components/MolstarContainer';
 import { SyncProvider } from './context/SyncContext';
-import { toggleVisibility, ViewerKey, ViewerState } from './components/RibocodeViewer';
+import { ViewerKey, ViewerState } from './components/RibocodeViewer';
 import { useMolstarViewer } from './hooks/useMolstarViewer';
 import { useViewerState } from './hooks/useViewerState';
-import { Molecule } from 'molstar/lib/extensions/ribocode/structure';
 import { useMoleculeLoader } from './hooks/useMoleculeLoader';
 import { alignDatasetUsingChains } from 'molstar/lib/extensions/ribocode/utils/geometry';
-import { Asset } from 'molstar/lib/mol-util/assets';
 import { Color } from 'molstar/lib/mol-util/color';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
-import { StructureSelection } from 'molstar/lib/mol-model/structure';
-import { getChainLoci, focusLociOnChain, getResidueLoci } from './utils/structureUtils';
+import { focusLociOnChain } from './utils/structureUtils';
 import { focusLociOnResidue } from './utils/structureUtils';
-import { QueryContext } from 'molstar/lib/mol-model/structure/query/context';
-import { MolScriptBuilder } from 'molstar/lib/mol-script/language/builder';
-import { compile } from 'molstar/lib/mol-script/runtime/query/base';
 import { AlignmentData } from 'molstar/lib/extensions/ribocode/types';
 
 // Viewer keys.
@@ -163,64 +154,19 @@ const App: React.FC = () => {
         setRealignedRepRefsB,
     });
 
-    // Handle file changes for molecule loading.
-    const handleFileChange = useCallback(
-        async (
-            e: React.ChangeEvent<HTMLInputElement>,
-            mode: MoleculeMode
-        ) => {
-            const pluginA = viewerA.ref.current;
-            const pluginB = viewerB.ref.current;
-            if (!pluginA || !pluginB) {
-                console.error('One or both viewers are not initialized.');
-                return;
-            }
-            try {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                await loadMoleculeIntoViewers(file, mode, undefined);
-            } catch (err) {
-                console.error('Error loading molecule:', err);
-            }
-        },
-        [viewerA, viewerB]
-    );
+    // Use centralized handler for file changes
+    const handleFileChange = useHandleFileChange(viewerA.ref, viewerB.ref);
 
-    // Fog control state and updater
-
-    // Fog state for each dataset (shared between viewers)
-    const [fogAEnabled, setFogAEnabled] = useState(true);
-    const [fogANear, setFogANear] = useState(0.5);
-    const [fogAFar, setFogAFar] = useState(2.0);
-    const [fogBEnabled, setFogBEnabled] = useState(true);
-    const [fogBNear, setFogBNear] = useState(0.5);
-    const [fogBFar, setFogBFar] = useState(2.0);
-    
-    // Helper to update fog in both viewers for a dataset
-    const updateFog = useCallback((pluginA: any, pluginB: any, enabled: any, near: any, far: any, cameraNear: any, cameraFar: any) => {
-        const fogProps = { camera: { fog: enabled, fogNear: near, fogFar: far, near: cameraNear, far: cameraFar } };
-        [pluginA, pluginB].forEach((plugin, idx) => {
-            if (plugin?.canvas3d) {
-                plugin.canvas3d.setProps(fogProps);
-                // Try to set camera near/far directly if possible
-                if (plugin.canvas3d.camera) {
-                    if (typeof plugin.canvas3d.camera.near === 'number') plugin.canvas3d.camera.near = cameraNear;
-                    if (typeof plugin.canvas3d.camera.far === 'number') plugin.canvas3d.camera.far = cameraFar;
-                    if (typeof plugin.canvas3d.camera.updateProjectionMatrix === 'function') plugin.canvas3d.camera.updateProjectionMatrix();
-                }
-                // Force redraw
-                if (typeof plugin.canvas3d.requestDraw === 'function') plugin.canvas3d.requestDraw();
-                // Log camera parameters for debugging
-                const camProps = plugin.canvas3d.props?.camera;
-                let camNear = undefined, camFar = undefined;
-                if (plugin.canvas3d.camera) {
-                    camNear = plugin.canvas3d.camera.near;
-                    camFar = plugin.canvas3d.camera.far;
-                }
-                console.log(`[updateFog] Viewer ${idx === 0 ? 'A' : 'B'} camera props:`, camProps, 'actual near:', camNear, 'actual far:', camFar);
-            }
-        });
-    }, []);
+    // Fog control state and updater (custom hook)
+    const {
+      fogAEnabled, setFogAEnabled,
+      fogANear, setFogANear,
+      fogAFar, setFogAFar,
+      fogBEnabled, setFogBEnabled,
+      fogBNear, setFogBNear,
+      fogBFar, setFogBFar,
+      updateFog,
+    } = useFogControl();
     // State for zoom-to-residue options
     const [zoomExtraRadius, setZoomExtraRadius] = useState<number>(20);
     const [zoomMinRadius, setZoomMinRadius] = useState<number>(16);
@@ -238,14 +184,7 @@ const App: React.FC = () => {
      * @param setVisible The setter function for visibility state.
      * @param isVisible The current visibility state.
      */
-    async function handleToggle(viewer: any, moleculeKey: string, setVisible: (v: boolean) => void, isVisible: boolean) {
-        const molecule = viewer[moleculeKey];
-        const model = molecule?.presetResult && (molecule.presetResult as any).model;
-        if (model) {
-            await toggleVisibility(viewer, model);
-            setVisible(!isVisible);
-        }
-    }
+    // handleToggle is now imported from handlers/uiHandlers
 
     // Toggle visibility for moleculeAlignedTo in viewer A.
     const toggleViewerAAlignedTo = {
