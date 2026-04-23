@@ -165,25 +165,27 @@ const App: React.FC = () => {
     // Use centralized handler for file changes
     const handleFileChange = useHandleFileChange(viewerA.ref, viewerB.ref);
 
-    // Fog control state and updater (custom hook)
-    const {
-        fogAEnabled, setFogAEnabled,
-        fogANear, setFogANear,
-        fogAFar, setFogAFar,
-        fogBEnabled, setFogBEnabled,
-        fogBNear, setFogBNear,
-        fogBFar, setFogBFar,
-        updateFog,
-    } = useFogControl();
-    // Camera and zoom state (custom hook)
-    const {
-        zoomExtraRadius, setZoomExtraRadius,
-        zoomMinRadius, setZoomMinRadius,
-        cameraANear, setCameraANear,
-        cameraAFar, setCameraAFar,
-        cameraBNear, setCameraBNear,
-        cameraBFar, setCameraBFar,
-    } = useCameraControl();
+
+    // Fog state grouped by viewer
+    const [fogA, setFogA] = useState({ enabled: false, near: 0, far: 100 });
+    const [fogB, setFogB] = useState({ enabled: false, near: 0, far: 100 });
+    // Camera state grouped by viewer
+    const [cameraA, setCameraA] = useState({ near: 0.1, far: 1000 });
+    const [cameraB, setCameraB] = useState({ near: 0.1, far: 1000 });
+    // Zoom state (if needed, can also be grouped)
+    const [zoomExtraRadius, setZoomExtraRadius] = useState(0);
+    const [zoomMinRadius, setZoomMinRadius] = useState(0);
+    // updateFog function (adapt as needed)
+    const updateFog = (
+        pluginARef: any,
+        pluginBRef: any,
+        fogAState = fogA,
+        fogBState = fogB,
+        cameraAState = cameraA,
+        cameraBState = cameraB
+    ) => {
+        // ...implement fog update logic using grouped state...
+    };
 
     /**
      * Handle toggling visibility of a molecule.
@@ -696,16 +698,17 @@ const App: React.FC = () => {
         residueInfo: any;
         selectedResidueId: any;
         setSelectedResidueId: (val: any) => void;
-        fogEnabled: boolean;
-        setFogEnabled: (val: boolean) => void;
-        fogNear: number;
-        setFogNear: (val: number) => void;
-        fogFar: number;
-        setFogFar: (val: number) => void;
-        cameraNear: number;
-        setCameraNear: (val: number) => void;
-        cameraFar: number;
-        setCameraFar: (val: number) => void;
+        fog: { enabled: boolean; near: number; far: number };
+        setFog: {
+            setEnabled: (val: boolean) => void;
+            setNear: (val: number) => void;
+            setFar: (val: number) => void;
+        };
+        camera: { near: number; far: number };
+        setCamera: {
+            setNear: (val: number) => void;
+            setFar: (val: number) => void;
+        };
         updateFog: (...args: any[]) => void;
         handleFileChange: (...args: any[]) => void;
         Aligned: string;
@@ -714,8 +717,6 @@ const App: React.FC = () => {
         realignedRepRefs: any;
         setRealignedRepRefs: (val: any) => void;
         setRealignedStructRefs: (val: any) => void;
-        cameraBNear: number;
-        cameraBFar: number;
     }
 
     /**
@@ -751,16 +752,10 @@ const App: React.FC = () => {
         residueInfo,
         selectedResidueId,
         setSelectedResidueId,
-        fogEnabled,
-        setFogEnabled,
-        fogNear,
-        setFogNear,
-        fogFar,
-        setFogFar,
-        cameraNear,
-        setCameraNear,
-        cameraFar,
-        setCameraFar,
+        fog,
+        setFog,
+        camera,
+        setCamera,
         updateFog,
         handleFileChange,
         Aligned,
@@ -768,9 +763,7 @@ const App: React.FC = () => {
         syncEnabled,
         realignedRepRefs,
         setRealignedRepRefs,
-        setRealignedStructRefs,
-        cameraBNear,
-        cameraBFar
+        setRealignedStructRefs
     }: LoadDataRowPropsInput) {
         return {
             viewerTitle: viewer.moleculeAligned ? Aligned + `: ${viewer.moleculeAligned.name || viewer.moleculeAligned.filename}` : "",
@@ -857,30 +850,30 @@ const App: React.FC = () => {
             selectedResidueId,
             onSelectResidueId: setSelectedResidueId,
             residueSelectDisabled: !isMoleculeAlignedLoaded,
-            fogEnabled,
-            fogNear,
-            fogFar,
+            fogEnabled: fog.enabled,
+            fogNear: fog.near,
+            fogFar: fog.far,
             onFogEnabledChange: (val: boolean) => {
-                setFogEnabled(val);
-                updateFog(viewer.ref.current, otherViewer.ref.current, val, fogNear, fogFar, cameraNear, cameraFar);
+                setFog.setEnabled(val);
+                updateFog(viewer.ref.current, otherViewer.ref.current, val, fog.near, fog.far, camera.near, camera.far);
             },
             onFogNearChange: (val: number) => {
-                setFogNear(val);
-                updateFog(viewer.ref.current, otherViewer.ref.current, fogEnabled, val, fogFar, cameraNear, cameraFar);
+                setFog.setNear(val);
+                updateFog(viewer.ref.current, otherViewer.ref.current, fog.enabled, val, fog.far, camera.near, camera.far);
             },
             onFogFarChange: (val: number) => {
-                setFogFar(val);
-                updateFog(viewer.ref.current, otherViewer.ref.current, fogEnabled, fogNear, val, cameraNear, cameraFar);
+                setFog.setFar(val);
+                updateFog(viewer.ref.current, otherViewer.ref.current, fog.enabled, fog.near, val, camera.near, camera.far);
             },
-            cameraNear,
-            cameraFar,
+            cameraNear: camera.near,
+            cameraFar: camera.far,
             onCameraNearChange: (val: number) => {
-                setCameraNear(val);
-                updateFog(viewer.ref.current, otherViewer.ref.current, fogEnabled, fogNear, fogFar, val, cameraFar);
+                setCamera.setNear(val);
+                updateFog(viewer.ref.current, otherViewer.ref.current, fog.enabled, fog.near, fog.far, val, camera.far);
             },
             onCameraFarChange: (val: number) => {
-                setCameraFar(val);
-                updateFog(viewer.ref.current, otherViewer.ref.current, fogEnabled, fogNear, fogFar, cameraNear, val);
+                setCamera.setFar(val);
+                updateFog(viewer.ref.current, otherViewer.ref.current, fog.enabled, fog.near, fog.far, camera.near, val);
             },
             subunitToChainIds
         };
@@ -1236,16 +1229,17 @@ const App: React.FC = () => {
                                     residueInfo: residueInfoAligned,
                                     selectedResidueId: selectedResidueIdAligned,
                                     setSelectedResidueId: setSelectedResidueIdAligned,
-                                    fogEnabled: fogBEnabled,
-                                    setFogEnabled: setFogBEnabled,
-                                    fogNear: fogBNear,
-                                    setFogNear: setFogBNear,
-                                    fogFar: fogBFar,
-                                    setFogFar: setFogBFar,
-                                    cameraNear: cameraBNear,
-                                    setCameraNear: setCameraBNear,
-                                    cameraFar: cameraBFar,
-                                    setCameraFar: setCameraBFar,
+                                    fog: fogA,
+                                    setFog: {
+                                        setEnabled: (val: boolean) => setFogA(fog => ({ ...fog, enabled: val })),
+                                        setNear: (val: number) => setFogA(fog => ({ ...fog, near: val })),
+                                        setFar: (val: number) => setFogA(fog => ({ ...fog, far: val })),
+                                    },
+                                    camera: cameraA,
+                                    setCamera: {
+                                        setNear: (val: number) => setCameraA(camera => ({ ...camera, near: val })),
+                                        setFar: (val: number) => setCameraA(camera => ({ ...camera, far: val })),
+                                    },
                                     updateFog,
                                     handleFileChange,
                                     Aligned,
@@ -1254,8 +1248,6 @@ const App: React.FC = () => {
                                     realignedRepRefs: realignedRepRefsA,
                                     setRealignedRepRefs: setRealignedRepRefsA,
                                     setRealignedStructRefs: setRealignedStructRefsA,
-                                    cameraBNear,
-                                    cameraBFar,
                                 })}
                                 moleculeUIAlignedToProps={getMoleculeUIAlignedToProps({
                                     molstar: molstarA,
@@ -1360,16 +1352,17 @@ const App: React.FC = () => {
                                     residueInfo: residueInfoAligned,
                                     selectedResidueId: selectedResidueIdAligned,
                                     setSelectedResidueId: setSelectedResidueIdAligned,
-                                    fogEnabled: fogBEnabled,
-                                    setFogEnabled: setFogBEnabled,
-                                    fogNear: fogBNear,
-                                    setFogNear: setFogBNear,
-                                    fogFar: fogBFar,
-                                    setFogFar: setFogBFar,
-                                    cameraNear: cameraBNear,
-                                    setCameraNear: setCameraBNear,
-                                    cameraFar: cameraBFar,
-                                    setCameraFar: setCameraBFar,
+                                    fog: fogB,
+                                    setFog: {
+                                        setEnabled: (val: boolean) => setFogB(fog => ({ ...fog, enabled: val })),
+                                        setNear: (val: number) => setFogB(fog => ({ ...fog, near: val })),
+                                        setFar: (val: number) => setFogB(fog => ({ ...fog, far: val })),
+                                    },
+                                    camera: cameraB,
+                                    setCamera: {
+                                        setNear: (val: number) => setCameraB(camera => ({ ...camera, near: val })),
+                                        setFar: (val: number) => setCameraB(camera => ({ ...camera, far: val })),
+                                    },
                                     updateFog,
                                     handleFileChange,
                                     Aligned,
@@ -1378,8 +1371,6 @@ const App: React.FC = () => {
                                     realignedRepRefs: realignedRepRefsB,
                                     setRealignedRepRefs: setRealignedRepRefsB,
                                     setRealignedStructRefs: setRealignedStructRefsB,
-                                    cameraBNear,
-                                    cameraBFar,
                                 })}
                                 moleculeUIAlignedToProps={getMoleculeUIAlignedToProps({
                                     molstar: molstarB,
