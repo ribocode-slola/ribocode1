@@ -19,10 +19,13 @@ import AppHeader from './components/AppHeader';
 import { AlignedTo, Aligned, ReAligned } from './types/molecule';
 import { parseColorFileContent, registerThemeIfNeeded } from './utils/colors';
 import { useFileInput } from './hooks/useFileInput';
+import { useChainState } from './hooks/useChainState';
 import { getAtomDataFromStructureUnits } from './utils/data';
 import { parseDictionaryFileContent } from './utils/dictionary';
 import { ResidueLabelInfo } from './utils/residue';
+import { useResidueState } from './hooks/useResidueState';
 import { RibosomeSubunitType } from './utils/subunit';
+import { useSubunitState } from './hooks/useSubunitState';
 import RepresentationSelectButton, { allowedRepresentationTypes, AllowedRepresentationType } from './components/buttons/select/Representation';
 import GeneralControls from './components/GeneralControls';
 import { SyncProvider } from './context/SyncContext';
@@ -96,41 +99,45 @@ const App: React.FC = () => {
     const [realignedStructRefsB, setRealignedStructRefsB] = useState<{ [id: string]: string }>({});
     const [realignedRepRefsA, setRealignedRepRefsA] = useState<{ [id: string]: string[] }>({});
     const [realignedRepRefsB, setRealignedRepRefsB] = useState<{ [id: string]: string[] }>({});
-    // Add state for subunitToChainIds
-    const [subunitToChainIdsAlignedTo, setSubunitToChainIdsAlignedTo] = useState<Map<string, Set<string>>>(new Map([
-        ['All', new Set()],
-        ['Large', new Set()],
-        ['Small', new Set()],
-        ['Other', new Set()],
-    ]));
-    const [selectedSubunitAlignedTo, setSelectedSubunitAlignedTo] = useState<RibosomeSubunitType>('All');
-    const [subunitToChainIdsAligned, setSubunitToChainIdsAligned] = useState<Map<string, Set<string>>>(new Map([
-        ['All', new Set()],
-        ['Large', new Set()],
-        ['Small', new Set()],
-        ['Other', new Set()],
-    ]));
-    const [selectedSubunitAligned, setSelectedSubunitAligned] = useState<RibosomeSubunitType>('All');
-    // Chain ID selection state.
-    const [chainInfoAlignedTo, setChainInfoAlignedTo] = useState<{
-        chainLabels: Map<string, string>;
-    }>({ chainLabels: new Map() });
-    const [selectedChainIdAlignedTo, setSelectedChainIdAlignedTo] = useState<string>('');
-    const [chainInfoAligned, setChainInfoAligned] = useState<{
-        chainLabels: Map<string, string>;
-    }>({ chainLabels: new Map() });
-    const [selectedChainIdAligned, setSelectedChainIdAligned] = useState<string>('');
-    // Residue ID selection state.
-    const [residueInfoAlignedTo, setResidueInfoAlignedTo] = useState<{
-        residueLabels: Map<string, ResidueLabelInfo>;
-        residueToAtomIds: Record<string, string[]>;
-    }>({ residueLabels: new Map(), residueToAtomIds: {} });
-    const [selectedResidueIdAlignedTo, setSelectedResidueIdAlignedTo] = useState<string>('');
-    const [residueInfoAligned, setResidueInfoAligned] = useState<{
-        residueLabels: Map<string, ResidueLabelInfo>;
-        residueToAtomIds: Record<string, string[]>;
-    }>({ residueLabels: new Map(), residueToAtomIds: {} });
-    const [selectedResidueIdAligned, setSelectedResidueIdAligned] = useState<string>('');
+        // Subunit state (custom hook)
+        const {
+            subunitToChainIds: subunitToChainIdsAlignedTo,
+            setSubunitToChainIds: setSubunitToChainIdsAlignedTo,
+            selectedSubunit: selectedSubunitAlignedTo,
+            setSelectedSubunit: setSelectedSubunitAlignedTo,
+        } = useSubunitState();
+        const {
+            subunitToChainIds: subunitToChainIdsAligned,
+            setSubunitToChainIds: setSubunitToChainIdsAligned,
+            selectedSubunit: selectedSubunitAligned,
+            setSelectedSubunit: setSelectedSubunitAligned,
+        } = useSubunitState();
+        // Chain state (custom hook)
+        const {
+            chainInfo: chainInfoAlignedTo,
+            setChainInfo: setChainInfoAlignedTo,
+            selectedChainId: selectedChainIdAlignedTo,
+            setSelectedChainId: setSelectedChainIdAlignedTo,
+        } = useChainState();
+        const {
+            chainInfo: chainInfoAligned,
+            setChainInfo: setChainInfoAligned,
+            selectedChainId: selectedChainIdAligned,
+            setSelectedChainId: setSelectedChainIdAligned,
+        } = useChainState();
+        // Residue state (custom hook)
+        const {
+            residueInfo: residueInfoAlignedTo,
+            setResidueInfo: setResidueInfoAlignedTo,
+            selectedResidueId: selectedResidueIdAlignedTo,
+            setSelectedResidueId: setSelectedResidueIdAlignedTo,
+        } = useResidueState();
+        const {
+            residueInfo: residueInfoAligned,
+            setResidueInfo: setResidueInfoAligned,
+            selectedResidueId: selectedResidueIdAligned,
+            setSelectedResidueId: setSelectedResidueIdAligned,
+        } = useResidueState();
 
 
     // Track realigned molecules with from/to chain IDs to prevent duplicates
