@@ -7,6 +7,8 @@
  */
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { SelectionProvider } from './context/SelectionContext';
+import { ViewerStateProvider } from './context/ViewerStateContext';
+import { SyncProvider } from './context/SyncContext';
 import { useFogControl } from './hooks/useFogControl';
 import { useHandleFileChange, handleToggle } from './handlers/uiHandlers';
 import { useSessionSave } from './hooks/useSessionSave';
@@ -24,13 +26,10 @@ import { useCameraControl } from './hooks/useCameraControl';
 import { useChainState } from './hooks/useChainState';
 import { getAtomDataFromStructureUnits } from './utils/data';
 import { parseDictionaryFileContent } from './utils/dictionary';
-import { ResidueLabelInfo } from './utils/residue';
 import { useResidueState } from './hooks/useResidueState';
-import { RibosomeSubunitType } from './utils/subunit';
 import { useSubunitState } from './hooks/useSubunitState';
 import RepresentationSelectButton, { allowedRepresentationTypes, AllowedRepresentationType } from './components/buttons/select/Representation';
 import GeneralControls from './components/GeneralControls';
-import { SyncProvider } from './context/SyncContext';
 import { ViewerKey, ViewerState } from './components/RibocodeViewer';
 import { useMolstarViewer } from './hooks/useMolstarViewer';
 import { useViewerState } from './hooks/useViewerState';
@@ -1179,8 +1178,9 @@ const App: React.FC = () => {
 
     // Return the main app component.
     return (
-        <SelectionProvider>
-            <SyncProvider>
+        <ViewerStateProvider>
+            <SelectionProvider>
+                <SyncProvider>
                 <div className="App">
                     <AppHeader />
                     <div className="menu-bar">
@@ -1457,8 +1457,9 @@ const App: React.FC = () => {
                         }
                     />
                 </div>
-            </SyncProvider>
-        </SelectionProvider>
+                </SyncProvider>
+            </SelectionProvider>
+        </ViewerStateProvider>
     );
 };
 
