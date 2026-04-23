@@ -39,6 +39,8 @@ import { Asset } from 'molstar/lib/mol-util/assets';
 import { Color } from 'molstar/lib/mol-util/color';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 import { StructureSelection } from 'molstar/lib/mol-model/structure';
+import { getChainLoci, focusLociOnChain, getResidueLoci } from './utils/structureUtils';
+import { focusLociOnResidue } from './utils/structureUtils';
 import { QueryContext } from 'molstar/lib/mol-model/structure/query/context';
 import { MolScriptBuilder } from 'molstar/lib/mol-script/language/builder';
 import { compile } from 'molstar/lib/mol-script/runtime/query/base';
@@ -356,159 +358,10 @@ const App: React.FC = () => {
     useUpdateResidueInfo(viewerB.ref, structureRefBAligned, molstarB, selectedChainIdAligned, setResidueInfoAligned, selectedResidueIdAligned, setSelectedResidueIdAligned, Aligned);
 
     // --- Shared chain/residue loci and focus utilities ---
-    /**
-     * Get the loci for a given chain in a structure.
-     */
-    function getChainLoci(plugin: PluginUIContext, structureRef: string, chainId: string) {
-        const structureObj = plugin.managers.structure.hierarchy.current.structures.find(
-            s => s.cell.transform.ref === structureRef
-        )?.cell.obj?.data;
-        if (!structureObj) return null;
-        const qb = MolScriptBuilder.struct.generator.atomGroups({
-            'chain-test': MolScriptBuilder.core.rel.eq([
-                MolScriptBuilder.struct.atomProperty.macromolecular.auth_asym_id(),
-                chainId
-            ])
-        });
-        const compiled = compile(qb);
-        const ctx = new QueryContext(structureObj);
-        const selection = compiled(ctx);
-        return StructureSelection.toLociWithSourceUnits(selection);
-    }
-
-    /**
-     * Focus the camera on a chain loci, with optional sync to another plugin.
-     */
-    function focusLociOnChain(
-        plugin: PluginUIContext,
-        structureRef: string,
-        chainId: string,
-        syncPlugin?: PluginUIContext
-    ) {
-        const loci = getChainLoci(plugin, structureRef, chainId);
-        if (!loci) return;
-        plugin.managers.camera.focusLoci(loci);
-        if (syncPlugin) {
-            syncPlugin.managers.camera.focusLoci(loci);
-        }
-    }
-
-    /**
-     * Get the loci for a given residue in a chain.
-     * Enhanced to allow optional insertion code for precise selection.
-     * @param plugin The Mol* plugin instance.
-     * @param structureRef The structure reference.
-     * @param chainId The chain identifier.
-     * @param residueId The residue identifier.
-     * @param insCode Optional insertion code for the residue.
-     * @returns The loci for the specified residue, or null if not found.
-     */
-    function getResidueLoci(
-        plugin: PluginUIContext,
-        structureRef: string,
-        chainId: string,
-        residueId: string,
-        insCode?: string
-    ) {
-        const structureObj = plugin.managers.structure.hierarchy.current.structures.find(
-            s => s.cell.transform.ref === structureRef
-        )?.cell.obj?.data;
-        if (!structureObj) return null;
-        // Build query with optional insertion code
-        const parsedResidueId = (typeof residueId === 'string' && !isNaN(Number(residueId))) ? Number(residueId) : residueId;
-        const tests: any = {
-            'chain-test': MolScriptBuilder.core.rel.eq([
-                MolScriptBuilder.struct.atomProperty.macromolecular.auth_asym_id(),
-                chainId
-            ]),
-            'residue-test': MolScriptBuilder.core.rel.eq([
-                MolScriptBuilder.struct.atomProperty.macromolecular.auth_seq_id(),
-                parsedResidueId
-            ])
-        };
-        if (typeof insCode === 'string' && insCode.length > 0) {
-            tests['inscode-test'] = MolScriptBuilder.core.rel.eq([
-                MolScriptBuilder.struct.atomProperty.macromolecular.pdbx_PDB_ins_code(),
-                insCode
-            ]);
-        }
-        //console.log('[getResidueLoci] Query params:', { chainId, residueId, insCode });
-        const qb = MolScriptBuilder.struct.generator.atomGroups(tests);
-        const compiled = compile(qb);
-        const ctx = new QueryContext(structureObj);
-        const selection = compiled(ctx);
-        // DEBUG: Log all auth_asym_id and auth_seq_id for the selected chain
-        try {
-            if (structureObj && structureObj.units) {
-                let found = false;
-                for (const unit of structureObj.units) {
-                    if (unit.kind !== 0) continue; // Only atomic units
-                    const { chainIndex, residueIndex, elements, model } = unit;
-                    const chains = model.atomicHierarchy.chains;
-                    const residues = model.atomicHierarchy.residues;
-                    for (let i = 0; i < elements.length; i++) {
-                        const atomIdx = elements[i];
-                        const chainIdx = chainIndex[atomIdx];
-                        let asymId = '';
-                        if (chains && chains.auth_asym_id) {
-                            if (typeof chains.auth_asym_id.value === 'function') {
-                                asymId = (chains.auth_asym_id.value as (idx: number) => string)(chainIdx);
-                            } else if (Array.isArray(chains.auth_asym_id.value)) {
-                                asymId = (chains.auth_asym_id.value as unknown as any[])[chainIdx];
-                            }
-                        }
-                        if (asymId !== chainId) continue;
-                        const resIdx = residueIndex[atomIdx];
-                        let seqId = '';
-                        if (residues && residues.auth_seq_id) {
-                            if (typeof residues.auth_seq_id.value === 'function') {
-                                seqId = (residues.auth_seq_id.value as (idx: number) => any)(resIdx)?.toString();
-                            } else if (Array.isArray(residues.auth_seq_id.value)) {
-                                seqId = (residues.auth_seq_id.value as unknown as any[])[resIdx]?.toString();
-                            }
-                        }
-                        let insCode = '';
-                        if (residues && residues.pdbx_PDB_ins_code) {
-                            if (typeof residues.pdbx_PDB_ins_code.value === 'function') {
-                                insCode = (residues.pdbx_PDB_ins_code.value as (idx: number) => any)(resIdx) || '';
-                            } else if (Array.isArray(residues.pdbx_PDB_ins_code.value)) {
-                                insCode = (residues.pdbx_PDB_ins_code.value as unknown as any[])[resIdx] || '';
-                            }
-                        }
-                        if (!found) {
-                            found = true;
-                            //console.log('[getResidueLoci] Listing all residues for chain', chainId);
-                        }
-                        //console.log(`[getResidueLoci] chainId: ${asymId}, auth_seq_id: ${seqId}, insCode: '${insCode}'`);
-                    }
-                }
-            }
-        } catch (e) {
-            console.warn('[getResidueLoci] Error logging residues:', e);
-        }
-
-        return StructureSelection.toLociWithSourceUnits(selection);
-    }
 
     /**
      * Focus the camera on a residue loci, with optional sync to another plugin.
      */
-    function focusLociOnResidue(
-        plugin: PluginUIContext,
-        structureRef: string,
-        chainId: string,
-        residueId: string,
-        insCode?: string,
-        syncPlugin?: PluginUIContext
-    ) {
-        const loci = getResidueLoci(plugin, structureRef, chainId, residueId, insCode);
-        if (!loci) return;
-        const focusOptions = { extraRadius: zoomExtraRadius, minRadius: zoomMinRadius };
-        plugin.managers.camera.focusLoci(loci, focusOptions);
-        if (syncPlugin) {
-            syncPlugin.managers.camera.focusLoci(loci, focusOptions);
-        }
-    }
 
     /**
      * Creates a handler to zoom to a selection based on a structure property.
@@ -542,7 +395,9 @@ const App: React.FC = () => {
                         chainId,
                         residueId ?? '',
                         insCode,
-                        sync && syncPluginRef?.current ? syncPluginRef.current : undefined
+                        sync && syncPluginRef?.current ? syncPluginRef.current : undefined,
+                        zoomExtraRadius,
+                        zoomMinRadius
                     );
                 } else {
                     // fallback: use chain loci for other property types for now
