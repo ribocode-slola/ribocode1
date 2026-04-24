@@ -514,7 +514,7 @@ export function getMolstarContainerProps({
  * @property {Object} realignedMoleculeListProps - Props to pass to the RealignedMoleculeList component.
  * @property {Object} molstarContainerProps - Props to pass to the MolstarContainer component.
  */
-interface ViewerColumnProps {
+export interface ViewerColumnProps {
   viewerKey: ViewerKey;
   loadDataRowProps: any;
   moleculeUIAlignedToProps: any;
