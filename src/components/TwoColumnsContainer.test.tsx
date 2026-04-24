@@ -1,3 +1,10 @@
+/**
+ * Test suite for TwoColumnsContainer component.
+ * 
+ * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
+ *
+ * @author Andy Turner <agdturner@gmail.com>
+ */
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
 import TwoColumnsContainer from './TwoColumnsContainer';

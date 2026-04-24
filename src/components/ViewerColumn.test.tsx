@@ -1,23 +1,17 @@
+
 /**
  * Test suite for ViewerColumn component.
- * 
+ *
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
  *
  * @author Andy Turner <agdturner@gmail.com>
  */
 import { vi } from 'vitest';
-import React from 'react';
 import { render } from '@testing-library/react';
 import ViewerColumn from './ViewerColumn';
 
+// Mock props for ViewerColumn
 const loadDataRowProps = {
-    viewerTitle: 'Viewer',
-    isLoaded: false,
-    onFileInputClick: vi.fn(),
-    fileInputRef: { current: null },
-    onFileChange: vi.fn(),
-    fileInputDisabled: false,
-    fileInputLabel: 'Load',
     representationType: 'spacefill',
     onRepresentationTypeChange: vi.fn(),
     representationTypeDisabled: false,
