@@ -5,12 +5,13 @@
  * ribosome alignment/visualization apps.
  *
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
+ *
  * @author Andy Turner <agdturner@gmail.com>
  */
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { getChainInfo } from '../utils/chain';
 import { getResidueInfo, ResidueLabelInfo } from '../utils/residue';
-import { AlignedTo, Aligned } from '../types/molecule';
+import { AlignedTo, Aligned } from '../constants/ribocode';
 import { AllowedRepresentationType } from '../components/buttons/select/Representation';
 import { StructureComponentRef } from 'molstar/lib/mol-plugin-state/manager/structure/hierarchy-state';
 import { StateTransforms } from 'molstar/lib/mol-plugin-state/transforms';

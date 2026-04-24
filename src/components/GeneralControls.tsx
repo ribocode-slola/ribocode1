@@ -1,0 +1,113 @@
+/**
+ * General controls for the Ribocode viewer, including data loading, representation selection, color loading, and chain/residue selection.
+ * 
+ * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
+ *
+ * @author Andy Turner <agdturner@gmail.com>
+ */
+import React from 'react';
+import SyncButton from './buttons/Sync';
+import type { ViewerKey } from '../types/ribocode';
+
+/**
+ * Define the props for the GeneralControls component
+ * @typedef {Object} GeneralControlsProps
+ * @property {number} zoomExtraRadius - Extra radius for residue zoom.
+ * @property {function} setZoomExtraRadius - Function to update the zoom extra radius.
+ * @property {number} zoomMinRadius - Minimum radius for residue zoom.
+ * @property {function} setZoomMinRadius - Function to update the zoom minimum radius.
+ * @property {Object} viewerA - Reference to viewer A.
+ * @property {Object} viewerB - Reference to viewer B.
+ * @property {string} activeViewer - Key of the currently active viewer ('A' or 'B').
+ * @property {boolean} syncEnabled - Whether synchronization between viewers is enabled.
+ * @property {function} setSyncEnabled - Function to toggle synchronization between viewers.
+ * @property {string} selectedChainIdAlignedTo - ID of the selected chain in the aligned-to molecule.
+ * @property {string} selectedChainIdAligned - ID of the selected chain in the aligned molecule.
+ * @property {boolean} realignmentExists - Whether a realignment already exists for the selected chains.
+ * @property {function} handleRealignToChains - Function to trigger realignment based on selected chains.
+ */
+interface GeneralControlsProps {
+  zoomExtraRadius: number;
+  setZoomExtraRadius: (v: number) => void;
+  zoomMinRadius: number;
+  setZoomMinRadius: (v: number) => void;
+  viewerA: any;
+  viewerB: any;
+  activeViewer: ViewerKey;
+  syncEnabled: boolean;
+  setSyncEnabled: (v: boolean) => void;
+  selectedChainIdAlignedTo: string;
+  selectedChainIdAligned: string;
+  realignmentExists: boolean;
+  handleRealignToChains: () => void;
+}
+
+/**
+ * GeneralControls component that provides UI controls for zoom settings, synchronization, and realignment.
+ * @param {GeneralControlsProps} props - The props for the GeneralControls component.
+ * @returns {JSX.Element} The GeneralControls component.
+ */
+const GeneralControls: React.FC<GeneralControlsProps> = ({
+  zoomExtraRadius,
+  setZoomExtraRadius,
+  zoomMinRadius,
+  setZoomMinRadius,
+  viewerA,
+  viewerB,
+  activeViewer,
+  syncEnabled,
+  setSyncEnabled,
+  selectedChainIdAlignedTo,
+  selectedChainIdAligned,
+  realignmentExists,
+  handleRealignToChains,
+}) => (
+  <div className="General-Controls">
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+      <label>
+        Residue Zoom extraRadius:
+        <input
+          type="number"
+          value={zoomExtraRadius}
+          min={0}
+          max={100}
+          step={1}
+          style={{ width: 60, marginLeft: 4 }}
+          onChange={e => setZoomExtraRadius(Number(e.target.value))}
+        />
+      </label>
+      <label>
+        minRadius:
+        <input
+          type="number"
+          value={zoomMinRadius}
+          min={0}
+          max={100}
+          step={1}
+          style={{ width: 60, marginLeft: 4 }}
+          onChange={e => setZoomMinRadius(Number(e.target.value))}
+        />
+      </label>
+    </div>
+    <SyncButton
+      viewerA={viewerA}
+      viewerB={viewerB}
+      activeViewer={activeViewer}
+      disabled={!viewerB?.isMoleculeAlignedToLoaded}
+      syncEnabled={syncEnabled}
+      setSyncEnabled={setSyncEnabled}
+    />
+    <button
+      disabled={!selectedChainIdAlignedTo || !selectedChainIdAligned || realignmentExists}
+      onClick={handleRealignToChains}
+    >
+      {selectedChainIdAlignedTo && selectedChainIdAligned
+        ? realignmentExists
+          ? `Already re-aligned: ${selectedChainIdAlignedTo} → ${selectedChainIdAligned}`
+          : `Re-align : ${selectedChainIdAlignedTo} → ${selectedChainIdAligned}`
+        : 'Re-align to Chains'}
+    </button>
+  </div>
+);
+
+export default GeneralControls;

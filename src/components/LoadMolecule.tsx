@@ -1,4 +1,7 @@
 /**
+ * LoadMolecule component for loading molecular data into a Mol* viewer, selecting representation type,
+ * adding colors, and selecting chain IDs.
+ * 
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
  *
  * @author Andy Turner <agdturner@gmail.com>
@@ -8,8 +11,8 @@ import ChainSelectButton from './buttons/select/Chain';
 import ResidueSelectButton from './buttons/select/Residue';
 import SubunitSelectButton from './buttons/select/Subunit';
 import { allowedRepresentationTypes, AllowedRepresentationType } from './buttons/select/Representation';
-import { ResidueLabelInfo } from '../utils/Residue';
-import { RibosomeSubunitType } from '../utils/Subunit';
+import { ResidueLabelInfo } from '../utils/residue';
+import { RibosomeSubunitType } from '../utils/subunit';
 
 /**
  * Props for LoadDataRow component.

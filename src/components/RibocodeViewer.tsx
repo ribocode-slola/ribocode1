@@ -10,9 +10,7 @@ import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 import { PluginCommands } from 'molstar/lib/mol-plugin/commands';
 import { Molecule } from 'molstar/lib/extensions/ribocode/structure';
 import { ModelRef } from 'molstar/lib/mol-plugin-state/manager/structure/hierarchy-state';
-
-// Type representing viewer keys.
-export type ViewerKey = "A" | "B";
+import type { ViewerKey } from '../types/ribocode';
 
 /**
  * State type for RibocodeViewer component.
