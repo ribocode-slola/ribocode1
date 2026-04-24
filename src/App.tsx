@@ -25,7 +25,7 @@ import ViewerColumn , {
 import TwoColumnsContainer from './components/TwoColumnsContainer';
 import AppHeader from './components/AppHeader';
 import { AlignedTo, Aligned, ReAligned } from './constants/ribocode';
-import { parseColorFileContent, registerThemeIfNeeded } from './utils/colors';
+import { parseColorFileContent } from './utils/colors';
 import { useFileInput } from './hooks/useFileInput';
 import { useChainState } from './hooks/useChainState';
 import { getAtomDataFromStructureUnits } from './utils/data';
@@ -41,10 +41,8 @@ import { useMoleculeLoader } from './hooks/useMoleculeLoader';
 import { alignDatasetUsingChains } from 'molstar/lib/extensions/ribocode/utils/geometry';
 import { Color } from 'molstar/lib/mol-util/color';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
-import { focusLociOnChain } from './utils/structureUtils';
-import { focusLociOnResidue } from './utils/structureUtils';
 import { AlignmentData } from 'molstar/lib/extensions/ribocode/types';
-import type { ViewerKey } from './types/ribocode';
+import type { LoadedMolecule, ViewerKey } from './types/ribocode';
 import { A, B } from './constants/ribocode';
 
 /**
@@ -54,30 +52,8 @@ import { A, B } from './constants/ribocode';
 const selectedAtomTypes: { [key: string]: boolean } = { 'P': true, 'C': true };
 
 
-/**
- * Helper function for fog setters using grouped state.
- * @param setFog The state setter function for the fog state object.
- * @return An object containing setter functions for the fog properties.
- */
-function makeFogSetters(setFog: React.Dispatch<React.SetStateAction<{ enabled: boolean; near: number; far: number }>>) {
-    return {
-        setEnabled: (val: boolean) => setFog(fog => ({ ...fog, enabled: val })),
-        setNear: (val: number) => setFog(fog => ({ ...fog, near: val })),
-        setFar: (val: number) => setFog(fog => ({ ...fog, far: val })),
-    };
-}
 
-/**
- * Helper function for camera setters using grouped state.
- * @param setCamera The state setter function for the camera state object.
- * @return An object containing setter functions for the camera properties.
- */
-function makeCameraSetters(setCamera: React.Dispatch<React.SetStateAction<{ near: number; far: number }>>) {
-    return {
-        setNear: (val: number) => setCamera(camera => ({ ...camera, near: val })),
-        setFar: (val: number) => setCamera(camera => ({ ...camera, far: val })),
-    };
-}
+import { makeFogSetters, makeCameraSetters, createZoomHandler, makeZoomHandler } from './utils/viewerHelpers';
 
 /**
  * The main App component.
@@ -304,86 +280,7 @@ const App: React.FC = () => {
     useUpdateResidueInfo(viewerA.ref, structureRefAAlignedTo, molstarA, selectedChainIdAlignedTo, setResidueInfoAlignedTo, selectedResidueIdAlignedTo, setSelectedResidueIdAlignedTo, AlignedTo);
     useUpdateResidueInfo(viewerB.ref, structureRefBAligned, molstarB, selectedChainIdAligned, setResidueInfoAligned, selectedResidueIdAligned, setSelectedResidueIdAligned, Aligned);
 
-    /**
-     * Creates a handler to zoom to a selection based on a structure property.
-     * Uses shared chain/residue loci/focus utilities.
-     */
-    function createZoomHandler(
-        pluginRef: React.RefObject<PluginUIContext | null>,
-        structureRef: string | null,
-        property: 'entity-test' | 'chain-test' | 'residue-test' | 'atom-test' | 'group-by',
-        chainId: string,
-        sync: boolean = false,
-        syncPluginRef?: React.RefObject<PluginUIContext | null>,
-        residueId?: string,
-        insCode?: string
-    ) {
-        return {
-            handleButtonClick: async () => {
-                const plugin = pluginRef.current;
-                if (!plugin || !structureRef) return;
-                if (property === 'chain-test') {
-                    focusLociOnChain(
-                        plugin,
-                        structureRef,
-                        chainId,
-                        sync && syncPluginRef?.current ? syncPluginRef.current : undefined
-                    );
-                } else if (property === 'residue-test') {
-                    focusLociOnResidue(
-                        plugin,
-                        structureRef,
-                        chainId,
-                        residueId ?? '',
-                        insCode,
-                        sync && syncPluginRef?.current ? syncPluginRef.current : undefined,
-                        zoomExtraRadius,
-                        zoomMinRadius
-                    );
-                } else {
-                    // fallback: use chain loci for other property types for now
-                    focusLociOnChain(
-                        plugin,
-                        structureRef,
-                        chainId,
-                        sync && syncPluginRef?.current ? syncPluginRef.current : undefined
-                    );
-                }
-            }
-        };
-    }
 
-    // Helper to create zoom handlers for chain or residue
-    function makeZoomHandler({
-        pluginRef,
-        structureRef,
-        property,
-        chainId,
-        sync,
-        syncPluginRef,
-        residueId,
-        insCode
-    }: {
-        pluginRef: React.RefObject<PluginUIContext | null>,
-        structureRef: string | null,
-        property: 'entity-test' | 'chain-test' | 'residue-test' | 'atom-test' | 'group-by',
-        chainId: string,
-        sync: boolean,
-        syncPluginRef?: React.RefObject<PluginUIContext | null>,
-        residueId?: string,
-        insCode?: string
-    }) {
-        return createZoomHandler(
-            pluginRef,
-            structureRef,
-            property,
-            chainId,
-            sync,
-            syncPluginRef,
-            residueId,
-            insCode
-        );
-    }
 
     // Chain zoom handlers
     const chainZoomAAlignedTo = makeZoomHandler({
@@ -623,13 +520,6 @@ const App: React.FC = () => {
         // Add more state as needed
     }));
 
-    // Session load: use custom hook
-    // Define a type for the loader return value
-    interface LoadedMolecule {
-        alignmentData?: any;
-        // Add other properties as needed
-    }
-
     // Define the session loaded callback with proper typing and error handling
     const onSessionLoaded = useCallback(async (session: any, files: Record<string, File>) => {
         // Loads molecules and restores state from session. Expand as needed.
@@ -663,54 +553,6 @@ const App: React.FC = () => {
 
     // Initialize session load modal with the callback
     const { handleLoadSession, SessionLoadModal } = useSessionLoadModal(onSessionLoaded);
-
-    // Generic prop creator for LoadDataRow
-    interface LoadDataRowPropsInput {
-        viewer: any;
-        otherViewer: any;
-        molstar: any;
-        otherMolstar: any;
-        realignedStructRefs: any;
-        otherRealignedStructRefs: any;
-        isMoleculeAlignedLoaded: boolean;
-        isMoleculeAlignedToLoaded: boolean;
-        viewerReady: boolean;
-        otherViewerReady: boolean;
-        representationType: any;
-        setRepresentationType: (val: any) => void;
-        colorsFile: any;
-        isMoleculeColoursLoaded: boolean;
-        structureRef: any;
-        otherStructureRef: any;
-        selectedSubunit: any;
-        setSelectedSubunit: (val: any) => void;
-        subunitToChainIds: any;
-        chainInfo: any;
-        selectedChainId: any;
-        setSelectedChainId: (val: any) => void;
-        residueInfo: any;
-        selectedResidueId: any;
-        setSelectedResidueId: (val: any) => void;
-        fog: { enabled: boolean; near: number; far: number };
-        setFog: {
-            setEnabled: (val: boolean) => void;
-            setNear: (val: number) => void;
-            setFar: (val: number) => void;
-        };
-        camera: { near: number; far: number };
-        setCamera: {
-            setNear: (val: number) => void;
-            setFar: (val: number) => void;
-        };
-        updateFog: (...args: any[]) => void;
-        handleFileChange: (...args: any[]) => void;
-        Aligned: string;
-        allowedRepresentationTypes: readonly string[];
-        syncEnabled: boolean;
-        realignedRepRefs: any;
-        setRealignedRepRefs: (val: any) => void;
-        setRealignedStructRefs: (val: any) => void;
-    }
 
     // Return the main app component.
     return (

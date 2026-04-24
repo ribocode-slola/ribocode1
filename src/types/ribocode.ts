@@ -5,5 +5,10 @@
  *
  * @author Andy Turner <agdturner@gmail.com>
  */
+import { AlignmentData } from 'molstar/lib/extensions/ribocode/types';
+
 export type ViewerKey = "A" | "B";
 export type MoleculeMode = 'AlignedTo' | 'Aligned' | 'ReAligned';
+export interface LoadedMolecule {
+	alignmentData?: AlignmentData;
+}
