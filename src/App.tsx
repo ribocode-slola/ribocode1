@@ -24,7 +24,7 @@ import ViewerColumn , {
 } from './components/ViewerColumn';
 import TwoColumnsContainer from './components/TwoColumnsContainer';
 import AppHeader from './components/AppHeader';
-import { AlignedTo, Aligned, ReAligned } from './types/molecule';
+import { AlignedTo, Aligned, ReAligned } from './constants/ribocode';
 import { parseColorFileContent, registerThemeIfNeeded } from './utils/colors';
 import { useFileInput } from './hooks/useFileInput';
 import { useChainState } from './hooks/useChainState';
@@ -32,9 +32,9 @@ import { getAtomDataFromStructureUnits } from './utils/data';
 import { parseDictionaryFileContent } from './utils/dictionary';
 import { useResidueState } from './hooks/useResidueState';
 import { useSubunitState } from './hooks/useSubunitState';
-import RepresentationSelectButton, { allowedRepresentationTypes, AllowedRepresentationType } from './components/buttons/select/Representation';
+import { allowedRepresentationTypes, AllowedRepresentationType } from './components/buttons/select/Representation';
 import GeneralControls from './components/GeneralControls';
-import { ViewerKey, ViewerState } from './components/RibocodeViewer';
+import { ViewerState } from './components/RibocodeViewer';
 import { useMolstarViewer } from './hooks/useMolstarViewer';
 import { useViewerState } from './hooks/useViewerState';
 import { useMoleculeLoader } from './hooks/useMoleculeLoader';
@@ -44,10 +44,8 @@ import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 import { focusLociOnChain } from './utils/structureUtils';
 import { focusLociOnResidue } from './utils/structureUtils';
 import { AlignmentData } from 'molstar/lib/extensions/ribocode/types';
-
-// Viewer keys.
-export const A: ViewerKey = 'A';
-export const B: ViewerKey = 'B';
+import type { ViewerKey } from './types/ribocode';
+import { A, B } from './constants/ribocode';
 
 /**
  * Alignment target atom types.
@@ -55,11 +53,12 @@ export const B: ViewerKey = 'B';
 //const selectedAtomTypes: { [key: string]: boolean } = { 'P': true };
 const selectedAtomTypes: { [key: string]: boolean } = { 'P': true, 'C': true };
 
+
 /**
- * The main App component.
- * @returns The main App component.
+ * Helper function for fog setters using grouped state.
+ * @param setFog The state setter function for the fog state object.
+ * @return An object containing setter functions for the fog properties.
  */
-// --- Helper functions for fog and camera setters ---
 function makeFogSetters(setFog: React.Dispatch<React.SetStateAction<{ enabled: boolean; near: number; far: number }>>) {
     return {
         setEnabled: (val: boolean) => setFog(fog => ({ ...fog, enabled: val })),
@@ -68,6 +67,11 @@ function makeFogSetters(setFog: React.Dispatch<React.SetStateAction<{ enabled: b
     };
 }
 
+/**
+ * Helper function for camera setters using grouped state.
+ * @param setCamera The state setter function for the camera state object.
+ * @return An object containing setter functions for the camera properties.
+ */
 function makeCameraSetters(setCamera: React.Dispatch<React.SetStateAction<{ near: number; far: number }>>) {
     return {
         setNear: (val: number) => setCamera(camera => ({ ...camera, near: val })),
@@ -75,6 +79,10 @@ function makeCameraSetters(setCamera: React.Dispatch<React.SetStateAction<{ near
     };
 }
 
+/**
+ * The main App component.
+ * @returns The main App component.
+ */
 const App: React.FC = () => {
 
     // Store File for aligned molecule reloads.
@@ -102,9 +110,6 @@ const App: React.FC = () => {
     // Viewer state management
     // -----------------------
     const [activeViewer, setActiveViewer] = useState<ViewerKey>(A);
-    // useViewerState is now imported from hooks/useViewerState
-
-    // useFileInput is now imported from hooks/useFileInput
 
     // File inputs for dictionary and colors.
     const dictionaryFile = useFileInput<Array<Record<string, string>>>(parseDictionaryFileContent, []);
@@ -185,16 +190,18 @@ const App: React.FC = () => {
     // Use centralized handler for file changes
     const handleFileChange = useHandleFileChange(viewerA.ref, viewerB.ref);
 
-
     // Fog state grouped by viewer
     const [fogA, setFogA] = useState({ enabled: false, near: 0, far: 100 });
     const [fogB, setFogB] = useState({ enabled: false, near: 0, far: 100 });
+    
     // Camera state grouped by viewer
     const [cameraA, setCameraA] = useState({ near: 0.1, far: 1000 });
     const [cameraB, setCameraB] = useState({ near: 0.1, far: 1000 });
+    
     // Zoom state (if needed, can also be grouped)
     const [zoomExtraRadius, setZoomExtraRadius] = useState(0);
     const [zoomMinRadius, setZoomMinRadius] = useState(0);
+
     // updateFog function (adapt as needed)
     const updateFog = (
         pluginARef: any,
@@ -206,15 +213,6 @@ const App: React.FC = () => {
     ) => {
         // ...implement fog update logic using grouped state...
     };
-
-    /**
-     * Handle toggling visibility of a molecule.
-     * @param viewer The viewer state.
-     * @param moleculeKey The key of the molecule to toggle.
-     * @param setVisible The setter function for visibility state.
-     * @param isVisible The current visibility state.
-     */
-    // handleToggle is now imported from handlers/uiHandlers
 
     // Toggle visibility for moleculeAlignedTo in viewer A.
     const toggleViewerAAlignedTo = {
@@ -263,29 +261,20 @@ const App: React.FC = () => {
     // Dummy state to force re-render after toggling representation visibility
     const [, setForceUpdate] = useState(0);
     const forceUpdate = () => setForceUpdate(f => f + 1);
+
     // Get structure refs for both viewers.
     const structureRefAAlignedTo: string | null = molstarA.structureRefs[AlignedTo];
     const structureRefAAligned: string | null = molstarA.structureRefs[Aligned];
     const structureRefBAlignedTo: string | null = molstarB.structureRefs[AlignedTo];
     const structureRefBAligned: string | null = molstarB.structureRefs[Aligned];
+    
     // Theme names for custom chain color themes.
     const themeNameAlignedTo = AlignedTo + '-custom-chain-colors';
     const themeNameAligned = Aligned + '-custom-chain-colors';
 
-
     // Representation type state.
     const [representationTypeAlignedTo, setRepresentationTypeAlignedTo] = useState<AllowedRepresentationType>('spacefill');
     const [representationTypeAligned, setRepresentationTypeAligned] = useState<AllowedRepresentationType>('spacefill');
-
-    /**
-     * Reusable effect for updating colors and registering themes.
-     * @param colorFileData The color file data to process.
-     * @param setIsColorsLoaded Function to set the colors loaded state.
-     * @param themeName The name of the theme to register.
-     * @param deps Additional dependencies for the effect.
-     */
-
-
 
     // Use the custom hook for both color sets (AlignedTo)
     useUpdateColors(
@@ -307,17 +296,6 @@ const App: React.FC = () => {
         [viewerA.moleculeAligned, viewerB.moleculeAligned, representationTypeAligned, structureRefAAligned, structureRefBAligned]
     );
 
-    /**
- * Generalized effect for updating chain info and subunit-to-chain mapping.
- * @param pluginRef The plugin ref (viewerA.ref or viewerB.ref).
- * @param structureRef The structure ref to get chain IDs from.
- * @param molstar The molstar viewer hook instance.
- * @param setChainInfo Function to set the chain IDs state.
- * @param setSubunitToChainIds Function to set the subunit-to-chain mapping.
- * @param label Label for logging purposes.
- */
-
-
     // Custom hooks for updating chain info and subunit-to-chain mapping for both viewers.
     useUpdateChainInfo(viewerA.ref, structureRefAAlignedTo, molstarA, setChainInfoAlignedTo, setSubunitToChainIdsAlignedTo, AlignedTo);
     useUpdateChainInfo(viewerB.ref, structureRefBAligned, molstarB, setChainInfoAligned, setSubunitToChainIdsAligned, Aligned);
@@ -325,12 +303,6 @@ const App: React.FC = () => {
     // Generalized effect for residue ID selection and info update.
     useUpdateResidueInfo(viewerA.ref, structureRefAAlignedTo, molstarA, selectedChainIdAlignedTo, setResidueInfoAlignedTo, selectedResidueIdAlignedTo, setSelectedResidueIdAlignedTo, AlignedTo);
     useUpdateResidueInfo(viewerB.ref, structureRefBAligned, molstarB, selectedChainIdAligned, setResidueInfoAligned, selectedResidueIdAligned, setSelectedResidueIdAligned, Aligned);
-
-    // --- Shared chain/residue loci and focus utilities ---
-
-    /**
-     * Focus the camera on a residue loci, with optional sync to another plugin.
-     */
 
     /**
      * Creates a handler to zoom to a selection based on a structure property.
@@ -602,7 +574,6 @@ const App: React.FC = () => {
                 centroid: result.centroid,
                 rotMat: result.rotmat
             };
-            // getStructureRepresentations is now in utils/structure and can be used for session save/restore if needed
             // Load aligned structure in Viewers A and B.
             (async () => {
                 const file = new File([alignedFile], alignedFile.name);
@@ -659,6 +630,7 @@ const App: React.FC = () => {
         // Add other properties as needed
     }
 
+    // Define the session loaded callback with proper typing and error handling
     const onSessionLoaded = useCallback(async (session: any, files: Record<string, File>) => {
         // Loads molecules and restores state from session. Expand as needed.
         let loadedAny = false;
@@ -689,6 +661,7 @@ const App: React.FC = () => {
         }
     }, [loadMoleculeIntoViewers]);
 
+    // Initialize session load modal with the callback
     const { handleLoadSession, SessionLoadModal } = useSessionLoadModal(onSessionLoaded);
 
     // Generic prop creator for LoadDataRow
@@ -738,15 +711,6 @@ const App: React.FC = () => {
         setRealignedRepRefs: (val: any) => void;
         setRealignedStructRefs: (val: any) => void;
     }
-
-    /**
-     * Returns the properties for the load data row of a viewer, which includes the aligned molecule.
-     * This function is used to keep the JSX cleaner and to encapsulate the logic for enabling/disabling 
-     * controls based on the state of the viewer.
-     * @returns The properties for the load data row of the viewer, including handlers for file input,
-     * representation selection, color addition, subunit and chain selection, and fog/camera controls.
-     */
-
 
     // Return the main app component.
     return (

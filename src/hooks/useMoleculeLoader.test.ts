@@ -1,3 +1,10 @@
+/**
+ * Unit tests for the useMoleculeLoader hook, which handles loading molecules into viewers based on different modes (AlignedTo, Aligned, ReAligned).
+ * 
+ * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
+ *
+ * @author Andy Turner <agdturner@gmail.com>
+ */
 import { describe, it, expect, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useMoleculeLoader } from './useMoleculeLoader';

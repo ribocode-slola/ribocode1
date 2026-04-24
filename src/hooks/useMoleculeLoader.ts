@@ -1,8 +1,16 @@
+/**
+ * Custom hook for managing molecule loading logic.
+ * 
+ * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
+ *
+ * @author Andy Turner <agdturner@gmail.com>
+ */
 import { useCallback } from 'react';
 import { Asset } from 'molstar/lib/mol-util/assets';
 import { loadMoleculeFileToViewer, Molecule } from 'molstar/lib/extensions/ribocode/structure';
 import { AlignmentData } from 'molstar/lib/extensions/ribocode/types';
-import { MoleculeMode, AlignedTo, Aligned, ReAligned } from '../types/molecule';
+import { AlignedTo, Aligned, ReAligned } from '../constants/ribocode';
+import type { MoleculeMode } from '../types/ribocode';
 
 /**
  * Custom hook to encapsulate molecule loading logic for viewers.

@@ -8,8 +8,8 @@
 import React, { useEffect } from 'react';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 import { Vec3 } from 'molstar/lib/mol-math/linear-algebra/3d/vec3';
-import { ViewerKey } from '../RibocodeViewer';
-import { A } from '../../App';
+import type { ViewerKey } from '../../types/ribocode';
+import { A } from '../../constants/ribocode';
 import GenericSelectButton from './select/Select';
 
 /**

@@ -11,7 +11,7 @@ import MoleculeUI from './Molecule';
 import RealignedMoleculeList from './RealignedMoleculeList';
 import MolstarContainer from './MolstarContainer';
 import RepresentationSelectButton, { AllowedRepresentationType } from './buttons/select/Representation';
-import { ViewerKey } from './RibocodeViewer';
+import type { ViewerKey } from '../types/ribocode';
 
 // Props for the ViewerColumn component
 export interface LoadDataRowPropsInput {

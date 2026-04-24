@@ -7,7 +7,7 @@
  */
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { PluginContext } from 'molstar/lib/mol-plugin/context';
-import { ViewerKey } from '../components/RibocodeViewer';
+import type { ViewerKey } from '../types/ribocode';
 
 /**
  * Holds the state and setters for synchronizing two Mol* viewers.

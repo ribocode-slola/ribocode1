@@ -7,7 +7,7 @@
  */
 import React from 'react';
 import SyncButton from './buttons/Sync';
-import { ViewerKey } from './RibocodeViewer';
+import type { ViewerKey } from '../types/ribocode';
 
 /**
  * Define the props for the GeneralControls component

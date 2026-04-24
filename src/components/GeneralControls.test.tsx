@@ -8,7 +8,8 @@
 import { vi } from 'vitest';
 import { render, fireEvent } from '@testing-library/react';
 import GeneralControls from './GeneralControls';
-import { ViewerKey } from './RibocodeViewer';
+import type { ViewerKey } from '../types/ribocode';
+import { A, B } from '../constants/ribocode';
 
 describe('GeneralControls', () => {
   it('renders and responds to user input', () => {
@@ -26,8 +27,8 @@ describe('GeneralControls', () => {
       activeViewer: 'A' as ViewerKey,
       syncEnabled: false,
       setSyncEnabled,
-      selectedChainIdAlignedTo: 'A',
-      selectedChainIdAligned: 'B',
+      selectedChainIdAlignedTo: A,
+      selectedChainIdAligned: B,
       realignmentExists: false,
       handleRealignToChains,
     };

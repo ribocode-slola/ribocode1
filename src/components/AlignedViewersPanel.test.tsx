@@ -7,7 +7,7 @@
  */
 import { render } from '@testing-library/react';
 import AlignedViewersPanel from './AlignedViewersPanel';
-import { ViewerKey } from './RibocodeViewer';
+import type { ViewerKey } from '../types/ribocode';
 
 // Minimal mock viewer object
 const minimalViewerA = {
