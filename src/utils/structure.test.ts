@@ -2,12 +2,98 @@
  * Test suite for getStructureRepresentations utility.
  * 
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
- *
+ * 
  * @author Andy Turner <agdturner@gmail.com>
+ * @version 1.0.0
+ * @lastModified 2026-04-24
+ * @see https://github.com/ribocode-slola/ribocode1
  */
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
+import { getStructureRepresentations, focusLociOnChain, focusLociOnResidue, getChainLoci, getResidueLoci } from './structure';
 
-import { describe, it, expect, vi } from 'vitest';
-import { getStructureRepresentations } from './structure';
+// Static mock for a valid Loci object
+const lociObj = { kind: 'element-loci', structure: {}, elements: [] } as any;
+
+describe('structure', () => {
+    let plugin: PluginUIContext;
+    let structureRef: string;
+    let chainId: string;
+    let residueId: string;
+    let insCode: string;
+
+    beforeEach(() => {
+        plugin = {
+            managers: {
+                structure: {
+                    hierarchy: {
+                        current: {
+                            structures: [
+                                {
+                                    cell: {
+                                        transform: { ref: 'test-ref' },
+                                        obj: { data: {} }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                },
+                camera: {
+                    focusLoci: vi.fn()
+                }
+            }
+        } as any;
+        structureRef = 'test-ref';
+        chainId = 'A';
+        residueId = '1';
+        insCode = '';
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    describe('getChainLoci', () => {
+        it('returns null if structure not found', () => {
+            plugin.managers.structure.hierarchy.current.structures = [];
+            expect(getChainLoci(plugin, structureRef, chainId)).toBeNull();
+        });
+        // Skipping positive test: would require full Mol* environment or ESM-compatible mocking
+    });
+
+    describe('getResidueLoci', () => {
+        it('returns null if structure not found', () => {
+            plugin.managers.structure.hierarchy.current.structures = [];
+            expect(getResidueLoci(plugin, structureRef, chainId, residueId, insCode)).toBeNull();
+        });
+        // Skipping positive test: would require full Mol* environment or ESM-compatible mocking
+    });
+
+    describe('focusLociOnChain', () => {
+        it('calls camera.focusLoci if loci is found', () => {
+            focusLociOnChain(plugin, structureRef, chainId, undefined, () => lociObj);
+            expect(plugin.managers.camera.focusLoci).toHaveBeenCalledWith(lociObj);
+        });
+        it('does not call camera.focusLoci if loci is null', () => {
+            (plugin.managers.camera.focusLoci as ReturnType<typeof vi.fn>).mockClear();
+            focusLociOnChain(plugin, structureRef, chainId, undefined, () => null);
+            expect(plugin.managers.camera.focusLoci).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('focusLociOnResidue', () => {
+        it('calls camera.focusLoci if loci is found', () => {
+            focusLociOnResidue(plugin, structureRef, chainId, residueId, insCode, undefined, undefined, undefined, () => lociObj);
+            expect(plugin.managers.camera.focusLoci).toHaveBeenCalled();
+        });
+        it('does not call camera.focusLoci if loci is null', () => {
+            (plugin.managers.camera.focusLoci as ReturnType<typeof vi.fn>).mockClear();
+            focusLociOnResidue(plugin, structureRef, chainId, residueId, insCode, undefined, undefined, undefined, () => null);
+            expect(plugin.managers.camera.focusLoci).not.toHaveBeenCalled();
+        });
+    });
+});
 
 describe('getStructureRepresentations', () => {
   it('returns an empty array if no children', () => {

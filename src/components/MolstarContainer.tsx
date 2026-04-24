@@ -2,14 +2,17 @@
  * MolstarContainer component that integrates the Mol* plugin within a React application.
  * 
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
- *
+ * 
  * @author Andy Turner <agdturner@gmail.com>
+ * @version 1.0.0
+ * @lastModified 2026-04-24
+ * @see https://github.com/ribocode-slola/ribocode1
  */
 import React, { memo, useEffect, useRef, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import * as PluginUI from 'molstar/lib/mol-plugin-ui';
 const createPluginUI = PluginUI.createPluginUI;
-import RibocodeViewer, { ViewerKey } from './RibocodeViewer';
+import type { ViewerKey } from '../types/ribocode';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 
 /**

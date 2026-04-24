@@ -65,28 +65,28 @@ From the Ribocode root directory:
 
 ## Source Code Overview
 
-- Configuration files are in the top level directory. There is also a `packages` directory and a `src` directory.
-- [Ribocode Mol*](https://github.com/ribocode-slola/molstar) is to be located in the `packages/molstar` directory.
+Configuration files are in the top-level directory. The main source code is in the `src` directory, with additional dependencies in `packages`.
+
+- [Ribocode Mol*](https://github.com/ribocode-slola/molstar) is located in the `packages/molstar` directory.
 - The `src` directory contains:
-  - `App.tsx` contains the top level application code and UI [JSX](https://www.typescriptlang.org/docs/handbook/jsx.html).
-  - `App.css` a [CSS](https://developer.mozilla.org/en-US/docs/Web/CSS) for styling all components.
-  - `components` is a directory containing code for UI components.
-  - `context` is a directory for React context files that define and export context objects and providers, which allow for sharing state and functions across different components. This contains `SyncContext.tsx` which is the basis for synchronization between `Mol* viewers`.
-  - `hooks` is a directory for [custom React hooks](https://react.dev/learn/reusing-logic-with-custom-hooks#extracting-your-own-custom-hook-from-a-component) code — reusable functions that encapsulate stateful logic or side effects such as for interaction with `Mol* viewers`.
-  - `types` is a directory dependency types and contains `molstar.d.ts` - the types for `Mol*`. 
-  - `utils` is a directory containing:
-    - `Chain.tsx` - code for processing molecule assembly chains.
-    - `Residue.tsx` - code for processing molecule assmebly residues.
-    - `Colors.tsx` - code for creating Mol* colour themes.
-    - `Data.tsx` - code for loading data into Mol* viewers.
-    - `Dictionary.tsx` - code for mapping across datasets.
-  - `public` is a directory containing static assets needed for the PWA function correctly.
-  - `main.tsx` is the entry point for the React application. It is responsible for rendering the root App component into the HTML element with the id root. It applies global styles (like App.css), and wraps the app in React connects it to the [DOM](https://developer.mozilla.org/en-US/docs/Web/API/Document_Object_Model).
-  - `service-worker.ts` contains the code for the [PWA service worker](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API), which is a script that runs in the background of the user's Web browser. It caches assets, enables offline functionality, and handles push notifications.
-  - `serviceWorkerRegistration.ts` contains the code responsible for (un)registering the service worker. It contains code that checks if service workers are supported, and then registers the service-worker.ts file so the Web browser knows to use it.
-- There is code written that is in the code base, but is currently not being used:
-* `Load Dictionary` and `Load Alignment` components have been written to load dictionary data and alignment data, but other than loading the data and logging it, nothing was being done with it, so the button components are currently hidden.
-* There are also UI components to control visualisation including controls for `fog` and `near` and `far` planes. These are not working properly yet and the UI components re hidden.
+  - `App.tsx`: The top-level application component, responsible for composing the main UI and wiring together state, providers, and layout.
+  - `App.css`: Global CSS for styling all components.
+  - `App.test.tsx`: Basic test for the App component.
+  - `components/`: UI components, including ViewerColumn, GeneralControls, AppHeader, and others. Each major component typically has a corresponding `.test.tsx` file for tests.
+  - `context/`: React context providers and objects for sharing state and logic (e.g., SelectionContext, SyncContext, ViewerStateContext).
+  - `handlers/`: Event and UI handler logic, such as `uiHandlers.ts` for shared UI event logic.
+  - `hooks/`: Custom React hooks for encapsulating stateful logic and side effects (e.g., useMolstarViewer, useMoleculeLoader, useUpdateColors, useSessionSave, etc.).
+  - `constants/`: Centralized runtime constants (e.g., ribocode.ts for alignment and viewer key constants).
+  - `types/`: Shared TypeScript types and interfaces (e.g., ribocode.ts for core app types, molstar.d.ts for Mol* types).
+  - `utils/`: Utility functions and helpers for data processing, color themes, structure manipulation, and viewer helpers. Includes files like `chain.ts`, `residue.ts`, `colors.ts`, `data.ts`, `dictionary.ts`, `structureUtils.ts`, and `viewerHelpers.ts` (with corresponding test files).
+  - `public/`: Static assets for the PWA (e.g., icons, manifest, robots.txt).
+  - `main.tsx`: Entry point for the React application. Renders the root App component and applies global styles.
+  - `service-worker.ts`: The PWA service worker for offline support and caching.
+  - `serviceWorkerRegistration.ts`: Registers or unregisters the service worker as needed.
+
+Notes:
+- Some UI components for loading dictionary/alignment data and for advanced visualization controls (e.g., fog, camera planes) exist but may be hidden or under development.
+- All major logic is modularized for maintainability, with helpers, types, and constants extracted to their own files.
 
 
 ## Mol*
@@ -181,6 +181,9 @@ test('renders the component', () => {
 
 ## Contributing
 
-If you contribute changes, please submit a Pull Request that includes documentation updates and, if appropriate, includes tests. Please add your details to the list of contributors and to the list of authors in the header of any source files modified.
+If you contribute changes, please submit a Pull Request that includes documentation updates and, if appropriate, includes tests.
+
+**Please add your name to the CONTRIBUTORS file in the repository when you make a contribution.**
+Also, add your details to the list of authors in the header of any source files you modify.
 
 For contribution ideas, bug reports, or feature requests, please visit the [GitHub Issues page](https://github.com/ribocode-slola/ribocode1/issues).

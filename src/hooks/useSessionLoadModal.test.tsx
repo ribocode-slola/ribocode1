@@ -1,6 +1,15 @@
-
+/**
+ * Unit tests for the useSessionLoadModal hook, which manages the state and behavior of a modal for loading session files in the Ribocode app. Tests cover opening the modal, handling file input, and validating required file names.
+ * 
+ * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
+ * 
+ * @author Andy Turner <agdturner@gmail.com>
+ * @version 1.0.0
+ * @lastModified 2026-04-24
+ * @see https://github.com/ribocode-slola/ribocode1
+ */
+import { vi } from 'vitest';
 import { render, fireEvent, screen, waitFor } from '@testing-library/react';
-import React from 'react';
 import { useSessionLoadModal } from './useSessionLoadModal';
 
 describe('useSessionLoadModal', () => {
