@@ -566,13 +566,88 @@ const App: React.FC = () => {
                 <SyncProvider>
                 <div className="App">
                     <AppHeader />
-                    <div className="menu-bar">
-                        <button className="menu-btn" onClick={handleSaveSession}>Save Session</button>
-                        <label className="menu-btn" style={{ cursor: 'pointer', marginBottom: 0 }}>
-                            Load Session
-                            <input type="file" style={{ display: 'none' }} onChange={handleLoadSession} accept="application/json" />
-                        </label>
-                    </div>
+                    {/* Session menu dropdown below the title */}
+                    <nav className="session-menu-bar">
+                        <div className="session-menu-container">
+                            <button
+                                className="session-menu-btn"
+                                onClick={e => {
+                                    const menu = document.getElementById('session-menu-dropdown');
+                                    if (menu) menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+                                }}
+                                onBlur={e => {
+                                    setTimeout(() => {
+                                        const menu = document.getElementById('session-menu-dropdown');
+                                        if (menu) menu.style.display = 'none';
+                                    }, 150);
+                                }}
+                            >
+                                Session ▾
+                            </button>
+                            <div
+                                id="session-menu-dropdown"
+                                className="session-menu-dropdown"
+                                style={{ display: 'none', position: 'absolute', background: '#fff', border: '1px solid #ccc', borderRadius: 4, minWidth: 120, zIndex: 1000 }}
+                            >
+                                <div
+                                    className="session-menu-item session-menu-item-border"
+                                    onClick={() => {
+                                        handleSaveSession();
+                                        document.getElementById('session-menu-dropdown')!.style.display = 'none';
+                                    }}
+                                    tabIndex={0}
+                                    onKeyDown={e => { if (e.key === 'Enter') handleSaveSession(); }}
+                                    style={{ padding: '8px 16px', cursor: 'pointer', borderBottom: '1px solid #eee' }}
+                                >
+                                    Save
+                                </div>
+                                <div
+                                    className="session-menu-item session-menu-item-border"
+                                    onClick={() => {
+                                        document.getElementById('session-menu-file-input')?.click();
+                                        setTimeout(() => {
+                                            document.getElementById('session-menu-dropdown')!.style.display = 'none';
+                                        }, 0);
+                                    }}
+                                    tabIndex={0}
+                                    onKeyDown={e => { if (e.key === 'Enter') document.getElementById('session-menu-file-input')?.click(); }}
+                                    style={{ padding: '8px 16px', cursor: 'pointer', borderBottom: '1px solid #eee' }}
+                                >
+                                    Load
+                                </div>
+                                <div
+                                    className="session-menu-item"
+                                    onClick={() => {
+                                        if (window.confirm('Restarting will unload all data and reset the session. Please save your work first if needed. Continue?')) {
+                                            window.location.reload();
+                                        } else {
+                                            document.getElementById('session-menu-dropdown')!.style.display = 'none';
+                                        }
+                                    }}
+                                    tabIndex={0}
+                                    onKeyDown={e => {
+                                        if (e.key === 'Enter') {
+                                            if (window.confirm('Restarting will unload all data and reset the session. Please save your work first if needed. Continue?')) {
+                                                window.location.reload();
+                                            } else {
+                                                document.getElementById('session-menu-dropdown')!.style.display = 'none';
+                                            }
+                                        }
+                                    }}
+                                    style={{ padding: '8px 16px', cursor: 'pointer' }}
+                                >
+                                    Restart
+                                </div>
+                            </div>
+                            <input
+                                id="session-menu-file-input"
+                                type="file"
+                                accept="application/json"
+                                style={{ display: 'none' }}
+                                onChange={handleLoadSession}
+                            />
+                        </div>
+                    </nav>
                     {SessionLoadModal}
                     <GeneralControls
                         zoomExtraRadius={zoomExtraRadius}

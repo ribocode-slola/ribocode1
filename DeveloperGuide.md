@@ -179,6 +179,59 @@ test('renders the component', () => {
 - [Testing Library docs](https://testing-library.com/docs/)
 
 
+
+## End-to-End (E2E) Testing with Playwright
+
+This project uses [Playwright](https://playwright.dev/) for end-to-end (E2E) browser testing. Playwright enables automated UI testing in real browsers, ensuring that real-world user workflows (including session save/load and dataset handling) work as expected.
+
+### E2E Test Structure
+
+- E2E tests are located in the `e2e/` directory at the project root.
+- Real-world test datasets (e.g., `4UG0.cif`, `6XU8.cif`) are stored in `data/input/`.
+- Example E2E test: `e2e/example-session.spec.ts` demonstrates loading a dataset, interacting with the UI, and verifying session logic.
+
+### Installing Playwright
+
+If not already installed, add Playwright and its test runner:
+
+```sh
+npm install --save-dev playwright @playwright/test
+npx playwright install
+```
+
+### Running E2E Tests
+
+- To run all Playwright E2E tests:
+  ```sh
+  npx playwright test
+  ```
+- To run a specific test file:
+  ```sh
+  npx playwright test e2e/example-session.spec.ts
+  ```
+- To open the interactive Playwright Test UI:
+  ```sh
+  npx playwright test --ui
+  ```
+
+### Using Real Datasets in Tests
+
+- Place CIF or other input files in `data/input/`.
+- Reference these files in your Playwright tests for realistic workflows.
+- See `e2e/example-session.spec.ts` for usage patterns.
+
+### Best Practices
+
+- Use data-testids or accessible selectors for robust element targeting.
+- Clean up test state between tests to avoid cross-test interference.
+- Document any new E2E tests and datasets added.
+
+### Resources
+
+- [Playwright documentation](https://playwright.dev/docs/intro)
+
+---
+
 ## Contributing
 
 If you contribute changes, please submit a Pull Request that includes documentation updates and, if appropriate, includes tests.
