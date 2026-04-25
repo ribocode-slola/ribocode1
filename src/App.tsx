@@ -571,6 +571,7 @@ const App: React.FC = () => {
                         <div className="session-menu-container">
                             <button
                                 className="session-menu-btn"
+                                data-testid="session-menu-btn"
                                 onClick={e => {
                                     const menu = document.getElementById('session-menu-dropdown');
                                     if (menu) menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
@@ -679,33 +680,36 @@ const App: React.FC = () => {
                                     isMoleculeAlignedToLoaded: viewerA.isMoleculeAlignedToLoaded,
                                     viewerReady: viewerAReady,
                                     otherViewerReady: viewerBReady,
-                                    representationType: representationTypeAligned,
-                                    setRepresentationType: setRepresentationTypeAligned,
-                                    colorsFile: colorsAlignedFile,
-                                    isMoleculeColoursLoaded: isMoleculeAlignedColoursLoaded,
-                                    structureRef: structureRefAAligned,
-                                    otherStructureRef: structureRefBAligned,
-                                    selectedSubunit: selectedSubunitAligned,
-                                    setSelectedSubunit: setSelectedSubunitAligned,
-                                    subunitToChainIds: subunitToChainIdsAligned,
-                                    chainInfo: chainInfoAligned,
-                                    selectedChainId: selectedChainIdAligned,
-                                    setSelectedChainId: setSelectedChainIdAligned,
-                                    residueInfo: residueInfoAligned,
-                                    selectedResidueId: selectedResidueIdAligned,
-                                    setSelectedResidueId: setSelectedResidueIdAligned,
+                                    representationType: representationTypeAlignedTo,
+                                    setRepresentationType: setRepresentationTypeAlignedTo,
+                                    colorsFile: colorsAlignedToFile,
+                                    isMoleculeColoursLoaded: isMoleculeAlignedToColoursLoaded,
+                                    structureRef: structureRefAAlignedTo,
+                                    otherStructureRef: structureRefBAlignedTo,
+                                    selectedSubunit: selectedSubunitAlignedTo,
+                                    setSelectedSubunit: setSelectedSubunitAlignedTo,
+                                    subunitToChainIds: subunitToChainIdsAlignedTo,
+                                    chainInfo: chainInfoAlignedTo,
+                                    selectedChainId: selectedChainIdAlignedTo,
+                                    setSelectedChainId: setSelectedChainIdAlignedTo,
+                                    residueInfo: residueInfoAlignedTo,
+                                    selectedResidueId: selectedResidueIdAlignedTo,
+                                    setSelectedResidueId: setSelectedResidueIdAlignedTo,
                                     fog: fogA,
                                     setFog: makeFogSetters(setFogA),
                                     camera: cameraA,
                                     setCamera: makeCameraSetters(setCameraA),
                                     updateFog,
                                     handleFileChange,
-                                    Aligned,
+                                    Aligned: AlignedTo,
                                     allowedRepresentationTypes,
                                     syncEnabled,
                                     realignedRepRefs: realignedRepRefsA,
                                     setRealignedRepRefs: setRealignedRepRefsA,
                                     setRealignedStructRefs: setRealignedStructRefsA,
+                                    // Override for left column:
+                                    fileInputLabel: 'Load AlignedTo',
+                                    fileInputDisabled: !viewerAReady || !viewerBReady,
                                 })}
                                 moleculeUIAlignedToProps={getMoleculeUIAlignedToProps({
                                     molstar: molstarA,
@@ -816,12 +820,15 @@ const App: React.FC = () => {
                                     setCamera: makeCameraSetters(setCameraB),
                                     updateFog,
                                     handleFileChange,
-                                    Aligned,
+                                    Aligned: Aligned,
                                     allowedRepresentationTypes,
                                     syncEnabled,
                                     realignedRepRefs: realignedRepRefsB,
                                     setRealignedRepRefs: setRealignedRepRefsB,
                                     setRealignedStructRefs: setRealignedStructRefsB,
+                                    // Override for right column:
+                                    fileInputLabel: 'Load Aligned',
+                                    fileInputDisabled: !viewerBReady || !viewerAReady,
                                 })}
                                 moleculeUIAlignedToProps={getMoleculeUIAlignedToProps({
                                     molstar: molstarB,

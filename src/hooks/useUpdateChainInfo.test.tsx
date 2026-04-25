@@ -25,8 +25,8 @@ describe('useUpdateChainInfo', () => {
     ]);
     const mockStructureObj = {
       units: [
-        { chainId: 'A', label: 'Chain A', subunit: 'Large' },
-        { chainId: 'B', label: 'Chain B', subunit: 'Small' },
+        { chainGroupId: 'A', label: 'Chain A', subunit: 'Large' },
+        { chainGroupId: 'B', label: 'Chain B', subunit: 'Small' },
       ],
     };
     const pluginRef = { current: {

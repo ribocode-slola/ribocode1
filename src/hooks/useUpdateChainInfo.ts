@@ -40,12 +40,23 @@ export function useUpdateChainInfo(
       const chainLabels = new Map<string, string>();
       const subunitToChainIds = new Map<string, Set<string>>();
       for (const unit of structureObj.units) {
-        const chainId = unit.chainId;
-        const label = unit.label || chainId;
+        // Use chainGroupId as the chain identifier (Mol* convention)
+        const chainId = unit.chainGroupId;
+        if (chainId === undefined || chainId === null || chainId === '') {
+          // eslint-disable-next-line no-console
+          console.warn(`[useUpdateChainInfo][${label}] Skipping unit with invalid chainGroupId:`, unit);
+          continue;
+        }
+        const labelVal = unit.label || chainId;
         const subunit = unit.subunit || 'default';
-        chainLabels.set(chainId, label);
+        chainLabels.set(chainId, labelVal);
         if (!subunitToChainIds.has(subunit)) subunitToChainIds.set(subunit, new Set());
         subunitToChainIds.get(subunit)!.add(chainId);
+      }
+      if (chainLabels.size === 0) {
+        // eslint-disable-next-line no-console
+        console.warn(`[useUpdateChainInfo][${label}] No valid chains found in structure. State not updated.`);
+        return;
       }
       setChainInfo({ chainLabels });
       setSubunitToChainIds(subunitToChainIds);

@@ -29,7 +29,7 @@ describe('App session dropdown menu', () => {
   it('renders the Session dropdown and triggers Save/Load/Restart', async () => {
     render(<App />);
     // Dropdown button
-    const sessionBtn = screen.getByText(/Session/i);
+    const sessionBtn = screen.getByTestId('session-menu-btn');
     expect(sessionBtn).toBeInTheDocument();
     // Open dropdown
     fireEvent.click(sessionBtn);

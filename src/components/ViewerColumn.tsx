@@ -62,6 +62,8 @@ export interface LoadDataRowPropsInput {
 	realignedRepRefs: any;
 	setRealignedRepRefs: (val: any) => void;
 	setRealignedStructRefs: (val: any) => void;
+	fileInputLabel?: string;
+	fileInputDisabled?: boolean;
 }
 
 /**
@@ -114,8 +116,8 @@ export function getLoadDataRowProps({
 		onFileInputClick: viewer.handleFileInputButtonClick,
 		fileInputRef: viewer.fileInputRef,
 		onFileChange: (e: any) => handleFileChange(e, Aligned),
-		fileInputDisabled: !isMoleculeAlignedToLoaded || !viewerReady || !otherViewerReady,
-		fileInputLabel: `Load ${Aligned}`,
+		   fileInputLabel: typeof arguments[0].fileInputLabel === 'string' ? arguments[0].fileInputLabel : `Load ${Aligned}`,
+		   fileInputDisabled: typeof arguments[0].fileInputDisabled === 'boolean' ? arguments[0].fileInputDisabled : (!isMoleculeAlignedToLoaded || !viewerReady || !otherViewerReady),
 		representationType,
 		onRepresentationTypeChange: setRepresentationType,
 		representationTypeDisabled: !isMoleculeAlignedLoaded,
