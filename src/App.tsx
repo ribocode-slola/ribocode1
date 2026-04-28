@@ -94,6 +94,19 @@ const App: React.FC = () => {
     const [viewerBReady, setViewerBReady] = useState(false);
     const [syncEnabled, setSyncEnabled] = useState(false);
 
+    // Use a ref to always have the latest alignmentData from AlignedTo
+    const alignmentDataRef = useRef<any>(null);
+    useEffect(() => {
+        const alignmentData = viewerA.moleculeAlignedTo?.alignmentData;
+        if (alignmentData && Object.keys(alignmentData).length > 0) {
+            alignmentDataRef.current = alignmentData;
+        } else {
+            alignmentDataRef.current = null;
+        }
+    }, [viewerA.moleculeAlignedTo]);
+
+    const alignmentDataReady = alignmentDataRef.current;
+
     // Viewer state management
     // -----------------------
     const [activeViewer, setActiveViewer] = useState<ViewerKey>(A);
@@ -299,7 +312,9 @@ const App: React.FC = () => {
                 alert(`Selected file name (${file.name}) does not match the expected Aligned file (${alignedFilename}). Please select the correct file.`);
                 return;
             }
-            await loadMoleculeIntoViewers(file, mode);
+            // Use the ref for alignmentData to avoid async state issues
+            const alignmentData = mode === Aligned ? alignmentDataRef.current : undefined;
+            await loadMoleculeIntoViewers(file, mode, alignmentData);
         },
         [expectedAlignedToFilename, alignedFilename]
     );
@@ -840,7 +855,7 @@ const App: React.FC = () => {
                                     setRealignedStructRefs: setRealignedStructRefsA,
                                     // Override for left column:
                                     fileInputLabel: 'Load AlignedTo',
-                                    fileInputDisabled: !viewerAReady || !viewerBReady,
+                                    fileInputDisabled: false,
                                 })}
                                 moleculeUIAlignedToProps={getMoleculeUIAlignedToProps({
                                     molstar: molstarA,
@@ -960,7 +975,7 @@ const App: React.FC = () => {
                                     setRealignedStructRefs: setRealignedStructRefsB,
                                     // Override for right column:
                                     fileInputLabel: 'Load Aligned',
-                                    fileInputDisabled: !viewerA.isMoleculeAlignedToLoaded || !viewerA.moleculeAlignedTo?.alignmentData || !viewerBReady || !viewerAReady,
+                                    fileInputDisabled: !alignmentDataReady,
                                 })}
                                 moleculeUIAlignedToProps={getMoleculeUIAlignedToProps({
                                     molstar: molstarB,
