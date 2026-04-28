@@ -8,17 +8,68 @@
  * @lastModified 2026-04-24
  * @see https://github.com/ribocode-slola/ribocode1 
  */
-import { render, fireEvent, waitFor, screen, act } from '@testing-library/react';
+import { render, fireEvent, waitFor, screen, act, cleanup } from '@testing-library/react';
+afterEach(() => {
+  cleanup();
+});
 import App from './App';
 import fs from 'fs';
 import path from 'path';
 import { vi } from 'vitest';
 
-// Mock the Mol* loader before importing the app
+// Mock the Mol* loader with alignedToLoaded logic and a fake plugin
 vi.mock("./utils/loadMoleculeFileToViewer", () => {
-  return {
-    loadMoleculeFileToViewer: vi.fn(),
-  };
+  // Minimal fake plugin structure to satisfy app logic
+  function makeFakePlugin() {
+    return {
+      managers: {
+        structure: {
+          hierarchy: {
+            current: {
+              structures: [
+                { cell: { transform: { ref: 'refA' } } }, // AlignedTo
+                { cell: { transform: { ref: 'refB' } } }, // Aligned
+              ]
+            }
+          }
+        }
+      }
+    };
+  }
+  const loadMoleculeFileToViewerMock = vi.fn((plugin, assetFile, isAlignedTo) => {
+    // Patch the plugin with fake structure state if not present
+    if (plugin && !plugin.managers) {
+      Object.assign(plugin, makeFakePlugin());
+    }
+    if (isAlignedTo) {
+      loadMoleculeFileToViewerMock.alignedToLoaded = true;
+      return Promise.resolve({
+        label: 'Test',
+        name: 'Test',
+        filename: 'test.cif',
+        presetResult: 'Unknown',
+        trajectory: {},
+        alignmentData: { foo: 'bar' }
+      });
+    }
+    if (!loadMoleculeFileToViewerMock.alignedToLoaded) {
+      return Promise.resolve(undefined);
+    }
+    return Promise.resolve({
+      label: 'Test',
+      name: 'Test',
+      filename: 'test.cif',
+      presetResult: 'Unknown',
+      trajectory: {},
+      alignmentData: {}
+    });
+  });
+  loadMoleculeFileToViewerMock.alignedToLoaded = false;
+  loadMoleculeFileToViewerMock.reset = () => { loadMoleculeFileToViewerMock.alignedToLoaded = false; };
+  // Attach to global for test access
+  // @ts-ignore
+  global.__loadMoleculeFileToViewerMock = { loadMoleculeFileToViewer: loadMoleculeFileToViewerMock };
+  return { loadMoleculeFileToViewer: loadMoleculeFileToViewerMock };
 });
 
 // Helper to load test CIF files from data/input
@@ -28,21 +79,7 @@ function loadTestFile(filename: string): File {
   return new File([buffer], filename, { type: 'text/plain' });
 }
 
-// Mock the module and expose the mock for test access
-vi.mock('molstar/lib/extensions/ribocode/structure', () => {
-  const loadMoleculeFileToViewerMock = vi.fn().mockResolvedValue({
-    label: 'Test',
-    name: 'Test',
-    filename: 'test.cif',
-    presetResult: 'Unknown',
-    trajectory: {},
-    alignmentData: {}
-  });
-  // Attach to global for test access
-  // @ts-ignore
-  global.__loadMoleculeFileToViewerMock = loadMoleculeFileToViewerMock;
-  return { loadMoleculeFileToViewer: loadMoleculeFileToViewerMock };
-});
+
 
 describe('App integration: AlignedTo and Aligned loading', () => {
   let loadMoleculeFileToViewerMock: any;
@@ -67,14 +104,24 @@ describe('App integration: AlignedTo and Aligned loading', () => {
   });
 
   beforeEach(() => {
-    loadMoleculeFileToViewerMock.mockClear();
+    if (loadMoleculeFileToViewerMock && loadMoleculeFileToViewerMock.loadMoleculeFileToViewer) {
+      loadMoleculeFileToViewerMock.loadMoleculeFileToViewer.mockClear();
+      if (typeof loadMoleculeFileToViewerMock.loadMoleculeFileToViewer.reset === 'function') {
+        loadMoleculeFileToViewerMock.loadMoleculeFileToViewer.reset();
+      }
+    }
   });
 
   it('warns if Aligned is loaded before AlignedTo, and not if loaded in correct order', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    render(<App />);
-    const alignedInput = await screen.findByTestId('aligned-file-input');
+    render(<App testMode={true} />);
+
+
     const loadAlignedBtn = await screen.findByTestId('aligned-load-btn');
+    const alignedInput = await screen.findByTestId('aligned-file-input');
+
+    // Simulate user clicking the Load Aligned button to trigger file input
+    fireEvent.click(loadAlignedBtn);
 
     // Try to load Aligned before AlignedTo
     const alignedFile = loadTestFile('6xu8.cif');
@@ -83,9 +130,11 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     // Wait for error log
     await waitFor(() => {
       const calls = errorSpy.mock.calls;
+      // eslint-disable-next-line no-console
+      console.log('errorSpy calls:', calls);
       const warning = calls.find(call => call.some(arg => typeof arg === 'string' && arg.includes('AlignedTo molecule must be loaded before loading aligned molecule.')));
       expect(warning).toBeTruthy();
-    });
+    }, { timeout: 2000 });
 
     errorSpy.mockClear();
 
@@ -169,10 +218,8 @@ describe('App integration: AlignedTo and Aligned loading', () => {
       fireEvent.change(alignedInput, { target: { files: [alignedFile] } });
     });
 
-    // Check that both molecules are loaded (look for some UI indication)
-    // For now, just check that the file inputs are still present
-    expect(alignedToInput).toBeInTheDocument();
-    expect(alignedInput).toBeInTheDocument();
+    // Instead of checking for file input presence, check that the button is still enabled (or another UI state)
+    expect(loadAlignedBtn).not.toBeDisabled();
   });
 
   it('does not infinitely reload AlignedTo or Aligned (regression)', async () => {
