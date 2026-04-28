@@ -1,3 +1,55 @@
+    it('shows a React error boundary or warning if AlignedTo triggers infinite recursion', async () => {
+      // Spy on console.error to catch React's error boundary warning
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      render(<App />);
+      const alignedToInput = await screen.findByTestId('alignedto-file-input');
+
+      // Load AlignedTo file (simulate user clicking multiple times to trigger recursion if present)
+      const alignedToFile = loadTestFile('4ug0.cif');
+      for (let i = 0; i < 5; i++) {
+        fireEvent.change(alignedToInput, { target: { files: [alignedToFile] } });
+      }
+
+      // Wait for all error logs to be flushed
+      await waitFor(() => {
+        // Gather all error calls
+        const calls = errorSpy.mock.calls;
+        // Fail if any call contains the recursion warning
+        const recursionError = calls.find(call =>
+          call.some(arg =>
+            typeof arg === 'string' && arg.includes('Maximum update depth exceeded')
+          )
+        );
+        if (recursionError) {
+          throw new Error('Recursion warning detected: Maximum update depth exceeded');
+        }
+        // Otherwise, test passes (WebGL/canvas errors are allowed)
+        expect(true).toBe(true);
+      });
+      errorSpy.mockRestore();
+    });
+  it('does not infinitely reload AlignedTo (regression)', async () => {
+    // Access the mock from global (for isolated test scope)
+    // @ts-ignore
+    const loadMoleculeFileToViewerMock = global.__loadMoleculeFileToViewerMock;
+    render(<App />);
+    const alignedToInput = await screen.findByTestId('alignedto-file-input');
+
+    // Load AlignedTo file
+    const alignedToFile = loadTestFile('4ug0.cif');
+    fireEvent.change(alignedToInput, { target: { files: [alignedToFile] } });
+
+    // Wait for any UI update
+    await waitFor(() => {
+      expect(alignedToInput).toBeInTheDocument();
+    });
+
+    // Check loader call counts for recursion
+    const calls = loadMoleculeFileToViewerMock.mock.calls;
+    const alignedToCalls = calls.filter((call: any[]) => call[1]?.name === '4ug0.cif');
+    // Allow up to 2 calls (initial + possible effect), but fail if more
+    expect(alignedToCalls.length).toBeLessThanOrEqual(2);
+  });
 /**
  * Integration test suite for App component.
  * 
@@ -46,6 +98,100 @@ vi.mock('molstar/lib/extensions/ribocode/structure', () => {
 
 
 describe('App integration: AlignedTo and Aligned loading', () => {
+  it('does not enable Load Aligned until alignmentData is present (delayed AlignedTo)', async () => {
+    // Patch the mock to delay alignmentData
+    const loadMoleculeFileToViewerMock = global.__loadMoleculeFileToViewerMock;
+    let resolveAlignmentData: (() => void) | null = null;
+    loadMoleculeFileToViewerMock.mockImplementationOnce(() => {
+      return new Promise(resolve => {
+        // Simulate async load, alignmentData not present at first
+        setTimeout(() => {
+          resolve({
+            label: 'Test',
+            name: 'Test',
+            filename: '4ug0.cif',
+            presetResult: 'Unknown',
+            trajectory: {},
+            alignmentData: undefined // Not ready yet
+          });
+          // After a short delay, alignmentData becomes available
+          setTimeout(() => {
+            resolveAlignmentData && resolveAlignmentData();
+          }, 100);
+        }, 100);
+      });
+    });
+    // Second call (simulate update with alignmentData)
+    loadMoleculeFileToViewerMock.mockImplementationOnce(() => {
+      return Promise.resolve({
+        label: 'Test',
+        name: 'Test',
+        filename: '4ug0.cif',
+        presetResult: 'Unknown',
+        trajectory: {},
+        alignmentData: { foo: 'bar' }
+      });
+    });
+
+    render(<App />);
+    const alignedToInput = await screen.findByTestId('alignedto-file-input');
+    const alignedInput = await screen.findByTestId('aligned-file-input');
+    const loadAlignedBtn = await screen.findByTestId('aligned-load-btn');
+
+    // Load AlignedTo file (delayed alignmentData)
+    fireEvent.change(alignedToInput, { target: { files: [loadTestFile('4ug0.cif')] } });
+
+    // Button should remain disabled until alignmentData is present
+    await waitFor(() => {
+      expect(loadAlignedBtn).toBeDisabled();
+    });
+
+    // Simulate alignmentData becoming available
+    await new Promise(res => setTimeout(res, 250));
+
+    // Now the button should be enabled
+    await waitFor(() => {
+      expect(loadAlignedBtn).not.toBeDisabled();
+    });
+  });
+    it('shows a warning if Aligned is loaded before AlignedTo, and not if loaded in correct order', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      render(<App />);
+      const alignedInput = await screen.findByTestId('aligned-file-input');
+      const loadAlignedBtn = await screen.findByTestId('aligned-load-btn');
+
+      // Try to load Aligned before AlignedTo
+      const alignedFile = loadTestFile('6xu8.cif');
+      fireEvent.change(alignedInput, { target: { files: [alignedFile] } });
+
+      // Wait for error log
+      await waitFor(() => {
+        const calls = errorSpy.mock.calls;
+        const warning = calls.find(call => call.some(arg => typeof arg === 'string' && arg.includes('AlignedTo molecule must be loaded before loading aligned molecule.')));
+        expect(warning).toBeTruthy();
+      });
+
+      errorSpy.mockClear();
+
+      // Now load AlignedTo, then Aligned (correct order)
+      const alignedToInput = await screen.findByTestId('alignedto-file-input');
+      const alignedToFile = loadTestFile('4ug0.cif');
+      fireEvent.change(alignedToInput, { target: { files: [alignedToFile] } });
+
+      await waitFor(() => {
+        expect(loadAlignedBtn).not.toBeDisabled();
+      });
+
+      fireEvent.change(alignedInput, { target: { files: [alignedFile] } });
+
+      // Should NOT log the warning again
+      await waitFor(() => {
+        const calls = errorSpy.mock.calls;
+        const warning = calls.find(call => call.some(arg => typeof arg === 'string' && arg.includes('AlignedTo molecule must be loaded before loading aligned molecule.')));
+        expect(warning).toBeFalsy();
+      });
+      errorSpy.mockRestore();
+    });
   let loadMoleculeFileToViewerMock: any;
   beforeAll(() => {
     // Mock canvas getContext to avoid WebGL errors in test environment

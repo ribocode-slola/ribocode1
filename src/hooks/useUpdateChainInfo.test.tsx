@@ -54,8 +54,17 @@ describe('useUpdateChainInfo', () => {
         'TestLabel'
       )
     );
-    expect(setChainInfo).toHaveBeenCalledWith({ chainLabels: mockChainLabels });
-    expect(setSubunitToChainIds).toHaveBeenCalledWith(mockSubunitToChainIds);
+    // Check that setChainInfo was called with a function updater
+    expect(setChainInfo).toHaveBeenCalled();
+    const updater = setChainInfo.mock.calls[0][0];
+    const result = updater({ chainLabels: new Map() });
+    expect(result).toEqual({ chainLabels: mockChainLabels });
+
+    // Check that setSubunitToChainIds was called with a function updater
+    expect(setSubunitToChainIds).toHaveBeenCalled();
+    const subunitUpdater = setSubunitToChainIds.mock.calls[0][0];
+    const subunitResult = subunitUpdater(new Map());
+    expect(subunitResult).toEqual(mockSubunitToChainIds);
   });
 
   it('does nothing if pluginRef.current is null', () => {
