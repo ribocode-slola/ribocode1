@@ -41,6 +41,8 @@ import { allowedRepresentationTypes, AllowedRepresentationType } from './compone
 import GeneralControls from './components/GeneralControls';
 import { ViewerState } from './components/RibocodeViewer';
 import { useMolstarViewer } from './hooks/useMolstarViewer';
+import { loadMoleculeFileToViewer } from 'molstar/lib/extensions/ribocode/structure';
+import { Asset } from 'molstar/lib/mol-util/assets';
 import { useViewerState } from './hooks/useViewerState';
 import { useMoleculeLoader } from './hooks/useMoleculeLoader';
 import { alignDatasetUsingChains } from 'molstar/lib/extensions/ribocode/utils/geometry';
@@ -66,8 +68,12 @@ import { makeFogSetters, makeCameraSetters, createZoomHandler, makeZoomHandler }
  */
 const App: React.FC = () => {
 
-    // Store File for aligned molecule reloads.
+    // Store Files and filenames for aligned and alignedTo molecule reloads.
     const [alignedFile, setAlignedFile] = useState<any | null>(null);
+    const [alignedFilename, setAlignedFilename] = useState<string | null>(null);
+    const [alignedToFile, setAlignedToFile] = useState<any | null>(null);
+    const [alignedToFilename, setAlignedToFilename] = useState<string | null>(null);
+    const [expectedAlignedToFilename, setExpectedAlignedToFilename] = useState<string | null>(null);
 
     // Create plugin refs and pass to useMolstarViewers
     const pluginRefA: React.RefObject<PluginUIContext | null> = useRef<PluginUIContext | null>(null);
@@ -152,24 +158,142 @@ const App: React.FC = () => {
     const [realignedMoleculesB, setRealignedMoleculesB] = useState<Array<{ id: string, file: File, label: string, from: string, to: string }>>([]);
 
     // Molecule loading logic extracted to useMoleculeLoader
-    const { loadMoleculeIntoViewers } = useMoleculeLoader({
-        viewerA,
-        viewerB,
-        molstarA,
-        molstarB,
-        setAlignedFile,
-        selectedChainIdAlignedTo,
-        selectedChainIdAligned,
-        setRealignedMoleculesA,
-        setRealignedMoleculesB,
-        setRealignedStructRefsA,
-        setRealignedStructRefsB,
-        setRealignedRepRefsA,
-        setRealignedRepRefsB,
-    });
+    // Robust file loading logic for both AlignedTo and Aligned
+    const loadMoleculeIntoViewers = async (file: File, mode: string, alignmentData?: any) => {
+        const assetFile = Asset.File(file);
+        const pluginA = viewerA.ref.current;
+        const pluginB = viewerB.ref.current;
+        if (!pluginA || !pluginB) {
+            console.error('One or both viewers are not initialized.');
+            return;
+        }
+        if (mode === AlignedTo) {
+            setAlignedToFile(file);
+            setAlignedToFilename(file.name);
+            if (expectedAlignedToFilename) setExpectedAlignedToFilename(null);
+        } else if (mode === Aligned) {
+            setAlignedFile(file);
+            setAlignedFilename(file.name);
+        }
+        let alignData = alignmentData;
+        if (mode === Aligned && !alignData) {
+            alignData = viewerA.moleculeAlignedTo?.alignmentData;
+        }
+        // Viewer A
+        if (mode === AlignedTo) {
+            const viewerAMoleculeAlignedTo = await loadMoleculeFileToViewer(
+                pluginA, assetFile, true, true
+            );
+            if (!viewerAMoleculeAlignedTo) {
+                console.error('Failed to load molecule into viewer A.');
+                return;
+            }
+            viewerA.setMoleculeAlignedTo((prev: any) => ({
+                label: viewerAMoleculeAlignedTo.label,
+                name: viewerAMoleculeAlignedTo.name,
+                filename: viewerAMoleculeAlignedTo.filename ?? prev?.filename ?? "",
+                presetResult: viewerAMoleculeAlignedTo.presetResult ?? "Unknown",
+                trajectory: viewerAMoleculeAlignedTo.trajectory,
+                alignmentData: viewerAMoleculeAlignedTo.alignmentData
+            }));
+            const structureA = pluginA.managers.structure.hierarchy.current.structures[0];
+            if (structureA) {
+                const ref = structureA.cell.transform.ref;
+                molstarA.setStructureRef(AlignedTo, ref);
+            }
+            viewerA.setIsMoleculeAlignedToLoaded(true);
+            viewerA.setIsMoleculeAlignedToVisible(true);
+            // Viewer B
+            const viewerBMoleculeAlignedTo = await loadMoleculeFileToViewer(
+                pluginB, assetFile, false, true
+            );
+            if (!viewerBMoleculeAlignedTo) {
+                console.error('Failed to load molecule into viewer B.');
+                return;
+            }
+            viewerB.setMoleculeAlignedTo((prev: any) => ({
+                label: viewerBMoleculeAlignedTo.label,
+                name: viewerBMoleculeAlignedTo.name,
+                filename: viewerBMoleculeAlignedTo.filename ?? prev?.filename ?? "",
+                presetResult: viewerBMoleculeAlignedTo.presetResult ?? "Unknown",
+                trajectory: viewerBMoleculeAlignedTo.trajectory,
+            }));
+            const structureB = pluginB.managers.structure.hierarchy.current.structures[0];
+            if (structureB) {
+                const ref = structureB.cell.transform.ref;
+                molstarB.setStructureRef(AlignedTo, ref);
+            }
+            viewerB.setIsMoleculeAlignedToLoaded(true);
+            viewerB.setIsMoleculeAlignedToVisible(true);
+        } else if (mode === Aligned) {
+            if (!alignData) {
+                console.error(AlignedTo + ' molecule must be loaded before loading aligned molecule.');
+                return;
+            }
+            // Viewer A
+            const viewerAMoleculeAligned = await loadMoleculeFileToViewer(
+                pluginA, assetFile, false, true, alignData
+            );
+            if (!viewerAMoleculeAligned) {
+                console.error('Failed to load molecule into viewer A.');
+                return;
+            }
+            viewerA.setMoleculeAligned((prev: any) => ({
+                label: viewerAMoleculeAligned.label,
+                name: viewerAMoleculeAligned.name,
+                filename: viewerAMoleculeAligned.filename ?? prev?.filename ?? "",
+                presetResult: viewerAMoleculeAligned.presetResult ?? "Unknown",
+                trajectory: viewerAMoleculeAligned.trajectory,
+            }));
+            const structureA = pluginA.managers.structure.hierarchy.current.structures[1];
+            if (structureA) {
+                const ref = structureA.cell.transform.ref;
+                molstarA.setStructureRef(Aligned, ref);
+            }
+            viewerA.setIsMoleculeAlignedLoaded(true);
+            viewerA.setIsMoleculeAlignedVisible(true);
+            // Viewer B
+            const viewerBMoleculeAligned = await loadMoleculeFileToViewer(
+                pluginB, assetFile, false, true, alignData
+            );
+            if (!viewerBMoleculeAligned) {
+                console.error('Failed to load molecule into viewer B.');
+                return;
+            }
+            viewerB.setMoleculeAligned((prev: any) => ({
+                label: viewerBMoleculeAligned.label,
+                name: viewerBMoleculeAligned.name,
+                filename: viewerBMoleculeAligned.filename ?? prev?.filename ?? "",
+                presetResult: viewerBMoleculeAligned.presetResult ?? "Unknown",
+                trajectory: viewerBMoleculeAligned.trajectory,
+            }));
+            const structureB = pluginB.managers.structure.hierarchy.current.structures[1];
+            if (structureB) {
+                const ref = structureB.cell.transform.ref;
+                molstarB.setStructureRef(Aligned, ref);
+            }
+            viewerB.setIsMoleculeAlignedLoaded(true);
+            viewerB.setIsMoleculeAlignedVisible(true);
+        }
+    };
 
-    // Use centralized handler for file changes
-    const handleFileChange = useHandleFileChange(viewerA.ref, viewerB.ref);
+    // Robust file input handler for both modes
+    const handleFileChange = useCallback(
+        async (e: React.ChangeEvent<HTMLInputElement>, mode: string) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            if (mode === AlignedTo && expectedAlignedToFilename && file.name !== expectedAlignedToFilename) {
+                alert(`You must select the file '${expectedAlignedToFilename}' for AlignedTo as required by the loaded session.`);
+                return;
+            }
+            if (mode === Aligned && alignedFilename && file.name !== alignedFilename) {
+                alert(`Selected file name (${file.name}) does not match the expected Aligned file (${alignedFilename}). Please select the correct file.`);
+                return;
+            }
+            await loadMoleculeIntoViewers(file, mode);
+        },
+        [expectedAlignedToFilename, alignedFilename]
+    );
 
     // Fog state grouped by viewer
     const [fogA, setFogA] = useState({ enabled: false, near: 0, far: 100 });
@@ -284,8 +408,6 @@ const App: React.FC = () => {
     // Generalized effect for residue ID selection and info update.
     useUpdateResidueInfo(viewerA.ref, structureRefAAlignedTo, molstarA, selectedChainIdAlignedTo, setResidueInfoAlignedTo, selectedResidueIdAlignedTo, setSelectedResidueIdAlignedTo, AlignedTo);
     useUpdateResidueInfo(viewerB.ref, structureRefBAligned, molstarB, selectedChainIdAligned, setResidueInfoAligned, selectedResidueIdAligned, setSelectedResidueIdAligned, Aligned);
-
-
 
     // Chain zoom handlers
     const chainZoomAAlignedTo = makeZoomHandler({

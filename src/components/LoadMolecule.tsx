@@ -210,6 +210,7 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
                     disabled={fileInputDisabled}
                     className="msp-btn msp-form-control"
                     aria-label={fileInputLabel}
+                    data-testid={fileInputLabel === 'Load AlignedTo' ? 'alignedto-load-btn' : fileInputLabel === 'Load Aligned' ? 'aligned-load-btn' : undefined}
                 >
                     {fileInputLabel}
                 </button>
@@ -220,6 +221,7 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
                     onChange={onFileChange}
                     style={{ display: 'none' }}
                     tabIndex={-1}
+                    data-testid={fileInputLabel === 'Load AlignedTo' ? 'alignedto-file-input' : fileInputLabel === 'Load Aligned' ? 'aligned-file-input' : undefined}
                 />
             </div>
         )}

@@ -541,15 +541,15 @@ const ViewerColumn: React.FC<ViewerColumnProps> = ({
   realignedMoleculeListProps,
   molstarContainerProps,
 }) => {
-  return (
-    <div className="Column">
-      <LoadDataRow {...loadDataRowProps} />
-      <MoleculeUI {...moleculeUIAlignedToProps} />
-      <MoleculeUI {...moleculeUIAlignedProps} />
-      <RealignedMoleculeList {...realignedMoleculeListProps} />
-      <MolstarContainer {...molstarContainerProps} />
-    </div>
-  );
+	return (
+		<div className="Column">
+			<LoadDataRow {...loadDataRowProps} />
+			<MoleculeUI key={moleculeUIAlignedToProps.key} {...(() => { const { key, ...rest } = moleculeUIAlignedToProps; return rest; })()} />
+			<MoleculeUI key={moleculeUIAlignedProps.key} {...(() => { const { key, ...rest } = moleculeUIAlignedProps; return rest; })()} />
+			<RealignedMoleculeList {...realignedMoleculeListProps} />
+			<MolstarContainer {...molstarContainerProps} />
+		</div>
+	);
 };
 
 export default ViewerColumn;
