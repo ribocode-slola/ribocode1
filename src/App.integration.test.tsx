@@ -98,62 +98,6 @@ vi.mock('molstar/lib/extensions/ribocode/structure', () => {
 
 
 describe('App integration: AlignedTo and Aligned loading', () => {
-  it('does not enable Load Aligned until alignmentData is present (delayed AlignedTo)', async () => {
-    // Patch the mock to delay alignmentData
-    const loadMoleculeFileToViewerMock = global.__loadMoleculeFileToViewerMock;
-    let resolveAlignmentData: (() => void) | null = null;
-    loadMoleculeFileToViewerMock.mockImplementationOnce(() => {
-      return new Promise(resolve => {
-        // Simulate async load, alignmentData not present at first
-        setTimeout(() => {
-          resolve({
-            label: 'Test',
-            name: 'Test',
-            filename: '4ug0.cif',
-            presetResult: 'Unknown',
-            trajectory: {},
-            alignmentData: undefined // Not ready yet
-          });
-          // After a short delay, alignmentData becomes available
-          setTimeout(() => {
-            resolveAlignmentData && resolveAlignmentData();
-          }, 100);
-        }, 100);
-      });
-    });
-    // Second call (simulate update with alignmentData)
-    loadMoleculeFileToViewerMock.mockImplementationOnce(() => {
-      return Promise.resolve({
-        label: 'Test',
-        name: 'Test',
-        filename: '4ug0.cif',
-        presetResult: 'Unknown',
-        trajectory: {},
-        alignmentData: { foo: 'bar' }
-      });
-    });
-
-    render(<App />);
-    const alignedToInput = await screen.findByTestId('alignedto-file-input');
-    const alignedInput = await screen.findByTestId('aligned-file-input');
-    const loadAlignedBtn = await screen.findByTestId('aligned-load-btn');
-
-    // Load AlignedTo file (delayed alignmentData)
-    fireEvent.change(alignedToInput, { target: { files: [loadTestFile('4ug0.cif')] } });
-
-    // Button should remain disabled until alignmentData is present
-    await waitFor(() => {
-      expect(loadAlignedBtn).toBeDisabled();
-    });
-
-    // Simulate alignmentData becoming available
-    await new Promise(res => setTimeout(res, 250));
-
-    // Now the button should be enabled
-    await waitFor(() => {
-      expect(loadAlignedBtn).not.toBeDisabled();
-    });
-  });
     it('shows a warning if Aligned is loaded before AlignedTo, and not if loaded in correct order', async () => {
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       render(<App />);

@@ -67,8 +67,6 @@ import { makeFogSetters, makeCameraSetters, createZoomHandler, makeZoomHandler }
  * @returns The main App component.
  */
 const App: React.FC = () => {
-    // Track if alignmentData is ready for AlignedTo
-    const [isAlignmentDataReady, setIsAlignmentDataReady] = useState(false);
 
     // Store Files and filenames for aligned and alignedTo molecule reloads.
     const [alignedFile, setAlignedFile] = useState<any | null>(null);
@@ -199,20 +197,14 @@ const App: React.FC = () => {
                 console.error('Failed to load molecule into viewer A.');
                 return;
             }
-            viewerA.setMoleculeAlignedTo((prev: any) => {
-                const next = {
-                    ...prev,
-                    label: viewerAMoleculeAlignedTo.label,
-                    name: viewerAMoleculeAlignedTo.name,
-                    filename: viewerAMoleculeAlignedTo.filename ?? prev?.filename ?? "",
-                    presetResult: viewerAMoleculeAlignedTo.presetResult ?? "Unknown",
-                    trajectory: viewerAMoleculeAlignedTo.trajectory,
-                    alignmentData: viewerAMoleculeAlignedTo.alignmentData
-                };
-                // Set alignmentData ready flag if present
-                setIsAlignmentDataReady(!!viewerAMoleculeAlignedTo.alignmentData && Object.keys(viewerAMoleculeAlignedTo.alignmentData).length > 0);
-                return next;
-            });
+            viewerA.setMoleculeAlignedTo((prev: any) => ({
+                label: viewerAMoleculeAlignedTo.label,
+                name: viewerAMoleculeAlignedTo.name,
+                filename: viewerAMoleculeAlignedTo.filename ?? prev?.filename ?? "",
+                presetResult: viewerAMoleculeAlignedTo.presetResult ?? "Unknown",
+                trajectory: viewerAMoleculeAlignedTo.trajectory,
+                alignmentData: viewerAMoleculeAlignedTo.alignmentData
+            }));
             const structureA = pluginA.managers.structure.hierarchy.current.structures[0];
             if (structureA) {
                 const ref = structureA.cell.transform.ref;
@@ -307,7 +299,6 @@ const App: React.FC = () => {
                 alert(`Selected file name (${file.name}) does not match the expected Aligned file (${alignedFilename}). Please select the correct file.`);
                 return;
             }
-            if (mode === AlignedTo) setIsAlignmentDataReady(false); // Reset before loading
             await loadMoleculeIntoViewers(file, mode);
         },
         [expectedAlignedToFilename, alignedFilename]
@@ -784,237 +775,231 @@ const App: React.FC = () => {
                                 id="session-menu-file-input"
                                 type="file"
                                 accept="application/json"
-                                <TwoColumnsContainer
-                                    left={<ViewerColumn
-                                        viewerKey={A}
-                                        loadDataRowProps={getLoadDataRowProps({
-                                            viewer: viewerA,
-                                            otherViewer: viewerB,
-                                            molstar: molstarA,
-                                            otherMolstar: molstarB,
-                                            realignedStructRefs: realignedStructRefsA,
-                                            otherRealignedStructRefs: realignedStructRefsB,
-                                            isMoleculeAlignedLoaded: viewerA.isMoleculeAlignedLoaded,
-                                            isMoleculeAlignedToLoaded: viewerA.isMoleculeAlignedToLoaded,
-                                            viewerReady: viewerAReady,
-                                            otherViewerReady: viewerBReady,
-                                            representationType: representationTypeAlignedTo,
-                                            setRepresentationType: setRepresentationTypeAlignedTo,
-                                            colorsFile: colorsAlignedToFile,
-                                            isMoleculeColoursLoaded: isMoleculeAlignedToColoursLoaded,
-                                            structureRef: structureRefAAlignedTo,
-                                            otherStructureRef: structureRefBAlignedTo,
-                                            selectedSubunit: selectedSubunitAlignedTo,
-                                            setSelectedSubunit: setSelectedSubunitAlignedTo,
-                                            subunitToChainIds: subunitToChainIdsAlignedTo,
-                                            chainInfo: chainInfoAlignedTo,
-                                            selectedChainId: selectedChainIdAlignedTo,
-                                            setSelectedChainId: setSelectedChainIdAlignedTo,
-                                            residueInfo: residueInfoAlignedTo,
-                                            selectedResidueId: selectedResidueIdAlignedTo,
-                                            setSelectedResidueId: setSelectedResidueIdAlignedTo,
-                                            fog: fogA,
-                                            setFog: makeFogSetters(setFogA),
-                                            camera: cameraA,
-                                            setCamera: makeCameraSetters(setCameraA),
-                                            updateFog,
-                                            handleFileChange,
-                                            Aligned: AlignedTo,
-                                            allowedRepresentationTypes,
-                                            syncEnabled,
-                                            realignedRepRefs: realignedRepRefsA,
-                                            setRealignedRepRefs: setRealignedRepRefsA,
-                                            setRealignedStructRefs: setRealignedStructRefsA,
-                                        })}
-                                        moleculeUIAlignedToProps={getMoleculeUIAlignedToProps({
-                                            molstar: molstarA,
-                                            otherMolstar: molstarB,
-                                            viewer: viewerA,
-                                            isVisible: viewerA.isMoleculeAlignedToVisible,
-                                            onToggleVisibility: toggleViewerAAlignedTo.handleButtonClick,
-                                            chainZoomLabel: selectedChainIdAlignedTo && chainInfoAlignedTo.chainLabels.has(selectedChainIdAlignedTo)
-                                                ? chainInfoAlignedTo.chainLabels.get(selectedChainIdAlignedTo) ?? ''
-                                                : '',
-                                            onChainZoom: chainZoomAAlignedTo.handleButtonClick,
-                                            chainZoomDisabled: !selectedChainIdAlignedTo,
-                                            residueZoomLabel: residueInfoAlignedTo.residueLabels.get(selectedResidueIdAlignedTo)?.name || '',
-                                            onResidueZoom: residueZoomAAlignedTo.handleButtonClick,
-                                            residueZoomDisabled: !selectedResidueIdAlignedTo,
-                                            isLoaded: viewerA.isMoleculeAlignedToLoaded,
-                                            forceUpdate,
-                                            representationRefs: molstarA.representationRefs[AlignedTo] || [],
-                                            syncEnabled,
-                                            deleteRepresentation,
-                                            repIdMap: molstarA.repIdMap,
-                                            AlignedTo
-                                        })}
-                                        moleculeUIAlignedProps={getMoleculeUIAlignedProps({
-                                            molstar: molstarA,
-                                            otherMolstar: molstarB,
-                                            viewer: viewerA,
-                                            isVisible: viewerA.isMoleculeAlignedVisible,
-                                            onToggleVisibility: toggleViewerAAligned.handleButtonClick,
-                                            chainZoomLabel: selectedChainIdAligned && chainInfoAlignedTo.chainLabels.has(selectedChainIdAligned)
-                                                ? chainInfoAlignedTo.chainLabels.get(selectedChainIdAligned) ?? ''
-                                                : '',
-                                            onChainZoom: chainZoomAAligned.handleButtonClick,
-                                            chainZoomDisabled: !selectedChainIdAligned,
-                                            residueZoomLabel: residueInfoAlignedTo.residueLabels.get(selectedResidueIdAligned)?.name || '',
-                                            onResidueZoom: residueZoomAAligned.handleButtonClick,
-                                            residueZoomDisabled: !selectedResidueIdAligned,
-                                            isLoaded: viewerA.isMoleculeAlignedLoaded,
-                                            forceUpdate,
-                                            representationRefs: molstarA.representationRefs[Aligned] || [],
-                                            syncEnabled,
-                                            deleteRepresentation,
-                                            repIdMap: molstarA.repIdMap,
-                                            Aligned,
-                                            chainInfoAligned: chainInfoAlignedTo,
-                                            selectedChainIdAligned,
-                                            residueInfoAligned: residueInfoAlignedTo,
-                                            selectedResidueIdAligned
-                                        })}
-                                        realignedMoleculeListProps={getRealignedMoleculeListProps({
-                                            molecules: realignedMoleculesA,
-                                            molstar: molstarA,
-                                            otherMolstar: molstarB,
-                                            chainInfo: chainInfoAlignedTo,
-                                            residueInfo: residueInfoAlignedTo,
-                                            selectedResidueId: selectedResidueIdAligned,
-                                            realignedStructRefs: realignedStructRefsA,
-                                            otherRealignedStructRefs: realignedStructRefsB,
-                                            setRealignedMolecules: setRealignedMoleculesA,
-                                            setOtherRealignedMolecules: setRealignedMoleculesB,
-                                            setRealignedRepRefs: setRealignedRepRefsA,
-                                            setOtherRealignedRepRefs: setRealignedRepRefsB,
-                                            setRealignedStructRefs: setRealignedStructRefsA,
-                                            setOtherRealignedStructRefs: setRealignedStructRefsB,
-                                            forceUpdate,
-                                            viewerKey: "A",
-                                        })}
-                                        molstarContainerProps={getMolstarContainerProps({
-                                            viewer: viewerA,
-                                            pluginRef: pluginRefA,
-                                            setViewerWrapper: setViewerAWrapper,
-                                            setViewerReady: setViewerAReady
-                                        })}
-                                    />}
-                                    right={<ViewerColumn
-                                        viewerKey={B}
-                                        loadDataRowProps={getLoadDataRowProps({
-                                            viewer: viewerB,
-                                            otherViewer: viewerA,
-                                            molstar: molstarB,
-                                            otherMolstar: molstarA,
-                                            realignedStructRefs: realignedStructRefsB,
-                                            otherRealignedStructRefs: realignedStructRefsA,
-                                            isMoleculeAlignedLoaded: viewerB.isMoleculeAlignedLoaded,
-                                            isMoleculeAlignedToLoaded: viewerA.isMoleculeAlignedToLoaded,
-                                            viewerReady: viewerBReady,
-                                            otherViewerReady: viewerAReady,
-                                            representationType: representationTypeAligned,
-                                            setRepresentationType: setRepresentationTypeAligned,
-                                            colorsFile: colorsAlignedFile,
-                                            isMoleculeColoursLoaded: isMoleculeAlignedColoursLoaded,
-                                            structureRef: structureRefBAligned,
-                                            otherStructureRef: structureRefAAligned,
-                                            selectedSubunit: selectedSubunitAligned,
-                                            setSelectedSubunit: setSelectedSubunitAligned,
-                                            subunitToChainIds: subunitToChainIdsAligned,
-                                            chainInfo: chainInfoAligned,
-                                            selectedChainId: selectedChainIdAligned,
-                                            setSelectedChainId: setSelectedChainIdAligned,
-                                            residueInfo: residueInfoAligned,
-                                            selectedResidueId: selectedResidueIdAligned,
-                                            setSelectedResidueId: setSelectedResidueIdAligned,
-                                            fog: fogB,
-                                            setFog: makeFogSetters(setFogB),
-                                            camera: cameraB,
-                                            setCamera: makeCameraSetters(setCameraB),
-                                            updateFog,
-                                            handleFileChange,
-                                            Aligned: Aligned,
-                                            allowedRepresentationTypes,
-                                            syncEnabled,
-                                            realignedRepRefs: realignedRepRefsB,
-                                            setRealignedRepRefs: setRealignedRepRefsB,
-                                            setRealignedStructRefs: setRealignedStructRefsB,
-                                            isAlignmentDataReady,
-                                        })}
-                                        moleculeUIAlignedToProps={getMoleculeUIAlignedToProps({
-                                            molstar: molstarB,
-                                            otherMolstar: molstarA,
-                                            viewer: viewerB,
-                                            isVisible: viewerB.isMoleculeAlignedToVisible,
-                                            onToggleVisibility: toggleViewerBAlignedTo.handleButtonClick,
-                                            chainZoomLabel: selectedChainIdAlignedTo && chainInfoAligned.chainLabels.has(selectedChainIdAlignedTo)
-                                                ? chainInfoAligned.chainLabels.get(selectedChainIdAlignedTo) ?? ''
-                                                : '',
-                                            onChainZoom: chainZoomBAlignedTo.handleButtonClick,
-                                            chainZoomDisabled: !selectedChainIdAlignedTo,
-                                            residueZoomLabel: residueInfoAligned.residueLabels.get(selectedResidueIdAlignedTo)?.name || '',
-                                            onResidueZoom: residueZoomBAlignedTo.handleButtonClick,
-                                            residueZoomDisabled: !selectedResidueIdAlignedTo,
-                                            isLoaded: viewerB.isMoleculeAlignedToLoaded,
-                                            forceUpdate,
-                                            representationRefs: molstarB.representationRefs[AlignedTo] || [],
-                                            syncEnabled,
-                                            deleteRepresentation,
-                                            repIdMap: molstarB.repIdMap,
-                                            AlignedTo
-                                        })}
-                                        moleculeUIAlignedProps={getMoleculeUIAlignedProps({
-                                            molstar: molstarB,
-                                            otherMolstar: molstarA,
-                                            viewer: viewerB,
-                                            isVisible: viewerB.isMoleculeAlignedVisible,
-                                            onToggleVisibility: toggleViewerBAligned.handleButtonClick,
-                                            chainZoomLabel: selectedChainIdAligned && chainInfoAligned.chainLabels.has(selectedChainIdAligned)
-                                                ? chainInfoAligned.chainLabels.get(selectedChainIdAligned) ?? ''
-                                                : '',
-                                            onChainZoom: chainZoomBAligned.handleButtonClick,
-                                            chainZoomDisabled: !selectedChainIdAligned,
-                                            residueZoomLabel: residueInfoAligned.residueLabels.get(selectedResidueIdAligned)?.name || '',
-                                            onResidueZoom: residueZoomBAligned.handleButtonClick,
-                                            residueZoomDisabled: !selectedResidueIdAligned,
-                                            isLoaded: viewerB.isMoleculeAlignedLoaded,
-                                            forceUpdate,
-                                            representationRefs: molstarB.representationRefs[Aligned] || [],
-                                            syncEnabled,
-                                            deleteRepresentation,
-                                            repIdMap: molstarB.repIdMap,
-                                            Aligned,
-                                            chainInfoAligned,
-                                            selectedChainIdAligned,
-                                            residueInfoAligned,
-                                            selectedResidueIdAligned
-                                        })}
-                                        realignedMoleculeListProps={getRealignedMoleculeListProps({
-                                            molecules: realignedMoleculesB,
-                                            molstar: molstarB,
-                                            otherMolstar: molstarA,
-                                            chainInfo: chainInfoAligned,
-                                            residueInfo: residueInfoAligned,
-                                            selectedResidueId: selectedResidueIdAligned,
-                                            realignedStructRefs: realignedStructRefsB,
-                                            otherRealignedStructRefs: realignedStructRefsA,
-                                            setRealignedMolecules: setRealignedMoleculesB,
-                                            setOtherRealignedMolecules: setRealignedMoleculesA,
-                                            setRealignedRepRefs: setRealignedRepRefsB,
-                                            setOtherRealignedRepRefs: setRealignedRepRefsA,
-                                            setRealignedStructRefs: setRealignedStructRefsB,
-                                            setOtherRealignedStructRefs: setRealignedStructRefsA,
-                                            forceUpdate,
-                                            viewerKey: "B",
-                                        })}
-                                        molstarContainerProps={getMolstarContainerProps({
-                                            viewer: viewerB,
-                                            pluginRef: pluginRefB,
-                                            setViewerWrapper: setViewerBWrapper,
-                                            setViewerReady: setViewerBReady
-                                        })}
-                                    />}
-                                />
+                                style={{ display: 'none' }}
+                                onChange={handleLoadSession}
+                            />
+                        </div>
+                    </nav>
+                    {SessionLoadModal}
+                    <GeneralControls
+                        zoomExtraRadius={zoomExtraRadius}
+                        setZoomExtraRadius={setZoomExtraRadius}
+                        zoomMinRadius={zoomMinRadius}
+                        setZoomMinRadius={setZoomMinRadius}
+                        viewerA={viewerA.ref.current}
+                        viewerB={viewerB.ref.current}
+                        activeViewer={activeViewer}
+                        syncEnabled={syncEnabled}
+                        setSyncEnabled={setSyncEnabled}
+                        selectedChainIdAlignedTo={selectedChainIdAlignedTo}
+                        selectedChainIdAligned={selectedChainIdAligned}
+                        realignmentExists={realignmentExists}
+                        handleRealignToChains={handleRealignToChains}
+                    />
+                    <TwoColumnsContainer
+                        left={
+                            <ViewerColumn
+                                viewerKey={A}
+                                loadDataRowProps={getLoadDataRowProps({
+                                    viewer: viewerA,
+                                    otherViewer: viewerB,
+                                    molstar: molstarA,
+                                    otherMolstar: molstarB,
+                                    realignedStructRefs: realignedStructRefsA,
+                                    otherRealignedStructRefs: realignedStructRefsB,
+                                    isMoleculeAlignedLoaded: viewerA.isMoleculeAlignedLoaded,
+                                    isMoleculeAlignedToLoaded: viewerA.isMoleculeAlignedToLoaded,
+                                    viewerReady: viewerAReady,
+                                    otherViewerReady: viewerBReady,
+                                    representationType: representationTypeAlignedTo,
+                                    setRepresentationType: setRepresentationTypeAlignedTo,
+                                    colorsFile: colorsAlignedToFile,
+                                    isMoleculeColoursLoaded: isMoleculeAlignedToColoursLoaded,
+                                    structureRef: structureRefAAlignedTo,
+                                    otherStructureRef: structureRefBAlignedTo,
+                                    selectedSubunit: selectedSubunitAlignedTo,
+                                    setSelectedSubunit: setSelectedSubunitAlignedTo,
+                                    subunitToChainIds: subunitToChainIdsAlignedTo,
+                                    chainInfo: chainInfoAlignedTo,
+                                    selectedChainId: selectedChainIdAlignedTo,
+                                    setSelectedChainId: setSelectedChainIdAlignedTo,
+                                    residueInfo: residueInfoAlignedTo,
+                                    selectedResidueId: selectedResidueIdAlignedTo,
+                                    setSelectedResidueId: setSelectedResidueIdAlignedTo,
+                                    fog: fogA,
+                                    setFog: makeFogSetters(setFogA),
+                                    camera: cameraA,
+                                    setCamera: makeCameraSetters(setCameraA),
+                                    updateFog,
+                                    handleFileChange,
+                                    Aligned: AlignedTo,
+                                    allowedRepresentationTypes,
+                                    syncEnabled,
+                                    realignedRepRefs: realignedRepRefsA,
+                                    setRealignedRepRefs: setRealignedRepRefsA,
+                                    setRealignedStructRefs: setRealignedStructRefsA,
+                                    // Override for left column:
+                                    fileInputLabel: 'Load AlignedTo',
+                                    fileInputDisabled: !viewerAReady || !viewerBReady,
+                                })}
+                                moleculeUIAlignedToProps={getMoleculeUIAlignedToProps({
+                                    molstar: molstarA,
+                                    otherMolstar: molstarB,
+                                    viewer: viewerA,
+                                    isVisible: viewerA.isMoleculeAlignedToVisible,
+                                    onToggleVisibility: toggleViewerAAlignedTo.handleButtonClick,
+                                    chainZoomLabel: selectedChainIdAlignedTo && chainInfoAlignedTo.chainLabels.has(selectedChainIdAlignedTo)
+                                        ? chainInfoAlignedTo.chainLabels.get(selectedChainIdAlignedTo) ?? ''
+                                        : '',
+                                    onChainZoom: chainZoomAAlignedTo.handleButtonClick,
+                                    chainZoomDisabled: !selectedChainIdAlignedTo,
+                                    residueZoomLabel: residueInfoAlignedTo.residueLabels.get(selectedResidueIdAlignedTo)?.name || '',
+                                    onResidueZoom: residueZoomAAlignedTo.handleButtonClick,
+                                    residueZoomDisabled: !selectedResidueIdAlignedTo,
+                                    isLoaded: viewerA.isMoleculeAlignedToLoaded,
+                                    forceUpdate,
+                                    representationRefs: molstarA.representationRefs[AlignedTo] || [],
+                                    syncEnabled,
+                                    deleteRepresentation,
+                                    repIdMap: molstarA.repIdMap,
+                                    AlignedTo
+                                })}
+                                moleculeUIAlignedProps={getMoleculeUIAlignedProps({
+                                    molstar: molstarA,
+                                    otherMolstar: molstarB,
+                                    viewer: viewerA,
+                                    isVisible: viewerA.isMoleculeAlignedVisible,
+                                    onToggleVisibility: toggleViewerAAligned.handleButtonClick,
+                                    chainZoomLabel: selectedChainIdAligned && chainInfoAligned.chainLabels.has(selectedChainIdAligned)
+                                        ? chainInfoAligned.chainLabels.get(selectedChainIdAligned) ?? ''
+                                        : '',
+                                    onChainZoom: chainZoomAAligned.handleButtonClick,
+                                    chainZoomDisabled: !selectedChainIdAligned,
+                                    residueZoomLabel: residueInfoAligned.residueLabels.get(selectedResidueIdAligned)?.name || '',
+                                    onResidueZoom: residueZoomAAligned.handleButtonClick,
+                                    residueZoomDisabled: !selectedResidueIdAligned,
+                                    isLoaded: viewerA.isMoleculeAlignedLoaded,
+                                    forceUpdate,
+                                    representationRefs: molstarA.representationRefs[Aligned] || [],
+                                    syncEnabled,
+                                    deleteRepresentation,
+                                    repIdMap: molstarA.repIdMap,
+                                    Aligned,
+                                    chainInfoAligned,
+                                    selectedChainIdAligned,
+                                    residueInfoAligned,
+                                    selectedResidueIdAligned
+                                })}
+                                realignedMoleculeListProps={getRealignedMoleculeListProps({
+                                    molecules: realignedMoleculesA,
+                                    molstar: molstarA,
+                                    chainInfo: chainInfoAligned,
+                                    residueInfo: residueInfoAligned,
+                                    selectedResidueId: selectedResidueIdAligned,
+                                    realignedStructRefs: realignedStructRefsA,
+                                    setRealignedMolecules: setRealignedMoleculesA,
+                                    setRealignedRepRefs: setRealignedRepRefsA,
+                                    setRealignedStructRefs: setRealignedStructRefsA,
+                                    forceUpdate,
+                                    viewerKey: "A",
+                                    otherMolstar: molstarB,
+                                    otherRealignedStructRefs: realignedStructRefsB,
+                                    setOtherRealignedMolecules: setRealignedMoleculesB,
+                                    setOtherRealignedRepRefs: setRealignedRepRefsB,
+                                    setOtherRealignedStructRefs: setRealignedStructRefsB,
+                                })}
+                                molstarContainerProps={getMolstarContainerProps({
+                                    viewer: viewerA,
+                                    pluginRef: pluginRefA,
+                                    setViewerWrapper: setViewerAWrapper,
+                                    setViewerReady: setViewerAReady
+                                })}
+                            />
+                        }
+                        right={
+                            <ViewerColumn
+                                viewerKey={B}
+                                loadDataRowProps={getLoadDataRowProps({
+                                    viewer: viewerB,
+                                    otherViewer: viewerA,
+                                    molstar: molstarB,
+                                    otherMolstar: molstarA,
+                                    realignedStructRefs: realignedStructRefsB,
+                                    otherRealignedStructRefs: realignedStructRefsA,
+                                    isMoleculeAlignedLoaded: viewerB.isMoleculeAlignedLoaded,
+                                    // Always use latest state for enabling Load Aligned
+                                    isMoleculeAlignedToLoaded: viewerA.isMoleculeAlignedToLoaded,
+                                    viewerReady: viewerBReady,
+                                    otherViewerReady: viewerAReady,
+                                    representationType: representationTypeAligned,
+                                    setRepresentationType: setRepresentationTypeAligned,
+                                    colorsFile: colorsAlignedFile,
+                                    isMoleculeColoursLoaded: isMoleculeAlignedColoursLoaded,
+                                    structureRef: structureRefBAligned,
+                                    otherStructureRef: structureRefAAligned,
+                                    selectedSubunit: selectedSubunitAligned,
+                                    setSelectedSubunit: setSelectedSubunitAligned,
+                                    subunitToChainIds: subunitToChainIdsAligned,
+                                    chainInfo: chainInfoAligned,
+                                    selectedChainId: selectedChainIdAligned,
+                                    setSelectedChainId: setSelectedChainIdAligned,
+                                    residueInfo: residueInfoAligned,
+                                    selectedResidueId: selectedResidueIdAligned,
+                                    setSelectedResidueId: setSelectedResidueIdAligned,
+                                    fog: fogB,
+                                    setFog: makeFogSetters(setFogB),
+                                    camera: cameraB,
+                                    setCamera: makeCameraSetters(setCameraB),
+                                    updateFog,
+                                    handleFileChange,
+                                    Aligned: Aligned,
+                                    allowedRepresentationTypes,
+                                    syncEnabled,
+                                    realignedRepRefs: realignedRepRefsB,
+                                    setRealignedRepRefs: setRealignedRepRefsB,
+                                    setRealignedStructRefs: setRealignedStructRefsB,
+                                    // Override for right column:
+                                    fileInputLabel: 'Load Aligned',
+                                    fileInputDisabled: !viewerA.isMoleculeAlignedToLoaded || !viewerA.moleculeAlignedTo?.alignmentData || !viewerBReady || !viewerAReady,
+                                })}
+                                moleculeUIAlignedToProps={getMoleculeUIAlignedToProps({
+                                    molstar: molstarB,
+                                    otherMolstar: molstarA,
+                                    viewer: viewerB,
+                                    isVisible: viewerB.isMoleculeAlignedToVisible,
+                                    onToggleVisibility: toggleViewerBAlignedTo.handleButtonClick,
+                                    chainZoomLabel: selectedChainIdAlignedTo && chainInfoAlignedTo.chainLabels.has(selectedChainIdAlignedTo)
+                                        ? chainInfoAlignedTo.chainLabels.get(selectedChainIdAlignedTo) ?? ''
+                                        : '',
+                                    onChainZoom: chainZoomBAlignedTo.handleButtonClick,
+                                    chainZoomDisabled: !selectedChainIdAlignedTo,
+                                    residueZoomLabel: residueInfoAlignedTo.residueLabels.get(selectedResidueIdAlignedTo)?.name || '',
+                                    onResidueZoom: residueZoomBAlignedTo.handleButtonClick,
+                                    residueZoomDisabled: !selectedResidueIdAlignedTo,
+                                    isLoaded: viewerB.isMoleculeAlignedToLoaded,
+                                    forceUpdate,
+                                    representationRefs: molstarB.representationRefs[AlignedTo] || [],
+                                    syncEnabled,
+                                    deleteRepresentation,
+                                    repIdMap: molstarB.repIdMap,
+                                    AlignedTo
+                                })}
+                                moleculeUIAlignedProps={getMoleculeUIAlignedProps({
+                                    molstar: molstarB,
+                                    otherMolstar: molstarA,
+                                    viewer: viewerB,
+                                    isVisible: viewerB.isMoleculeAlignedVisible,
+                                    onToggleVisibility: toggleViewerBAligned.handleButtonClick,
+                                    chainZoomLabel: selectedChainIdAligned && chainInfoAligned.chainLabels.has(selectedChainIdAligned)
+                                        ? chainInfoAligned.chainLabels.get(selectedChainIdAligned) ?? ''
+                                        : '',
+                                    onChainZoom: chainZoomBAligned.handleButtonClick,
+                                    chainZoomDisabled: !selectedChainIdAligned,
+                                    residueZoomLabel: residueInfoAligned.residueLabels.get(selectedResidueIdAligned)?.name || '',
+                                    onResidueZoom: residueZoomBAligned.handleButtonClick,
+                                    residueZoomDisabled: !selectedResidueIdAligned,
+                                    isLoaded: viewerB.isMoleculeAlignedLoaded,
+                                    forceUpdate,
                                     representationRefs: molstarB.representationRefs[Aligned] || [],
                                     syncEnabled,
                                     deleteRepresentation,
