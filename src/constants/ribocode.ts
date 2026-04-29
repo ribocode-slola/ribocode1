@@ -15,3 +15,8 @@ export const B: ViewerKey = 'B';
 export const AlignedTo: MoleculeMode = 'AlignedTo';
 export const Aligned: MoleculeMode = 'Aligned';
 export const ReAligned: MoleculeMode = 'ReAligned';
+/**
+ * Alignment target atom types.
+ */
+//export const selectedAtomTypes: { [key: string]: boolean } = { 'P': true };
+export const selectedAtomTypes: { [key: string]: boolean } = { 'P': true, 'C': true };

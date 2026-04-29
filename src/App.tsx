@@ -14,7 +14,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { SelectionProvider } from './context/SelectionContext';
 import { ViewerStateProvider } from './context/ViewerStateContext';
 import { SyncProvider } from './context/SyncContext';
-import { useHandleFileChange, handleToggle } from './handlers/uiHandlers';
+import { handleToggle } from './handlers/uiHandlers';
 import { useSessionSave } from './hooks/useSessionSave';
 import { useSessionLoadModal } from './hooks/useSessionLoadModal';
 import { useUpdateChainInfo } from './hooks/useUpdateChainInfo';
@@ -44,23 +44,14 @@ import { useMolstarViewer } from './hooks/useMolstarViewer';
 import { loadMoleculeFileToViewer } from 'molstar/lib/extensions/ribocode/structure';
 import { Asset } from 'molstar/lib/mol-util/assets';
 import { useViewerState } from './hooks/useViewerState';
-import { useMoleculeLoader } from './hooks/useMoleculeLoader';
 import { alignDatasetUsingChains } from 'molstar/lib/extensions/ribocode/utils/geometry';
 import { Color } from 'molstar/lib/mol-util/color';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 import { AlignmentData } from 'molstar/lib/extensions/ribocode/types';
 import type { LoadedMolecule, ViewerKey } from './types/ribocode';
 import { A, B } from './constants/ribocode';
-
-/**
- * Alignment target atom types.
- */
-//const selectedAtomTypes: { [key: string]: boolean } = { 'P': true };
-const selectedAtomTypes: { [key: string]: boolean } = { 'P': true, 'C': true };
-
-
-
-import { makeFogSetters, makeCameraSetters, createZoomHandler, makeZoomHandler } from './utils/viewerHelpers';
+import { makeFogSetters, makeCameraSetters, makeZoomHandler } from './utils/viewerHelpers';
+import { selectedAtomTypes } from './constants/ribocode';
 
 /**
  * The main App component.
