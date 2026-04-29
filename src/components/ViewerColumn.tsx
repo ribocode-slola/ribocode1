@@ -521,12 +521,13 @@ export function getMolstarContainerProps({
  * @property {Object} molstarContainerProps - Props to pass to the MolstarContainer component.
  */
 export interface ViewerColumnProps {
-  viewerKey: ViewerKey;
-  loadDataRowProps: any;
-  moleculeUIAlignedToProps: any;
-  moleculeUIAlignedProps: any;
-  realignedMoleculeListProps: any;
-  molstarContainerProps: any;
+	viewerKey: ViewerKey;
+	loadDataRowProps: any;
+	moleculeUIAlignedToProps: any;
+	moleculeUIAlignedProps: any;
+	realignedMoleculeListProps: any;
+	molstarContainerProps: any;
+	testMode?: boolean;
 }
 
 /**
@@ -541,10 +542,11 @@ const ViewerColumn: React.FC<ViewerColumnProps> = ({
   moleculeUIAlignedProps,
   realignedMoleculeListProps,
   molstarContainerProps,
+  testMode
 }) => {
 	return (
 		<div className="Column">
-			<LoadDataRow {...loadDataRowProps} />
+			<LoadDataRow {...loadDataRowProps} testMode={testMode} />
 			<MoleculeUI key={moleculeUIAlignedToProps.key} {...(() => { const { key, ...rest } = moleculeUIAlignedToProps; return rest; })()} />
 			<MoleculeUI key={moleculeUIAlignedProps.key} {...(() => { const { key, ...rest } = moleculeUIAlignedProps; return rest; })()} />
 			<RealignedMoleculeList {...realignedMoleculeListProps} />

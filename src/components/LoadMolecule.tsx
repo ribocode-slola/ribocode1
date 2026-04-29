@@ -107,6 +107,8 @@ interface LoadDataRowProps {
     cameraFar: number;
     onCameraNearChange: (value: number) => void;
     onCameraFarChange: (value: number) => void;
+    // Test mode override
+    testMode?: boolean;
 }
 
 
@@ -197,7 +199,8 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
     fogFar,
     onFogEnabledChange,
     onFogNearChange,
-    onFogFarChange
+    onFogFarChange,
+    testMode
 }) => (
 
     <div className="load-data-row">
@@ -207,7 +210,7 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
                 <button
                     type="button"
                     onClick={onFileInputClick}
-                    disabled={fileInputDisabled}
+                    disabled={testMode ? false : fileInputDisabled}
                     className="msp-btn msp-form-control"
                     aria-label={fileInputLabel}
                     data-testid={fileInputLabel === 'Load AlignedTo' ? 'alignedto-load-btn' : fileInputLabel === 'Load Aligned' ? 'aligned-load-btn' : undefined}
