@@ -800,6 +800,7 @@ const App: React.FC = () => {
                         handleRealignToChains={handleRealignToChains}
                     />
                     <TwoColumnsContainer
+                        idPrefix="main-two-columns"
                         left={
                             <ViewerColumn
                                 viewerKey={A}

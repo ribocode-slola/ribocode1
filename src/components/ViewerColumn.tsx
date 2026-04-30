@@ -132,7 +132,7 @@ export function getLoadDataRowProps({
 			/>
 		),
 		onAddColorsClick: colorsFile.handleButtonClick,
-		addColorsDisabled: !isMoleculeAlignedLoaded,
+			addColorsDisabled: !isMoleculeAlignedToLoaded,
 		onAddRepresentationClick: () => {
 			let colorTheme;
 			if (isMoleculeColoursLoaded) {
@@ -182,12 +182,12 @@ export function getLoadDataRowProps({
 				}
 			});
 		},
-		addRepresentationDisabled: !isMoleculeAlignedLoaded || !structureRef,
+			addRepresentationDisabled: !isMoleculeAlignedToLoaded || !representationType,
 		colorsInputRef: colorsFile.inputRef,
 		onColorsFileChange: colorsFile.handleFileChange,
 		selectedSubunit,
 		onSelectSubunit: setSelectedSubunit,
-		subunitSelectDisabled: !isMoleculeAlignedLoaded,
+		subunitSelectDisabled: !isMoleculeAlignedToLoaded,
 		chainInfo,
 		selectedChainId,
 		onSelectChainId: setSelectedChainId,
@@ -195,7 +195,7 @@ export function getLoadDataRowProps({
 		residueInfo,
 		selectedResidueId,
 		onSelectResidueId: setSelectedResidueId,
-		residueSelectDisabled: !isMoleculeAlignedLoaded,
+		residueSelectDisabled: !isMoleculeAlignedToLoaded,
 		fogEnabled: fog.enabled,
 		fogNear: fog.near,
 		fogFar: fog.far,
@@ -221,7 +221,8 @@ export function getLoadDataRowProps({
 			setCamera.setFar(val);
 			updateFog(viewer.ref.current, otherViewer.ref.current, fog.enabled, fog.near, fog.far, camera.near, val);
 		},
-		subunitToChainIds
+		subunitToChainIds,
+		idPrefix: viewer && viewer.key ? `viewer-${viewer.key}` : (viewer && viewer.moleculeAligned ? `viewer-${viewer.moleculeAligned.name?.replace(/\s+/g, '-').toLowerCase()}` : 'viewer-unknown'),
 	};
 }
 

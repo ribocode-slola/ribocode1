@@ -67,6 +67,7 @@ const realignedMoleculeListProps = {
 const molstarContainerProps = {};
 
 describe('ViewerColumn', () => {
+
     it('renders all subcomponents with minimal valid props', () => {
         const { getByText } = render(
             <ViewerColumn

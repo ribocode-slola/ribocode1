@@ -58,6 +58,7 @@ describe('LoadDataRow', () => {
         cameraFar: 1000,
         onCameraNearChange: vi.fn(),
         onCameraFarChange: vi.fn(),
+        idPrefix: 'test-viewer-a',
     };
 
     it('renders viewer title and file input button', () => {

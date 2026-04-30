@@ -3,7 +3,10 @@
  *
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
  *
- * @author Copilot
+ * @author Andy Turner <agdturner@gmail.com>
+ * @version 1.0.0
+ * @lastModified 2026-04-24
+ * @see https://github.com/ribocode-slola/ribocode1
  */
 import React from 'react';
 import GenericSelectButton from './Select';
@@ -15,12 +18,14 @@ import { RibosomeSubunitType, RibosomeSubunitTypes } from '../../../utils/subuni
  * @property selectedSubunit The currently selected subunit.
  * @property onSelect Callback function when a subunit is selected.
  * @property label Optional label for the select button.
+ * @property id A unique identifier for the select button.
  */
 export interface SubunitSelectButtonProps {
     disabled: boolean;
     selectedSubunit?: RibosomeSubunitType;
     onSelect: (subunit: RibosomeSubunitType) => void;
     label?: string;
+    id: string;
 }
 
 /**
@@ -29,21 +34,24 @@ export interface SubunitSelectButtonProps {
  * @param selectedSubunit The currently selected subunit.
  * @param onSelect Callback function when a subunit is selected.
  * @param label Optional label for the select button.
+ * @param id A unique identifier for the select button.
  * @returns The SubunitSelectButton component.
  */
 const SubunitSelectButton: React.FC<SubunitSelectButtonProps> = ({
     disabled,
     selectedSubunit,
     onSelect,
-    label
+    label,
+    id
 }) => (
-    <GenericSelectButton
-        label={label || 'Select Subunit'}
-        options={RibosomeSubunitTypes}
-        selected={selectedSubunit || ''}
-        onSelect={(value: string) => onSelect(value as RibosomeSubunitType)}
-        disabled={disabled}
-    />
+        <GenericSelectButton
+            label={label || 'Select Subunit'}
+            options={RibosomeSubunitTypes}
+            selected={selectedSubunit || ''}
+            onSelect={(value: string) => onSelect(value as RibosomeSubunitType)}
+            disabled={disabled}
+            id={id}
+        />
 );
 
 export default SubunitSelectButton;

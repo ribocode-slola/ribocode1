@@ -25,4 +25,16 @@ describe('TwoColumnsContainer', () => {
     expect(getByText('Right Side')).toBeInTheDocument();
     expect(container.querySelector('.Two-Columns-Container')).toBeTruthy();
   });
+
+  it('applies idPrefix as id on the root div', () => {
+    const { container } = render(
+      <TwoColumnsContainer
+        left={<div>Left</div>}
+        right={<div>Right</div>}
+        idPrefix="test-columns"
+      />
+    );
+    const rootDiv = container.querySelector('.Two-Columns-Container');
+    expect(rootDiv).toHaveAttribute('id', 'test-columns-container');
+  });
 });

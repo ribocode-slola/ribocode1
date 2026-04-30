@@ -37,6 +37,7 @@ import { RibosomeSubunitType } from '../utils/subunit';
  * @param addColorsDisabled Whether the add colors button is disabled.
  * @param colorsInputRef Ref for the hidden colors file input element.
  * @param onColorsFileChange Function to handle colors file input change event.
+ * @param subunitToChainIds Map of subunit types to their associated chain IDs.
  * @param selectedSubunit Currently selected subunit.
  * @param onSelectSubunit Function to handle subunit selection.
  * @param subunitSelectDisabled Whether the subunit select button is disabled.
@@ -57,6 +58,7 @@ import { RibosomeSubunitType } from '../utils/subunit';
  * @param onFogEnabledChange Function to handle changes to fog enabled state.
  * @param onFogNearChange Function to handle changes to fog near distance.
  * @param onFogFarChange Function to handle changes to fog far distance.
+ * @param idPrefix Prefix for generating unique IDs.
  */
 interface LoadDataRowProps {
     viewerTitle: string;
@@ -109,6 +111,7 @@ interface LoadDataRowProps {
     onCameraFarChange: (value: number) => void;
     // Test mode override
     testMode?: boolean;
+    idPrefix: string;
 }
 
 
@@ -200,7 +203,8 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
     onFogEnabledChange,
     onFogNearChange,
     onFogFarChange,
-    testMode
+    testMode,
+    idPrefix
 }) => (
 
     <div className="load-data-row">
@@ -233,22 +237,27 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
                 disabled={subunitSelectDisabled}
                 selectedSubunit={selectedSubunit}
                 onSelect={onSelectSubunit}
+                id={`${idPrefix}-subunit-select`}
             />
             <ChainSelectButton
-                disabled={chainSelectDisabled || !selectedSubunit}
-                chainLabels={getFilteredChainLabels(selectedSubunit, chainInfo.chainLabels, subunitToChainIds)}
-                selectedChainId={selectedChainId}
-                onSelect={onSelectChainId}
+                 disabled={chainSelectDisabled || !selectedSubunit}
+                 chainLabels={getFilteredChainLabels(selectedSubunit, chainInfo.chainLabels, subunitToChainIds)}
+                 selectedChainId={selectedChainId}
+                 onSelect={onSelectChainId}
+                 id={`${idPrefix}-chain-select`}
             />
             <ResidueSelectButton
+                data-testid="select-residue"
                 disabled={residueSelectDisabled || !selectedChainId}
                 residueLabels={residueInfo.residueLabels}
                 selectedResidueId={selectedResidueId}
                 onSelect={onSelectResidueId}
+                id={`${idPrefix}-residue-select`}
             />
             <div>
                 <button
                     type="button"
+                    data-testid="load-colours-btn"
                     onClick={onAddColorsClick}
                     disabled={addColorsDisabled}
                     aria-label="Load Colours"
@@ -269,6 +278,7 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
                 <span className="rep-type-controls">
                     {representationTypeSelector}
                     <button
+                        data-testid="add-representation-btn"
                         onClick={onAddRepresentationClick}
                         disabled={addRepresentationDisabled}
                         aria-label="Add Representation"
@@ -284,6 +294,7 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
                     </label>
                     <select
                         id="representation-type"
+                        data-testid="representation-type"
                         value={representationType}
                         onChange={e => onRepresentationTypeChange(e.target.value as AllowedRepresentationType)}
                         disabled={representationTypeDisabled}
@@ -294,6 +305,7 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
                         ))}
                     </select>
                     <button
+                        data-testid="add-representation-btn"
                         onClick={onAddRepresentationClick}
                         disabled={addRepresentationDisabled}
                         aria-label="Add Representation"

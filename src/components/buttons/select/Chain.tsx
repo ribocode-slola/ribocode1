@@ -4,6 +4,9 @@
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
  *
  * @author Andy Turner <agdturner@gmail.com>
+ * @version 1.0.0
+ * @lastModified 2026-04-24
+ * @see https://github.com/ribocode-slola/ribocode1
  */
 import React from 'react';
 import GenericSelectButton from './Select';
@@ -15,6 +18,7 @@ import GenericSelectButton from './Select';
  * @property selectedChainId The currently selected chain ID.
  * @property onSelect Callback function when a chain ID is selected.
  * @property label Optional label for the select button.
+ * @property id Required id for the select button.
  */
 export interface ChainSelectButtonProps {
 	disabled: boolean;
@@ -22,6 +26,7 @@ export interface ChainSelectButtonProps {
 	selectedChainId?: string;
 	onSelect: (chainId: string) => void;
 	label?: string;
+	id: string;
 }
 
 /**
@@ -31,6 +36,7 @@ export interface ChainSelectButtonProps {
  * @param selectedChainId The currently selected chain ID.
  * @param onSelect Callback function when a chain ID is selected.
  * @param label Optional label for the select button.
+ * @param id Required id for the select button.
  * @returns The ChainSelectButton component.
  */
 const ChainSelectButton: React.FC<ChainSelectButtonProps> = ({
@@ -38,7 +44,8 @@ const ChainSelectButton: React.FC<ChainSelectButtonProps> = ({
 	chainLabels,
 	selectedChainId,
 	onSelect,
-	label
+	label,
+	id
 }) => {
 	       // Map selectedChainId to its label value
 	       const selectedLabel = selectedChainId ? chainLabels.get(selectedChainId) || '' : '';
@@ -65,6 +72,7 @@ const ChainSelectButton: React.FC<ChainSelectButtonProps> = ({
 			       selected={selectedLabel}
 			       onSelect={handleSelect}
 			       disabled={disabled}
+			       id={id}
 		       />
 	       );
 };

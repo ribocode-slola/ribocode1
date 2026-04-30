@@ -13,10 +13,11 @@ import React from 'react';
 interface TwoColumnsContainerProps {
   left: React.ReactNode;
   right: React.ReactNode;
+  idPrefix?: string;
 }
 
-const TwoColumnsContainer: React.FC<TwoColumnsContainerProps> = ({ left, right }) => (
-  <div className="Two-Columns-Container">
+const TwoColumnsContainer: React.FC<TwoColumnsContainerProps> = ({ left, right, idPrefix }) => (
+  <div className="Two-Columns-Container" id={idPrefix ? `${idPrefix}-container` : undefined}>
     {left}
     {right}
   </div>

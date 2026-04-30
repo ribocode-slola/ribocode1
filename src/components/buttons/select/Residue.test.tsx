@@ -4,6 +4,9 @@
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
  *
  * @author Andy Turner <agdturner@gmail.com>
+ * @version 1.0.0
+ * @lastModified 2026-04-24
+ * @see https://github.com/ribocode-slola/ribocode1
  */
 import { vi } from 'vitest';
 import { render, fireEvent } from '@testing-library/react';
@@ -25,6 +28,7 @@ describe('ResidueSelectButton', () => {
                 residueLabels={residueLabels}
                 selectedResidueId={''}
                 onSelect={() => {}}
+                id="test-residue-select"
             />
         );
         expect(getByLabelText('Select Residue')).toBeInTheDocument();
@@ -41,6 +45,7 @@ describe('ResidueSelectButton', () => {
                 selectedResidueId={''}
                 onSelect={() => {}}
                 label="Pick Residue"
+                id="custom-residue-select"
             />
         );
         expect(getByLabelText('Pick Residue')).toBeInTheDocument();
@@ -53,6 +58,7 @@ describe('ResidueSelectButton', () => {
                 residueLabels={residueLabels}
                 selectedResidueId={'20'}
                 onSelect={() => {}}
+                id="select-residue-test"
             />
         );
         expect((getByLabelText('Select Residue') as HTMLSelectElement).value).toBe('ALA 20');
@@ -66,6 +72,7 @@ describe('ResidueSelectButton', () => {
                 residueLabels={residueLabels}
                 selectedResidueId={''}
                 onSelect={onSelect}
+                id="test-residue-select-onselect"
             />
         );
         fireEvent.change(getByLabelText('Select Residue'), { target: { value: 'SER 30' } });
@@ -79,6 +86,7 @@ describe('ResidueSelectButton', () => {
                 residueLabels={residueLabels}
                 selectedResidueId={''}
                 onSelect={() => {}}
+                id="test-residue-select-disabled"
             />
         );
         expect(getByLabelText('Select Residue')).toBeDisabled();

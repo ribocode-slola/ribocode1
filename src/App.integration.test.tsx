@@ -59,6 +59,74 @@ vi.mock('molstar/lib/extensions/ribocode/structure', () => {
 });
 
 describe('App integration: AlignedTo and Aligned loading', () => {
+
+    it('toggles visibility for all representations', async () => {
+
+      // Load AlignedTo molecule
+      render(<App />);
+      const alignedToInput = await screen.findByTestId('alignedto-file-input');
+      const alignedToFile = loadTestFile('4ug0.cif');
+      fireEvent.change(alignedToInput, { target: { files: [alignedToFile] } });
+      // Click the Load AlignedTo button to trigger loading
+      const loadAlignedToBtn = screen.getByTestId('alignedto-load-btn');
+      await fireEvent.click(loadAlignedToBtn);
+      // Wait for the Add Representation button to appear
+      await waitFor(() => {
+        const addRepBtns = screen.getAllByTestId('add-representation-btn');
+        expect(addRepBtns.length).toBeGreaterThan(0);
+      });
+      // Find the first Add Representation button and its parent
+      const addRepBtns = screen.getAllByTestId('add-representation-btn');
+      const addRepBtn = addRepBtns[0];
+      const parent = addRepBtn.closest('.rep-type-controls');
+      let repTypeSelect: HTMLElement | null = null;
+      if (parent) {
+        repTypeSelect = parent.querySelector('[data-testid="representation-type"]');
+      }
+      // Wait for the correct selector to be enabled
+      await waitFor(() => {
+        expect(repTypeSelect).not.toBeNull();
+        expect((repTypeSelect as HTMLSelectElement).disabled).toBe(false);
+      });
+      fireEvent.change(repTypeSelect!, { target: { value: 'spacefill' } });
+      // Now wait for the Add Representation button to become enabled
+      await waitFor(() => {
+        expect((addRepBtn as HTMLButtonElement).disabled).toBe(false);
+      });
+      await fireEvent.click(addRepBtn);
+
+      // Wait for representation toggle buttons to appear
+      await waitFor(() => {
+        const repButtons = screen.getAllByTestId(/^toggle-visibility-rep-/);
+        expect(repButtons.length).toBeGreaterThan(0);
+      }, { timeout: 4000 });
+
+      // Get all representation toggle buttons
+      const repButtons = screen.getAllByTestId(/^toggle-visibility-rep-/);
+      // All should be visible initially (icon is visible)
+      repButtons.forEach(btn => {
+        expect(btn.querySelector('svg')).not.toBeNull();
+      });
+
+      // Click all to hide
+      for (const btn of repButtons) {
+        await fireEvent.click(btn);
+      }
+
+      // After toggling, all should be hidden (icon changes)
+      repButtons.forEach(btn => {
+        expect(btn).toBeInTheDocument();
+      });
+
+      // Click all to show again
+      for (const btn of repButtons) {
+        await fireEvent.click(btn);
+      }
+      // All should be visible again
+      repButtons.forEach(btn => {
+        expect(btn).toBeInTheDocument();
+      });
+    });
   let loadMoleculeFileToViewerMock: any;
   beforeAll(() => {
     // Mock canvas getContext to avoid WebGL errors in test environment
@@ -97,6 +165,27 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     for (let i = 0; i < 5; i++) {
       fireEvent.change(alignedToInput, { target: { files: [alignedToFile] } });
     }
+
+    // Click the Load AlignedTo button to trigger loading
+    const loadAlignedToBtn = screen.getByTestId('alignedto-load-btn');
+    await fireEvent.click(loadAlignedToBtn);
+    // Select a representation type to enable the Add Representation button
+    let repTypeSelect: HTMLElement | null = null;
+    try {
+      repTypeSelect = screen.getByTestId('representation-type');
+    } catch {
+      repTypeSelect = screen.queryByLabelText(/Representation:/i);
+    }
+    if (repTypeSelect) {
+      fireEvent.change(repTypeSelect, { target: { value: 'spacefill' } });
+    }
+    let enabledAddRepBtn: HTMLElement | undefined;
+    await waitFor(() => {
+      const addRepBtns = screen.getAllByTestId('add-representation-btn');
+      enabledAddRepBtn = addRepBtns.find(btn => !(btn as HTMLButtonElement).disabled);
+      expect(enabledAddRepBtn).toBeDefined();
+    });
+    await fireEvent.click(enabledAddRepBtn!);
 
     // Wait for all error logs to be flushed
     await waitFor(() => {
@@ -146,26 +235,29 @@ describe('App integration: AlignedTo and Aligned loading', () => {
   });
 
   it('does not infinitely reload AlignedTo or Aligned (regression)', async () => {
+
     render(<App />);
     const alignedToInput = await screen.findByTestId('alignedto-file-input');
     const alignedInput = await screen.findByTestId('aligned-file-input');
     const loadAlignedBtn = await screen.findByTestId('aligned-load-btn');
 
-    // Load AlignedTo file
-    const alignedToFile = loadTestFile('4ug0.cif');
-    fireEvent.change(alignedToInput, { target: { files: [alignedToFile] } });
-
+    // Select a representation type to enable the Add Representation button
+    let repTypeSelect: HTMLElement | null = null;
+    try {
+      repTypeSelect = screen.getByTestId('representation-type');
+    } catch {
+      repTypeSelect = screen.queryByLabelText(/Representation:/i);
+    }
+    if (repTypeSelect) {
+      fireEvent.change(repTypeSelect, { target: { value: 'spacefill' } });
+    }
+    let enabledAddRepBtn: HTMLElement | undefined;
     await waitFor(() => {
-      expect(loadAlignedBtn).not.toBeDisabled();
+      const addRepBtns = screen.getAllByTestId('add-representation-btn');
+      enabledAddRepBtn = addRepBtns.find(btn => !(btn as HTMLButtonElement).disabled);
+      expect(enabledAddRepBtn).toBeDefined();
     });
-
-    // Load Aligned file
-    const alignedFile = loadTestFile('6xu8.cif');
-    fireEvent.change(alignedInput, { target: { files: [alignedFile] } });
-
-    await waitFor(() => {
-      expect(alignedInput).toBeInTheDocument();
-    });
+    await fireEvent.click(enabledAddRepBtn!);
 
     // Check loader call counts for both files
     const calls = loadMoleculeFileToViewerMock.mock.calls;
