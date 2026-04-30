@@ -11,7 +11,7 @@
 import { vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import LoadDataRow from './LoadMolecule';
-import { AllowedRepresentationType } from './buttons/select/Representation';
+import { AllowedRepresentationType } from '../types/ribocode';
 
 describe('LoadDataRow', () => {
     const baseProps = {

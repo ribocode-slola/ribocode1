@@ -10,19 +10,7 @@
  */
 import React from 'react';
 import GenericSelectButton from './Select';
-
-// List of allowed representation types.
-// export const allowedRepresentationTypes = [
-//     "spacefill", "cartoon", "ball-and-stick", "gaussian-surface",
-//     "molecular-surface", "putty", "point", "ellipsoid", "carbohydrate",
-//     "backbone", "label", "plane", "gaussian-volume", "line", "orientation"
-// ] as const;
-export const allowedRepresentationTypes = [
-    "spacefill", "cartoon", "gaussian-surface", "gaussian-volume", "line"
-] as const;
-
-// Type representing allowed representation types.
-export type AllowedRepresentationType = typeof allowedRepresentationTypes[number];
+import { allowedRepresentationTypes, AllowedRepresentationType } from '../../../types/ribocode';
 
 /**
  * Props for the SelectButton component.

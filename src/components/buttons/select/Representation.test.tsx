@@ -11,7 +11,8 @@
 import { vi } from 'vitest';
 import { render, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import RepresentationSelectButton, { allowedRepresentationTypes } from './Representation';
+import RepresentationSelectButton from './Representation';
+import { allowedRepresentationTypes } from '../../../types/ribocode';
 
 describe('RepresentationSelectButton', () => {
     it('renders with default label and allowed options', () => {

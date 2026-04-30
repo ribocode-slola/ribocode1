@@ -29,11 +29,17 @@ describe('MoleculeUI', () => {
         representationRefs: [],
     };
 
-    it('renders molecule label and zoom buttons', () => {
-        render(<MoleculeUI {...baseProps} />);
-        expect(screen.getByText('Test Molecule')).toBeInTheDocument();
-        expect(screen.getByText('Zoom to Chain: A')).toBeInTheDocument();
-        expect(screen.getByText('Zoom to Residue: 10')).toBeInTheDocument();
+
+    it('applies idPrefix to root div', () => {
+        const { container } = render(
+            <MoleculeUI
+                {...baseProps}
+                label="TestMol"
+                idPrefix="test-prefix"
+            />
+        );
+        const root = container.querySelector('#test-prefix-moleculeui-testmol');
+        expect(root).toBeInTheDocument();
     });
 
     it('calls onToggleVisibility when visibility button is clicked', () => {

@@ -29,6 +29,12 @@ describe('RibocodeViewer', () => {
         expect(container).toBeInTheDocument();
     });
 
+    it('applies idPrefix as id on the root div', () => {
+        render(<RibocodeViewer plugin={null} viewerKey="A" idPrefix="test-viewer" />);
+        const container = document.querySelector('.molstar-container');
+        expect(container).toHaveAttribute('id', 'test-viewer-molstar-container');
+    });
+
     it('calls onReady when plugin is provided', () => {
         const onReady = vi.fn();
         const mockPlugin = {} as any;

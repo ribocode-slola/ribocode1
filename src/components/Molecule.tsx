@@ -13,7 +13,7 @@ import React, { useState } from 'react';
 import { VisibilityOutlinedSvg, VisibilityOffOutlinedSvg } from 'molstar/lib/mol-plugin-ui/controls/icons';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 import { PluginCommands } from 'molstar/lib/mol-plugin/commands';
-import { allowedRepresentationTypes } from './buttons/select/Representation';
+import { allowedRepresentationTypes } from '../types/ribocode';
 
 /**
  * Props for the MoleculeUI component.
@@ -53,6 +53,7 @@ interface MoleculeUIProps {
     onToggleRepVisibility?: (ref: string) => void;
     extraControls?: React.ReactNode;
     onRemove?: () => void;
+    idPrefix?: string;
 }
 
 /**
@@ -91,6 +92,7 @@ const MoleculeUI: React.FC<MoleculeUIProps> = ({
     onDeleteRepresentation,
     onToggleRepVisibility,
     onRemove,
+    idPrefix,
 }) => {
     // Helper to get visibility state and type for a representation
     const getRepType = (ref: string): string | null => {
@@ -129,7 +131,7 @@ const MoleculeUI: React.FC<MoleculeUIProps> = ({
     const [openMenu, setOpenMenu] = useState<string | null>(null);
     // Render the component.
     return (
-        <div className="molecule-row">
+        <div className="molecule-row" id={idPrefix ? `${idPrefix}-moleculeui-${label.replace(/\s+/g, '-').toLowerCase()}` : undefined}>
             <button
                 onClick={onToggleVisibility}
                 disabled={!plugin || !isLoaded}

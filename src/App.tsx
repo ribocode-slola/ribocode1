@@ -37,7 +37,7 @@ import { getAtomDataFromStructureUnits } from './utils/data';
 import { parseDictionaryFileContent } from './utils/dictionary';
 import { useResidueState } from './hooks/useResidueState';
 import { useSubunitState } from './hooks/useSubunitState';
-import { allowedRepresentationTypes, AllowedRepresentationType } from './components/buttons/select/Representation';
+import { allowedRepresentationTypes, AllowedRepresentationType } from './types/ribocode';
 import GeneralControls from './components/GeneralControls';
 import { ViewerState } from './components/RibocodeViewer';
 import { useMolstarViewer } from './hooks/useMolstarViewer';

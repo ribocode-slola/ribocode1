@@ -82,4 +82,25 @@ describe('ViewerColumn', () => {
         expect(getByText('MoleculeUI AlignedTo')).toBeInTheDocument();
         expect(getByText('MoleculeUI Aligned')).toBeInTheDocument();
     });
+
+    it('applies idPrefix to root and propagates to RibocodeViewer', () => {
+        const idPrefix = 'test-root';
+        render(
+            <ViewerColumn
+                viewerKey="A"
+                loadDataRowProps={loadDataRowProps}
+                moleculeUIAlignedToProps={moleculeUIAlignedToProps}
+                moleculeUIAlignedProps={moleculeUIAlignedProps}
+                realignedMoleculeListProps={realignedMoleculeListProps}
+                molstarContainerProps={molstarContainerProps}
+                idPrefix={idPrefix}
+            />
+        );
+        // Root div id
+        const root = document.getElementById(`${idPrefix}-viewer-A`);
+        expect(root).toBeInTheDocument();
+        // RibocodeViewer id
+        const ribocodeViewer = document.getElementById(`${idPrefix}-viewer-A-ribocode-viewer`);
+        expect(ribocodeViewer).toBeInTheDocument();
+    });
 });

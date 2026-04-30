@@ -28,6 +28,7 @@ interface RealignedMoleculeListProps {
     setOtherRealignedMolecules: React.Dispatch<React.SetStateAction<any[]>>;
     setOtherRealignedRepRefs: React.Dispatch<React.SetStateAction<any>>;
     setOtherRealignedStructRefs: React.Dispatch<React.SetStateAction<any>>;
+    idPrefix?: string;
 }
 
 const RealignedMoleculeList: React.FC<RealignedMoleculeListProps> = ({
@@ -47,13 +48,14 @@ const RealignedMoleculeList: React.FC<RealignedMoleculeListProps> = ({
     setOtherRealignedMolecules,
     setOtherRealignedRepRefs,
     setOtherRealignedStructRefs,
+    idPrefix
 }) => {
     // Helper to create zoom handlers (stub, should be passed in or implemented as needed)
     const createZoomHandler = (viewerRef: any, structRef: any, type: string, chainId: string, isB: boolean, ...rest: any[]) => ({
         handleButtonClick: () => {},
     });
     return (
-        <>
+        <div className="realigned-molecule-list" id={idPrefix ? `${idPrefix}-realigned-molecule-list` : undefined}>
             {molecules.map(mol => {
                 const plugin = molstar.pluginRef.current;
                 const repRefs: string[] = molstar.representationRefs[mol.id] || [];
@@ -93,6 +95,7 @@ const RealignedMoleculeList: React.FC<RealignedMoleculeListProps> = ({
                         label={mol.label}
                         plugin={plugin}
                         isVisible={isVisible}
+                        idPrefix={idPrefix ? `${idPrefix}-realigned-${mol.id}` : undefined}
                         onToggleVisibility={() => {
                             repRefs.forEach(ref => {
                                 const plugin = molstar.pluginRef.current;
@@ -168,7 +171,7 @@ const RealignedMoleculeList: React.FC<RealignedMoleculeListProps> = ({
                     />
                 );
             })}
-        </>
+        </div>
     );
 };
 

@@ -10,8 +10,17 @@
  */
 import { AlignmentData } from 'molstar/lib/extensions/ribocode/types';
 
+// Types for Ribocode
 export type ViewerKey = "A" | "B";
 export type MoleculeMode = 'AlignedTo' | 'Aligned' | 'ReAligned';
 export interface LoadedMolecule {
 	alignmentData?: AlignmentData;
 }
+
+// Allowed representation types for molecular visualization
+export const allowedRepresentationTypes = [
+	"spacefill", "cartoon", "gaussian-surface", "gaussian-volume", "line"
+] as const;
+export type AllowedRepresentationType = typeof allowedRepresentationTypes[number];
+
+

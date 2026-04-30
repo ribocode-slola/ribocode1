@@ -60,11 +60,13 @@ export type ViewerState = {
  * @param plugin The Mol* PluginUIContext instance.
  * @param viewerKey The key identifying the viewer ('A' or 'B').
  * @param onReady Optional callback function invoked when the viewer is ready.
+ * @param idPrefix Optional prefix to apply to the root div for unique testability and traceability.
  */
 interface RibocodeViewerProps {
     plugin: PluginUIContext | null;
     viewerKey: ViewerKey;
     onReady?: (viewer: PluginUIContext | null) => void;
+    idPrefix?: string;
 }
 
 /**
@@ -72,10 +74,11 @@ interface RibocodeViewerProps {
  * @param plugin The Mol* PluginUIContext instance.
  * @param viewerKey The key identifying the viewer ('A' or 'B').
  * @param onReady Optional callback function invoked when the viewer is ready.
+ * @param idPrefix Optional prefix to apply to the root div for unique testability and traceability.
  * @returns The RibocodeViewer component.
  */
  const RibocodeViewer: React.FC<RibocodeViewerProps> = ({
-    plugin, viewerKey, onReady }) => {
+    plugin, viewerKey, onReady, idPrefix }) => {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const [viewerReady, setViewerReady] = useState(false);
     const viewerRef = useRef<PluginUIContext | null>(null);
@@ -105,7 +108,7 @@ interface RibocodeViewerProps {
     }, [viewerReady]);
     // Render the component.
     return (
-        <div ref={containerRef} className="molstar-container"></div>
+        <div ref={containerRef} className="molstar-container" id={idPrefix ? `${idPrefix}-ribocode-viewer` : undefined}></div>
     );
 };
 

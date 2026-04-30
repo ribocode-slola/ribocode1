@@ -13,7 +13,7 @@ import React from 'react';
 import ChainSelectButton from './buttons/select/Chain';
 import ResidueSelectButton from './buttons/select/Residue';
 import SubunitSelectButton from './buttons/select/Subunit';
-import { allowedRepresentationTypes, AllowedRepresentationType } from './buttons/select/Representation';
+import { allowedRepresentationTypes, AllowedRepresentationType } from '../types/ribocode';
 import { ResidueLabelInfo } from '../utils/residue';
 import { RibosomeSubunitType } from '../utils/subunit';
 
@@ -217,7 +217,7 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
                     disabled={testMode ? false : fileInputDisabled}
                     className="msp-btn msp-form-control"
                     aria-label={fileInputLabel}
-                    data-testid={fileInputLabel === 'Load AlignedTo' ? 'alignedto-load-btn' : fileInputLabel === 'Load Aligned' ? 'aligned-load-btn' : undefined}
+                    id={`${idPrefix}-load-btn`}
                 >
                     {fileInputLabel}
                 </button>
@@ -228,7 +228,7 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
                     onChange={onFileChange}
                     style={{ display: 'none' }}
                     tabIndex={-1}
-                    data-testid={fileInputLabel === 'Load AlignedTo' ? 'alignedto-file-input' : fileInputLabel === 'Load Aligned' ? 'aligned-file-input' : undefined}
+                    id={`${idPrefix}-file-input`}
                 />
             </div>
         )}
@@ -247,7 +247,6 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
                  id={`${idPrefix}-chain-select`}
             />
             <ResidueSelectButton
-                data-testid="select-residue"
                 disabled={residueSelectDisabled || !selectedChainId}
                 residueLabels={residueInfo.residueLabels}
                 selectedResidueId={selectedResidueId}
@@ -257,11 +256,11 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
             <div>
                 <button
                     type="button"
-                    data-testid="load-colours-btn"
                     onClick={onAddColorsClick}
                     disabled={addColorsDisabled}
                     aria-label="Load Colours"
                     className="msp-btn msp-form-control"
+                    id={`${idPrefix}-load-colours-btn`}
                 >
                     Load Colours
                 </button>
@@ -272,17 +271,18 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
                     onChange={onColorsFileChange}
                     style={{ display: 'none' }}
                     tabIndex={-1}
+                    id={`${idPrefix}-colours-file-input`}
                 />
             </div>
             {representationTypeSelector ? (
                 <span className="rep-type-controls">
                     {representationTypeSelector}
                     <button
-                        data-testid="add-representation-btn"
                         onClick={onAddRepresentationClick}
                         disabled={addRepresentationDisabled}
                         aria-label="Add Representation"
                         className="msp-btn msp-form-control"
+                        id={`${idPrefix}-add-representation-btn`}
                     >
                         +
                     </button>
@@ -294,7 +294,6 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
                     </label>
                     <select
                         id="representation-type"
-                        data-testid="representation-type"
                         value={representationType}
                         onChange={e => onRepresentationTypeChange(e.target.value as AllowedRepresentationType)}
                         disabled={representationTypeDisabled}
@@ -305,11 +304,11 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
                         ))}
                     </select>
                     <button
-                        data-testid="add-representation-btn"
                         onClick={onAddRepresentationClick}
                         disabled={addRepresentationDisabled}
                         aria-label="Add Representation"
                         className="msp-btn msp-form-control"
+                        id={`${idPrefix}-add-representation-btn`}
                     >
                         +
                     </button>
