@@ -18,7 +18,7 @@ vi.mock('molstar/lib/mol-plugin-ui', () => ({
 }));
 vi.mock('molstar/lib/mol-plugin-ui/context', () => ({}));
 
-import MolstarContainer from './MolstarContainer';
+import MolstarContainer, { idSuffix as molstarContainerIdSuffix } from './MolstarContainer';
 
 describe('MolstarContainer', () => {
     let originalLog: any;
@@ -36,12 +36,13 @@ describe('MolstarContainer', () => {
                 <MolstarContainer
                     viewerKey="A"
                     setViewer={setViewer}
+                    idPrefix="test-molstar"
                 />
             );
         });
-        // The container should be in the document
-        const container = document.querySelector('.molstar-container');
-        expect(container).toBeInTheDocument();
+        // The root container should be in the document
+        const root = document.getElementById(`test-molstar-${molstarContainerIdSuffix}`);
+        expect(root).toBeInTheDocument();
     });
 
     it('calls onMouseDown when the plugin root is clicked', async () => {

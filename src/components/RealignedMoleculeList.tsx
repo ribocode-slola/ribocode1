@@ -11,6 +11,12 @@
 import React from 'react';
 import MoleculeUI from './Molecule';
 
+/**
+ * Suffix for the RealignedMoleculeList root id, used for consistent id construction in code and tests.
+ */
+export const idSuffix = 'realigned-molecule-list';
+
+// Props for the RealignedMoleculeList component
 interface RealignedMoleculeListProps {
     molecules: any[];
     molstar: any;
@@ -31,6 +37,11 @@ interface RealignedMoleculeListProps {
     idPrefix?: string;
 }
 
+/**
+ * Component for displaying and managing realigned molecules in Ribocode.
+ * @param param0 Props for the RealignedMoleculeList component.
+ * @returns The RealignedMoleculeList component.
+ */
 const RealignedMoleculeList: React.FC<RealignedMoleculeListProps> = ({
     molecules,
     molstar,
@@ -55,7 +66,7 @@ const RealignedMoleculeList: React.FC<RealignedMoleculeListProps> = ({
         handleButtonClick: () => {},
     });
     return (
-        <div className="realigned-molecule-list" id={idPrefix ? `${idPrefix}-realigned-molecule-list` : undefined}>
+        <div className="realigned-molecule-list" id={idPrefix ? `${idPrefix}-${idSuffix}` : idSuffix}>
             {molecules.map(mol => {
                 const plugin = molstar.pluginRef.current;
                 const repRefs: string[] = molstar.representationRefs[mol.id] || [];

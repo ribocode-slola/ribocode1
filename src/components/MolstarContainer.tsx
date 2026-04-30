@@ -17,6 +17,11 @@ import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 import RibocodeViewer from './RibocodeViewer';
 
 /**
+ * Suffix for the MolstarContainer root id, used for consistent id construction in code and tests.
+ */
+export const idSuffix = 'molstar-container';
+
+/**
  * Props for MolstarContainer component.
  * @param viewerKey Unique key for the viewer instance.
  * @param setViewer Function to set the PluginUIContext instance.
@@ -129,14 +134,16 @@ const MolstarContainer = React.forwardRef(({ viewerKey, setViewer, onMouseDown, 
     }), []);
     // Return the container with a dedicated plugin root for Mol*
     // Render RibocodeViewer and pass idPrefix
-    return (
-        <RibocodeViewer
-            plugin={plugin}
-            viewerKey={viewerKey}
-            onReady={onReady}
-            idPrefix={idPrefix}
-        />
-    );
+        return (
+            <div id={idPrefix ? `${idPrefix}-${idSuffix}` : idSuffix} className="molstar-container-root">
+                <RibocodeViewer
+                    plugin={plugin}
+                    viewerKey={viewerKey}
+                    onReady={onReady}
+                    idPrefix={idPrefix}
+                />
+            </div>
+        );
 });
 
 /**

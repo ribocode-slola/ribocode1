@@ -18,6 +18,11 @@ import { ResidueLabelInfo } from '../utils/residue';
 import { RibosomeSubunitType } from '../utils/subunit';
 
 /**
+ * Suffix for the LoadMolecule root id, used for consistent id construction in code and tests.
+ */
+export const idSuffix = 'load-molecule';
+
+/**
  * Props for LoadDataRow component.
  * @param cameraNear Camera near clipping plane distance.
  * @param cameraFar Camera far clipping plane distance.
@@ -207,7 +212,7 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
     idPrefix
 }) => (
 
-    <div className="load-data-row">
+    <div className="load-data-row" id={idPrefix ? `${idPrefix}-${idSuffix}` : idSuffix}>
         <div className="viewer-title">{viewerTitle}</div>
         {!isLoaded && (
             <div>

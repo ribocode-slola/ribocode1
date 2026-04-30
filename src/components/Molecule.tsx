@@ -16,6 +16,11 @@ import { PluginCommands } from 'molstar/lib/mol-plugin/commands';
 import { allowedRepresentationTypes } from '../types/ribocode';
 
 /**
+ * Suffix for the MoleculeUI root id, used for consistent id construction in code and tests.
+ */
+export const idSuffix = 'moleculeui';
+
+/**
  * Props for the MoleculeUI component.
  * @param label The label for the molecule.
  * @param plugin The Mol* PluginUIContext instance.
@@ -131,12 +136,13 @@ const MoleculeUI: React.FC<MoleculeUIProps> = ({
     const [openMenu, setOpenMenu] = useState<string | null>(null);
     // Render the component.
     return (
-        <div className="molecule-row" id={idPrefix ? `${idPrefix}-moleculeui-${label.replace(/\s+/g, '-').toLowerCase()}` : undefined}>
+        <div className="molecule-row" id={idPrefix ? `${idPrefix}-${idSuffix}-${label.replace(/\s+/g, '-').toLowerCase()}` : `${idSuffix}-${label.replace(/\s+/g, '-').toLowerCase()}` }>
             <button
                 onClick={onToggleVisibility}
                 disabled={!plugin || !isLoaded}
                 className="msp-btn msp-form-control"
                 aria-label={isVisible ? `Hide ${label}` : `Show ${label}`}
+                id={idPrefix ? `${idPrefix}-toggle-visibility-btn` : undefined}
             >
                 {isVisible ? <VisibilityOutlinedSvg /> : <VisibilityOffOutlinedSvg />}
                 <span className="molstar-label">{label}</span>
@@ -154,11 +160,11 @@ const MoleculeUI: React.FC<MoleculeUIProps> = ({
                         return (
                             <span key={ref} className="rep-btn-group">
                                 <button
-                                    data-testid={`toggle-visibility-rep-${repId}`}
                                     onClick={() => onToggleRepVisibility ? onToggleRepVisibility(repId) : handleToggleRepVisibility(ref)}
                                     className="msp-btn msp-form-control"
                                     disabled={!isLoaded}
                                     aria-label={`Toggle visibility for ${typeName} representation`}
+                                    id={idPrefix ? `${idPrefix}-toggle-visibility-rep-${repId}` : undefined}
                                 >
                                     {isVisible ? <VisibilityOutlinedSvg /> : <VisibilityOffOutlinedSvg />}
                                     <span className="molstar-label">{typeName}</span>
@@ -169,6 +175,7 @@ const MoleculeUI: React.FC<MoleculeUIProps> = ({
                                     className="msp-btn msp-btn-danger msp-form-control"
                                     disabled={!isLoaded}
                                     aria-label={`Delete ${typeName} representation`}
+                                    id={idPrefix ? `${idPrefix}-delete-rep-${repId}` : undefined}
                                 >
                                     &#x2716;
                                 </button>
@@ -182,6 +189,7 @@ const MoleculeUI: React.FC<MoleculeUIProps> = ({
                 onClick={onChainZoom}
                 disabled={chainZoomDisabled}
                 className="msp-btn msp-form-control"
+                id={idPrefix ? `${idPrefix}-zoom-chain-btn` : undefined}
             >
                 Zoom to Chain: {chainZoomLabel}
             </button>
@@ -190,6 +198,7 @@ const MoleculeUI: React.FC<MoleculeUIProps> = ({
                 onClick={onResidueZoom}
                 disabled={residueZoomDisabled}
                 className="msp-btn msp-form-control"
+                id={idPrefix ? `${idPrefix}-zoom-residue-btn` : undefined}
             >
                 Zoom to Residue: {residueZoomLabel}
             </button>
@@ -200,6 +209,7 @@ const MoleculeUI: React.FC<MoleculeUIProps> = ({
                     className="msp-btn msp-btn-danger msp-form-control"
                     aria-label={`Remove ${label}`}
                     style={{ fontSize: '1.5em', lineHeight: 1 }}
+                    id={idPrefix ? `${idPrefix}-remove-btn` : undefined}
                 >
                     &#x2716;
                 </button>

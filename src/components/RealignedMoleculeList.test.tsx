@@ -9,7 +9,7 @@
  * @see https://github.com/ribocode-slola/ribocode1
  */
 import { vi } from 'vitest';import { render, screen } from '@testing-library/react';
-import RealignedMoleculeList from './RealignedMoleculeList';
+import RealignedMoleculeList, { idSuffix as realignedMoleculeListIdSuffix } from './RealignedMoleculeList';
 
 describe('RealignedMoleculeList', () => {
     it('renders MoleculeUI for each molecule', () => {
@@ -92,7 +92,7 @@ describe('RealignedMoleculeList', () => {
             />
         );
         // Root div
-        const root = container.querySelector('#test-list-realigned-molecule-list');
+        const root = container.querySelector(`#test-list-${realignedMoleculeListIdSuffix}`);
         expect(root).toBeInTheDocument();
         // MoleculeUI
         const molUI = container.querySelector('#test-list-realigned-1-moleculeui-mol-1');

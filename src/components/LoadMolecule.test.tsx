@@ -10,7 +10,7 @@
  */
 import { vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import LoadDataRow from './LoadMolecule';
+import LoadDataRow, { idSuffix as loadMoleculeIdSuffix } from './LoadMolecule';
 import { AllowedRepresentationType } from '../types/ribocode';
 
 describe('LoadDataRow', () => {
@@ -62,7 +62,10 @@ describe('LoadDataRow', () => {
     };
 
     it('renders viewer title and file input button', () => {
-        render(<LoadDataRow {...baseProps} />);
+        const { container } = render(<LoadDataRow {...baseProps} />);
+        // Check for root id
+        const root = container.querySelector(`#${baseProps.idPrefix}-${loadMoleculeIdSuffix}`);
+        expect(root).toBeInTheDocument();
         expect(screen.getByText('Viewer A')).toBeInTheDocument();
         expect(screen.getByText('Load AlignedTo')).toBeInTheDocument();
     });

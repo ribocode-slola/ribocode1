@@ -24,6 +24,7 @@ interface RepresentationVisibilityToggleProps {
     rep: any
     forceUpdate: () => void
     toggleVisibility?: (plugin: PluginUIContext, repRef: any) => Promise<void>
+    idPrefix?: string;
 }
 
 /**
@@ -33,7 +34,7 @@ interface RepresentationVisibilityToggleProps {
  * @param forceUpdate A function to force the parent component to re-render.
  * @returns The RepresentationVisibilityToggle component.
  */
-const RepresentationVisibilityToggle: React.FC<RepresentationVisibilityToggleProps> = ({ plugin, rep, forceUpdate, toggleVisibility }) => {
+const RepresentationVisibilityToggle: React.FC<RepresentationVisibilityToggleProps> = ({ plugin, rep, forceUpdate, toggleVisibility, idPrefix }) => {
     if (!plugin || !rep) return null;
     const cell = plugin.state.data.cells.get(rep.cell.transform.ref);
     // Treat undefined isHidden as visible (Mol* default)
@@ -51,6 +52,7 @@ const RepresentationVisibilityToggle: React.FC<RepresentationVisibilityTogglePro
         <button
             key={rep.cell?.transform?.ref}
             onClick={handleToggle}
+            id={idPrefix ? `${idPrefix}-toggle-visibility-rep-${rep.cell?.transform?.ref}` : undefined}
         >
             {isVisible ? <VisibilityOutlinedSvg /> : <VisibilityOffOutlinedSvg />}
             <span>{rep.cell?.params?.values?.type?.name || 'repr'}</span>

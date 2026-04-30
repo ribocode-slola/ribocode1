@@ -11,7 +11,7 @@
  */
 import { vi } from 'vitest';
 import { render } from '@testing-library/react';
-import ViewerColumn from './ViewerColumn';
+import ViewerColumn, { idSuffix as viewerColumnIdSuffix } from './ViewerColumn';
 
 // Mock props for ViewerColumn
 const loadDataRowProps = {
@@ -69,7 +69,8 @@ const molstarContainerProps = {};
 describe('ViewerColumn', () => {
 
     it('renders all subcomponents with minimal valid props', () => {
-        const { getByText } = render(
+        const idPrefix = 'viewer-A';
+        render(
             <ViewerColumn
                 viewerKey="A"
                 loadDataRowProps={loadDataRowProps}
@@ -77,10 +78,14 @@ describe('ViewerColumn', () => {
                 moleculeUIAlignedProps={moleculeUIAlignedProps}
                 realignedMoleculeListProps={realignedMoleculeListProps}
                 molstarContainerProps={molstarContainerProps}
+                idPrefix={idPrefix}
             />
         );
-        expect(getByText('MoleculeUI AlignedTo')).toBeInTheDocument();
-        expect(getByText('MoleculeUI Aligned')).toBeInTheDocument();
+        // Check for subcomponent root ids
+        const alignedTo = document.getElementById(`${idPrefix}-moleculeui-alignedto`);
+        const aligned = document.getElementById(`${idPrefix}-moleculeui-aligned`);
+        expect(alignedTo).toBeInTheDocument();
+        expect(aligned).toBeInTheDocument();
     });
 
     it('applies idPrefix to root and propagates to RibocodeViewer', () => {
@@ -97,10 +102,10 @@ describe('ViewerColumn', () => {
             />
         );
         // Root div id
-        const root = document.getElementById(`${idPrefix}-viewer-A`);
+        const root = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A`);
         expect(root).toBeInTheDocument();
         // RibocodeViewer id
-        const ribocodeViewer = document.getElementById(`${idPrefix}-viewer-A-ribocode-viewer`);
+        const ribocodeViewer = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-ribocode-viewer`);
         expect(ribocodeViewer).toBeInTheDocument();
     });
 });

@@ -12,7 +12,7 @@ import { vi } from 'vitest';
 import { render } from '@testing-library/react';
 // Mock Molstar PluginUIContext to avoid import issues
 vi.mock('molstar/lib/mol-plugin-ui/context', () => ({}));
-import RibocodeViewer from './RibocodeViewer';
+import RibocodeViewer, { idSuffix as ribocodeViewerIdSuffix } from './RibocodeViewer';
 
 describe('RibocodeViewer', () => {
     let originalLog: any;
@@ -30,9 +30,12 @@ describe('RibocodeViewer', () => {
     });
 
     it('applies idPrefix as id on the root div', () => {
-        render(<RibocodeViewer plugin={null} viewerKey="A" idPrefix="test-viewer" />);
-        const container = document.querySelector('.molstar-container');
-        expect(container).toHaveAttribute('id', 'test-viewer-molstar-container');
+        const idPrefix = "test-viewer";
+        render(<RibocodeViewer plugin={null} viewerKey="A" idPrefix={idPrefix} />);
+        const id = `${idPrefix}-${ribocodeViewerIdSuffix}`;
+        const root = document.getElementById(id);
+        expect(root).toBeInTheDocument();
+        expect(root).toHaveAttribute('id', id);
     });
 
     it('calls onReady when plugin is provided', () => {

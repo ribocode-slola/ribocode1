@@ -16,6 +16,11 @@ import { ModelRef } from 'molstar/lib/mol-plugin-state/manager/structure/hierarc
 import type { ViewerKey } from '../types/ribocode';
 
 /**
+ * Suffix for the RibocodeViewer root id, used for consistent id construction in code and tests.
+ */
+export const idSuffix = 'ribocode-viewer';
+
+/**
  * State type for RibocodeViewer component.
  * @param moleculeAlignedTo The molecule to which another molecule is aligned.
  * @param setMoleculeAlignedTo Function to set the molecule to which another molecule is aligned.
@@ -108,7 +113,11 @@ interface RibocodeViewerProps {
     }, [viewerReady]);
     // Render the component.
     return (
-        <div ref={containerRef} className="molstar-container" id={idPrefix ? `${idPrefix}-ribocode-viewer` : undefined}></div>
+        <div
+            ref={containerRef}
+            className="molstar-container"
+            id={idPrefix ? `${idPrefix}-${idSuffix}` : undefined}
+        ></div>
     );
 };
 

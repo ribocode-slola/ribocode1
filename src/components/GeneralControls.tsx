@@ -43,6 +43,7 @@ interface GeneralControlsProps {
   selectedChainIdAligned: string;
   realignmentExists: boolean;
   handleRealignToChains: () => void;
+  idPrefix?: string;
 }
 
 /**
@@ -64,6 +65,7 @@ const GeneralControls: React.FC<GeneralControlsProps> = ({
   selectedChainIdAligned,
   realignmentExists,
   handleRealignToChains,
+  idPrefix = 'generalcontrols',
 }) => (
   <div className="General-Controls">
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
@@ -77,6 +79,7 @@ const GeneralControls: React.FC<GeneralControlsProps> = ({
           step={1}
           style={{ width: 60, marginLeft: 4 }}
           onChange={e => setZoomExtraRadius(Number(e.target.value))}
+          id={`${idPrefix}-zoom-extra-radius`}
         />
       </label>
       <label>
@@ -89,6 +92,7 @@ const GeneralControls: React.FC<GeneralControlsProps> = ({
           step={1}
           style={{ width: 60, marginLeft: 4 }}
           onChange={e => setZoomMinRadius(Number(e.target.value))}
+          id={`${idPrefix}-zoom-min-radius`}
         />
       </label>
     </div>
@@ -103,6 +107,7 @@ const GeneralControls: React.FC<GeneralControlsProps> = ({
     <button
       disabled={!selectedChainIdAlignedTo || !selectedChainIdAligned || realignmentExists}
       onClick={handleRealignToChains}
+      id={`${idPrefix}-realign-btn`}
     >
       {selectedChainIdAlignedTo && selectedChainIdAligned
         ? realignmentExists

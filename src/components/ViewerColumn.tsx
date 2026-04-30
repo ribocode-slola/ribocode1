@@ -17,6 +17,11 @@ import { AllowedRepresentationType } from '../types/ribocode';
 import RepresentationSelectButton from './buttons/select/Representation';
 import type { ViewerKey } from '../types/ribocode';
 
+/**
+ * Suffix for the ViewerColumn root id, used for consistent id construction in code and tests.
+ */
+export const idSuffix = 'viewer-column';
+
 // Props for the ViewerColumn component
 export interface LoadDataRowPropsInput {
 	viewer: any;
@@ -126,7 +131,7 @@ export function getLoadDataRowProps({
 		representationTypeSelector: (
 			<RepresentationSelectButton
 				label="Select Representation"
-				options={[...allowedRepresentationTypes]}
+				options={allowedRepresentationTypes as AllowedRepresentationType[]}
 				selected={representationType}
 				onSelect={option => setRepresentationType(option as AllowedRepresentationType)}
 				disabled={!isMoleculeAlignedLoaded}
@@ -549,7 +554,7 @@ const ViewerColumn: React.FC<ViewerColumnProps> = ({
 	idPrefix
 }) => {
 	// Compose a unique idPrefix for this viewer column
-	const viewerIdPrefix = idPrefix ? `${idPrefix}-viewer-${viewerKey}` : `viewer-${viewerKey}`;
+	const viewerIdPrefix = idPrefix ? `${idPrefix}-${idSuffix}-${viewerKey}` : `${idSuffix}-${viewerKey}`;
 	return (
 		<div className="Column" id={viewerIdPrefix}>
 			<LoadDataRow {...loadDataRowProps} testMode={testMode} idPrefix={viewerIdPrefix} />

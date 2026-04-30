@@ -22,10 +22,11 @@ import { allowedRepresentationTypes, AllowedRepresentationType } from '../../../
  */
 interface RepresentationSelectButtonProps {
 	label?: string;
-	options: string[];
-	selected: string;
-	onSelect: (option: string) => void;
+	options: AllowedRepresentationType[];
+	selected: AllowedRepresentationType;
+	onSelect: (option: AllowedRepresentationType) => void;
 	disabled?: boolean;
+	id?: string;
 }
 
 /**
@@ -37,13 +38,14 @@ interface RepresentationSelectButtonProps {
  * @param disabled Whether the select button is disabled.
  * @returns The SelectButton component.
  */
-const RepresentationSelectButton: React.FC<RepresentationSelectButtonProps> = ({ label = 'Select Representation', options, selected, onSelect, disabled }) => (
+const RepresentationSelectButton: React.FC<RepresentationSelectButtonProps> = ({ label = 'Select Representation', options, selected, onSelect, disabled, id }) => (
 	<GenericSelectButton
 		label={label}
-		options={options}
-		selected={selected}
-		onSelect={onSelect}
+		options={options.map(String)}
+		selected={String(selected)}
+		onSelect={value => onSelect(value as AllowedRepresentationType)}
 		disabled={disabled}
+		id={id}
 	/>
 );
 

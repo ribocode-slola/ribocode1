@@ -10,19 +10,19 @@
  */
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
-import TwoColumnsContainer from './TwoColumnsContainer';
+import TwoColumnsContainer, { idSuffix as twoColumnsContainerIdSuffix } from './TwoColumnsContainer';
 
 
 describe('TwoColumnsContainer', () => {
   it('renders left and right children in the container', () => {
-    const { getByText, container } = render(
+    const { container } = render(
       <TwoColumnsContainer
-        left={<div>Left Side</div>}
-        right={<div>Right Side</div>}
+        left={<div id="left-side">Left Side</div>}
+        right={<div id="right-side">Right Side</div>}
       />
     );
-    expect(getByText('Left Side')).toBeInTheDocument();
-    expect(getByText('Right Side')).toBeInTheDocument();
+    expect(document.getElementById('left-side')).toBeInTheDocument();
+    expect(document.getElementById('right-side')).toBeInTheDocument();
     expect(container.querySelector('.Two-Columns-Container')).toBeTruthy();
   });
 
@@ -35,6 +35,6 @@ describe('TwoColumnsContainer', () => {
       />
     );
     const rootDiv = container.querySelector('.Two-Columns-Container');
-    expect(rootDiv).toHaveAttribute('id', 'test-columns-container');
+    expect(rootDiv).toHaveAttribute('id', `test-columns-${twoColumnsContainerIdSuffix}`);
   });
 });

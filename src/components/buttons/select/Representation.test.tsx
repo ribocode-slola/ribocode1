@@ -12,14 +12,14 @@ import { vi } from 'vitest';
 import { render, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import RepresentationSelectButton from './Representation';
-import { allowedRepresentationTypes } from '../../../types/ribocode';
+import { allowedRepresentationTypes, AllowedRepresentationType } from '../../../types/ribocode';
 
 describe('RepresentationSelectButton', () => {
     it('renders with default label and allowed options', () => {
         const { getByLabelText, getByText } = render(
             <RepresentationSelectButton
                 options={Array.from(allowedRepresentationTypes)}
-                selected=""
+                selected={allowedRepresentationTypes[0]}
                 onSelect={() => {}}
             />
         );
@@ -33,8 +33,8 @@ describe('RepresentationSelectButton', () => {
         const { getByLabelText } = render(
             <RepresentationSelectButton
                 label="Rep Type"
-                options={['cartoon', 'line']}
-                selected="cartoon"
+                options={['cartoon', 'line'] as AllowedRepresentationType[]}
+                selected={'cartoon' as AllowedRepresentationType}
                 onSelect={() => {}}
             />
         );
@@ -45,8 +45,8 @@ describe('RepresentationSelectButton', () => {
         const onSelect = vi.fn();
         const { getByLabelText } = render(
             <RepresentationSelectButton
-                options={['cartoon', 'line']}
-                selected="cartoon"
+                options={['cartoon', 'line'] as AllowedRepresentationType[]}
+                selected={'cartoon' as AllowedRepresentationType}
                 onSelect={onSelect}
             />
         );
@@ -57,8 +57,8 @@ describe('RepresentationSelectButton', () => {
     it('is disabled when disabled prop is true', () => {
         const { getByLabelText } = render(
             <RepresentationSelectButton
-                options={['cartoon']}
-                selected="cartoon"
+                options={['cartoon'] as AllowedRepresentationType[]}
+                selected={'cartoon' as AllowedRepresentationType}
                 onSelect={() => {}}
                 disabled
             />

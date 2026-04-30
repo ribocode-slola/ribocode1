@@ -9,7 +9,7 @@
  * @see https://github.com/ribocode-slola/ribocode1
  */
 import { vi } from 'vitest';import { render, screen, fireEvent } from '@testing-library/react';
-import MoleculeUI from './Molecule';
+import MoleculeUI, { idSuffix as moleculeIdSuffix } from './Molecule';
 
 describe('MoleculeUI', () => {
     const mockPlugin = {} as any;
@@ -38,7 +38,7 @@ describe('MoleculeUI', () => {
                 idPrefix="test-prefix"
             />
         );
-        const root = container.querySelector('#test-prefix-moleculeui-testmol');
+        const root = container.querySelector(`#test-prefix-${moleculeIdSuffix}-testmol`);
         expect(root).toBeInTheDocument();
     });
 
