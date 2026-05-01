@@ -91,16 +91,18 @@ describe('App integration: AlignedTo and Aligned loading', () => {
       const addRepBtn = document.getElementById('viewer-column-A-add-representation-btn');
       expect(addRepBtn).toBeInTheDocument();
     });
-    const addRepBtn = document.getElementById('viewer-column-A-add-representation-btn') as HTMLButtonElement | null;
-    const repTypeSelect = document.getElementById(`viewer-column-A-${repTypeSelectIdSuffix}`) as HTMLSelectElement | null;
-    // Wait for the correct selector to be enabled
+    // Wait for the representation type select to appear and be enabled
+    let repTypeSelect: HTMLSelectElement | null = null;
     await waitFor(() => {
+      repTypeSelect = document.getElementById(`viewer-column-A-${repTypeSelectIdSuffix}`) as HTMLSelectElement | null;
       if (!repTypeSelect) throw new Error('repTypeSelect is null');
       expect(repTypeSelect.disabled).toBe(false);
     });
     fireEvent.change(repTypeSelect!, { target: { value: 'spacefill' } });
     // Now wait for the Add Representation button to become enabled
+    let addRepBtn: HTMLButtonElement | null = null;
     await waitFor(() => {
+      addRepBtn = document.getElementById('viewer-column-A-add-representation-btn') as HTMLButtonElement | null;
       if (!addRepBtn) throw new Error('addRepBtn is null');
       expect(addRepBtn.disabled).toBe(false);
     });
@@ -175,16 +177,20 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     const loadAlignedToBtn = document.getElementById('viewer-column-A-load-btn');
     if (!loadAlignedToBtn) throw new Error('loadAlignedToBtn is null');
     await fireEvent.click(loadAlignedToBtn);
-    // Select a representation type to enable the Add Representation button
-    const repTypeSelect = document.getElementById(`viewer-column-A-${repTypeSelectIdSuffix}`) as HTMLSelectElement | null;
-    if (!repTypeSelect) throw new Error('repTypeSelect is null');
-    fireEvent.change(repTypeSelect, { target: { value: 'spacefill' } });
-    let enabledAddRepBtn: HTMLButtonElement | undefined;
+    // Wait for the representation type select to appear and be enabled
+    let repTypeSelect: HTMLSelectElement | null = null;
     await waitFor(() => {
-      const addRepBtn = document.getElementById('viewer-column-A-add-representation-btn') as HTMLButtonElement | null;
-      if (!addRepBtn) throw new Error('addRepBtn is null');
-      expect(addRepBtn.disabled).toBe(false);
-      enabledAddRepBtn = addRepBtn;
+      repTypeSelect = document.getElementById(`viewer-column-A-${repTypeSelectIdSuffix}`) as HTMLSelectElement | null;
+      if (!repTypeSelect) throw new Error('repTypeSelect is null');
+      expect(repTypeSelect.disabled).toBe(false);
+    });
+    fireEvent.change(repTypeSelect!, { target: { value: 'spacefill' } });
+    // Wait for the Add Representation button to become enabled
+    let enabledAddRepBtn: HTMLButtonElement | null = null;
+    await waitFor(() => {
+      enabledAddRepBtn = document.getElementById('viewer-column-A-add-representation-btn') as HTMLButtonElement | null;
+      if (!enabledAddRepBtn) throw new Error('addRepBtn is null');
+      expect(enabledAddRepBtn.disabled).toBe(false);
     });
     await fireEvent.click(enabledAddRepBtn!);
 
@@ -245,16 +251,20 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     const alignedInput = document.getElementById('viewer-column-B-file-input');
     const loadAlignedBtn = document.getElementById('viewer-column-B-load-btn');
 
-    // Select a representation type to enable the Add Representation button
-    const repTypeSelect = document.getElementById(`viewer-column-A-${repTypeSelectIdSuffix}`) as HTMLSelectElement | null;
-    if (!repTypeSelect) throw new Error('repTypeSelect is null');
-    fireEvent.change(repTypeSelect, { target: { value: 'spacefill' } });
-    let enabledAddRepBtn: HTMLButtonElement | undefined;
+    // Wait for the representation type select to appear and be enabled
+    let repTypeSelect: HTMLSelectElement | null = null;
     await waitFor(() => {
-      const addRepBtn = document.getElementById('viewer-column-A-add-representation-btn') as HTMLButtonElement | null;
-      if (!addRepBtn) throw new Error('addRepBtn is null');
-      expect(addRepBtn.disabled).toBe(false);
-      enabledAddRepBtn = addRepBtn;
+      repTypeSelect = document.getElementById(`viewer-column-A-${repTypeSelectIdSuffix}`) as HTMLSelectElement | null;
+      if (!repTypeSelect) throw new Error('repTypeSelect is null');
+      expect(repTypeSelect.disabled).toBe(false);
+    });
+    fireEvent.change(repTypeSelect!, { target: { value: 'spacefill' } });
+    // Wait for the Add Representation button to become enabled
+    let enabledAddRepBtn: HTMLButtonElement | null = null;
+    await waitFor(() => {
+      enabledAddRepBtn = document.getElementById('viewer-column-A-add-representation-btn') as HTMLButtonElement | null;
+      if (!enabledAddRepBtn) throw new Error('addRepBtn is null');
+      expect(enabledAddRepBtn.disabled).toBe(false);
     });
     await fireEvent.click(enabledAddRepBtn!);
 
