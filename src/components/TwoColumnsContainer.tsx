@@ -17,6 +17,9 @@ export const idSuffix = 'container';
 
 /**
  * Props for the TwoColumnsContainer component.
+ * @property left The content to display in the left column.
+ * @property right The content to display in the right column.
+ * @property idPrefix An optional prefix for the id of the root div.
  */
 interface TwoColumnsContainerProps {
   left: React.ReactNode;

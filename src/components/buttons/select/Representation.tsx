@@ -9,7 +9,7 @@
  * @see https://github.com/ribocode-slola/ribocode1
  */
 import React from 'react';
-import GenericSelectButton from './Select';
+import GenericSelectButton, { idSuffix as selectIdSuffix } from './Select';
 import { allowedRepresentationTypes, AllowedRepresentationType } from '../../../types/ribocode';
 
 /**
@@ -45,7 +45,7 @@ const RepresentationSelectButton: React.FC<RepresentationSelectButtonProps> = ({
 		selected={String(selected)}
 		onSelect={value => onSelect(value as AllowedRepresentationType)}
 		disabled={disabled}
-		id={id}
+		id={id ?? selectIdSuffix}
 	/>
 );
 

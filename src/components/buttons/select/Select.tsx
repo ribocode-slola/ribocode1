@@ -11,6 +11,11 @@
 import React from 'react';
 
 /**
+ * Suffix for the GenericSelectButton id, used for consistent id construction in code and tests.
+ */
+export const idSuffix = 'select-btn';
+
+/**
  * Props for the GenericSelectButton component.
  * @property label The label for the select button.
  * @property options The array of string options to select from.

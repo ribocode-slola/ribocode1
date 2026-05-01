@@ -705,7 +705,7 @@ const App: React.FC = () => {
                         <div className="session-menu-container">
                             <button
                                 className="session-menu-btn"
-                                data-testid="session-menu-btn"
+                                id="session-menu-btn"
                                 onClick={e => {
                                     const menu = document.getElementById('session-menu-dropdown');
                                     if (menu) menu.style.display = menu.style.display === 'block' ? 'none' : 'block';

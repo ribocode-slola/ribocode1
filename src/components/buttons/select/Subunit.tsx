@@ -9,7 +9,7 @@
  * @see https://github.com/ribocode-slola/ribocode1
  */
 import React from 'react';
-import GenericSelectButton from './Select';
+import GenericSelectButton, { idSuffix as selectIdSuffix } from './Select';
 import { RibosomeSubunitType, RibosomeSubunitTypes } from '../../../utils/subunit';
 
 /**
@@ -50,7 +50,7 @@ const SubunitSelectButton: React.FC<SubunitSelectButtonProps> = ({
             selected={selectedSubunit || ''}
             onSelect={(value: string) => onSelect(value as RibosomeSubunitType)}
             disabled={disabled}
-            id={id}
+            id={id ?? selectIdSuffix}
         />
 );
 

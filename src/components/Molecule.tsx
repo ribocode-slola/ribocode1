@@ -11,6 +11,7 @@
 import React, { useState } from 'react';
 // import '../../src/css/controls.css'; // Now loaded globally via index.css
 import { VisibilityOutlinedSvg, VisibilityOffOutlinedSvg } from 'molstar/lib/mol-plugin-ui/controls/icons';
+import { idSuffix as toggleVisibilityRepIdSuffix } from './buttons/RepresentationVisibilityToggle';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 import { PluginCommands } from 'molstar/lib/mol-plugin/commands';
 import { allowedRepresentationTypes } from '../types/ribocode';
@@ -164,7 +165,7 @@ const MoleculeUI: React.FC<MoleculeUIProps> = ({
                                     className="msp-btn msp-form-control"
                                     disabled={!isLoaded}
                                     aria-label={`Toggle visibility for ${typeName} representation`}
-                                    id={idPrefix ? `${idPrefix}-toggle-visibility-rep-${repId}` : undefined}
+                                    id={idPrefix ? `${idPrefix}-${toggleVisibilityRepIdSuffix}-${repId}` : undefined}
                                 >
                                     {isVisible ? <VisibilityOutlinedSvg /> : <VisibilityOffOutlinedSvg />}
                                     <span className="molstar-label">{typeName}</span>

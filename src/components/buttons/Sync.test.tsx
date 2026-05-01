@@ -11,6 +11,7 @@
 import { vi } from 'vitest';
 import { render, fireEvent } from '@testing-library/react';
 import SyncButton from './Sync';
+import { idSuffix as syncSelectIdSuffix } from './Sync';
 
 describe('SyncButton', () => {
     it('renders with correct label and options', () => {
@@ -22,6 +23,7 @@ describe('SyncButton', () => {
                 disabled={false}
                 syncEnabled={false}
                 setSyncEnabled={() => {}}
+                id={syncSelectIdSuffix}
             />
         );
         expect(getByLabelText('Select Sync')).toBeInTheDocument();
@@ -38,6 +40,7 @@ describe('SyncButton', () => {
                 disabled={false}
                 syncEnabled={false}
                 setSyncEnabled={() => {}}
+                id={syncSelectIdSuffix}
             />
         );
         expect((getByLabelText('Select Sync') as HTMLSelectElement).value).toBe('Off');
@@ -49,6 +52,7 @@ describe('SyncButton', () => {
                 disabled={false}
                 syncEnabled={true}
                 setSyncEnabled={() => {}}
+                id="test-sync-select"
             />
         );
         expect((getByLabelText('Select Sync') as HTMLSelectElement).value).toBe('On');
@@ -64,6 +68,7 @@ describe('SyncButton', () => {
                 disabled={false}
                 syncEnabled={false}
                 setSyncEnabled={setSyncEnabled}
+                id={syncSelectIdSuffix}
             />
         );
         fireEvent.change(getByLabelText('Select Sync'), { target: { value: 'On' } });
@@ -81,6 +86,7 @@ describe('SyncButton', () => {
                 disabled={true}
                 syncEnabled={false}
                 setSyncEnabled={() => {}}
+                id={syncSelectIdSuffix}
             />
         );
         expect(getByLabelText('Select Sync')).toBeDisabled();

@@ -66,7 +66,7 @@ const ResidueSelectButton: React.FC<ResidueSelectButtonProps> = ({
 			selected={selectedLabel}
 			onSelect={handleSelect}
 			disabled={disabled}
-			id={id}
+			id={id ?? selectIdSuffix}
 		/>
 	);
 };

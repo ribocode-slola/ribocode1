@@ -17,10 +17,13 @@ import ViewerColumn, {
     getRealignedMoleculeListProps,
     getMolstarContainerProps
 } from './ViewerColumn';
-
-
 import type { ViewerColumnProps } from './ViewerColumn';
 
+/**
+ * Props for the AlignedViewersPanel component.
+ * @property leftProps The props for the left ViewerColumn.
+ * @property rightProps The props for the right ViewerColumn.
+ */
 interface AlignedViewersPanelProps {
     leftProps: ViewerColumnProps;
     rightProps: ViewerColumnProps;

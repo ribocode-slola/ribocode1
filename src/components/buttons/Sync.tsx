@@ -16,6 +16,11 @@ import { A } from '../../constants/ribocode';
 import GenericSelectButton from './select/Select';
 
 /**
+ * Suffix for the SyncButton id, used for consistent id construction in code and tests.
+ */
+export const idSuffix = 'sync-select';
+
+/**
  * Props for SyncButton component.
  * @param viewerA The first Mol* PluginUIContext instance.
  * @param viewerB The second Mol* PluginUIContext instance.
@@ -31,6 +36,7 @@ interface SyncButtonProps {
     disabled: boolean;
     syncEnabled: boolean;
     setSyncEnabled: (enabled: boolean) => void;
+    id?: string;
 }
 
 /**
@@ -49,7 +55,8 @@ const SyncButton: React.FC<SyncButtonProps> = ({
     activeViewer,
     disabled,
     syncEnabled,
-    setSyncEnabled
+    setSyncEnabled,
+    id
 }) => {
     useEffect(() => {
         if (!syncEnabled || !viewerA || !viewerB) return;
@@ -89,6 +96,7 @@ const SyncButton: React.FC<SyncButtonProps> = ({
             selected={syncEnabled ? 'On' : 'Off'}
             onSelect={option => setSyncEnabled(option === 'On')}
             disabled={disabled}
+            id={id}
         />
     );
 };

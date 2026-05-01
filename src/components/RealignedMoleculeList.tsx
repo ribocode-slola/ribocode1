@@ -16,7 +16,26 @@ import MoleculeUI from './Molecule';
  */
 export const idSuffix = 'realigned-molecule-list';
 
-// Props for the RealignedMoleculeList component
+/**
+ * Props for the RealignedMoleculeList component
+ * @property molecules The list of realigned molecules to display.
+ * @property molstar The molstar instance for managing molecules and representations.
+ * @property chainInfo Information about chain labels for zooming.
+ * @property residueInfo Information about residue labels for zooming.
+ * @property selectedResidueId The currently selected residue ID for zooming.
+ * @property realignedStructRefs References to the realigned structures in molstar.
+ * @property setRealignedMolecules State setter for updating the list of realigned molecules.
+ * @property setRealignedRepRefs State setter for updating the representation references of realigned molecules.
+ * @property setRealignedStructRefs State setter for updating the structure references of realigned molecules.
+ * @property forceUpdate Function to force a re-render of the component.
+ * @property viewerKey A key to identify which viewer this list belongs to (e.g., 'A' or 'B').
+ * @property otherMolstar The molstar instance for the other viewer, used for synchronizing actions between viewers.
+ * @property otherRealignedStructRefs References to the realigned structures in the other molstar instance.
+ * @property setOtherRealignedMolecules State setter for updating the list of realigned molecules in the other viewer.
+ * @property setOtherRealignedRepRefs State setter for updating the representation references of realigned molecules in the other viewer.
+ * @property setOtherRealignedStructRefs State setter for updating the structure references of realigned molecules in the other viewer.
+ * @property idPrefix An optional prefix for the id of the root div, used for consistent id construction in code and tests.
+ */
 interface RealignedMoleculeListProps {
     molecules: any[];
     molstar: any;
@@ -39,7 +58,7 @@ interface RealignedMoleculeListProps {
 
 /**
  * Component for displaying and managing realigned molecules in Ribocode.
- * @param param0 Props for the RealignedMoleculeList component.
+ * @param {RealignedMoleculeListProps} props - The props for the RealignedMoleculeList component.
  * @returns The RealignedMoleculeList component.
  */
 const RealignedMoleculeList: React.FC<RealignedMoleculeListProps> = ({

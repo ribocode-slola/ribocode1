@@ -14,6 +14,11 @@ import { VisibilityOutlinedSvg, VisibilityOffOutlinedSvg } from 'molstar/lib/mol
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 
 /**
+ * Suffix for the RepresentationVisibilityToggle id, used for consistent id construction in code and tests.
+ */
+export const idSuffix = 'toggle-visibility-rep';
+
+/**
  * Props for the RepresentationVisibilityToggle component.
  * @param plugin The Mol* PluginUIContext instance.
  * @param rep The representation object whose visibility is to be toggled.
@@ -52,7 +57,7 @@ const RepresentationVisibilityToggle: React.FC<RepresentationVisibilityTogglePro
         <button
             key={rep.cell?.transform?.ref}
             onClick={handleToggle}
-            id={idPrefix ? `${idPrefix}-toggle-visibility-rep-${rep.cell?.transform?.ref}` : undefined}
+            id={idPrefix ? `${idPrefix}-${idSuffix}-${rep.cell?.transform?.ref}` : undefined}
         >
             {isVisible ? <VisibilityOutlinedSvg /> : <VisibilityOffOutlinedSvg />}
             <span>{rep.cell?.params?.values?.type?.name || 'repr'}</span>

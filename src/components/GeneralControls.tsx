@@ -10,7 +10,13 @@
  */
 import React from 'react';
 import SyncButton from './buttons/Sync';
+import { idSuffix as syncSelectIdSuffix } from './buttons/Sync';
 import type { ViewerKey } from '../types/ribocode';
+
+/**
+ * Suffix for the GeneralControls root id, used for consistent id construction in code and tests.
+ */
+export const idSuffix = 'general-controls';
 
 /**
  * Define the props for the GeneralControls component
@@ -67,7 +73,7 @@ const GeneralControls: React.FC<GeneralControlsProps> = ({
   handleRealignToChains,
   idPrefix = 'generalcontrols',
 }) => (
-  <div className="General-Controls">
+  <div className="General-Controls" id={idPrefix ? `${idPrefix}-${idSuffix}` : idSuffix}>
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
       <label>
         Residue Zoom extraRadius:
@@ -103,6 +109,7 @@ const GeneralControls: React.FC<GeneralControlsProps> = ({
       disabled={!viewerB?.isMoleculeAlignedToLoaded}
       syncEnabled={syncEnabled}
       setSyncEnabled={setSyncEnabled}
+      id={idPrefix ? `${idPrefix}-${syncSelectIdSuffix}` : syncSelectIdSuffix}
     />
     <button
       disabled={!selectedChainIdAlignedTo || !selectedChainIdAligned || realignmentExists}

@@ -1,4 +1,8 @@
 /**
+ * Suffix for the representation type select id, used for consistent id construction in code and tests.
+ */
+export const repTypeSelectIdSuffix = 'representation-type';
+/**
  * LoadMolecule component for loading molecular data into a Mol* viewer, selecting representation type,
  * adding colors, and selecting chain IDs.
  * 
@@ -298,7 +302,7 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
                         Representation:
                     </label>
                     <select
-                        id="representation-type"
+                        id={`${idPrefix}-${repTypeSelectIdSuffix}`}
                         value={representationType}
                         onChange={e => onRepresentationTypeChange(e.target.value as AllowedRepresentationType)}
                         disabled={representationTypeDisabled}
