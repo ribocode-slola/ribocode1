@@ -136,8 +136,10 @@ const MoleculeUI: React.FC<MoleculeUIProps> = ({
     // Per-representation menu state
     const [openMenu, setOpenMenu] = useState<string | null>(null);
     // Render the component.
+    // Defensive: ensure label is a string
+    const safeLabel = typeof label === 'string' ? label : '';
     return (
-        <div className="molecule-row" id={idPrefix ? `${idPrefix}-${idSuffix}-${label.replace(/\s+/g, '-').toLowerCase()}` : `${idSuffix}-${label.replace(/\s+/g, '-').toLowerCase()}` }>
+        <div className="molecule-row" id={idPrefix ? `${idPrefix}-${idSuffix}-${safeLabel.replace(/\s+/g, '-').toLowerCase()}` : `${idSuffix}-${safeLabel.replace(/\s+/g, '-').toLowerCase()}` }>
             <button
                 onClick={onToggleVisibility}
                 disabled={!plugin || !isLoaded}

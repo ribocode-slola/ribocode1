@@ -16,11 +16,20 @@ Ribocode source code is mostly [TypeScript](https://www.typescriptlang.org/). Th
 
 Please see the [Developer Guide](./DeveloperGuide.md) for guidance on building and developing Ribocode.
 
-Ribocode is being developed as part of the [Ribocode project](https://ribocode.org/) funded by [UKRI](https://www.ukri.org/) under research grant [BB/X003086/1](https://gtr.ukri.org/projects?ref=BB%2FX003086%2F1).
+Ribocode is being developed as part of the [Ribocode project](https://ribocode.org/).
 
 
 ## Contributing
 
 Ribocode project participants and Scientific Advisory Board members are encouraged to provide feedback, in particular describing what can be improved and what additional features are wanted. A good way to provide feedback is to comment on and create [issues](https://github.com/ribocode-slola/ribocode1/issues).
 
+
 Contributions from others are also welcome, please see the [Developer Guide](./DeveloperGuide.md) for more guidance on contributing.
+
+## Acknowledgements
+
+This work is funded by [UKRI](https://www.ukri.org/) under research grant [BB/X003086/1](https://gtr.ukri.org/projects?ref=BB%2FX003086%2F1).
+
+This project has benefited from the use of many open-source tools and resources.
+
+GitHub Copilot has been used extensively to help develop the software, providing code suggestions, refactoring support, and assistance with documentation and testing.
