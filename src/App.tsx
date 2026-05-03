@@ -653,14 +653,36 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
     // Session save: use custom hook
     const handleSaveSession = useSessionSave(() => ({
         viewerA: {
-            moleculeAlignedTo: viewerA.moleculeAlignedTo,
-            moleculeAligned: viewerA.moleculeAligned,
+            moleculeAlignedTo: viewerA.moleculeAlignedTo
+                ? {
+                    filename: viewerA.moleculeAlignedTo.filename,
+                    alignmentData: viewerA.moleculeAlignedTo.alignmentData,
+                    // add other serializable fields as needed
+                }
+                : null,
+            moleculeAligned: viewerA.moleculeAligned
+                ? {
+                    filename: viewerA.moleculeAligned.filename,
+                    alignmentData: viewerA.moleculeAligned.alignmentData,
+                    // add other serializable fields as needed
+                }
+                : null,
         },
         viewerB: {
-            moleculeAlignedTo: viewerB.moleculeAlignedTo,
-            moleculeAligned: viewerB.moleculeAligned,
+            moleculeAlignedTo: viewerB.moleculeAlignedTo
+                ? {
+                    filename: viewerB.moleculeAlignedTo.filename,
+                    alignmentData: viewerB.moleculeAlignedTo.alignmentData,
+                }
+                : null,
+            moleculeAligned: viewerB.moleculeAligned
+                ? {
+                    filename: viewerB.moleculeAligned.filename,
+                    alignmentData: viewerB.moleculeAligned.alignmentData,
+                }
+                : null,
         },
-        // Add more state as needed
+        // Add more serializable state as needed
     }));
 
     // Define the session loaded callback with proper typing and error handling
