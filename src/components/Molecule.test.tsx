@@ -2,11 +2,14 @@
  * Test suite for Molecule component.
  * 
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
- *
+ * 
  * @author Andy Turner <agdturner@gmail.com>
+ * @version 1.0.0
+ * @lastModified 2026-04-24
+ * @see https://github.com/ribocode-slola/ribocode1
  */
 import { vi } from 'vitest';import { render, screen, fireEvent } from '@testing-library/react';
-import MoleculeUI from './Molecule';
+import MoleculeUI, { idSuffix as moleculeIdSuffix } from './Molecule';
 
 describe('MoleculeUI', () => {
     const mockPlugin = {} as any;
@@ -26,11 +29,17 @@ describe('MoleculeUI', () => {
         representationRefs: [],
     };
 
-    it('renders molecule label and zoom buttons', () => {
-        render(<MoleculeUI {...baseProps} />);
-        expect(screen.getByText('Test Molecule')).toBeInTheDocument();
-        expect(screen.getByText('Zoom to Chain: A')).toBeInTheDocument();
-        expect(screen.getByText('Zoom to Residue: 10')).toBeInTheDocument();
+
+    it('applies idPrefix to root div', () => {
+        const { container } = render(
+            <MoleculeUI
+                {...baseProps}
+                label="TestMol"
+                idPrefix="test-prefix"
+            />
+        );
+        const root = container.querySelector(`#test-prefix-${moleculeIdSuffix}-testmol`);
+        expect(root).toBeInTheDocument();
     });
 
     it('calls onToggleVisibility when visibility button is clicked', () => {

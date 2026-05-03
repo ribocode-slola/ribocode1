@@ -2,8 +2,11 @@
  * Test suite for MolstarContainer component.
  * 
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
- *
+ * 
  * @author Andy Turner <agdturner@gmail.com>
+ * @version 1.0.0
+ * @lastModified 2026-04-24
+ * @see https://github.com/ribocode-slola/ribocode1
  */
 import { vi } from 'vitest';
 import { render, act } from '@testing-library/react';
@@ -15,7 +18,7 @@ vi.mock('molstar/lib/mol-plugin-ui', () => ({
 }));
 vi.mock('molstar/lib/mol-plugin-ui/context', () => ({}));
 
-import MolstarContainer from './MolstarContainer';
+import MolstarContainer, { idSuffix as molstarContainerIdSuffix } from './MolstarContainer';
 
 describe('MolstarContainer', () => {
     let originalLog: any;
@@ -33,12 +36,13 @@ describe('MolstarContainer', () => {
                 <MolstarContainer
                     viewerKey="A"
                     setViewer={setViewer}
+                    idPrefix="test-molstar"
                 />
             );
         });
-        // The container should be in the document
-        const container = document.querySelector('.molstar-container');
-        expect(container).toBeInTheDocument();
+        // The root container should be in the document
+        const root = document.getElementById(`test-molstar-${molstarContainerIdSuffix}`);
+        expect(root).toBeInTheDocument();
     });
 
     it('calls onMouseDown when the plugin root is clicked', async () => {

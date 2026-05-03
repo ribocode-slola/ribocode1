@@ -4,6 +4,9 @@
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
  *
  * @author Andy Turner <agdturner@gmail.com>
+ * @version 1.0.0
+ * @lastModified 2026-04-24
+ * @see https://github.com/ribocode-slola/ribocode1
  */
 import React from 'react';
 import GenericSelectButton from './Select';
@@ -16,6 +19,7 @@ import { ResidueLabelInfo } from 'src/utils/residue';
  * @property selectedResidueId The currently selected residue ID.
  * @property onSelect Callback function when a residue ID is selected.
  * @property label Optional label for the select button.
+ * @property id A unique identifier for the select button.
  */
 export interface ResidueSelectButtonProps {
 	disabled: boolean;
@@ -23,6 +27,7 @@ export interface ResidueSelectButtonProps {
 	selectedResidueId?: string;
 	onSelect: (residueId: string) => void;
 	label?: string;
+	id: string;
 }
 
 /**
@@ -32,6 +37,7 @@ export interface ResidueSelectButtonProps {
  * @param selectedResidueId The currently selected residue ID.
  * @param onSelect Callback function when a residue ID is selected.
  * @param label Optional label for the select button.
+ * @param id A unique identifier for the select button.
  * @returns The ResidueSelectButton component.
  */
 const ResidueSelectButton: React.FC<ResidueSelectButtonProps> = ({
@@ -39,7 +45,8 @@ const ResidueSelectButton: React.FC<ResidueSelectButtonProps> = ({
 	residueLabels,
 	selectedResidueId,
 	onSelect,
-	label
+	label,
+	id
 }) => {
 	// Map selectedResidueId to its label value
 	const selectedLabel = selectedResidueId ? residueLabels.get(String(selectedResidueId).trim())?.name || '' : '';
@@ -59,6 +66,7 @@ const ResidueSelectButton: React.FC<ResidueSelectButtonProps> = ({
 			selected={selectedLabel}
 			onSelect={handleSelect}
 			disabled={disabled}
+			id={id ?? selectIdSuffix}
 		/>
 	);
 };

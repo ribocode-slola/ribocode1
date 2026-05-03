@@ -2,14 +2,17 @@
  * Test suite for RibocodeViewer component.
  * 
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
- *
+ * 
  * @author Andy Turner <agdturner@gmail.com>
+ * @version 1.0.0
+ * @lastModified 2026-04-24
+ * @see https://github.com/ribocode-slola/ribocode1
  */
 import { vi } from 'vitest';
 import { render } from '@testing-library/react';
 // Mock Molstar PluginUIContext to avoid import issues
 vi.mock('molstar/lib/mol-plugin-ui/context', () => ({}));
-import RibocodeViewer from './RibocodeViewer';
+import RibocodeViewer, { idSuffix as ribocodeViewerIdSuffix } from './RibocodeViewer';
 
 describe('RibocodeViewer', () => {
     let originalLog: any;
@@ -24,6 +27,15 @@ describe('RibocodeViewer', () => {
         render(<RibocodeViewer plugin={null} viewerKey="A" />);
         const container = document.querySelector('.molstar-container');
         expect(container).toBeInTheDocument();
+    });
+
+    it('applies idPrefix as id on the root div', () => {
+        const idPrefix = "test-viewer";
+        render(<RibocodeViewer plugin={null} viewerKey="A" idPrefix={idPrefix} />);
+        const id = `${idPrefix}-${ribocodeViewerIdSuffix}`;
+        const root = document.getElementById(id);
+        expect(root).toBeInTheDocument();
+        expect(root).toHaveAttribute('id', id);
     });
 
     it('calls onReady when plugin is provided', () => {

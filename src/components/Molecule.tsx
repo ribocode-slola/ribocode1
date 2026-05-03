@@ -2,15 +2,24 @@
  * MoleculeRow component for displaying molecule controls and information.
  * 
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
- *
+ * 
  * @author Andy Turner <agdturner@gmail.com>
+ * @version 1.0.0
+ * @lastModified 2026-04-24
+ * @see https://github.com/ribocode-slola/ribocode1
  */
 import React, { useState } from 'react';
 // import '../../src/css/controls.css'; // Now loaded globally via index.css
 import { VisibilityOutlinedSvg, VisibilityOffOutlinedSvg } from 'molstar/lib/mol-plugin-ui/controls/icons';
+import { idSuffix as toggleVisibilityRepIdSuffix } from './buttons/RepresentationVisibilityToggle';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 import { PluginCommands } from 'molstar/lib/mol-plugin/commands';
-import { allowedRepresentationTypes } from './buttons/select/Representation';
+import { allowedRepresentationTypes } from '../types/ribocode';
+
+/**
+ * Suffix for the MoleculeUI root id, used for consistent id construction in code and tests.
+ */
+export const idSuffix = 'moleculeui';
 
 /**
  * Props for the MoleculeUI component.
@@ -50,6 +59,7 @@ interface MoleculeUIProps {
     onToggleRepVisibility?: (ref: string) => void;
     extraControls?: React.ReactNode;
     onRemove?: () => void;
+    idPrefix?: string;
 }
 
 /**
@@ -88,6 +98,7 @@ const MoleculeUI: React.FC<MoleculeUIProps> = ({
     onDeleteRepresentation,
     onToggleRepVisibility,
     onRemove,
+    idPrefix,
 }) => {
     // Helper to get visibility state and type for a representation
     const getRepType = (ref: string): string | null => {
@@ -125,13 +136,16 @@ const MoleculeUI: React.FC<MoleculeUIProps> = ({
     // Per-representation menu state
     const [openMenu, setOpenMenu] = useState<string | null>(null);
     // Render the component.
+    // Defensive: ensure label is a string
+    const safeLabel = typeof label === 'string' ? label : '';
     return (
-        <div className="molecule-row">
+        <div className="molecule-row" id={idPrefix ? `${idPrefix}-${idSuffix}-${safeLabel.replace(/\s+/g, '-').toLowerCase()}` : `${idSuffix}-${safeLabel.replace(/\s+/g, '-').toLowerCase()}` }>
             <button
                 onClick={onToggleVisibility}
                 disabled={!plugin || !isLoaded}
                 className="msp-btn msp-form-control"
                 aria-label={isVisible ? `Hide ${label}` : `Show ${label}`}
+                id={idPrefix ? `${idPrefix}-toggle-visibility-btn` : undefined}
             >
                 {isVisible ? <VisibilityOutlinedSvg /> : <VisibilityOffOutlinedSvg />}
                 <span className="molstar-label">{label}</span>
@@ -153,6 +167,7 @@ const MoleculeUI: React.FC<MoleculeUIProps> = ({
                                     className="msp-btn msp-form-control"
                                     disabled={!isLoaded}
                                     aria-label={`Toggle visibility for ${typeName} representation`}
+                                    id={idPrefix ? `${idPrefix}-${toggleVisibilityRepIdSuffix}-${repId}` : undefined}
                                 >
                                     {isVisible ? <VisibilityOutlinedSvg /> : <VisibilityOffOutlinedSvg />}
                                     <span className="molstar-label">{typeName}</span>
@@ -163,6 +178,7 @@ const MoleculeUI: React.FC<MoleculeUIProps> = ({
                                     className="msp-btn msp-btn-danger msp-form-control"
                                     disabled={!isLoaded}
                                     aria-label={`Delete ${typeName} representation`}
+                                    id={idPrefix ? `${idPrefix}-delete-rep-${repId}` : undefined}
                                 >
                                     &#x2716;
                                 </button>
@@ -176,6 +192,7 @@ const MoleculeUI: React.FC<MoleculeUIProps> = ({
                 onClick={onChainZoom}
                 disabled={chainZoomDisabled}
                 className="msp-btn msp-form-control"
+                id={idPrefix ? `${idPrefix}-zoom-chain-btn` : undefined}
             >
                 Zoom to Chain: {chainZoomLabel}
             </button>
@@ -184,6 +201,7 @@ const MoleculeUI: React.FC<MoleculeUIProps> = ({
                 onClick={onResidueZoom}
                 disabled={residueZoomDisabled}
                 className="msp-btn msp-form-control"
+                id={idPrefix ? `${idPrefix}-zoom-residue-btn` : undefined}
             >
                 Zoom to Residue: {residueZoomLabel}
             </button>
@@ -194,6 +212,7 @@ const MoleculeUI: React.FC<MoleculeUIProps> = ({
                     className="msp-btn msp-btn-danger msp-form-control"
                     aria-label={`Remove ${label}`}
                     style={{ fontSize: '1.5em', lineHeight: 1 }}
+                    id={idPrefix ? `${idPrefix}-remove-btn` : undefined}
                 >
                     &#x2716;
                 </button>

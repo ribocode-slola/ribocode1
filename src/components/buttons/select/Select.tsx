@@ -4,8 +4,16 @@
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
  *
  * @author Andy Turner <agdturner@gmail.com>
+ * @version 1.0.0
+ * @lastModified 2026-04-24
+ * @see https://github.com/ribocode-slola/ribocode1
  */
 import React from 'react';
+
+/**
+ * Suffix for the GenericSelectButton id, used for consistent id construction in code and tests.
+ */
+export const idSuffix = 'select-btn';
 
 /**
  * Props for the GenericSelectButton component.
@@ -15,6 +23,7 @@ import React from 'react';
  * @property onSelect Callback function when an option is selected.
  * @property disabled Whether the select button is disabled.
  * @property placeholder Placeholder text when no option is selected.
+ * @property id An optional id for the select button.
  */
 interface GenericSelectButtonProps {
 	label: string;
@@ -23,6 +32,7 @@ interface GenericSelectButtonProps {
 	onSelect: (value: string) => void;
 	disabled?: boolean;
 	placeholder?: string;
+	id?: string;
 }
 
 /**
@@ -33,6 +43,7 @@ interface GenericSelectButtonProps {
  * @param onSelect Callback function when an option is selected.
  * @param disabled Whether the select button is disabled.
  * @param placeholder Placeholder text when no option is selected.
+ * @param id An optional id for the select button.
  * @returns The GenericSelectButton component.
  */
 const GenericSelectButton: React.FC<GenericSelectButtonProps> = ({
@@ -41,7 +52,8 @@ const GenericSelectButton: React.FC<GenericSelectButtonProps> = ({
 	selected,
 	onSelect,
 	disabled = false,
-	placeholder = '...'
+	placeholder = '...',
+	id
 }) => (
 	<label>
 		{label}
@@ -50,6 +62,7 @@ const GenericSelectButton: React.FC<GenericSelectButtonProps> = ({
 			value={selected}
 			onChange={e => onSelect(e.target.value)}
 			disabled={disabled}
+			id={id}
 		>
 			<option value="" disabled>{placeholder}</option>
 			{options.map(opt => (

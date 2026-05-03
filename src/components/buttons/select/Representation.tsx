@@ -4,22 +4,13 @@
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
  *
  * @author Andy Turner <agdturner@gmail.com>
+ * @version 1.0.0
+ * @lastModified 2026-04-24
+ * @see https://github.com/ribocode-slola/ribocode1
  */
 import React from 'react';
-import GenericSelectButton from './Select';
-
-// List of allowed representation types.
-// export const allowedRepresentationTypes = [
-//     "spacefill", "cartoon", "ball-and-stick", "gaussian-surface",
-//     "molecular-surface", "putty", "point", "ellipsoid", "carbohydrate",
-//     "backbone", "label", "plane", "gaussian-volume", "line", "orientation"
-// ] as const;
-export const allowedRepresentationTypes = [
-    "spacefill", "cartoon", "gaussian-surface", "gaussian-volume", "line"
-] as const;
-
-// Type representing allowed representation types.
-export type AllowedRepresentationType = typeof allowedRepresentationTypes[number];
+import GenericSelectButton, { idSuffix as selectIdSuffix } from './Select';
+import { allowedRepresentationTypes, AllowedRepresentationType } from '../../../types/ribocode';
 
 /**
  * Props for the SelectButton component.
@@ -31,10 +22,11 @@ export type AllowedRepresentationType = typeof allowedRepresentationTypes[number
  */
 interface RepresentationSelectButtonProps {
 	label?: string;
-	options: string[];
-	selected: string;
-	onSelect: (option: string) => void;
+	options: AllowedRepresentationType[];
+	selected: AllowedRepresentationType;
+	onSelect: (option: AllowedRepresentationType) => void;
 	disabled?: boolean;
+	id?: string;
 }
 
 /**
@@ -46,13 +38,14 @@ interface RepresentationSelectButtonProps {
  * @param disabled Whether the select button is disabled.
  * @returns The SelectButton component.
  */
-const RepresentationSelectButton: React.FC<RepresentationSelectButtonProps> = ({ label = 'Select Representation', options, selected, onSelect, disabled }) => (
+const RepresentationSelectButton: React.FC<RepresentationSelectButtonProps> = ({ label = 'Select Representation', options, selected, onSelect, disabled, id }) => (
 	<GenericSelectButton
 		label={label}
-		options={options}
-		selected={selected}
-		onSelect={onSelect}
+		options={options.map(String)}
+		selected={String(selected)}
+		onSelect={value => onSelect(value as AllowedRepresentationType)}
 		disabled={disabled}
+		id={id ?? selectIdSuffix}
 	/>
 );
 

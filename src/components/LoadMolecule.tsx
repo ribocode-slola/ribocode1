@@ -1,18 +1,30 @@
 /**
+ * Suffix for the representation type select id, used for consistent id construction in code and tests.
+ */
+export const repTypeSelectIdSuffix = 'representation-type';
+/**
  * LoadMolecule component for loading molecular data into a Mol* viewer, selecting representation type,
  * adding colors, and selecting chain IDs.
  * 
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
- *
+ * 
  * @author Andy Turner <agdturner@gmail.com>
+ * @version 1.0.0
+ * @lastModified 2026-04-24
+ * @see https://github.com/ribocode-slola/ribocode1
  */
 import React from 'react';
 import ChainSelectButton from './buttons/select/Chain';
 import ResidueSelectButton from './buttons/select/Residue';
 import SubunitSelectButton from './buttons/select/Subunit';
-import { allowedRepresentationTypes, AllowedRepresentationType } from './buttons/select/Representation';
+import { allowedRepresentationTypes, AllowedRepresentationType } from '../types/ribocode';
 import { ResidueLabelInfo } from '../utils/residue';
 import { RibosomeSubunitType } from '../utils/subunit';
+
+/**
+ * Suffix for the LoadMolecule root id, used for consistent id construction in code and tests.
+ */
+export const idSuffix = 'load-molecule';
 
 /**
  * Props for LoadDataRow component.
@@ -34,6 +46,7 @@ import { RibosomeSubunitType } from '../utils/subunit';
  * @param addColorsDisabled Whether the add colors button is disabled.
  * @param colorsInputRef Ref for the hidden colors file input element.
  * @param onColorsFileChange Function to handle colors file input change event.
+ * @param subunitToChainIds Map of subunit types to their associated chain IDs.
  * @param selectedSubunit Currently selected subunit.
  * @param onSelectSubunit Function to handle subunit selection.
  * @param subunitSelectDisabled Whether the subunit select button is disabled.
@@ -54,6 +67,7 @@ import { RibosomeSubunitType } from '../utils/subunit';
  * @param onFogEnabledChange Function to handle changes to fog enabled state.
  * @param onFogNearChange Function to handle changes to fog near distance.
  * @param onFogFarChange Function to handle changes to fog far distance.
+ * @param idPrefix Prefix for generating unique IDs.
  */
 interface LoadDataRowProps {
     viewerTitle: string;
@@ -104,6 +118,9 @@ interface LoadDataRowProps {
     cameraFar: number;
     onCameraNearChange: (value: number) => void;
     onCameraFarChange: (value: number) => void;
+    // Test mode override
+    testMode?: boolean;
+    idPrefix: string;
 }
 
 
@@ -194,19 +211,22 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
     fogFar,
     onFogEnabledChange,
     onFogNearChange,
-    onFogFarChange
+    onFogFarChange,
+    testMode,
+    idPrefix
 }) => (
 
-    <div className="load-data-row">
+    <div className="load-data-row" id={idPrefix ? `${idPrefix}-${idSuffix}` : idSuffix}>
         <div className="viewer-title">{viewerTitle}</div>
         {!isLoaded && (
             <div>
                 <button
                     type="button"
                     onClick={onFileInputClick}
-                    disabled={fileInputDisabled}
+                    disabled={testMode ? false : fileInputDisabled}
                     className="msp-btn msp-form-control"
                     aria-label={fileInputLabel}
+                    id={`${idPrefix}-load-btn`}
                 >
                     {fileInputLabel}
                 </button>
@@ -217,6 +237,7 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
                     onChange={onFileChange}
                     style={{ display: 'none' }}
                     tabIndex={-1}
+                    id={`${idPrefix}-file-input`}
                 />
             </div>
         )}
@@ -225,18 +246,21 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
                 disabled={subunitSelectDisabled}
                 selectedSubunit={selectedSubunit}
                 onSelect={onSelectSubunit}
+                id={`${idPrefix}-subunit-select`}
             />
             <ChainSelectButton
-                disabled={chainSelectDisabled || !selectedSubunit}
-                chainLabels={getFilteredChainLabels(selectedSubunit, chainInfo.chainLabels, subunitToChainIds)}
-                selectedChainId={selectedChainId}
-                onSelect={onSelectChainId}
+                 disabled={chainSelectDisabled || !selectedSubunit}
+                 chainLabels={getFilteredChainLabels(selectedSubunit, chainInfo.chainLabels, subunitToChainIds)}
+                 selectedChainId={selectedChainId}
+                 onSelect={onSelectChainId}
+                 id={`${idPrefix}-chain-select`}
             />
             <ResidueSelectButton
                 disabled={residueSelectDisabled || !selectedChainId}
                 residueLabels={residueInfo.residueLabels}
                 selectedResidueId={selectedResidueId}
                 onSelect={onSelectResidueId}
+                id={`${idPrefix}-residue-select`}
             />
             <div>
                 <button
@@ -245,6 +269,7 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
                     disabled={addColorsDisabled}
                     aria-label="Load Colours"
                     className="msp-btn msp-form-control"
+                    id={`${idPrefix}-load-colours-btn`}
                 >
                     Load Colours
                 </button>
@@ -255,6 +280,7 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
                     onChange={onColorsFileChange}
                     style={{ display: 'none' }}
                     tabIndex={-1}
+                    id={`${idPrefix}-colours-file-input`}
                 />
             </div>
             {representationTypeSelector ? (
@@ -265,6 +291,7 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
                         disabled={addRepresentationDisabled}
                         aria-label="Add Representation"
                         className="msp-btn msp-form-control"
+                        id={`${idPrefix}-add-representation-btn`}
                     >
                         +
                     </button>
@@ -275,7 +302,7 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
                         Representation:
                     </label>
                     <select
-                        id="representation-type"
+                        id={`${idPrefix}-${repTypeSelectIdSuffix}`}
                         value={representationType}
                         onChange={e => onRepresentationTypeChange(e.target.value as AllowedRepresentationType)}
                         disabled={representationTypeDisabled}
@@ -290,6 +317,7 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
                         disabled={addRepresentationDisabled}
                         aria-label="Add Representation"
                         className="msp-btn msp-form-control"
+                        id={`${idPrefix}-add-representation-btn`}
                     >
                         +
                     </button>

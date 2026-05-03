@@ -4,6 +4,9 @@
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
  *
  * @author Andy Turner <agdturner@gmail.com>
+ * @version 1.0.0
+ * @lastModified 2026-04-24
+ * @see https://github.com/ribocode-slola/ribocode1
  */
 import React, { useEffect } from 'react';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
@@ -11,6 +14,11 @@ import { Vec3 } from 'molstar/lib/mol-math/linear-algebra/3d/vec3';
 import type { ViewerKey } from '../../types/ribocode';
 import { A } from '../../constants/ribocode';
 import GenericSelectButton from './select/Select';
+
+/**
+ * Suffix for the SyncButton id, used for consistent id construction in code and tests.
+ */
+export const idSuffix = 'sync-select';
 
 /**
  * Props for SyncButton component.
@@ -28,6 +36,7 @@ interface SyncButtonProps {
     disabled: boolean;
     syncEnabled: boolean;
     setSyncEnabled: (enabled: boolean) => void;
+    id?: string;
 }
 
 /**
@@ -46,7 +55,8 @@ const SyncButton: React.FC<SyncButtonProps> = ({
     activeViewer,
     disabled,
     syncEnabled,
-    setSyncEnabled
+    setSyncEnabled,
+    id
 }) => {
     useEffect(() => {
         if (!syncEnabled || !viewerA || !viewerB) return;
@@ -86,6 +96,7 @@ const SyncButton: React.FC<SyncButtonProps> = ({
             selected={syncEnabled ? 'On' : 'Off'}
             onSelect={option => setSyncEnabled(option === 'On')}
             disabled={disabled}
+            id={id}
         />
     );
 };

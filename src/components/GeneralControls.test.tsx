@@ -2,12 +2,15 @@
  * Test suite for GeneralControls component.
  * 
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
- *
+ * 
  * @author Andy Turner <agdturner@gmail.com>
+ * @version 1.0.0
+ * @lastModified 2026-04-24
+ * @see https://github.com/ribocode-slola/ribocode1
  */
 import { vi } from 'vitest';
 import { render, fireEvent } from '@testing-library/react';
-import GeneralControls from './GeneralControls';
+import GeneralControls, { idSuffix as generalControlsIdSuffix } from './GeneralControls';
 import type { ViewerKey } from '../types/ribocode';
 import { A, B } from '../constants/ribocode';
 
@@ -32,7 +35,10 @@ describe('GeneralControls', () => {
       realignmentExists: false,
       handleRealignToChains,
     };
-    const { getByLabelText, getByRole, getByText } = render(<GeneralControls {...props} />);
+    const { getByLabelText, getByRole, getByText, container } = render(<GeneralControls {...props} idPrefix="test-controls" />);
+    // Check for root id
+    const root = container.querySelector(`#test-controls-${generalControlsIdSuffix}`);
+    expect(root).toBeInTheDocument();
 
     // Test zoomExtraRadius input
     const extraRadiusInput = getByLabelText(/Residue Zoom extraRadius/i);

@@ -2,8 +2,11 @@
  * Test suite for useUpdateChainInfo hook.
  * 
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
- *
+ * 
  * @author Andy Turner <agdturner@gmail.com>
+ * @version 1.0.0
+ * @lastModified 2026-04-24
+ * @see https://github.com/ribocode-slola/ribocode1
  */
 import { vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
@@ -22,8 +25,8 @@ describe('useUpdateChainInfo', () => {
     ]);
     const mockStructureObj = {
       units: [
-        { chainId: 'A', label: 'Chain A', subunit: 'Large' },
-        { chainId: 'B', label: 'Chain B', subunit: 'Small' },
+        { chainGroupId: 'A', label: 'Chain A', subunit: 'Large' },
+        { chainGroupId: 'B', label: 'Chain B', subunit: 'Small' },
       ],
     };
     const pluginRef = { current: {
@@ -51,8 +54,17 @@ describe('useUpdateChainInfo', () => {
         'TestLabel'
       )
     );
-    expect(setChainInfo).toHaveBeenCalledWith({ chainLabels: mockChainLabels });
-    expect(setSubunitToChainIds).toHaveBeenCalledWith(mockSubunitToChainIds);
+    // Check that setChainInfo was called with a function updater
+    expect(setChainInfo).toHaveBeenCalled();
+    const updater = setChainInfo.mock.calls[0][0];
+    const result = updater({ chainLabels: new Map() });
+    expect(result).toEqual({ chainLabels: mockChainLabels });
+
+    // Check that setSubunitToChainIds was called with a function updater
+    expect(setSubunitToChainIds).toHaveBeenCalled();
+    const subunitUpdater = setSubunitToChainIds.mock.calls[0][0];
+    const subunitResult = subunitUpdater(new Map());
+    expect(subunitResult).toEqual(mockSubunitToChainIds);
   });
 
   it('does nothing if pluginRef.current is null', () => {

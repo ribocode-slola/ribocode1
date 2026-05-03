@@ -2,13 +2,16 @@
  * Test suite for LoadMolecule component.
  * 
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
- *
+ * 
  * @author Andy Turner <agdturner@gmail.com>
+ * @version 1.0.0
+ * @lastModified 2026-04-24
+ * @see https://github.com/ribocode-slola/ribocode1
  */
 import { vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import LoadDataRow from './LoadMolecule';
-import { AllowedRepresentationType } from './buttons/select/Representation';
+import LoadDataRow, { idSuffix as loadMoleculeIdSuffix } from './LoadMolecule';
+import { AllowedRepresentationType } from '../types/ribocode';
 
 describe('LoadDataRow', () => {
     const baseProps = {
@@ -55,10 +58,14 @@ describe('LoadDataRow', () => {
         cameraFar: 1000,
         onCameraNearChange: vi.fn(),
         onCameraFarChange: vi.fn(),
+        idPrefix: 'test-viewer-a',
     };
 
     it('renders viewer title and file input button', () => {
-        render(<LoadDataRow {...baseProps} />);
+        const { container } = render(<LoadDataRow {...baseProps} />);
+        // Check for root id
+        const root = container.querySelector(`#${baseProps.idPrefix}-${loadMoleculeIdSuffix}`);
+        expect(root).toBeInTheDocument();
         expect(screen.getByText('Viewer A')).toBeInTheDocument();
         expect(screen.getByText('Load AlignedTo')).toBeInTheDocument();
     });

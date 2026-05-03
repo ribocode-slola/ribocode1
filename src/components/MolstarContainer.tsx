@@ -2,15 +2,24 @@
  * MolstarContainer component that integrates the Mol* plugin within a React application.
  * 
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
- *
+ * 
  * @author Andy Turner <agdturner@gmail.com>
+ * @version 1.0.0
+ * @lastModified 2026-04-24
+ * @see https://github.com/ribocode-slola/ribocode1
  */
 import React, { memo, useEffect, useRef, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import * as PluginUI from 'molstar/lib/mol-plugin-ui';
 const createPluginUI = PluginUI.createPluginUI;
-import RibocodeViewer, { ViewerKey } from './RibocodeViewer';
+import type { ViewerKey } from '../types/ribocode';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
+import RibocodeViewer from './RibocodeViewer';
+
+/**
+ * Suffix for the MolstarContainer root id, used for consistent id construction in code and tests.
+ */
+export const idSuffix = 'molstar-container';
 
 /**
  * Props for MolstarContainer component.
@@ -24,6 +33,7 @@ type MolstarContainerProps = {
     setViewer: (plugin: PluginUIContext) => void;
     onMouseDown?: (viewerKey: ViewerKey) => void;
     onReady?: () => void;
+    idPrefix?: string;
 };
 
 /**
@@ -35,7 +45,7 @@ type MolstarContainerProps = {
  * @param ref Forwarded ref to expose methods to parent components.
  * @returns The MolstarContainer component.
  */
-const MolstarContainer = React.forwardRef(({ viewerKey, setViewer, onMouseDown, onReady }: MolstarContainerProps, ref) => {
+const MolstarContainer = React.forwardRef(({ viewerKey, setViewer, onMouseDown, onReady, idPrefix }: MolstarContainerProps, ref) => {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const pluginRef = useRef<PluginUIContext | null>(null);
     const [plugin, setPlugin] = useState<PluginUIContext | null>(null);
@@ -123,18 +133,17 @@ const MolstarContainer = React.forwardRef(({ viewerKey, setViewer, onMouseDown, 
         }
     }), []);
     // Return the container with a dedicated plugin root for Mol*
-    return (
-        <div className="molstar-container">
-            <div
-                ref={containerRef}
-                className="molstar-plugin-root"
-                onMouseDownCapture={() => {
-                    console.log('MolstarContainer mouse down:', viewerKey);
-                    onMouseDown?.(viewerKey);
-                }}
-            />
-        </div>
-    );
+    // Render RibocodeViewer and pass idPrefix
+        return (
+            <div id={idPrefix ? `${idPrefix}-${idSuffix}` : idSuffix} className="molstar-container-root">
+                <RibocodeViewer
+                    plugin={plugin}
+                    viewerKey={viewerKey}
+                    onReady={onReady}
+                    idPrefix={idPrefix}
+                />
+            </div>
+        );
 });
 
 /**
