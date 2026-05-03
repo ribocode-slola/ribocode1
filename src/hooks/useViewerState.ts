@@ -19,11 +19,13 @@ import { Molecule } from 'molstar/lib/extensions/ribocode/structure';
  * @param viewerKey The key identifying the viewer ('A' or 'B').
  * @returns The viewer state object.
  */
-export function useViewerState(viewerKey: ViewerKey): ViewerState {
+export function useViewerState(viewerKey: ViewerKey, testForceIsMoleculeAlignedLoaded?: boolean): ViewerState {
     const [moleculeAlignedTo, setMoleculeAlignedTo] = useState<Molecule>();
     const [moleculeAligned, setMoleculeAligned] = useState<Molecule>();
     const [isMoleculeAlignedToLoaded, setIsMoleculeAlignedToLoaded] = useState(false);
-    const [isMoleculeAlignedLoaded, setIsMoleculeAlignedLoaded] = useState(false);
+    const [isMoleculeAlignedLoaded, setIsMoleculeAlignedLoaded] = useState(
+        !!testForceIsMoleculeAlignedLoaded
+    );
     const [isMoleculeAlignedToVisible, setIsMoleculeAlignedToVisible] = useState(false);
     const [isMoleculeAlignedVisible, setIsMoleculeAlignedVisible] = useState(false);
     const ref = useRef<PluginUIContext | null>(null);

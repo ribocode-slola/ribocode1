@@ -57,7 +57,11 @@ import { selectedAtomTypes } from './constants/ribocode';
  * The main App component.
  * @returns The main App component.
  */
-const App: React.FC = () => {
+interface AppProps {
+    testForceIsMoleculeAlignedLoaded?: boolean;
+}
+
+const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
 
     // Store Files and filenames for aligned and alignedTo molecule reloads.
     const [alignedFile, setAlignedFile] = useState<any | null>(null);
@@ -72,9 +76,9 @@ const App: React.FC = () => {
     const molstarA: ReturnType<typeof useMolstarViewer> = useMolstarViewer(pluginRefA);
     const molstarB: ReturnType<typeof useMolstarViewer> = useMolstarViewer(pluginRefB);
 
-    // Initialize viewer states.
-    const viewerA: ViewerState = useViewerState(A);
-    const viewerB: ViewerState = useViewerState(B);
+    // Initialize viewer states, pass test prop for test control
+    const viewerA: ViewerState = useViewerState(A, testForceIsMoleculeAlignedLoaded);
+    const viewerB: ViewerState = useViewerState(B, testForceIsMoleculeAlignedLoaded);
     const setViewerAWrapper = useCallback((viewer: PluginUIContext) => {
         viewerA.ref.current = viewer;
     }, [viewerA]);
