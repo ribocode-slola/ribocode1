@@ -10,11 +10,52 @@ The user requires a recent [Web browser](https://en.wikipedia.org/wiki/Web_brows
 
 Once installed as a PWA, Ribocode can be used offline.
 
+
+## Documentation
+
+The generated API documentation is available at [`/docs/`](./docs/index.html) after building the project, or at `/docs/` in the deployed app (e.g., https://ribocode-slola.github.io/ribocode1/docs/).
+
 Please see the [User Guide](./UserGuide.md) for help using Ribocode.
 
 Ribocode source code is mostly [TypeScript](https://www.typescriptlang.org/). The UI is based on the [React](https://react.dev/) library. Build and deployment is based on [Node](https://nodejs.org/) and [Vite](https://vite.dev/). General deployment is via [GitHub](https://github.com/). Other key technologies used for development include [Git](https://git-scm.com/), [GitHub Copilot](https://docs.github.com/en/copilot) and [Visual Studio Code](https://code.visualstudio.com/).
 
-Please see the [Developer Guide](./DeveloperGuide.md) for guidance on building and developing Ribocode.
+
+## Quick Start (for Developers)
+
+To get started with development:
+
+1. Clone the repository:
+	```sh
+	git clone https://github.com/ribocode-slola/ribocode1.git
+	cd ribocode1
+	```
+2. Install dependencies:
+	```sh
+	npm install
+	```
+3. Start the development server:
+	```sh
+	npm run dev
+	```
+	The app will be available at http://localhost:5173/
+
+For more details, see the [Developer Guide](./DeveloperGuide.md).
+
+## Testing
+
+Ribocode includes automated unit, integration, and end-to-end (E2E) tests.
+
+- **Unit/Integration tests:**
+  ```sh
+  npm test
+  ```
+- **E2E tests (Playwright):**
+  ```sh
+  npm run test:e2e
+  ```
+  Playwright will automatically start the dev server if needed.
+
+See the [Developer Guide](./DeveloperGuide.md) for more on testing and best practices.
 
 Ribocode is being developed as part of the [Ribocode project](https://ribocode.org/).
 

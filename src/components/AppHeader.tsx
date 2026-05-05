@@ -20,9 +20,17 @@ export const idSuffix = 'app-header';
  * AppHeader component that displays the title and README link for the Ribocode Mol* Viewer application.
  * @returns The AppHeader component.
  */
+
 const AppHeader: React.FC = () => (
   <header className="app-header" id={idSuffix}>
-    <h1 className="app-title">RiboCode Mol* Viewer 0.7.1 (<a href="https://github.com/ribocode-slola/ribocode1/?tab=readme-ov-file#ribocode" target="_blank">README</a>)</h1>
+    <h1 className="app-title">
+      RiboCode Mol* Viewer 0.7.1
+      {' ('}
+      <a href="https://github.com/ribocode-slola/ribocode1/?tab=readme-ov-file#ribocode" target="_blank" rel="noopener noreferrer">README</a>
+      {' | '}
+      <a href="/docs/index.html" target="_blank" rel="noopener noreferrer">Docs</a>
+      {')'}
+    </h1>
   </header>
 );
 

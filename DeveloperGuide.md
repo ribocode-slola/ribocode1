@@ -167,11 +167,6 @@ test('renders the component', () => {
 
 ### Running Tests
 
-- To run all tests:
-  ```sh
-  npm test
-  ```
-- To run tests in watch mode (re-runs on file changes):
   ```sh
   npm test -- --watch
   ```
@@ -256,7 +251,17 @@ npx playwright install
 npm run dev
 ```
 
-You can run Playwright E2E tests using npm scripts or directly with Playwright:
+
+**Note:** Playwright E2E tests and unit/integration tests (run with Vitest) should be run separately. Do **not** combine them in a single command. E2E tests require a real browser and dev server, are slower, and have different dependencies and environments than fast, isolated unit/integration tests. Keeping them separate ensures clarity, speed, and easier debugging.
+
+Run unit/integration tests with:
+```sh
+npm test
+```
+and E2E tests with:
+```sh
+npm run test:e2e
+```
 
 - To run all E2E tests:
   ```sh
@@ -265,9 +270,9 @@ You can run Playwright E2E tests using npm scripts or directly with Playwright:
   npx playwright test
   ```
 - To run a specific E2E test file:
-  ```sh
+  **Good news!** Playwright is now configured to automatically start the Vite dev server using its `webServer` setting. You do **not** need to manually start the dev server before running E2E tests—just run the E2E test command and Playwright will handle it for you.
   npm run test:e2e:single -- e2e/session-load.e2e.spec.ts
-  # or
+  **Tip:** You can automate dev server startup by adding a `webServer` section to `playwright.config.ts`. See [Playwright webServer docs](https://playwright.dev/docs/test-advanced#launching-a-development-web-server-during-the-tests) for details.
   npx playwright test e2e/session-load.e2e.spec.ts
   ```
 - To open the interactive Playwright Test UI:
