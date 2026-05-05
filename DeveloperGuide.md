@@ -199,7 +199,44 @@ This project uses [Playwright](https://playwright.dev/) for end-to-end (E2E) bro
 
 - E2E tests are located in the `e2e/` directory at the project root.
 - Real-world test datasets (e.g., `4UG0.cif`, `6XU8.cif`) are stored in `data/input/`.
-- Example E2E test: `e2e/example-session.spec.ts` demonstrates loading a dataset, interacting with the UI, and verifying session logic.
+- Example E2E tests:
+  - `e2e/example-session.spec.ts`: Demonstrates loading a dataset, interacting with the UI, and verifying session logic.
+  - `e2e/session-load.e2e.spec.ts`: Covers the full session load workflow, including file selection modal and session restoration.
+
+
+### System Dependencies for Playwright (Linux)
+
+
+Playwright's browsers (especially Chromium) require certain system libraries to be installed on Linux. If you see errors like:
+
+  error while loading shared libraries: libnspr4.so: cannot open shared object file: No such file or directory
+
+
+You need to install the missing libraries. On Ubuntu/Debian, run:
+
+
+```sh
+sudo apt-get update
+sudo apt-get install libnspr4 libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 libgbm1 libasound2 libpangocairo-1.0-0 libpango-1.0-0 libgtk-3-0 libxss1 libxshmfence1 libxfixes3 libxext6 libx11-xcb1
+```
+
+> **Note:** On some newer Ubuntu/Debian systems, `libasound2` may be provided as `libasound2t64`. If you see a message like:
+>
+>     Package libasound2 is a virtual package provided by: ... libasound2t64 ...
+>
+> then install it with:
+>
+> ```sh
+> sudo apt-get install libasound2t64
+> ```
+
+On Fedora/RHEL/CentOS, use:
+
+```sh
+sudo dnf install nspr nss atk at-spi2-atk cups-libs libdrm libxkbcommon libXcomposite libXdamage libXrandr mesa-libgbm alsa-lib pango gtk3 libXScrnSaver libxshmfence libXfixes libXext libX11-xcb
+```
+
+See the [Playwright system requirements](https://playwright.dev/docs/installation#system-dependencies) for more details.
 
 ### Installing Playwright
 
@@ -210,32 +247,58 @@ npm install --save-dev playwright @playwright/test
 npx playwright install
 ```
 
+
 ### Running E2E Tests
 
-- To run all Playwright E2E tests:
+**Important:** The Vite dev server must be running at `http://localhost:5173` before running Playwright E2E tests. In one terminal, start:
+
+```sh
+npm run dev
+```
+
+You can run Playwright E2E tests using npm scripts or directly with Playwright:
+
+- To run all E2E tests:
   ```sh
+  npm run test:e2e
+  # or
   npx playwright test
   ```
-- To run a specific test file:
+- To run a specific E2E test file:
   ```sh
-  npx playwright test e2e/example-session.spec.ts
+  npm run test:e2e:single -- e2e/session-load.e2e.spec.ts
+  # or
+  npx playwright test e2e/session-load.e2e.spec.ts
   ```
 - To open the interactive Playwright Test UI:
   ```sh
+  npm run test:e2e:ui
+  # or
   npx playwright test --ui
   ```
 
-### Using Real Datasets in Tests
+#### Available npm scripts
+
+The following scripts are available in `package.json`:
+
+- `test:e2e` – Run all Playwright E2E tests
+- `test:e2e:single` – Run a single E2E test file (pass the file as an argument)
+- `test:e2e:ui` – Open the Playwright Test UI
+
+
+### Using Real Datasets in E2E Tests
 
 - Place CIF or other input files in `data/input/`.
 - Reference these files in your Playwright tests for realistic workflows.
-- See `e2e/example-session.spec.ts` for usage patterns.
+- See `e2e/example-session.spec.ts` and `e2e/session-load.e2e.spec.ts` for usage patterns.
 
-### Best Practices
 
-- Use data-testids or accessible selectors for robust element targeting.
+### E2E Test Best Practices
+
+- Use `data-testid` or accessible selectors for robust element targeting.
 - Clean up test state between tests to avoid cross-test interference.
 - Document any new E2E tests and datasets added.
+- Prefer realistic user flows: test file selection dialogs, downloads, and UI prompts as a user would experience them.
 
 ### Resources
 
@@ -263,10 +326,11 @@ Ribocode uses three main types of tests to ensure code quality and robust user e
 - Still run in jsdom, but cover more of the app's logic and UI.
 - Example: Testing session save/load logic across several components.
 
+
 ### End-to-End (E2E) Tests
-- Located in the `e2e/` directory (e.g., `e2e/example-session.spec.ts`).
+- Located in the `e2e/` directory (e.g., `e2e/example-session.spec.ts`, `e2e/session-load.e2e.spec.ts`).
 - Use Playwright to automate real browsers.
-- Test real user flows: loading datasets, saving sessions, verifying downloads, etc.
+- Test real user flows: loading datasets, saving sessions, verifying downloads, file selection modals, and session restoration.
 - Can assert on file downloads, network requests, and full UI behavior.
 
 ### Best Practices
@@ -275,7 +339,8 @@ Ribocode uses three main types of tests to ensure code quality and robust user e
 - Clean up test state between tests to avoid cross-test interference.
 - Document any new tests and datasets added.
 
-See the sections below for how to run each type of test and for more detailed examples.
+
+See the sections above for how to run each type of test and for more detailed examples, including Playwright E2E workflows and npm scripts.
 
 ---
 

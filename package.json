@@ -16,6 +16,10 @@
     "deploy": "gh-pages -d dist",
     "test": "vitest",
     "test:ui": "vitest --ui",
+    "test:e2e": "playwright test",
+    "test:e2e:session": "playwright test e2e/session-load.e2e.spec.ts",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:report": "playwright show-report",
     "docs": "typedoc --out docs src"
   },
   "eslintConfig": {
