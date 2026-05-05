@@ -765,13 +765,24 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                 <div
                                     className="session-menu-item session-menu-item-border"
                                     onClick={() => {
-                                        document.getElementById('session-menu-file-input')?.click();
+                                        if (window.confirm('Loading a session will unload all current data and replace the session. Please save your work first if needed. Continue?')) {
+                                            document.getElementById('session-menu-file-input')?.click();
+                                        }
                                         setTimeout(() => {
                                             document.getElementById('session-menu-dropdown')!.style.display = 'none';
                                         }, 0);
                                     }}
                                     tabIndex={0}
-                                    onKeyDown={e => { if (e.key === 'Enter') document.getElementById('session-menu-file-input')?.click(); }}
+                                    onKeyDown={e => {
+                                        if (e.key === 'Enter') {
+                                            if (window.confirm('Loading a session will unload all current data and replace the session. Please save your work first if needed. Continue?')) {
+                                                document.getElementById('session-menu-file-input')?.click();
+                                            }
+                                            setTimeout(() => {
+                                                document.getElementById('session-menu-dropdown')!.style.display = 'none';
+                                            }, 0);
+                                        }
+                                    }}
                                     style={{ padding: '8px 16px', cursor: 'pointer', borderBottom: '1px solid #eee' }}
                                 >
                                     Load
