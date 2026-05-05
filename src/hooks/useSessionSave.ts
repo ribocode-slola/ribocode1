@@ -19,20 +19,17 @@ export function useSessionSave(getSessionState: () => any) {
   const handleSaveSession = useCallback(() => {
     try {
       const session = getSessionState();
-      // const blob = new Blob([JSON.stringify(session, null, 2)], { type: 'application/json' });
-      // const url = URL.createObjectURL(blob);
-      // const a = document.createElement('a');
-      // a.href = url;
-      // a.download = 'ribocode-session.json';
-      // document.body.appendChild(a);
-      // a.click();
-      // setTimeout(() => {
-      //   document.body.removeChild(a);
-      //   URL.revokeObjectURL(url);
-      // }, 0);
-      // For debugging: just log the session
-      // eslint-disable-next-line no-console
-      console.log('Session to save:', session);
+      const blob = new Blob([JSON.stringify(session, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'ribocode-session.json';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 0);
     } catch (err) {
       alert('Failed to save session: ' + (err instanceof Error ? err.message : err));
     }

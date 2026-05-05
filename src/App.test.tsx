@@ -1,27 +1,4 @@
-describe('App session load confirmation', () => {
-  it('shows a confirmation dialog before loading a session', async () => {
-    // Mock window.confirm
-    const confirmSpy = vi.spyOn(window, 'confirm');
-    confirmSpy.mockImplementation(() => false); // User cancels
-
-    render(<App />);
-    const sessionBtn = screen.getByRole('button', { name: /session/i });
-    fireEvent.click(sessionBtn);
-    const loadItem = screen.getByText('Load');
-    // Try to load, but cancel
-    fireEvent.click(loadItem);
-    expect(confirmSpy).toHaveBeenCalledWith(expect.stringMatching(/will unload all current data/i));
-
-    // Now allow confirm
-    confirmSpy.mockImplementation(() => true);
-    fireEvent.click(sessionBtn);
-    fireEvent.click(loadItem);
-    // Modal should appear (mocked)
-    await waitFor(() => expect(screen.getByTestId('session-modal')).toBeInTheDocument());
-
-    confirmSpy.mockRestore();
-  });
-});
+// (Session load confirmation tests moved to session.integration.test.tsx)
 /**
  * Basic test suite for App component.
  * 
@@ -74,3 +51,5 @@ describe('App session dropdown menu', () => {
     expect(restartItem).toBeInTheDocument();
   });
 });
+
+// (Session file input trigger tests moved to session.integration.test.tsx)

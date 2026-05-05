@@ -769,7 +769,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                             document.getElementById('session-menu-file-input')?.click();
                                         }
                                         setTimeout(() => {
-                                            document.getElementById('session-menu-dropdown')!.style.display = 'none';
+                                            const dropdown = document.getElementById('session-menu-dropdown');
+                                            if (dropdown) dropdown.style.display = 'none';
                                         }, 0);
                                     }}
                                     tabIndex={0}
@@ -779,7 +780,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                                 document.getElementById('session-menu-file-input')?.click();
                                             }
                                             setTimeout(() => {
-                                                document.getElementById('session-menu-dropdown')!.style.display = 'none';
+                                                const dropdown = document.getElementById('session-menu-dropdown');
+                                                if (dropdown) dropdown.style.display = 'none';
                                             }, 0);
                                         }
                                     }}
@@ -793,7 +795,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                         if (window.confirm('Restarting will unload all data and reset the session. Please save your work first if needed. Continue?')) {
                                             window.location.reload();
                                         } else {
-                                            document.getElementById('session-menu-dropdown')!.style.display = 'none';
+                                            const dropdown = document.getElementById('session-menu-dropdown');
+                                            if (dropdown) dropdown.style.display = 'none';
                                         }
                                     }}
                                     tabIndex={0}

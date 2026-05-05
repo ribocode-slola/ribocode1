@@ -349,3 +349,30 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     expect(alignedCalls.length).toBeLessThanOrEqual(2);
   });
 });
+
+// --- Playwright E2E test for session save download ---
+// This block is for Playwright, not Vitest. Place in your Playwright test suite if you run Playwright separately.
+// If you run Playwright tests from a different directory, move this to your Playwright test folder.
+
+/*
+import { test, expect } from '@playwright/test';
+
+test('session save triggers file download', async ({ page }) => {
+  await page.goto('http://localhost:3000'); // Adjust to your dev server URL
+
+  // Wait for the download event when clicking the save button
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.click('[data-testid="save-btn"]'), // Adjust selector if needed
+  ]);
+
+  // Assert the filename is as expected
+  expect(await download.suggestedFilename()).toBe('ribocode-session.json');
+
+  // Optionally, save the file and check its contents
+  // const path = await download.path();
+  // const content = await download.text();
+  // expect(content).toContain('viewerA'); // or other session keys
+});
+*/
+// --- End Playwright E2E test block ---

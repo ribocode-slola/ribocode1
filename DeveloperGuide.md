@@ -72,6 +72,7 @@ Configuration files are in the top-level directory. The main source code is in t
   - `App.tsx`: The top-level application component, responsible for composing the main UI and wiring together state, providers, and layout.
   - `App.css`: Global CSS for styling all components.
   - `App.test.tsx`: Basic test for the App component.
+  - `session.integration.test.tsx`: Integration tests for session-related flows, such as session load/save, file input triggers, and modal appearance. Use this file for tests that simulate user workflows involving session management, rather than placing them in App.test.tsx or App.integration.test.tsx.
   - `components/`: UI components, including ViewerColumn, GeneralControls, AppHeader, and others. Each major component typically has a corresponding `.test.tsx` file for tests.
   - `context/`: React context providers and objects for sharing state and logic (e.g., SelectionContext, SyncContext, ViewerStateContext).
   - `handlers/`: Event and UI handler logic, such as `uiHandlers.ts` for shared UI event logic.
@@ -137,6 +138,16 @@ To serve out the `gh-pages` branch for your fork on `GitHub Pages` to create a P
 
 This project uses [Vitest](https://vitest.dev/) and [@testing-library/react](https://testing-library.com/docs/react-testing-library/intro/) for unit and component testing. Vitest is a modern, fast test runner with native ESM support, ideal for Vite-based projects.
 
+
+
+### Test File Structure
+
+- **Unit/component tests**: Use `.test.ts` or `.test.tsx` files placed alongside the code they test (e.g., `App.test.tsx`, `components/ComponentName.test.tsx`).
+- **Integration tests**: For flows involving multiple components or user workflows, use dedicated integration test files. For example:
+  - `App.integration.test.tsx`: General integration tests for the main app UI and multi-component flows.
+  - `session.integration.test.tsx`: Integration tests focused on session management (session save/load, file input, modal prompts, etc.).
+
+This separation keeps tests organized and maintainable as the codebase grows.
 
 ### Creating Tests
 
@@ -229,6 +240,42 @@ npx playwright install
 ### Resources
 
 - [Playwright documentation](https://playwright.dev/docs/intro)
+
+---
+
+## Test Types Overview
+
+Ribocode uses three main types of tests to ensure code quality and robust user experience:
+
+| Test Type         | Location/Pattern                | Tooling                | Purpose & Scope                                                                 |
+|-------------------|---------------------------------|------------------------|--------------------------------------------------------------------------------|
+| Unit Test         | `*.test.ts(x)` (next to code)   | Vitest, Testing Library| Test individual functions, hooks, or components in isolation.                   |
+| Integration Test  | `*.integration.test.ts(x)`      | Vitest, Testing Library| Test workflows involving multiple components or hooks together in jsdom.        |
+| End-to-End (E2E)  | `e2e/*.spec.ts`                 | Playwright             | Test real user workflows in a real browser, including file downloads, datasets. |
+
+### Unit Tests
+- Located next to the code they test (e.g., `src/components/Foo.test.tsx`).
+- Use Vitest and @testing-library/react for fast, isolated checks.
+- Example: Testing a single button renders and fires an event.
+
+### Integration Tests
+- Used for multi-component or workflow tests (e.g., `src/App.integration.test.tsx`).
+- Still run in jsdom, but cover more of the app's logic and UI.
+- Example: Testing session save/load logic across several components.
+
+### End-to-End (E2E) Tests
+- Located in the `e2e/` directory (e.g., `e2e/example-session.spec.ts`).
+- Use Playwright to automate real browsers.
+- Test real user flows: loading datasets, saving sessions, verifying downloads, etc.
+- Can assert on file downloads, network requests, and full UI behavior.
+
+### Best Practices
+- Use clear, descriptive test names and group related tests with `describe` blocks.
+- Use `data-testid` or accessible selectors for robust element targeting.
+- Clean up test state between tests to avoid cross-test interference.
+- Document any new tests and datasets added.
+
+See the sections below for how to run each type of test and for more detailed examples.
 
 ---
 
