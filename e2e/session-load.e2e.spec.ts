@@ -19,9 +19,14 @@ test('Session load prompts for required files and loads data', async ({ page }) 
   // 1. Go to the app
   await page.goto('http://localhost:5173/'); // Adjust if your dev server runs elsewhere
 
-  // 2. Open Session menu and click Load
-  await page.click('button:has-text("Session")');
-  await page.click('text=Load');
+  // 2. Open Session menu and click Load (wait for dropdown)
+  await page.click('button#session-menu-btn');
+  // Wait for the dropdown to be visible and stable
+  await page.waitForSelector('#session-menu-dropdown', { state: 'visible' });
+  // Add a short wait to ensure menu is stable (fixes flakiness due to blur/timeout)
+  await page.waitForTimeout(200);
+  // Click the Load menu item specifically in the dropdown
+  await page.click('#session-menu-dropdown .session-menu-item:has-text("Load")');
 
   // 3. Upload a session file with required filenames
   // Prepare a session JSON file dynamically
@@ -58,12 +63,11 @@ test('Session load prompts for required files and loads data', async ({ page }) 
   await page.click('button:has-text("Load Session")');
 
   // 7. Assert that the viewers are updated (e.g., check for molecule names or representations)
-  // Adjust selectors as needed for your UI
   await expect(page.locator('#viewer-column-A-molstar-container')).toBeVisible();
   await expect(page.locator('#viewer-column-B-molstar-container')).toBeVisible();
-  // Optionally, check for molecule names or representations in the UI
-  // await expect(page.getByText('4ug0')).toBeVisible();
-  // await expect(page.getByText('6xu8')).toBeVisible();
+  // Check for molecule names or representations in the UI (upper case)
+  await expect(page.getByText('4UG0')).toBeVisible();
+  await expect(page.getByText('6XU8')).toBeVisible();
 
   // 8. Assert that the fallback error dialog does NOT appear
   await expect(page.locator('text=Session loaded, but could not automatically reload datasets')).toHaveCount(0);

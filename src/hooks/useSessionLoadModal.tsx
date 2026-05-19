@@ -33,14 +33,32 @@ export function useSessionLoadModal(onSessionLoaded: (session: any, files: Recor
   });
 
   // Handler for file input change
-  const handleSessionFileChange = useCallback((idx: number, file: File | null) => {
+  const handleSessionFileChange = useCallback((idx: number, file: File | null, fileList?: FileList | null) => {
     setModalState(prev => {
       const requiredFiles = [...prev.requiredFiles];
-      if (file && file.name === requiredFiles[idx].filename) {
-        requiredFiles[idx] = { ...requiredFiles[idx], file };
-      } else {
-        alert(`Selected file name (${file?.name}) does not match required file (${requiredFiles[idx].filename}). Please try again.`);
+      if (!file) return prev;
+      // Find all required file indices that match this filename
+      const matchingIndices = requiredFiles
+        .map((rf, i) => rf.filename === file.name ? i : -1)
+        .filter(i => i !== -1);
+      if (matchingIndices.length === 0) {
+        alert(`Selected file name (${file.name}) does not match any required file. Please try again.`);
         return prev;
+      }
+      // Assign the selected file to all matching requirements
+      for (const i of matchingIndices) {
+        requiredFiles[i] = { ...requiredFiles[i], file };
+      }
+      // Try to auto-assign the other required file if in the same directory
+      if (fileList && fileList.length > 1) {
+        for (let j = 0; j < requiredFiles.length; ++j) {
+          if (!requiredFiles[j].file) {
+            const match = Array.from(fileList).find(f => f.name === requiredFiles[j].filename);
+            if (match) {
+              requiredFiles[j] = { ...requiredFiles[j], file: match };
+            }
+          }
+        }
       }
       return { ...prev, requiredFiles };
     });
@@ -74,16 +92,25 @@ export function useSessionLoadModal(onSessionLoaded: (session: any, files: Recor
         alert('Failed to parse session: ' + err);
         return;
       }
-      // Determine required files from session
-      const requiredFiles: RequiredSessionFile[] = [];
-      if (session.viewerA && session.viewerA.alignedTo && session.viewerA.alignedTo.filename) {
-        requiredFiles.push({ key: 'alignedToA', label: 'AlignedTo (Viewer A)', filename: session.viewerA.alignedTo.filename });
-      }
-      if (session.viewerB && session.viewerB.aligned && session.viewerB.aligned.filename) {
-        requiredFiles.push({ key: 'alignedB', label: 'Aligned (Viewer B)', filename: session.viewerB.aligned.filename });
-      } else if (session.viewerA && session.viewerA.aligned && session.viewerA.aligned.filename) {
-        requiredFiles.push({ key: 'alignedA', label: 'Aligned (Viewer A)', filename: session.viewerA.aligned.filename });
-      }
+      // Collect all referenced filenames for AlignedTo/Aligned from both viewers, deduplicate by filename
+      const fileMap = new Map<string, RequiredSessionFile>();
+      // Helper to add file by filename as key
+      const addFile = (filename: string | undefined, label: string) => {
+        if (filename && !fileMap.has(filename)) {
+          fileMap.set(filename, { key: filename, label, filename });
+        }
+      };
+      // Viewer A
+      addFile(session.viewerA?.alignedTo?.filename, 'AlignedTo');
+      addFile(session.viewerA?.aligned?.filename, 'Aligned');
+      addFile(session.viewerA?.moleculeAlignedTo?.filename, 'AlignedTo');
+      addFile(session.viewerA?.moleculeAligned?.filename, 'Aligned');
+      // Viewer B
+      addFile(session.viewerB?.alignedTo?.filename, 'AlignedTo');
+      addFile(session.viewerB?.aligned?.filename, 'Aligned');
+      addFile(session.viewerB?.moleculeAlignedTo?.filename, 'AlignedTo');
+      addFile(session.viewerB?.moleculeAligned?.filename, 'Aligned');
+      const requiredFiles = Array.from(fileMap.values());
       setModalState({ open: true, sessionData: session, requiredFiles, step: 0 });
     };
     reader.readAsText(file);
@@ -99,7 +126,7 @@ export function useSessionLoadModal(onSessionLoaded: (session: any, files: Recor
             <li key={f.key} style={{ marginBottom: 16 }}>
               <div><b>{f.label}</b>: <span style={{ color: '#555' }}>{f.filename}</span></div>
               <input type="file" style={{ marginTop: 8 }}
-                onChange={e => handleSessionFileChange(idx, e.target.files?.[0] || null)}
+                onChange={e => handleSessionFileChange(idx, e.target.files?.[0] || null, e.target.files)}
                 accept={undefined}
               />
               {f.file && <span style={{ color: 'green', marginLeft: 8 }}>✓ Selected</span>}

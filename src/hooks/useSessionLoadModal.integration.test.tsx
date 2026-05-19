@@ -13,17 +13,24 @@ import { vi } from 'vitest';
 import { useSessionLoadModal } from './useSessionLoadModal';
 
 describe('useSessionLoadModal integration', () => {
-  it('prompts for required files based on session JSON', async () => {
+  it('prompts for required files for both alignedTo/aligned and moleculeAlignedTo/moleculeAligned keys', async () => {
     const onSessionLoaded = vi.fn();
-    // Create a session JSON blob with required filenames
-    // Only viewerA.alignedTo and viewerB.aligned are picked up by the modal logic
-    const sessionData = {
-      viewerA: { alignedTo: { filename: 'alignedToA.cif' } },
-      viewerB: { aligned: { filename: 'alignedB.cif' } }
-    };
-    const file = new File([JSON.stringify(sessionData)], 'session.json', { type: 'application/json' });
 
-    function TestComponent() {
+    // Test alignedTo/aligned keys, with both viewers referencing the same files
+    const sessionData1 = {
+      viewerA: { alignedTo: { filename: 'alignedToA.cif' } },
+      viewerB: { alignedTo: { filename: 'alignedToA.cif' }, aligned: { filename: 'alignedB.cif' } }
+    };
+    const file1 = new File([JSON.stringify(sessionData1)], 'session1.json', { type: 'application/json' });
+
+    // Test 2: moleculeAlignedTo/moleculeAligned keys, both viewers referencing the same files
+    const sessionData2 = {
+      viewerA: { moleculeAlignedTo: { filename: 'molAlignedToA.cif' } },
+      viewerB: { moleculeAlignedTo: { filename: 'molAlignedToA.cif' }, moleculeAligned: { filename: 'molAlignedB.cif' } }
+    };
+    const file2 = new File([JSON.stringify(sessionData2)], 'session2.json', { type: 'application/json' });
+
+    function TestComponent({ file }: { file: File }) {
       const { handleLoadSession, SessionLoadModal } = useSessionLoadModal(onSessionLoaded);
       return (
         <>
@@ -33,17 +40,37 @@ describe('useSessionLoadModal integration', () => {
       );
     }
 
-    render(<TestComponent />);
-    // Simulate loading a session file
-    const input = screen.getByTestId('session-input') as HTMLInputElement;
-    Object.defineProperty(input, 'files', { value: [file] });
+    // Test alignedTo/aligned
+    const { unmount } = render(<TestComponent file={file1} />);
+    let input = screen.getByTestId('session-input') as HTMLInputElement;
+    Object.defineProperty(input, 'files', { value: [file1] });
     fireEvent.change(input);
-
-    // Modal should appear and prompt for required files
     await waitFor(() => {
       expect(screen.getByText('Load Session: Select Required Files')).toBeInTheDocument();
       expect(screen.getByText('alignedToA.cif')).toBeInTheDocument();
       expect(screen.getByText('alignedB.cif')).toBeInTheDocument();
+      // Should only prompt for each file once
+      expect(screen.queryAllByText('alignedToA.cif').length).toBe(1);
+      expect(screen.queryAllByText('alignedB.cif').length).toBe(1);
     });
+
+    // Cleanup modal and unmount
+    fireEvent.click(screen.getByText('Cancel'));
+    unmount();
+
+    // Test moleculeAlignedTo/moleculeAligned
+    const { unmount: unmount2 } = render(<TestComponent file={file2} />);
+    input = screen.getByTestId('session-input') as HTMLInputElement;
+    Object.defineProperty(input, 'files', { value: [file2] });
+    fireEvent.change(input);
+    await waitFor(() => {
+      expect(screen.getByText('Load Session: Select Required Files')).toBeInTheDocument();
+      expect(screen.getByText('molAlignedToA.cif')).toBeInTheDocument();
+      expect(screen.getByText('molAlignedB.cif')).toBeInTheDocument();
+      expect(screen.queryAllByText('molAlignedToA.cif').length).toBe(1);
+      expect(screen.queryAllByText('molAlignedB.cif').length).toBe(1);
+    });
+    fireEvent.click(screen.getByText('Cancel'));
+    unmount2();
   });
 });

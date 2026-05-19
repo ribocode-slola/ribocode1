@@ -11,6 +11,7 @@
  * @see https://github.com/ribocode-slola/ribocode1
  */
 import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { useConfirm } from './hooks/useConfirm';
 import { SelectionProvider } from './context/SelectionContext';
 import { ViewerStateProvider } from './context/ViewerStateContext';
 import { SyncProvider } from './context/SyncContext';
@@ -164,6 +165,9 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
     // Track realigned molecules with from/to chain IDs to prevent duplicates
     const [realignedMoleculesA, setRealignedMoleculesA] = useState<Array<{ id: string, file: File, label: string, from: string, to: string }>>([]);
     const [realignedMoleculesB, setRealignedMoleculesB] = useState<Array<{ id: string, file: File, label: string, from: string, to: string }>>([]);
+
+    // Use custom confirmation hook
+    const confirm = useConfirm();
 
     // Molecule loading logic extracted to useMoleculeLoader
     // Robust file loading logic for both AlignedTo and Aligned
@@ -687,15 +691,24 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
 
     // Define the session loaded callback with proper typing and error handling
     const onSessionLoaded = useCallback(async (session: any, files: Record<string, File>) => {
-        // Loads molecules and restores state from session. Expand as needed.
+        // Map filenames to semantic keys for compatibility
+        const getFilename = (obj: any) => obj && typeof obj.filename === 'string' ? obj.filename : undefined;
+        const alignedToFilename = getFilename(session.viewerA?.alignedTo) || getFilename(session.viewerA?.moleculeAlignedTo);
+        const alignedFilename = getFilename(session.viewerB?.aligned) || getFilename(session.viewerB?.moleculeAligned);
+        // Fallback: try viewerB.alignedTo or viewerA.aligned
+        const altAlignedToFilename = getFilename(session.viewerB?.alignedTo) || getFilename(session.viewerB?.moleculeAlignedTo);
+        const altAlignedFilename = getFilename(session.viewerA?.aligned) || getFilename(session.viewerA?.moleculeAligned);
+
+        // Try to get the files by filename
+        const alignedToFile = (alignedToFilename && files[alignedToFilename]) || (altAlignedToFilename && files[altAlignedToFilename]);
+        const alignedFile = (alignedFilename && files[alignedFilename]) || (altAlignedFilename && files[altAlignedFilename]);
+
         let loadedAny = false;
         try {
-            if (files.alignedToA) {
-                // Explicitly type the result for clarity and type safety
-                const alignedToMolecule = await loadMoleculeIntoViewers(files.alignedToA, AlignedTo) as LoadedMolecule | undefined;
+            if (alignedToFile) {
+                const alignedToMolecule = await loadMoleculeIntoViewers(alignedToFile, AlignedTo) as LoadedMolecule | undefined;
                 loadedAny = true;
-                if (files.alignedB || files.alignedA) {
-                    const alignedFile = files.alignedB || files.alignedA;
+                if (alignedFile) {
                     // Defensive runtime check for alignmentData
                     if (!alignedToMolecule || typeof alignedToMolecule !== 'object' || !('alignmentData' in alignedToMolecule) || !alignedToMolecule.alignmentData) {
                         alert('AlignedTo alignment data not available after load. Cannot load Aligned file.');
@@ -703,8 +716,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                         await loadMoleculeIntoViewers(alignedFile, Aligned, alignedToMolecule.alignmentData);
                     }
                 }
-            } else if (files.alignedB || files.alignedA) {
-                await loadMoleculeIntoViewers(files.alignedB || files.alignedA, Aligned);
+            } else if (alignedFile) {
+                await loadMoleculeIntoViewers(alignedFile, Aligned);
                 loadedAny = true;
             }
             // TODO: Restore visibility and representations as needed
@@ -734,13 +747,22 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                 id="session-menu-btn"
                                 onClick={e => {
                                     const menu = document.getElementById('session-menu-dropdown');
-                                    if (menu) menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+                                    if (menu) {
+                                        const willOpen = menu.style.display !== 'block';
+                                        menu.style.display = willOpen ? 'block' : 'none';
+                                        console.log(`[SessionMenu] Menu ${willOpen ? 'opened' : 'closed'} by button click`);
+                                    }
                                 }}
                                 onBlur={e => {
-                                    setTimeout(() => {
-                                        const menu = document.getElementById('session-menu-dropdown');
-                                        if (menu) menu.style.display = 'none';
-                                    }, 150);
+                                    if (process.env.NODE_ENV !== 'test') {
+                                        setTimeout(() => {
+                                            const menu = document.getElementById('session-menu-dropdown');
+                                            if (menu) {
+                                                menu.style.display = 'none';
+                                                console.log('[SessionMenu] Menu closed by blur');
+                                            }
+                                        }, 150);
+                                    }
                                 }}
                             >
                                 Session ▾
@@ -765,7 +787,9 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                 <div
                                     className="session-menu-item session-menu-item-border"
                                     onClick={() => {
-                                        if (window.confirm('Loading a session will unload all current data and replace the session. Please save your work first if needed. Continue?')) {
+                                        console.log('[SessionMenu] Load menu item clicked');
+                                        if (confirm('Loading a session will unload all current data and replace the session. Please save your work first if needed. Continue?')) {
+                                            console.log('[SessionMenu] Triggering file input for session load');
                                             document.getElementById('session-menu-file-input')?.click();
                                         }
                                         setTimeout(() => {
@@ -776,7 +800,9 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     tabIndex={0}
                                     onKeyDown={e => {
                                         if (e.key === 'Enter') {
-                                            if (window.confirm('Loading a session will unload all current data and replace the session. Please save your work first if needed. Continue?')) {
+                                            console.log('[SessionMenu] Load menu item activated by Enter key');
+                                            if (confirm('Loading a session will unload all current data and replace the session. Please save your work first if needed. Continue?')) {
+                                                console.log('[SessionMenu] Triggering file input for session load (Enter)');
                                                 document.getElementById('session-menu-file-input')?.click();
                                             }
                                             setTimeout(() => {
@@ -792,7 +818,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                 <div
                                     className="session-menu-item"
                                     onClick={() => {
-                                        if (window.confirm('Restarting will unload all data and reset the session. Please save your work first if needed. Continue?')) {
+                                        if (confirm('Restarting will unload all data and reset the session. Please save your work first if needed. Continue?')) {
                                             window.location.reload();
                                         } else {
                                             const dropdown = document.getElementById('session-menu-dropdown');
@@ -802,7 +828,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     tabIndex={0}
                                     onKeyDown={e => {
                                         if (e.key === 'Enter') {
-                                            if (window.confirm('Restarting will unload all data and reset the session. Please save your work first if needed. Continue?')) {
+                                            if (confirm('Restarting will unload all data and reset the session. Please save your work first if needed. Continue?')) {
                                                 window.location.reload();
                                             } else {
                                                 document.getElementById('session-menu-dropdown')!.style.display = 'none';
@@ -819,7 +845,10 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                 type="file"
                                 accept="application/json"
                                 style={{ display: 'none' }}
-                                onChange={handleLoadSession}
+                                onChange={e => {
+                                    console.log('[SessionMenu] File input changed (session load)');
+                                    handleLoadSession(e);
+                                }}
                             />
                         </div>
                     </nav>
