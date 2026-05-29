@@ -1,16 +1,65 @@
+
 # Developer Guide
 
 Welcome to the Ribocode Developer Guide!
 
+
 ## Table of Contents
 
+- [Quick Start](#quick-start)
 - [Setup](#setup)
+  - [Recommended set up](#recommended-set-up)
+  - [Build and run locally](#build-and-run-locally)
+  - [Production Build & Preview](#production-build--preview)
+  - [Notes on Environment Files](#notes-on-environment-files)
+  - [Deployment](#deployment)
 - [Source Code Overview](#source-code-overview)
+- [UI Element IDs and data-testid Conventions](#ui-element-ids-and-data-testid-conventions)
+  - [General Rules](#general-rules)
+  - [Examples](#examples)
+  - [Updating Existing Components](#updating-existing-components)
 - [Mol*](#mol*)
 - [Documentation](#documentation)
+  - [How to Generate Documentation](#how-to-generate-documentation)
+  - [Configuration](#configuration)
+  - [Deployment Recommendation](#deployment-recommendation)
 - [Deployment](#deployment)
 - [Tests](#tests)
+  - [Test File Structure](#test-file-structure)
+  - [Creating Tests](#creating-tests)
+  - [Running Tests](#running-tests)
+  - [End-to-End (E2E) Testing with Playwright](#end-to-end-e2e-testing-with-playwright)
+    - [E2E Test Structure](#e2e-test-structure)
+    - [System Dependencies for Playwright (Linux)](#system-dependencies-for-playwright-linux)
+    - [Installing Playwright](#installing-playwright)
+    - [Running E2E Tests](#running-e2e-tests)
+    - [Using Real Datasets in E2E Tests](#using-real-datasets-in-e2e-tests)
+    - [E2E Test Best Practices](#e2e-test-best-practices)
+  - [Test Types Overview](#test-types-overview)
 - [Contributing](#contributing)
+
+
+## Quick Start
+
+For experienced developers:
+
+```sh
+git clone https://github.com/ribocode-slola/ribocode1.git
+cd ribocode1
+npm install
+npm run dev
+# Visit http://localhost:5173/
+```
+
+For E2E tests:
+```sh
+npm run test:e2e
+```
+
+For unit/integration tests:
+```sh
+npm test
+```
 
 
 ## Setup
@@ -63,6 +112,7 @@ From the Ribocode root directory:
   - The app will be available at `https://<username>.github.io/ribocode1/`.
 
 
+
 ## Source Code Overview
 
 Configuration files are in the top-level directory. The main source code is in the `src` directory, with additional dependencies in `packages`.
@@ -88,6 +138,38 @@ Configuration files are in the top-level directory. The main source code is in t
 Notes:
 - Some UI components for loading dictionary/alignment data and for advanced visualization controls (e.g., fog, camera planes) exist but may be hidden or under development.
 - All major logic is modularized for maintainability, with helpers, types, and constants extracted to their own files.
+
+## UI Element IDs and `data-testid` Conventions
+
+To ensure robust, maintainable, and testable UI code, Ribocode uses the following conventions for element IDs and `data-testid` attributes:
+
+### General Rules
+- **IDs** should be unique, predictable, and use kebab-case (e.g., `viewer-column-a-load-btn`).
+- **data-testid** attributes should be added to all modal fields, file inputs, and dynamic elements that are targeted in E2E/component tests.
+- Use `data-testid` for elements that may have dynamic content, multiple instances, or where IDs are not unique.
+- Prefer `data-testid` in Playwright and Testing Library selectors for E2E and integration tests.
+
+### Examples
+
+#### Modal Components
+```jsx
+<input type="file" id="session-modal-alignedto-input" data-testid="session-modal-alignedto-input" />
+<button id="session-modal-load-btn" data-testid="session-modal-load-btn">Load Session</button>
+```
+
+#### Viewer Column Buttons
+```jsx
+<button id="viewer-column-a-load-btn" data-testid="viewer-column-a-load-btn">Load AlignedTo</button>
+<input id="viewer-column-a-file-input" data-testid="viewer-column-a-file-input" type="file" />
+```
+
+#### General Guidelines
+- Always use the same value for `id` and `data-testid` when possible for clarity.
+- Document any new IDs or `data-testid` attributes added to components.
+- Update tests to use these selectors instead of brittle text or class selectors.
+
+### Updating Existing Components
+If you add a new modal, file input, or dynamic UI element, ensure it has a `data-testid` attribute following the conventions above. Update the relevant tests to use these selectors.
 
 
 ## Mol*
@@ -245,23 +327,14 @@ npx playwright install
 
 ### Running E2E Tests
 
-**Important:** The Vite dev server must be running at `http://localhost:5173` before running Playwright E2E tests. In one terminal, start:
-
-```sh
-npm run dev
-```
-
-
-**Note:** Playwright E2E tests and unit/integration tests (run with Vitest) should be run separately. Do **not** combine them in a single command. E2E tests require a real browser and dev server, are slower, and have different dependencies and environments than fast, isolated unit/integration tests. Keeping them separate ensures clarity, speed, and easier debugging.
-
-Run unit/integration tests with:
-```sh
-npm test
-```
 and E2E tests with:
-```sh
-npm run test:e2e
-```
+
+**Note:** Playwright E2E tests and unit/integration tests (run with Vitest) should be run separately. E2E tests require a real browser and dev server, are slower, and have different dependencies and environments than fast, isolated unit/integration tests. Keeping them separate ensures clarity, speed, and easier debugging.
+
+**Summary:**
+- Start the dev server with `npm run dev` for local development.
+- Run all unit/integration tests with `npm test`.
+- Run all E2E tests with `npm run test:e2e` (the dev server is auto-started by Playwright if needed).
 
 - To run all E2E tests:
   ```sh
@@ -346,6 +419,41 @@ Ribocode uses three main types of tests to ensure code quality and robust user e
 
 
 See the sections above for how to run each type of test and for more detailed examples, including Playwright E2E workflows and npm scripts.
+
+---
+
+
+## UI Element IDs and `data-testid` Conventions
+
+To ensure robust, maintainable, and testable UI code, Ribocode uses the following conventions for element IDs and `data-testid` attributes:
+
+### General Rules
+- **IDs** should be unique, predictable, and use kebab-case (e.g., `viewer-column-a-load-btn`).
+- **data-testid** attributes should be added to all modal fields, file inputs, and dynamic elements that are targeted in E2E/component tests.
+- Use `data-testid` for elements that may have dynamic content, multiple instances, or where IDs are not unique.
+- Prefer `data-testid` in Playwright and Testing Library selectors for E2E and integration tests.
+
+### Examples
+
+#### Modal Components
+```jsx
+<input type="file" id="session-modal-alignedto-input" data-testid="session-modal-alignedto-input" />
+<button id="session-modal-load-btn" data-testid="session-modal-load-btn">Load Session</button>
+```
+
+#### Viewer Column Buttons
+```jsx
+<button id="viewer-column-a-load-btn" data-testid="viewer-column-a-load-btn">Load AlignedTo</button>
+<input id="viewer-column-a-file-input" data-testid="viewer-column-a-file-input" type="file" />
+```
+
+#### General Guidelines
+- Always use the same value for `id` and `data-testid` when possible for clarity.
+- Document any new IDs or `data-testid` attributes added to components.
+- Update tests to use these selectors instead of brittle text or class selectors.
+
+### Updating Existing Components
+If you add a new modal, file input, or dynamic UI element, ensure it has a `data-testid` attribute following the conventions above. Update the relevant tests to use these selectors.
 
 ---
 

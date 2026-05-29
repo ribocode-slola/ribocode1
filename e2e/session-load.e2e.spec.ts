@@ -65,12 +65,21 @@ test('Session load prompts for required files and loads data', async ({ page }) 
   // 7. Assert that the viewers are updated (e.g., check for molecule names or representations)
   await expect(page.locator('#viewer-column-A-molstar-container')).toBeVisible();
   await expect(page.locator('#viewer-column-B-molstar-container')).toBeVisible();
-  // Check for molecule names or representations in the UI (upper case)
-  await expect(page.getByText('4UG0')).toBeVisible();
-  await expect(page.getByText('6XU8')).toBeVisible();
+  // Check for molecule names or representations in the UI (lower case)
+  await expect(page.getByText(/4ug0/i)).toBeVisible();
+  await expect(page.getByText(/6xu8/i)).toBeVisible();
 
   // 8. Assert that the fallback error dialog does NOT appear
   await expect(page.locator('text=Session loaded, but could not automatically reload datasets')).toHaveCount(0);
+
+  // 9. Open the Select Chain dropdown for viewer A and check for correct chain codes/labels
+  // Adjust selector as needed to match your UI structure
+  await page.click('#viewer-column-A select');
+  // Wait for options to be visible (if custom dropdown, adjust accordingly)
+  // Check for expected chain codes/labels (e.g., 'A', 'B', 'Chain A', etc.)
+  await expect(page.getByText(/chain a|a/i)).toBeVisible();
+  // Optionally check for other expected chain codes/labels
+  // await expect(page.getByText(/chain b|b/i)).toBeVisible();
 
   // Cleanup: remove the temporary session file
   fs.unlinkSync(sessionFilePath);

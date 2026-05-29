@@ -6,22 +6,24 @@
 
 # Test info
 
-- Name: session-load.e2e.spec.ts >> Session load prompts for required files and loads data
-- Location: e2e/session-load.e2e.spec.ts:18:5
+- Name: aligned-buttons-independence.e2e.spec.ts >> Aligned and AlignedTo buttons update independently
+- Location: e2e/aligned-buttons-independence.e2e.spec.ts:16:5
 
 # Error details
 
 ```
-Error: expect(locator).toBeVisible() failed
+Error: expect(locator).toHaveCount(expected) failed
 
-Locator: getByText(/6xu8/i)
-Expected: visible
-Timeout: 5000ms
-Error: element(s) not found
+Locator:  getByRole('button', { name: /Load AlignedTo/i })
+Expected: 0
+Received: 1
+Timeout:  5000ms
 
 Call log:
-  - Expect "toBeVisible" with timeout 5000ms
-  - waiting for getByText(/6xu8/i)
+  - Expect "toHaveCount" with timeout 5000ms
+  - waiting for getByRole('button', { name: /Load AlignedTo/i })
+    7 × locator resolved to 1 element
+      - unexpected value "1"
 
 ```
 
@@ -58,7 +60,7 @@ Call log:
   - generic [ref=e20]:
     - generic [ref=e21]:
       - generic [ref=e22]:
-        - button "Load AlignedTo" [ref=e24]
+        - button "Load AlignedTo" [active] [ref=e24]
         - generic [ref=e25]:
           - generic [ref=e26]:
             - text: Select Subunit
@@ -661,31 +663,31 @@ Call log:
         - list [ref=e542]:
           - listitem [ref=e543]:
             - generic [ref=e544]: 17:10:14
-            - generic [ref=e545]: Created 4ug0.cif in 80ms.
+            - generic [ref=e545]: Created 4ug0.cif in 75ms.
           - listitem [ref=e546]:
             - generic [ref=e547]: 17:10:14
-            - generic [ref=e548]: Created CIF File in 274ms.
+            - generic [ref=e548]: Created CIF File in 295ms.
           - listitem [ref=e549]:
             - generic [ref=e550]: 17:10:14
-            - generic [ref=e551]: Created 4UG0 in 152ms.
+            - generic [ref=e551]: Created 4UG0 in 162ms.
           - listitem [ref=e552]:
-            - generic [ref=e553]: 17:10:15
+            - generic [ref=e553]: 17:10:14
             - generic [ref=e554]: Created Model 1 in 0ms.
           - listitem [ref=e555]:
-            - generic [ref=e556]: 17:10:15
-            - generic [ref=e557]: Created Model 1 in 0ms.
+            - generic [ref=e556]: 17:10:14
+            - generic [ref=e557]: Created Model 1 in 1ms.
           - listitem [ref=e558]:
-            - generic [ref=e559]: 17:10:15
-            - generic [ref=e560]: Created Assembly 1 in 18ms.
+            - generic [ref=e559]: 17:10:14
+            - generic [ref=e560]: Created Assembly 1 in 14ms.
           - listitem [ref=e561]:
-            - generic [ref=e562]: 17:10:15
+            - generic [ref=e562]: 17:10:14
             - generic [ref=e563]: Created Assembly 1 in 1ms.
           - listitem [ref=e564]:
-            - generic [ref=e565]: 17:10:15
-            - generic [ref=e566]: Created Polymer in 4ms.
+            - generic [ref=e565]: 17:10:14
+            - generic [ref=e566]: Created Polymer in 3ms.
           - listitem [ref=e567]:
             - generic [ref=e568]: 17:10:15
-            - generic [ref=e569]: Created Cartoon in 342ms.
+            - generic [ref=e569]: Created Cartoon in 356ms.
           - listitem [ref=e570]:
             - generic [ref=e571]: 17:10:15
             - generic [ref=e572]: Updated Structure Focus Representation in 1ms.
@@ -1192,13 +1194,13 @@ Call log:
         - list [ref=e1094]:
           - listitem [ref=e1095]:
             - generic [ref=e1096]: 17:10:15
-            - generic [ref=e1097]: Created 4ug0.cif in 72ms.
+            - generic [ref=e1097]: Created 4ug0.cif in 71ms.
           - listitem [ref=e1098]:
             - generic [ref=e1099]: 17:10:15
-            - generic [ref=e1100]: Created CIF File in 269ms.
+            - generic [ref=e1100]: Created CIF File in 277ms.
           - listitem [ref=e1101]:
-            - generic [ref=e1102]: 17:10:16
-            - generic [ref=e1103]: Created 4UG0 in 169ms.
+            - generic [ref=e1102]: 17:10:15
+            - generic [ref=e1103]: Created 4UG0 in 163ms.
           - listitem [ref=e1104]:
             - generic [ref=e1105]: 17:10:16
             - generic [ref=e1106]: Created Model 1 in 0ms.
@@ -1207,7 +1209,7 @@ Call log:
             - generic [ref=e1109]: Created Model 1 in 0ms.
           - listitem [ref=e1110]:
             - generic [ref=e1111]: 17:10:16
-            - generic [ref=e1112]: Created Assembly 1 in 12ms.
+            - generic [ref=e1112]: Created Assembly 1 in 14ms.
           - listitem [ref=e1113]:
             - generic [ref=e1114]: 17:10:16
             - generic [ref=e1115]: Created Assembly 1 in 0ms.
@@ -1216,7 +1218,7 @@ Call log:
             - generic [ref=e1118]: Created Polymer in 2ms.
           - listitem [ref=e1119]:
             - generic [ref=e1120]: 17:10:16
-            - generic [ref=e1121]: Created Cartoon in 238ms.
+            - generic [ref=e1121]: Created Cartoon in 271ms.
           - listitem [ref=e1122]:
             - generic [ref=e1123]: 17:10:16
             - generic [ref=e1124]: Updated Structure Focus Representation in 1ms.
@@ -1226,91 +1228,44 @@ Call log:
 
 ```ts
   1  | /**
-  2  |  * Playwright E2E test for full session load workflow in Ribocode
-  3  |  * 
+  2  |  * Playwright E2E test to ensure Aligned and AlignedTo buttons update independently.
+  3  |  *
   4  |  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT
-  5  |  * @author Andy Turner <agdturner@gmail.com>
+  5  |  * @author Copilot
   6  |  * @version 1.0.0
-  7  |  * @lastModified 2026-04-24
-  8  |  * @see https://github.com/ribocode-slola/ribocode1
-  9  |  */
-  10 | import { test, expect } from '@playwright/test';
-  11 | import path from 'path';
-  12 | 
-  13 | // Helper to get absolute path to test data
-  14 | function dataPath(filename: string) {
-  15 |   return path.resolve(__dirname, '../data/input', filename);
-  16 | }
-  17 | 
-  18 | test('Session load prompts for required files and loads data', async ({ page }) => {
-  19 |   // 1. Go to the app
-  20 |   await page.goto('http://localhost:5173/'); // Adjust if your dev server runs elsewhere
-  21 | 
-  22 |   // 2. Open Session menu and click Load (wait for dropdown)
-  23 |   await page.click('button#session-menu-btn');
-  24 |   // Wait for the dropdown to be visible and stable
-  25 |   await page.waitForSelector('#session-menu-dropdown', { state: 'visible' });
-  26 |   // Add a short wait to ensure menu is stable (fixes flakiness due to blur/timeout)
-  27 |   await page.waitForTimeout(200);
-  28 |   // Click the Load menu item specifically in the dropdown
-  29 |   await page.click('#session-menu-dropdown .session-menu-item:has-text("Load")');
-  30 | 
-  31 |   // 3. Upload a session file with required filenames
-  32 |   // Prepare a session JSON file dynamically
-  33 |   const sessionJson = {
-  34 |     viewerA: { alignedTo: { filename: '4ug0.cif' } },
-  35 |     viewerB: { aligned: { filename: '6xu8.cif' } }
-  36 |   };
-  37 |   const sessionFilePath = path.resolve(__dirname, 'test-session.json');
-  38 |   const fs = require('fs');
-  39 |   fs.writeFileSync(sessionFilePath, JSON.stringify(sessionJson, null, 2));
+  7  |  * @lastModified 2026-05-29
+  8  |  */
+  9  | import { test, expect } from '@playwright/test';
+  10 | import path from 'path';
+  11 | 
+  12 | function dataPath(filename: string) {
+  13 |   return path.resolve(__dirname, '../data/input', filename);
+  14 | }
+  15 | 
+  16 | test('Aligned and AlignedTo buttons update independently', async ({ page }) => {
+  17 |   await page.goto('http://localhost:5173/');
+  18 | 
+  19 |   // Find and click the Load AlignedTo button, then upload file
+  20 |   const alignedToBtn = page.getByRole('button', { name: /Load AlignedTo/i });
+  21 |   await alignedToBtn.click();
+  22 |   // The input is immediately after the button in the DOM
+  23 |   const alignedToInput = alignedToBtn.locator('xpath=following-sibling::input[@type="file"]');
+  24 |   await alignedToInput.setInputFiles(dataPath('4ug0.cif'));
+  25 |   // Wait for the filename to appear, then check the button is removed from DOM
+  26 |   await expect(page.getByText(/4ug0\.cif/)).toBeVisible();
+> 27 |   await expect(alignedToBtn).toHaveCount(0);
+     |                              ^ Error: expect(locator).toHaveCount(expected) failed
+  28 | 
+  29 |   // Find and click the Load Aligned button, then upload file
+  30 |   const alignedBtn = page.getByRole('button', { name: /^Load Aligned$/i });
+  31 |   await alignedBtn.click();
+  32 |   const alignedInput = alignedBtn.locator('xpath=following-sibling::input[@type="file"]');
+  33 |   await alignedInput.setInputFiles(dataPath('6xu8.cif'));
+  34 |   await expect(page.getByText(/6xu8\.cif/)).toBeVisible();
+  35 |   await expect(alignedBtn).toHaveCount(0);
+  36 |   // Both file names should now be visible
+  37 |   await expect(page.getByText(/4ug0\.cif/)).toBeVisible();
+  38 |   await expect(page.getByText(/6xu8\.cif/)).toBeVisible();
+  39 | });
   40 | 
-  41 |   // Set the session file in the hidden file input
-  42 |   await page.setInputFiles('#session-menu-file-input', sessionFilePath);
-  43 | 
-  44 |   // 4. Wait for the "Load Session: Select Required Files" dialog
-  45 |   await expect(page.getByText('Load Session: Select Required Files')).toBeVisible();
-  46 |   await expect(page.getByText('4ug0.cif')).toBeVisible();
-  47 |   await expect(page.getByText('6xu8.cif')).toBeVisible();
-  48 | 
-  49 |   // 5. Upload the required files in the modal
-  50 |   // Find all file inputs in the modal (should be two)
-  51 |   const fileInputs = await page.$$('input[type="file"]');
-  52 |   // Upload the correct files by filename
-  53 |   for (const input of fileInputs) {
-  54 |     const label = await input.evaluate(el => el.parentElement?.textContent || '');
-  55 |     if (label.includes('4ug0.cif')) {
-  56 |       await input.setInputFiles(dataPath('4ug0.cif'));
-  57 |     } else if (label.includes('6xu8.cif')) {
-  58 |       await input.setInputFiles(dataPath('6xu8.cif'));
-  59 |     }
-  60 |   }
-  61 | 
-  62 |   // 6. Click the Load Session button in the modal
-  63 |   await page.click('button:has-text("Load Session")');
-  64 | 
-  65 |   // 7. Assert that the viewers are updated (e.g., check for molecule names or representations)
-  66 |   await expect(page.locator('#viewer-column-A-molstar-container')).toBeVisible();
-  67 |   await expect(page.locator('#viewer-column-B-molstar-container')).toBeVisible();
-  68 |   // Check for molecule names or representations in the UI (lower case)
-  69 |   await expect(page.getByText(/4ug0/i)).toBeVisible();
-> 70 |   await expect(page.getByText(/6xu8/i)).toBeVisible();
-     |                                         ^ Error: expect(locator).toBeVisible() failed
-  71 | 
-  72 |   // 8. Assert that the fallback error dialog does NOT appear
-  73 |   await expect(page.locator('text=Session loaded, but could not automatically reload datasets')).toHaveCount(0);
-  74 | 
-  75 |   // 9. Open the Select Chain dropdown for viewer A and check for correct chain codes/labels
-  76 |   // Adjust selector as needed to match your UI structure
-  77 |   await page.click('#viewer-column-A select');
-  78 |   // Wait for options to be visible (if custom dropdown, adjust accordingly)
-  79 |   // Check for expected chain codes/labels (e.g., 'A', 'B', 'Chain A', etc.)
-  80 |   await expect(page.getByText(/chain a|a/i)).toBeVisible();
-  81 |   // Optionally check for other expected chain codes/labels
-  82 |   // await expect(page.getByText(/chain b|b/i)).toBeVisible();
-  83 | 
-  84 |   // Cleanup: remove the temporary session file
-  85 |   fs.unlinkSync(sessionFilePath);
-  86 | });
-  87 | 
 ```

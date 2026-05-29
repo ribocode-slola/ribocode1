@@ -97,4 +97,44 @@ describe('ChainSelectButton', () => {
         );
         expect(getByLabelText('Select Chain')).toBeDisabled();
     });
+
+    it('renders chain codes instead of numbers when provided', () => {
+        // Simulate a structure with chain codes
+        const chainLabels = new Map([
+            ['A', 'Alpha'],
+            ['B', 'Beta'],
+            ['C', 'Gamma']
+        ]);
+        const { getByText } = render(
+            <ChainSelectButton
+                disabled={false}
+                chainLabels={chainLabels}
+                selectedChainId={''}
+                onSelect={() => {}}
+                id="chain-codes-test"
+            />
+        );
+        expect(getByText('Alpha')).toBeInTheDocument();
+        expect(getByText('Beta')).toBeInTheDocument();
+        expect(getByText('Gamma')).toBeInTheDocument();
+    });
+
+    it('renders numbers as labels if only numbers are provided', () => {
+        // Simulate a structure with only numbers as chain labels
+        const chainLabels = new Map([
+            ['1', '1'],
+            ['2', '2']
+        ]);
+        const { getByText } = render(
+            <ChainSelectButton
+                disabled={false}
+                chainLabels={chainLabels}
+                selectedChainId={''}
+                onSelect={() => {}}
+                id="chain-numbers-test"
+            />
+        );
+        expect(getByText('1')).toBeInTheDocument();
+        expect(getByText('2')).toBeInTheDocument();
+    });
 });

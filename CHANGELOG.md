@@ -1,8 +1,9 @@
-## [v0.7.1] - 2026-04-26
+## [v0.7.1] - 2026-05-29
 - Save/Load session buttons added.
-- Code pulled from App.tsx into hooks and components. Constants and Types defined separately. Tests added for functional files.
+- Code moved from App.tsx into hooks and components. Constants and Types defined separately. - Tests added for functional files.
+- End to End (E2E) testing added using Playwright
 - Updated documentation
-  - Added a DeveloperGuide.md
+  - Added DeveloperGuide.md
 
 ## [v0.7.0] - 2026-01-02
 - Added control to select a subunit to help filter chain selection.

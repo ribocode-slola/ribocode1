@@ -874,14 +874,15 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                             <ViewerColumn
                                 viewerKey={A}
                                 loadDataRowProps={getLoadDataRowProps({
+                                    // Ensure these are always mapped independently
                                     viewer: viewerA,
                                     otherViewer: viewerB,
                                     molstar: molstarA,
                                     otherMolstar: molstarB,
                                     realignedStructRefs: realignedStructRefsA,
                                     otherRealignedStructRefs: realignedStructRefsB,
-                                    isMoleculeAlignedLoaded: viewerA.isMoleculeAlignedLoaded,
-                                    isMoleculeAlignedToLoaded: viewerA.isMoleculeAlignedToLoaded,
+                                    isMoleculeAlignedLoaded: viewerA.isMoleculeAlignedLoaded, // Only for Aligned
+                                    isMoleculeAlignedToLoaded: viewerA.isMoleculeAlignedToLoaded, // Only for AlignedTo
                                     viewerReady: viewerAReady,
                                     otherViewerReady: viewerBReady,
                                     representationType: representationTypeAlignedTo,
@@ -911,7 +912,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     realignedRepRefs: realignedRepRefsA,
                                     setRealignedRepRefs: setRealignedRepRefsA,
                                     setRealignedStructRefs: setRealignedStructRefsA,
-                                    // Override for left column:
+                                    // Defensive: Only enable the correct button
                                     fileInputLabel: 'Load AlignedTo',
                                     fileInputDisabled: false,
                                 })}
@@ -993,15 +994,15 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                             <ViewerColumn
                                 viewerKey={B}
                                 loadDataRowProps={getLoadDataRowProps({
+                                    // Ensure these are always mapped independently
                                     viewer: viewerB,
                                     otherViewer: viewerA,
                                     molstar: molstarB,
                                     otherMolstar: molstarA,
                                     realignedStructRefs: realignedStructRefsB,
                                     otherRealignedStructRefs: realignedStructRefsA,
-                                    isMoleculeAlignedLoaded: viewerB.isMoleculeAlignedLoaded,
-                                    // Always use latest state for enabling Load Aligned
-                                    isMoleculeAlignedToLoaded: viewerA.isMoleculeAlignedToLoaded,
+                                    isMoleculeAlignedLoaded: viewerB.isMoleculeAlignedLoaded, // Only for Aligned
+                                    isMoleculeAlignedToLoaded: viewerB.isMoleculeAlignedToLoaded, // Only for AlignedTo
                                     viewerReady: viewerBReady,
                                     otherViewerReady: viewerAReady,
                                     representationType: representationTypeAligned,
@@ -1031,7 +1032,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     realignedRepRefs: realignedRepRefsB,
                                     setRealignedRepRefs: setRealignedRepRefsB,
                                     setRealignedStructRefs: setRealignedStructRefsB,
-                                    // Override for right column:
+                                    // Defensive: Only enable the correct button
                                     fileInputLabel: 'Load Aligned',
                                     fileInputDisabled: process.env.NODE_ENV === 'test' ? false : !alignmentDataReady,
                                 })}

@@ -118,24 +118,41 @@ export function useSessionLoadModal(onSessionLoaded: (session: any, files: Recor
 
   // Modal UI component
   const SessionLoadModal = modalState.open ? (
-    <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.4)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ background: '#fff', padding: 32, borderRadius: 8, minWidth: 320, boxShadow: '0 2px 16px rgba(0,0,0,0.2)' }}>
+    <div
+      style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.4)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      data-testid="session-load-modal-root"
+    >
+      <div style={{ background: '#fff', padding: 32, borderRadius: 8, minWidth: 320, boxShadow: '0 2px 16px rgba(0,0,0,0.2)' }} data-testid="session-load-modal-content">
         <h2>Load Session: Select Required Files</h2>
         <ol>
           {modalState.requiredFiles.map((f, idx) => (
             <li key={f.key} style={{ marginBottom: 16 }}>
               <div><b>{f.label}</b>: <span style={{ color: '#555' }}>{f.filename}</span></div>
-              <input type="file" style={{ marginTop: 8 }}
+              <input
+                type="file"
+                style={{ marginTop: 8 }}
                 onChange={e => handleSessionFileChange(idx, e.target.files?.[0] || null, e.target.files)}
                 accept={undefined}
+                data-testid={`session-load-modal-file-input-${idx}`}
               />
               {f.file && <span style={{ color: 'green', marginLeft: 8 }}>✓ Selected</span>}
             </li>
           ))}
         </ol>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <button onClick={() => setModalState({ open: false, sessionData: null, requiredFiles: [], step: 0 })}>Cancel</button>
-          <button onClick={handleSessionLoadProceed} disabled={!modalState.requiredFiles.every(f => f.file)}>Load Session</button>
+          <button
+            onClick={() => setModalState({ open: false, sessionData: null, requiredFiles: [], step: 0 })}
+            data-testid="session-load-modal-cancel-btn"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSessionLoadProceed}
+            disabled={!modalState.requiredFiles.every(f => f.file)}
+            data-testid="session-load-modal-load-btn"
+          >
+            Load Session
+          </button>
         </div>
       </div>
     </div>
