@@ -72,6 +72,7 @@ export const idSuffix = 'load-molecule';
 interface LoadDataRowProps {
     viewerTitle: string;
     isLoaded: boolean;
+    loadedFilename?: string;
     onFileInputClick: () => void;
     fileInputRef: React.RefObject<HTMLInputElement | null>;
     onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -179,6 +180,7 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
     onCameraFarChange,
     viewerTitle,
     isLoaded,
+    loadedFilename,
     onFileInputClick,
     fileInputRef,
     onFileChange,
@@ -218,6 +220,7 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
 
     <div className="load-data-row" id={idPrefix ? `${idPrefix}-${idSuffix}` : idSuffix}>
         <div className="viewer-title">{viewerTitle}</div>
+        {/* Only show the load button if not loaded */}
         {!isLoaded && (
             <div>
                 <button
@@ -239,6 +242,12 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
                     tabIndex={-1}
                     id={`${idPrefix}-file-input`}
                 />
+            </div>
+        )}
+        {/* Always show the filename if loaded */}
+        {isLoaded && (
+            <div className="loaded-filename" id={`${idPrefix}-filename-label`}>
+                {loadedFilename || viewerTitle}
             </div>
         )}
         <div className="load-data-controls">
@@ -390,5 +399,60 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
         */}
     </div>
 );
+
+interface LoadDataRowProps {
+    viewerTitle: string;
+    isLoaded: boolean;
+    loadedFilename?: string;
+    onFileInputClick: () => void;
+    fileInputRef: React.RefObject<HTMLInputElement | null>;
+    onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    fileInputDisabled: boolean;
+    fileInputLabel: string;
+    representationType: AllowedRepresentationType;
+    onRepresentationTypeChange: (type: AllowedRepresentationType) => void;
+    representationTypeDisabled: boolean;
+    onAddColorsClick: () => void;
+    addColorsDisabled: boolean;
+    colorsInputRef: React.RefObject<HTMLInputElement | null>;
+    onColorsFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    // Subunit selection
+    subunitToChainIds: Map<string, Set<string>>;
+    selectedSubunit: RibosomeSubunitType;
+    onSelectSubunit: (subunit: RibosomeSubunitType) => void;
+    subunitSelectDisabled: boolean;
+    // Chain
+    chainInfo: { chainLabels: Map<string, string>; };
+    selectedChainId: string;
+    onSelectChainId: (id: string) => void;
+    chainSelectDisabled: boolean;
+    // Residue
+    residueInfo: {
+        residueLabels: Map<string, ResidueLabelInfo>;
+        residueToAtomIds: Record<string, string[]>;
+    };
+    selectedResidueId: string;
+    onSelectResidueId: (id: string) => void;
+    residueSelectDisabled: boolean;
+    // Optional representation type selector
+    representationTypeSelector?: React.ReactNode;
+    onAddRepresentationClick: () => void;
+    addRepresentationDisabled: boolean;
+    // Fog controls
+    fogEnabled: boolean;
+    fogNear: number;
+    fogFar: number;
+    onFogEnabledChange: (enabled: boolean) => void;
+    onFogNearChange: (value: number) => void;
+    onFogFarChange: (value: number) => void;
+    // Camera near/far controls
+    cameraNear: number;
+    cameraFar: number;
+    onCameraNearChange: (value: number) => void;
+    onCameraFarChange: (value: number) => void;
+    // Test mode override
+    testMode?: boolean;
+    idPrefix: string;
+}
 
 export default LoadDataRow;

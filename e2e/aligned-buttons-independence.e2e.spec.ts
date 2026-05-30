@@ -16,24 +16,23 @@ function dataPath(filename: string) {
 test('Aligned and AlignedTo buttons update independently', async ({ page }) => {
   await page.goto('http://localhost:5173/');
 
-  // Find and click the Load AlignedTo button, then upload file
-  const alignedToBtn = page.getByRole('button', { name: /Load AlignedTo/i });
-  await alignedToBtn.click();
-  // The input is immediately after the button in the DOM
-  const alignedToInput = alignedToBtn.locator('xpath=following-sibling::input[@type="file"]');
-  await alignedToInput.setInputFiles(dataPath('4ug0.cif'));
-  // Wait for the filename to appear, then check the button is removed from DOM
-  await expect(page.getByText(/4ug0\.cif/)).toBeVisible();
-  await expect(alignedToBtn).toHaveCount(0);
+  // Column A: Only Load AlignedTo loader should be present
+  const alignedToBtnA = page.locator('#viewer-column-A-alignedto-load-btn');
+  await alignedToBtnA.click();
+  const alignedToInputA = page.locator('#viewer-column-A-alignedto-file-input');
+  await alignedToInputA.setInputFiles(dataPath('4ug0.cif'));
+  await expect(page.locator('#viewer-column-A-alignedto-filename-label')).toHaveText(/4ug0\.cif/);
+  await expect(alignedToBtnA).toHaveCount(0);
 
-  // Find and click the Load Aligned button, then upload file
-  const alignedBtn = page.getByRole('button', { name: /^Load Aligned$/i });
-  await alignedBtn.click();
-  const alignedInput = alignedBtn.locator('xpath=following-sibling::input[@type="file"]');
-  await alignedInput.setInputFiles(dataPath('6xu8.cif'));
-  await expect(page.getByText(/6xu8\.cif/)).toBeVisible();
-  await expect(alignedBtn).toHaveCount(0);
-  // Both file names should now be visible
-  await expect(page.getByText(/4ug0\.cif/)).toBeVisible();
-  await expect(page.getByText(/6xu8\.cif/)).toBeVisible();
+  // Column B: Only Load Aligned loader should be present
+  const alignedBtnB = page.locator('#viewer-column-B-aligned-load-btn');
+  await alignedBtnB.click();
+  const alignedInputB = page.locator('#viewer-column-B-aligned-file-input');
+  await alignedInputB.setInputFiles(dataPath('6xu8.cif'));
+  await expect(page.locator('#viewer-column-B-aligned-filename-label')).toHaveText(/6xu8\.cif/);
+  await expect(alignedBtnB).toHaveCount(0);
+
+  // Both file names should now be visible in their respective columns
+  await expect(page.locator('#viewer-column-A-alignedto-filename-label')).toHaveText(/4ug0\.cif/);
+  await expect(page.locator('#viewer-column-B-aligned-filename-label')).toHaveText(/6xu8\.cif/);
 });

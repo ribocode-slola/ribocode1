@@ -58,7 +58,8 @@ Call log:
   - generic [ref=e20]:
     - generic [ref=e21]:
       - generic [ref=e22]:
-        - button "Load AlignedTo" [ref=e24]
+        - generic [ref=e23]: "AlignedTo: 4UG0 | STRUCTURE OF THE HUMAN 80S RIBOSOME"
+        - generic [ref=e24]: 4ug0.cif
         - generic [ref=e25]:
           - generic [ref=e26]:
             - text: Select Subunit
@@ -72,108 +73,6 @@ Call log:
             - text: Select Chain
             - combobox "Select Chain" [ref=e29]:
               - option "..." [disabled] [selected]
-              - option "0"
-              - option "1"
-              - option "2"
-              - option "3"
-              - option "4"
-              - option "5"
-              - option "6"
-              - option "7"
-              - option "8"
-              - option "9"
-              - option "10"
-              - option "11"
-              - option "12"
-              - option "13"
-              - option "14"
-              - option "15"
-              - option "16"
-              - option "17"
-              - option "18"
-              - option "19"
-              - option "20"
-              - option "21"
-              - option "22"
-              - option "23"
-              - option "24"
-              - option "25"
-              - option "26"
-              - option "27"
-              - option "28"
-              - option "29"
-              - option "30"
-              - option "31"
-              - option "32"
-              - option "33"
-              - option "34"
-              - option "35"
-              - option "36"
-              - option "37"
-              - option "38"
-              - option "39"
-              - option "40"
-              - option "41"
-              - option "42"
-              - option "43"
-              - option "44"
-              - option "45"
-              - option "46"
-              - option "47"
-              - option "48"
-              - option "49"
-              - option "50"
-              - option "51"
-              - option "52"
-              - option "53"
-              - option "54"
-              - option "55"
-              - option "56"
-              - option "57"
-              - option "58"
-              - option "59"
-              - option "60"
-              - option "61"
-              - option "62"
-              - option "63"
-              - option "64"
-              - option "65"
-              - option "66"
-              - option "67"
-              - option "68"
-              - option "69"
-              - option "70"
-              - option "71"
-              - option "72"
-              - option "73"
-              - option "74"
-              - option "75"
-              - option "76"
-              - option "77"
-              - option "78"
-              - option "79"
-              - option "80"
-              - option "81"
-              - option "82"
-              - option "83"
-              - option "84"
-              - option "85"
-              - option "86"
-              - option "87"
-              - option "88"
-              - option "89"
-              - option "90"
-              - option "91"
-              - option "92"
-              - option "93"
-              - option "94"
-              - option "95"
-              - option "96"
-              - option "97"
-              - option "98"
-              - option "99"
-              - option "100"
-              - option "101"
           - generic [ref=e30]:
             - text: Select Residue
             - combobox "Select Residue" [disabled] [ref=e31]:
@@ -191,64 +90,60 @@ Call log:
                 - option "line"
             - button "Add Representation" [ref=e37]: +
       - generic [ref=e38]:
-        - button "Hide 4UG0" [ref=e39]:
+        - button "Show 4UG0" [ref=e39]:
           - img [ref=e40]
           - text: 4UG0
-        - generic [ref=e43]:
-          - button "Toggle visibility for cartoon representation" [ref=e44]:
-            - img [ref=e45]
-            - text: cartoon
-          - button "Delete cartoon representation" [ref=e47]: ✖
+        - button "Zoom to Chain:" [disabled] [ref=e42]
+        - button "Zoom to Residue:" [disabled] [ref=e43]
+      - generic [ref=e44]:
+        - button "Show Aligned" [disabled] [ref=e45]:
+          - img [ref=e46]
+          - text: Aligned
         - button "Zoom to Chain:" [disabled] [ref=e48]
         - button "Zoom to Residue:" [disabled] [ref=e49]
-      - generic [ref=e50]:
-        - button "Show Aligned" [disabled] [ref=e51]:
-          - img [ref=e52]
-          - text: Aligned
-        - button "Zoom to Chain:" [disabled] [ref=e54]
-        - button "Zoom to Residue:" [disabled] [ref=e55]
-      - generic [ref=e59]:
-        - generic [ref=e61]:
-          - generic [ref=e63]:
-            - paragraph [ref=e64]: WebGL does not seem to be available.
-            - paragraph [ref=e65]: This can be caused by an outdated browser, graphics card driver issue, or bad weather. Sometimes, just restarting the browser helps. Also, make sure hardware acceleration is enabled in your browser.
-            - paragraph [ref=e66]:
+      - generic [ref=e53]:
+        - generic [ref=e55]:
+          - generic [ref=e57]:
+            - paragraph [ref=e58]: WebGL does not seem to be available.
+            - paragraph [ref=e59]: This can be caused by an outdated browser, graphics card driver issue, or bad weather. Sometimes, just restarting the browser helps. Also, make sure hardware acceleration is enabled in your browser.
+            - paragraph [ref=e60]:
               - text: For a list of supported browsers, refer to
-              - link "http://caniuse.com/#feat=webgl" [ref=e67] [cursor=pointer]:
+              - link "http://caniuse.com/#feat=webgl" [ref=e61] [cursor=pointer]:
                 - /url: http://caniuse.com/#feat=webgl
               - text: .
-          - button "Select Animation" [ref=e71]:
-            - img [ref=e73]
-          - generic [ref=e76]:
-            - button "Reset Zoom" [ref=e78]:
-              - img [ref=e80]
-            - button "Screenshot / State Snapshot" [ref=e83]:
-              - img [ref=e85]
-            - generic [ref=e87]:
-              - button "Toggle Controls Panel" [ref=e88]:
-                - img [ref=e90]
-              - button "Toggle Expanded Viewport" [ref=e93]:
-                - img [ref=e95]
-              - button "Settings / Controls Info" [ref=e97]:
-                - img [ref=e99]
-              - button "Illumination" [ref=e101]:
-                - img [ref=e103]
-              - button "Augmented/Virtual Reality unavailable" [disabled] [ref=e105]:
-                - img [ref=e107]
-            - button "Toggle Selection Mode" [ref=e111]:
-              - img [ref=e113]
-        - generic [ref=e117]:
-          - generic [ref=e118]:
-            - generic "This shows a single sequence. Use the controls to show a different sequence. Use Ctrl or Cmd key to add a sequence range to focus; use Shift key to extend last focused/selected range." [ref=e119]:
-              - img [ref=e120]
+          - button "Select Animation" [ref=e65]:
+            - img [ref=e67]
+          - generic [ref=e70]:
+            - button "Reset Zoom" [ref=e72]:
+              - img [ref=e74]
+            - button "Screenshot / State Snapshot" [ref=e77]:
+              - img [ref=e79]
+            - generic [ref=e81]:
+              - button "Toggle Controls Panel" [ref=e82]:
+                - img [ref=e84]
+              - button "Toggle Expanded Viewport" [ref=e87]:
+                - img [ref=e89]
+              - button "Settings / Controls Info" [ref=e91]:
+                - img [ref=e93]
+              - button "Illumination" [ref=e95]:
+                - img [ref=e97]
+              - button "Augmented/Virtual Reality unavailable" [disabled] [ref=e99]:
+                - img [ref=e101]
+            - button "Toggle Selection Mode" [ref=e105]:
+              - img [ref=e107]
+        - generic [ref=e111]:
+          - generic [ref=e112]:
+            - generic "This shows a single sequence. Use the controls to show a different sequence. Use Ctrl or Cmd key to add a sequence range to focus; use Shift key to extend last focused/selected range." [ref=e113]:
+              - img [ref=e114]
             - text: Sequence of
-            - combobox "[Structure] 4UG0 | STRUCTURE OF THE HUMAN 80S RIBOSOME" [ref=e122]:
+            - combobox "[Structure] 4UG0 | STRUCTURE OF THE HUMAN 80S RIBOSOME" [ref=e116]:
               - option "4UG0 | STRUCTURE OF THE HUMAN 80S RIBOSOME" [selected]
-            - combobox "[Mode]" [ref=e123]:
+              - option "4UG0 | STRUCTURE OF THE HUMAN 80S RIBOSOME"
+            - combobox "[Mode]" [ref=e117]:
               - option "Chain" [selected]
               - option "Polymers"
               - option "Everything"
-            - 'combobox "[Entity] 1: 28S ribosomal RNA" [ref=e124]':
+            - 'combobox "[Entity] 1: 28S ribosomal RNA" [ref=e118]':
               - 'option "1: 28S ribosomal RNA" [selected]'
               - 'option "2: 5S ribosomal RNA"'
               - 'option "3: 5.8S ribosomal RNA"'
@@ -332,454 +227,455 @@ Call log:
               - 'option "81: 40S RIBOSOMAL PROTEIN S30"'
               - 'option "82: MAGNESIUM ION"'
               - 'option "83: ZINC ION"'
-            - combobox "[Chain] A [auth L5]" [ref=e125]:
+            - combobox "[Chain] A [auth L5]" [ref=e119]:
               - option "A [auth L5]" [selected]
-          - generic [ref=e127]: 1 Whole Chain (5070 residues, 80184 elements)
-        - generic [ref=e130]:
-          - generic [ref=e131]:
-            - button "Home" [ref=e132]:
-              - img [ref=e134]
-            - button "State Tree" [ref=e136]:
-              - img [ref=e138]
-            - button "Plugin State" [ref=e140]:
-              - img [ref=e142]
-            - button "Help" [ref=e144]:
-              - img [ref=e146]
-            - button "Settings" [ref=e149]:
-              - img [ref=e151]
-          - generic [ref=e153]:
-            - generic [ref=e154]:
-              - img [ref=e156]
+          - generic [ref=e121]: 1 Whole Chain (5070 residues, 80184 elements)
+        - generic [ref=e124]:
+          - generic [ref=e125]:
+            - button "Home" [ref=e126]:
+              - img [ref=e128]
+            - button "State Tree" [ref=e130]:
+              - img [ref=e132]
+            - button "Plugin State" [ref=e134]:
+              - img [ref=e136]
+            - button "Help" [ref=e138]:
+              - img [ref=e140]
+            - button "Settings" [ref=e143]:
+              - img [ref=e145]
+          - generic [ref=e147]:
+            - generic [ref=e148]:
+              - img [ref=e150]
               - text: Home
-            - generic [ref=e158]:
-              - generic [ref=e159]:
-                - button "Download Structure" [ref=e161]:
-                  - img [ref=e163]
+            - generic [ref=e152]:
+              - generic [ref=e153]:
+                - button "Download Structure" [ref=e155]:
+                  - img [ref=e157]
                   - text: Download Structure
-                - generic [ref=e165]:
+                - generic [ref=e159]:
                   - text: Source
-                  - button "PDB" [ref=e167]
-                - generic [ref=e168]:
-                  - generic [ref=e169]:
-                    - generic "PDB Id(s). Click for help." [ref=e170]:
+                  - button "PDB" [ref=e161]
+                - generic [ref=e162]:
+                  - generic [ref=e163]:
+                    - generic "PDB Id(s). Click for help." [ref=e164]:
                       - text: PDB Id(s)
-                      - button "PDB Id(s). Click for help." [ref=e171]:
-                        - img [ref=e173]
-                    - textbox "PDB Id(s)" [ref=e176]: 1tqn
-                  - button "More Options" [ref=e177]:
-                    - img [ref=e179]
-                - button "Options" [ref=e183]:
-                  - img [ref=e185]
+                      - button "PDB Id(s). Click for help." [ref=e165]:
+                        - img [ref=e167]
+                    - textbox "PDB Id(s)" [ref=e170]: 1tqn
+                  - button "More Options" [ref=e171]:
+                    - img [ref=e173]
+                - button "Options" [ref=e177]:
+                  - img [ref=e179]
                   - text: Options
-                - generic [ref=e187]:
-                  - button "Set default params" [ref=e188]:
-                    - img [ref=e190]
-                  - button "Apply" [ref=e193]:
-                    - img [ref=e195]
+                - generic [ref=e181]:
+                  - button "Set default params" [ref=e182]:
+                    - img [ref=e184]
+                  - button "Apply" [ref=e187]:
+                    - img [ref=e189]
                     - text: Apply
-              - button "Download Density" [ref=e199]:
-                - img [ref=e201]
+              - button "Download Density" [ref=e193]:
+                - img [ref=e195]
                 - text: Download Density
-              - button "Download File" [ref=e205]:
-                - img [ref=e207]
+              - button "Download File" [ref=e199]:
+                - img [ref=e201]
                 - text: Download File
-              - button "Open Files" [ref=e211]:
-                - img [ref=e213]
+              - button "Open Files" [ref=e205]:
+                - img [ref=e207]
                 - text: Open Files
-              - button "Load Trajectory" [ref=e217]:
-                - img [ref=e219]
+              - button "Load Trajectory" [ref=e211]:
+                - img [ref=e213]
                 - text: Load Trajectory
-              - button "Download" [ref=e223]:
-                - img [ref=e225]
+              - button "Download" [ref=e217]:
+                - img [ref=e219]
                 - text: Download
-            - generic [ref=e227]: Remote States
-            - list [ref=e228]:
+            - generic [ref=e221]: Remote States
+            - list [ref=e222]:
+              - listitem [ref=e223]:
+                - button "Zika+EM" [ref=e224]: Zika+EM
+              - listitem [ref=e225]:
+                - button "P-450 Superposition & Validation" [ref=e226]: P-450 Superposition & Validation
+              - listitem [ref=e227]:
+                - button "NPC" [ref=e228]: NPC
               - listitem [ref=e229]:
-                - button "Zika+EM" [ref=e230]: Zika+EM
+                - button "1RB8 Assembly Symmetry" [ref=e230]: 1RB8 Assembly Symmetry
               - listitem [ref=e231]:
-                - button "P-450 Superposition & Validation" [ref=e232]: P-450 Superposition & Validation
+                - button "Mon, 11 May 2026 08:52:30 GMT" [ref=e232]: Mon, 11 May 2026 08:52:30 GMT
               - listitem [ref=e233]:
-                - button "NPC" [ref=e234]: NPC
+                - button "Tue, 12 May 2026 13:13:29 GMT" [ref=e234]: Tue, 12 May 2026 13:13:29 GMT
               - listitem [ref=e235]:
-                - button "1RB8 Assembly Symmetry" [ref=e236]: 1RB8 Assembly Symmetry
+                - button "Wed, 13 May 2026 02:34:36 GMT" [ref=e236]: Wed, 13 May 2026 02:34:36 GMT
               - listitem [ref=e237]:
-                - button "Mon, 11 May 2026 08:52:30 GMT" [ref=e238]: Mon, 11 May 2026 08:52:30 GMT
+                - button "Wed, 13 May 2026 05:59:44 GMT" [ref=e238]: Wed, 13 May 2026 05:59:44 GMT
               - listitem [ref=e239]:
-                - button "Tue, 12 May 2026 13:13:29 GMT" [ref=e240]: Tue, 12 May 2026 13:13:29 GMT
+                - button "Wed, 13 May 2026 07:08:52 GMT" [ref=e240]: Wed, 13 May 2026 07:08:52 GMT
               - listitem [ref=e241]:
-                - button "Wed, 13 May 2026 02:34:36 GMT" [ref=e242]: Wed, 13 May 2026 02:34:36 GMT
+                - button "Wed, 13 May 2026 07:50:33 GMT" [ref=e242]: Wed, 13 May 2026 07:50:33 GMT
               - listitem [ref=e243]:
-                - button "Wed, 13 May 2026 05:59:44 GMT" [ref=e244]: Wed, 13 May 2026 05:59:44 GMT
+                - button "Wed, 13 May 2026 07:50:42 GMT MN" [ref=e244]
               - listitem [ref=e245]:
-                - button "Wed, 13 May 2026 07:08:52 GMT" [ref=e246]: Wed, 13 May 2026 07:08:52 GMT
+                - button "Wed, 13 May 2026 07:50:47 GMT Mn" [ref=e246]
               - listitem [ref=e247]:
-                - button "Wed, 13 May 2026 07:50:33 GMT" [ref=e248]: Wed, 13 May 2026 07:50:33 GMT
+                - button "Wed, 13 May 2026 07:50:53 GMT Mn" [ref=e248]
               - listitem [ref=e249]:
-                - button "Wed, 13 May 2026 07:50:42 GMT MN" [ref=e250]
+                - button "Thu, 14 May 2026 02:24:29 GMT" [ref=e250]: Thu, 14 May 2026 02:24:29 GMT
               - listitem [ref=e251]:
-                - button "Wed, 13 May 2026 07:50:47 GMT Mn" [ref=e252]
+                - button "Thu, 14 May 2026 02:24:47 GMT" [ref=e252]: Thu, 14 May 2026 02:24:47 GMT
               - listitem [ref=e253]:
-                - button "Wed, 13 May 2026 07:50:53 GMT Mn" [ref=e254]
+                - button "Thu, 14 May 2026 02:24:48 GMT" [ref=e254]: Thu, 14 May 2026 02:24:48 GMT
               - listitem [ref=e255]:
-                - button "Thu, 14 May 2026 02:24:29 GMT" [ref=e256]: Thu, 14 May 2026 02:24:29 GMT
+                - button "Thu, 14 May 2026 02:24:49 GMT" [ref=e256]: Thu, 14 May 2026 02:24:49 GMT
               - listitem [ref=e257]:
-                - button "Thu, 14 May 2026 02:24:47 GMT" [ref=e258]: Thu, 14 May 2026 02:24:47 GMT
+                - button "Fri, 15 May 2026 04:25:42 GMT" [ref=e258]: Fri, 15 May 2026 04:25:42 GMT
               - listitem [ref=e259]:
-                - button "Thu, 14 May 2026 02:24:48 GMT" [ref=e260]: Thu, 14 May 2026 02:24:48 GMT
+                - button "Fri, 15 May 2026 04:25:52 GMT" [ref=e260]: Fri, 15 May 2026 04:25:52 GMT
               - listitem [ref=e261]:
-                - button "Thu, 14 May 2026 02:24:49 GMT" [ref=e262]: Thu, 14 May 2026 02:24:49 GMT
+                - button "Fri, 15 May 2026 06:54:30 GMT" [ref=e262]: Fri, 15 May 2026 06:54:30 GMT
               - listitem [ref=e263]:
-                - button "Fri, 15 May 2026 04:25:42 GMT" [ref=e264]: Fri, 15 May 2026 04:25:42 GMT
+                - button "lsd" [ref=e264]: lsd
               - listitem [ref=e265]:
-                - button "Fri, 15 May 2026 04:25:52 GMT" [ref=e266]: Fri, 15 May 2026 04:25:52 GMT
+                - button "Fri, 15 May 2026 07:19:41 GMT" [ref=e266]: Fri, 15 May 2026 07:19:41 GMT
               - listitem [ref=e267]:
-                - button "Fri, 15 May 2026 06:54:30 GMT" [ref=e268]: Fri, 15 May 2026 06:54:30 GMT
+                - button "Fri, 15 May 2026 07:19:43 GMT" [ref=e268]: Fri, 15 May 2026 07:19:43 GMT
               - listitem [ref=e269]:
-                - button "lsd" [ref=e270]: lsd
+                - button "Fri, 15 May 2026 16:20:00 GMT" [ref=e270]: Fri, 15 May 2026 16:20:00 GMT
               - listitem [ref=e271]:
-                - button "Fri, 15 May 2026 07:19:41 GMT" [ref=e272]: Fri, 15 May 2026 07:19:41 GMT
+                - button "Fri, 15 May 2026 20:27:48 GMT" [ref=e272]: Fri, 15 May 2026 20:27:48 GMT
               - listitem [ref=e273]:
-                - button "Fri, 15 May 2026 07:19:43 GMT" [ref=e274]: Fri, 15 May 2026 07:19:43 GMT
+                - button "Fri, 15 May 2026 20:27:52 GMT" [ref=e274]: Fri, 15 May 2026 20:27:52 GMT
               - listitem [ref=e275]:
-                - button "Fri, 15 May 2026 16:20:00 GMT" [ref=e276]: Fri, 15 May 2026 16:20:00 GMT
+                - button "e" [ref=e276]: e
               - listitem [ref=e277]:
-                - button "Fri, 15 May 2026 20:27:48 GMT" [ref=e278]: Fri, 15 May 2026 20:27:48 GMT
+                - button "Sat, 16 May 2026 23:25:14 GMT" [ref=e278]: Sat, 16 May 2026 23:25:14 GMT
               - listitem [ref=e279]:
-                - button "Fri, 15 May 2026 20:27:52 GMT" [ref=e280]: Fri, 15 May 2026 20:27:52 GMT
+                - button "Sun, 17 May 2026 07:06:27 GMT" [ref=e280]: Sun, 17 May 2026 07:06:27 GMT
               - listitem [ref=e281]:
-                - button "e" [ref=e282]: e
+                - button "Sun, 17 May 2026 07:06:29 GMT" [ref=e282]: Sun, 17 May 2026 07:06:29 GMT
               - listitem [ref=e283]:
-                - button "Sat, 16 May 2026 23:25:14 GMT" [ref=e284]: Sat, 16 May 2026 23:25:14 GMT
+                - button "Sun, 17 May 2026 14:52:01 GMT" [ref=e284]: Sun, 17 May 2026 14:52:01 GMT
               - listitem [ref=e285]:
-                - button "Sun, 17 May 2026 07:06:27 GMT" [ref=e286]: Sun, 17 May 2026 07:06:27 GMT
+                - button "Sun, 17 May 2026 14:52:03 GMT" [ref=e286]: Sun, 17 May 2026 14:52:03 GMT
               - listitem [ref=e287]:
-                - button "Sun, 17 May 2026 07:06:29 GMT" [ref=e288]: Sun, 17 May 2026 07:06:29 GMT
+                - button "Mon, 18 May 2026 12:59:52 GMT" [ref=e288]: Mon, 18 May 2026 12:59:52 GMT
               - listitem [ref=e289]:
-                - button "Sun, 17 May 2026 14:52:01 GMT" [ref=e290]: Sun, 17 May 2026 14:52:01 GMT
+                - button "Tue, 19 May 2026 10:39:51 GMT" [ref=e290]: Tue, 19 May 2026 10:39:51 GMT
               - listitem [ref=e291]:
-                - button "Sun, 17 May 2026 14:52:03 GMT" [ref=e292]: Sun, 17 May 2026 14:52:03 GMT
+                - button "Tue, 19 May 2026 10:39:53 GMT" [ref=e292]: Tue, 19 May 2026 10:39:53 GMT
               - listitem [ref=e293]:
-                - button "Mon, 18 May 2026 12:59:52 GMT" [ref=e294]: Mon, 18 May 2026 12:59:52 GMT
+                - button "Tue, 19 May 2026 10:39:54 GMT" [ref=e294]: Tue, 19 May 2026 10:39:54 GMT
               - listitem [ref=e295]:
-                - button "Tue, 19 May 2026 10:39:51 GMT" [ref=e296]: Tue, 19 May 2026 10:39:51 GMT
+                - button "Tue, 19 May 2026 11:12:55 GMT" [ref=e296]: Tue, 19 May 2026 11:12:55 GMT
               - listitem [ref=e297]:
-                - button "Tue, 19 May 2026 10:39:53 GMT" [ref=e298]: Tue, 19 May 2026 10:39:53 GMT
+                - button "Tue, 19 May 2026 18:55:43 GMT" [ref=e298]: Tue, 19 May 2026 18:55:43 GMT
               - listitem [ref=e299]:
-                - button "Tue, 19 May 2026 10:39:54 GMT" [ref=e300]: Tue, 19 May 2026 10:39:54 GMT
+                - button "Tue, 19 May 2026 18:55:44 GMT" [ref=e300]: Tue, 19 May 2026 18:55:44 GMT
               - listitem [ref=e301]:
-                - button "Tue, 19 May 2026 11:12:55 GMT" [ref=e302]: Tue, 19 May 2026 11:12:55 GMT
+                - button "Wed, 20 May 2026 02:03:45 GMT" [ref=e302]: Wed, 20 May 2026 02:03:45 GMT
               - listitem [ref=e303]:
-                - button "Tue, 19 May 2026 18:55:43 GMT" [ref=e304]: Tue, 19 May 2026 18:55:43 GMT
+                - button "Wed, 20 May 2026 02:05:07 GMT rs16910526_model" [ref=e304]
               - listitem [ref=e305]:
-                - button "Tue, 19 May 2026 18:55:44 GMT" [ref=e306]: Tue, 19 May 2026 18:55:44 GMT
+                - button "rs16910526_model" [ref=e306]: rs16910526_model
               - listitem [ref=e307]:
-                - button "Wed, 20 May 2026 02:03:45 GMT" [ref=e308]: Wed, 20 May 2026 02:03:45 GMT
+                - button "Wed, 20 May 2026 18:29:20 GMT" [ref=e308]: Wed, 20 May 2026 18:29:20 GMT
               - listitem [ref=e309]:
-                - button "Wed, 20 May 2026 02:05:07 GMT rs16910526_model" [ref=e310]
+                - button "Wed, 20 May 2026 20:38:22 GMT" [ref=e310]: Wed, 20 May 2026 20:38:22 GMT
               - listitem [ref=e311]:
-                - button "rs16910526_model" [ref=e312]: rs16910526_model
+                - button "Thu, 21 May 2026 10:19:22 GMT" [ref=e312]: Thu, 21 May 2026 10:19:22 GMT
               - listitem [ref=e313]:
-                - button "Wed, 20 May 2026 18:29:20 GMT" [ref=e314]: Wed, 20 May 2026 18:29:20 GMT
+                - button "Thu, 21 May 2026 10:19:25 GMT" [ref=e314]: Thu, 21 May 2026 10:19:25 GMT
               - listitem [ref=e315]:
-                - button "Wed, 20 May 2026 20:38:22 GMT" [ref=e316]: Wed, 20 May 2026 20:38:22 GMT
+                - button "Thu, 21 May 2026 15:47:42 GMT" [ref=e316]: Thu, 21 May 2026 15:47:42 GMT
               - listitem [ref=e317]:
-                - button "Thu, 21 May 2026 10:19:22 GMT" [ref=e318]: Thu, 21 May 2026 10:19:22 GMT
+                - button "Thu, 21 May 2026 15:47:44 GMT" [ref=e318]: Thu, 21 May 2026 15:47:44 GMT
               - listitem [ref=e319]:
-                - button "Thu, 21 May 2026 10:19:25 GMT" [ref=e320]: Thu, 21 May 2026 10:19:25 GMT
+                - button "Fri, 22 May 2026 08:35:33 GMT" [ref=e320]: Fri, 22 May 2026 08:35:33 GMT
               - listitem [ref=e321]:
-                - button "Thu, 21 May 2026 15:47:42 GMT" [ref=e322]: Thu, 21 May 2026 15:47:42 GMT
+                - button "Sat, 23 May 2026 11:46:05 GMT" [ref=e322]: Sat, 23 May 2026 11:46:05 GMT
               - listitem [ref=e323]:
-                - button "Thu, 21 May 2026 15:47:44 GMT" [ref=e324]: Thu, 21 May 2026 15:47:44 GMT
+                - button "Mon, 25 May 2026 03:08:04 GMT" [ref=e324]: Mon, 25 May 2026 03:08:04 GMT
               - listitem [ref=e325]:
-                - button "Fri, 22 May 2026 08:35:33 GMT" [ref=e326]: Fri, 22 May 2026 08:35:33 GMT
+                - button "Mon, 25 May 2026 09:34:48 GMT" [ref=e326]: Mon, 25 May 2026 09:34:48 GMT
               - listitem [ref=e327]:
-                - button "Sat, 23 May 2026 11:46:05 GMT" [ref=e328]: Sat, 23 May 2026 11:46:05 GMT
+                - button "Mon, 25 May 2026 18:22:14 GMT" [ref=e328]: Mon, 25 May 2026 18:22:14 GMT
               - listitem [ref=e329]:
-                - button "Mon, 25 May 2026 03:08:04 GMT" [ref=e330]: Mon, 25 May 2026 03:08:04 GMT
+                - button "Tue, 26 May 2026 06:14:04 GMT" [ref=e330]: Tue, 26 May 2026 06:14:04 GMT
               - listitem [ref=e331]:
-                - button "Mon, 25 May 2026 09:34:48 GMT" [ref=e332]: Mon, 25 May 2026 09:34:48 GMT
+                - button "Tue, 26 May 2026 06:14:36 GMT" [ref=e332]: Tue, 26 May 2026 06:14:36 GMT
               - listitem [ref=e333]:
-                - button "Mon, 25 May 2026 18:22:14 GMT" [ref=e334]: Mon, 25 May 2026 18:22:14 GMT
+                - button "Tue, 26 May 2026 14:38:48 GMT" [ref=e334]: Tue, 26 May 2026 14:38:48 GMT
               - listitem [ref=e335]:
-                - button "Tue, 26 May 2026 06:14:04 GMT" [ref=e336]: Tue, 26 May 2026 06:14:04 GMT
+                - button "Tue, 26 May 2026 15:41:12 GMT" [ref=e336]: Tue, 26 May 2026 15:41:12 GMT
               - listitem [ref=e337]:
-                - button "Tue, 26 May 2026 06:14:36 GMT" [ref=e338]: Tue, 26 May 2026 06:14:36 GMT
+                - button "Tue, 26 May 2026 16:35:10 GMT" [ref=e338]: Tue, 26 May 2026 16:35:10 GMT
               - listitem [ref=e339]:
-                - button "Tue, 26 May 2026 14:38:48 GMT" [ref=e340]: Tue, 26 May 2026 14:38:48 GMT
+                - button "Tue, 26 May 2026 16:35:12 GMT" [ref=e340]: Tue, 26 May 2026 16:35:12 GMT
               - listitem [ref=e341]:
-                - button "Tue, 26 May 2026 15:41:12 GMT" [ref=e342]: Tue, 26 May 2026 15:41:12 GMT
+                - button "Tue, 26 May 2026 16:35:14 GMT" [ref=e342]: Tue, 26 May 2026 16:35:14 GMT
               - listitem [ref=e343]:
-                - button "Tue, 26 May 2026 16:35:10 GMT" [ref=e344]: Tue, 26 May 2026 16:35:10 GMT
+                - button "Tue, 26 May 2026 20:00:16 GMT" [ref=e344]: Tue, 26 May 2026 20:00:16 GMT
               - listitem [ref=e345]:
-                - button "Tue, 26 May 2026 16:35:12 GMT" [ref=e346]: Tue, 26 May 2026 16:35:12 GMT
+                - button "Tue, 26 May 2026 20:00:19 GMT" [ref=e346]: Tue, 26 May 2026 20:00:19 GMT
               - listitem [ref=e347]:
-                - button "Tue, 26 May 2026 16:35:14 GMT" [ref=e348]: Tue, 26 May 2026 16:35:14 GMT
+                - button "Tue, 26 May 2026 20:00:22 GMT" [ref=e348]: Tue, 26 May 2026 20:00:22 GMT
               - listitem [ref=e349]:
-                - button "Tue, 26 May 2026 20:00:16 GMT" [ref=e350]: Tue, 26 May 2026 20:00:16 GMT
+                - button "Tue, 26 May 2026 20:00:35 GMT" [ref=e350]: Tue, 26 May 2026 20:00:35 GMT
               - listitem [ref=e351]:
-                - button "Tue, 26 May 2026 20:00:19 GMT" [ref=e352]: Tue, 26 May 2026 20:00:19 GMT
+                - button "Tue, 26 May 2026 20:00:37 GMT" [ref=e352]: Tue, 26 May 2026 20:00:37 GMT
               - listitem [ref=e353]:
-                - button "Tue, 26 May 2026 20:00:22 GMT" [ref=e354]: Tue, 26 May 2026 20:00:22 GMT
+                - button "Tue, 26 May 2026 20:00:38 GMT" [ref=e354]: Tue, 26 May 2026 20:00:38 GMT
               - listitem [ref=e355]:
-                - button "Tue, 26 May 2026 20:00:35 GMT" [ref=e356]: Tue, 26 May 2026 20:00:35 GMT
+                - button "Tue, 26 May 2026 20:07:50 GMT" [ref=e356]: Tue, 26 May 2026 20:07:50 GMT
               - listitem [ref=e357]:
-                - button "Tue, 26 May 2026 20:00:37 GMT" [ref=e358]: Tue, 26 May 2026 20:00:37 GMT
+                - button "Wed, 27 May 2026 01:16:47 GMT" [ref=e358]: Wed, 27 May 2026 01:16:47 GMT
               - listitem [ref=e359]:
-                - button "Tue, 26 May 2026 20:00:38 GMT" [ref=e360]: Tue, 26 May 2026 20:00:38 GMT
+                - button "Wed, 27 May 2026 07:25:36 GMT" [ref=e360]: Wed, 27 May 2026 07:25:36 GMT
               - listitem [ref=e361]:
-                - button "Tue, 26 May 2026 20:07:50 GMT" [ref=e362]: Tue, 26 May 2026 20:07:50 GMT
+                - button "Wed, 27 May 2026 19:46:26 GMT" [ref=e362]: Wed, 27 May 2026 19:46:26 GMT
               - listitem [ref=e363]:
-                - button "Wed, 27 May 2026 01:16:47 GMT" [ref=e364]: Wed, 27 May 2026 01:16:47 GMT
+                - button "Wed, 27 May 2026 19:46:28 GMT" [ref=e364]: Wed, 27 May 2026 19:46:28 GMT
               - listitem [ref=e365]:
-                - button "Wed, 27 May 2026 07:25:36 GMT" [ref=e366]: Wed, 27 May 2026 07:25:36 GMT
+                - button "Wed, 27 May 2026 19:47:54 GMT" [ref=e366]: Wed, 27 May 2026 19:47:54 GMT
               - listitem [ref=e367]:
-                - button "Wed, 27 May 2026 19:46:26 GMT" [ref=e368]: Wed, 27 May 2026 19:46:26 GMT
+                - button "Thu, 28 May 2026 11:50:02 GMT" [ref=e368]: Thu, 28 May 2026 11:50:02 GMT
               - listitem [ref=e369]:
-                - button "Wed, 27 May 2026 19:46:28 GMT" [ref=e370]: Wed, 27 May 2026 19:46:28 GMT
+                - button "Thu, 28 May 2026 11:50:05 GMT" [ref=e370]: Thu, 28 May 2026 11:50:05 GMT
               - listitem [ref=e371]:
-                - button "Wed, 27 May 2026 19:47:54 GMT" [ref=e372]: Wed, 27 May 2026 19:47:54 GMT
+                - button "Thu, 28 May 2026 14:44:19 GMT" [ref=e372]: Thu, 28 May 2026 14:44:19 GMT
               - listitem [ref=e373]:
-                - button "Thu, 28 May 2026 11:50:02 GMT" [ref=e374]: Thu, 28 May 2026 11:50:02 GMT
+                - button "Thu, 28 May 2026 16:19:17 GMT" [ref=e374]: Thu, 28 May 2026 16:19:17 GMT
               - listitem [ref=e375]:
-                - button "Thu, 28 May 2026 11:50:05 GMT" [ref=e376]: Thu, 28 May 2026 11:50:05 GMT
+                - button "Thu, 28 May 2026 17:58:13 GMT" [ref=e376]: Thu, 28 May 2026 17:58:13 GMT
               - listitem [ref=e377]:
-                - button "Thu, 28 May 2026 14:44:19 GMT" [ref=e378]: Thu, 28 May 2026 14:44:19 GMT
+                - button "Fri, 29 May 2026 11:45:30 GMT" [ref=e378]: Fri, 29 May 2026 11:45:30 GMT
               - listitem [ref=e379]:
-                - button "Thu, 28 May 2026 16:19:17 GMT" [ref=e380]: Thu, 28 May 2026 16:19:17 GMT
+                - button "Fri, 29 May 2026 11:45:32 GMT" [ref=e380]: Fri, 29 May 2026 11:45:32 GMT
               - listitem [ref=e381]:
-                - button "Thu, 28 May 2026 17:58:13 GMT" [ref=e382]: Thu, 28 May 2026 17:58:13 GMT
+                - button "Test123" [ref=e382]: Test123
               - listitem [ref=e383]:
-                - button "Fri, 29 May 2026 11:45:30 GMT" [ref=e384]: Fri, 29 May 2026 11:45:30 GMT
+                - button "Hello-123" [ref=e384]: Hello-123
               - listitem [ref=e385]:
-                - button "Fri, 29 May 2026 11:45:32 GMT" [ref=e386]: Fri, 29 May 2026 11:45:32 GMT
+                - button "Sat, 30 May 2026 07:45:05 GMT" [ref=e386]: Sat, 30 May 2026 07:45:05 GMT
               - listitem [ref=e387]:
-                - button "Test123" [ref=e388]: Test123
+                - button "Sat, 30 May 2026 07:45:09 GMT" [ref=e388]: Sat, 30 May 2026 07:45:09 GMT
               - listitem [ref=e389]:
-                - button "Hello-123" [ref=e390]: Hello-123
-            - generic [ref=e391]:
-              - generic [ref=e392]:
+                - button "Sat, 30 May 2026 07:45:09 GMT" [ref=e390]: Sat, 30 May 2026 07:45:09 GMT
+              - listitem [ref=e391]:
+                - button "Sat, 30 May 2026 13:27:20 GMT" [ref=e392]: Sat, 30 May 2026 13:27:20 GMT
+              - listitem [ref=e393]:
+                - button "Sat, 30 May 2026 13:27:23 GMT" [ref=e394]: Sat, 30 May 2026 13:27:23 GMT
+              - listitem [ref=e395]:
+                - button "Sat, 30 May 2026 13:27:26 GMT" [ref=e396]: Sat, 30 May 2026 13:27:26 GMT
+              - listitem [ref=e397]:
+                - button "Sat, 30 May 2026 13:27:33 GMT" [ref=e398]: Sat, 30 May 2026 13:27:33 GMT
+              - listitem [ref=e399]:
+                - button "Sat, 30 May 2026 13:27:46 GMT" [ref=e400]: Sat, 30 May 2026 13:27:46 GMT
+              - listitem [ref=e401]:
+                - button "Sat, 30 May 2026 13:27:49 GMT" [ref=e402]: Sat, 30 May 2026 13:27:49 GMT
+            - generic [ref=e403]:
+              - generic [ref=e404]:
                 - text: Server Url
-                - textbox "Server Url" [ref=e394]: https://webchem.ncbr.muni.cz/molstar-state
-              - button "Refresh" [ref=e396]:
-                - img [ref=e398]
+                - textbox "Server Url" [ref=e406]: https://webchem.ncbr.muni.cz/molstar-state
+              - button "Refresh" [ref=e408]:
+                - img [ref=e410]
                 - text: Refresh
-        - generic [ref=e402]:
-          - generic [ref=e403]:
-            - img [ref=e405]
+        - generic [ref=e414]:
+          - generic [ref=e415]:
+            - img [ref=e417]
             - text: Structure Tools
-          - generic [ref=e407]:
-            - button "Structure" [ref=e409]:
-              - img [ref=e411]
+          - generic [ref=e419]:
+            - button "Structure" [ref=e421]:
+              - img [ref=e423]
               - text: Structure
-            - generic [ref=e414]:
-              - button "4UG0 | STRUCTURE OF THE HUMAN 80S RIBOSOME" [ref=e415]
-              - button "Apply a structure presets to the current hierarchy." [ref=e416]:
-                - img [ref=e418]
-            - generic [ref=e420]:
-              - generic [ref=e421]:
-                - text: Type
-                - button "Assembly" [ref=e423]
-              - generic [ref=e424]:
-                - generic "Asm Id. Click for help." [ref=e425]:
-                  - text: Asm Id
-                  - button "Asm Id. Click for help." [ref=e426]:
-                    - img [ref=e428]
-                - 'button "1: Author Defined Assembly" [ref=e431]'
-              - generic [ref=e432]:
-                - generic "Dynamic Bonds. Click for help." [ref=e433]:
-                  - text: Dynamic Bonds
-                  - button "Dynamic Bonds. Click for help." [ref=e434]:
-                    - img [ref=e436]
-                - button "Off" [ref=e439]:
-                  - img [ref=e441]
-                  - text: "Off"
-            - generic [ref=e444]:
-              - button "Nothing Focused" [disabled] [ref=e445]
-              - button "Select a focus target to center on an show its surroundings. Hold shift to focus on multiple targets." [ref=e446]:
-                - img [ref=e448]
-          - generic [ref=e450]:
-            - button "Measurements" [ref=e452]:
-              - img [ref=e454]
+            - generic [ref=e426]:
+              - button "2 structures" [ref=e427]
+              - button "Apply a structure presets to the current hierarchy." [ref=e428]:
+                - img [ref=e430]
+            - generic [ref=e433]:
+              - button "Nothing Focused" [disabled] [ref=e434]
+              - button "Select a focus target to center on an show its surroundings. Hold shift to focus on multiple targets." [ref=e435]:
+                - img [ref=e437]
+          - generic [ref=e439]:
+            - button "Measurements" [ref=e441]:
+              - img [ref=e443]
               - text: Measurements
-            - generic [ref=e456]:
-              - button "Add" [ref=e457]:
-                - img [ref=e459]
+            - generic [ref=e445]:
+              - button "Add" [ref=e446]:
+                - img [ref=e448]
                 - text: Add
-              - button "Options" [ref=e461]:
+              - button "Options" [ref=e450]:
+                - img [ref=e452]
+          - generic [ref=e454]:
+            - button "Superposition" [ref=e456]:
+              - img [ref=e458]
+              - text: Superposition
+            - generic [ref=e460]:
+              - button "Chains" [ref=e461]:
                 - img [ref=e463]
-          - generic [ref=e465]:
-            - button "Quick Styles" [ref=e467]:
-              - img [ref=e469]
+                - text: Chains
+              - button "Atoms" [ref=e465]:
+                - img [ref=e467]
+                - text: Atoms
+              - button "TM-align" [ref=e471]:
+                - img [ref=e473]
+                - text: TM-align
+              - button "Options" [ref=e475]:
+                - img [ref=e477]
+          - generic [ref=e479]:
+            - button "Quick Styles" [ref=e481]:
+              - img [ref=e483]
               - text: Quick Styles
-            - generic [ref=e471]:
-              - generic [ref=e473]: Apply Representation
-              - generic [ref=e474]:
-                - button "Default" [ref=e475]
-                - button "Cartoon" [ref=e476]
-                - button "Spacefill" [ref=e477]
-                - button "Surface" [ref=e478]
-            - generic [ref=e479]:
-              - generic [ref=e481]: Apply Style
-              - generic [ref=e482]:
-                - button "Default" [ref=e483]
-                - button "Illustrative" [ref=e484]
-          - generic [ref=e485]:
-            - button "Components4UG0" [ref=e487]:
-              - img [ref=e489]
-              - text: Components4UG0
-            - generic [ref=e491]:
-              - button "Preset" [ref=e492]:
-                - img [ref=e494]
+            - generic [ref=e485]:
+              - generic [ref=e487]: Apply Representation
+              - generic [ref=e488]:
+                - button "Default" [ref=e489]
+                - button "Cartoon" [ref=e490]
+                - button "Spacefill" [ref=e491]
+                - button "Surface" [ref=e492]
+            - generic [ref=e493]:
+              - generic [ref=e495]: Apply Style
+              - generic [ref=e496]:
+                - button "Default" [ref=e497]
+                - button "Illustrative" [ref=e498]
+          - generic [ref=e499]:
+            - button "Components2 structures" [ref=e501]:
+              - img [ref=e503]
+              - text: Components2 structures
+            - generic [ref=e505]:
+              - button "Preset" [ref=e506]:
+                - img [ref=e508]
                 - text: Preset
-              - button "Add" [ref=e496]:
-                - img [ref=e498]
+              - button "Add" [ref=e510]:
+                - img [ref=e512]
                 - text: Add
-              - button "Options that are applied to all applicable representations." [ref=e500]:
-                - img [ref=e502]
-              - button "Some mistakes of the past can be undone." [disabled] [ref=e504]:
-                - img [ref=e506]
-            - generic [ref=e509]:
-              - button "Polymer Cartoon" [ref=e510]:
+              - button "Options that are applied to all applicable representations." [ref=e514]:
+                - img [ref=e516]
+              - button "Some mistakes of the past can be undone." [disabled] [ref=e518]:
+                - img [ref=e520]
+            - generic [ref=e523]:
+              - button "Polymer Cartoon" [ref=e524]:
                 - text: Polymer
-                - generic [ref=e511]: Cartoon
-              - button "Hide component" [ref=e512]:
-                - img [ref=e514]
-              - button "Remove" [ref=e516]:
-                - img [ref=e518]
-              - button "Actions" [ref=e520]:
-                - img [ref=e522]
-          - generic [ref=e524]:
-            - button "Volume Streaming4UG0" [ref=e526]:
-              - img [ref=e528]
-              - text: Volume Streaming4UG0
-            - generic [ref=e530]:
-              - button "Enable" [ref=e531]:
-                - img [ref=e533]
-                - text: Enable
-              - button "Options" [ref=e535]:
-                - img [ref=e537]
-        - list [ref=e542]:
-          - listitem [ref=e543]:
-            - generic [ref=e544]: 17:10:14
-            - generic [ref=e545]: Created 4ug0.cif in 80ms.
-          - listitem [ref=e546]:
-            - generic [ref=e547]: 17:10:14
-            - generic [ref=e548]: Created CIF File in 274ms.
-          - listitem [ref=e549]:
-            - generic [ref=e550]: 17:10:14
-            - generic [ref=e551]: Created 4UG0 in 152ms.
-          - listitem [ref=e552]:
-            - generic [ref=e553]: 17:10:15
-            - generic [ref=e554]: Created Model 1 in 0ms.
-          - listitem [ref=e555]:
-            - generic [ref=e556]: 17:10:15
-            - generic [ref=e557]: Created Model 1 in 0ms.
-          - listitem [ref=e558]:
-            - generic [ref=e559]: 17:10:15
-            - generic [ref=e560]: Created Assembly 1 in 18ms.
-          - listitem [ref=e561]:
-            - generic [ref=e562]: 17:10:15
-            - generic [ref=e563]: Created Assembly 1 in 1ms.
-          - listitem [ref=e564]:
-            - generic [ref=e565]: 17:10:15
-            - generic [ref=e566]: Created Polymer in 4ms.
-          - listitem [ref=e567]:
-            - generic [ref=e568]: 17:10:15
-            - generic [ref=e569]: Created Cartoon in 342ms.
-          - listitem [ref=e570]:
-            - generic [ref=e571]: 17:10:15
-            - generic [ref=e572]: Updated Structure Focus Representation in 1ms.
-    - generic [ref=e573]:
-      - generic [ref=e574]:
-        - button "Load Aligned" [ref=e576]
-        - generic [ref=e577]:
-          - generic [ref=e578]:
+                - generic [ref=e525]: Cartoon
+              - button "Hide component" [ref=e526]:
+                - img [ref=e528]
+              - button "Remove" [ref=e530]:
+                - img [ref=e532]
+              - button "Actions" [ref=e534]:
+                - img [ref=e536]
+        - list [ref=e541]:
+          - listitem [ref=e542]:
+            - generic [ref=e543]: 22:56:32
+            - generic [ref=e544]: Created 4ug0.cif in 77ms.
+          - listitem [ref=e545]:
+            - generic [ref=e546]: 22:56:32
+            - generic [ref=e547]: Created CIF File in 261ms.
+          - listitem [ref=e548]:
+            - generic [ref=e549]: 22:56:32
+            - generic [ref=e550]: Created 4UG0 in 148ms.
+          - listitem [ref=e551]:
+            - generic [ref=e552]: 22:56:32
+            - generic [ref=e553]: Created Model 1 in 0ms.
+          - listitem [ref=e554]:
+            - generic [ref=e555]: 22:56:32
+            - generic [ref=e556]: Created Model 1 in 0ms.
+          - listitem [ref=e557]:
+            - generic [ref=e558]: 22:56:32
+            - generic [ref=e559]: Created Assembly 1 in 7ms.
+          - listitem [ref=e560]:
+            - generic [ref=e561]: 22:56:32
+            - generic [ref=e562]: Created Assembly 1 in 0ms.
+          - listitem [ref=e563]:
+            - generic [ref=e564]: 22:56:33
+            - generic [ref=e565]: Created Polymer in 1ms.
+          - listitem [ref=e566]:
+            - generic [ref=e567]: 22:56:33
+            - generic [ref=e568]: Created Cartoon in 190ms.
+          - listitem [ref=e569]:
+            - generic [ref=e570]: 22:56:33
+            - generic [ref=e571]: Updated Structure Focus Representation in 1ms.
+    - generic [ref=e572]:
+      - generic [ref=e573]:
+        - button "Load Aligned" [ref=e575]
+        - generic [ref=e576]:
+          - generic [ref=e577]:
             - text: Select Subunit
-            - combobox "Select Subunit" [ref=e579]:
+            - combobox "Select Subunit" [disabled] [ref=e578]:
               - option "..." [disabled]
               - option "All" [selected]
               - option "Large"
               - option "Small"
               - option "Other"
-          - generic [ref=e580]:
+          - generic [ref=e579]:
             - text: Select Chain
-            - combobox "Select Chain" [ref=e581]:
+            - combobox "Select Chain" [disabled] [ref=e580]:
               - option "..." [disabled] [selected]
-          - generic [ref=e582]:
+          - generic [ref=e581]:
             - text: Select Residue
-            - combobox "Select Residue" [disabled] [ref=e583]:
+            - combobox "Select Residue" [disabled] [ref=e582]:
               - option "..." [disabled] [selected]
-          - button "Load Colours" [ref=e585]
-          - generic [ref=e586]:
-            - generic [ref=e587]:
+          - button "Load Colours" [disabled] [ref=e584]
+          - generic [ref=e585]:
+            - generic [ref=e586]:
               - text: Select Representation
-              - combobox "Select Representation" [disabled] [ref=e588]:
+              - combobox "Select Representation" [disabled] [ref=e587]:
                 - option "..." [disabled]
                 - option "spacefill" [selected]
                 - option "cartoon"
                 - option "gaussian-surface"
                 - option "gaussian-volume"
                 - option "line"
-            - button "Add Representation" [ref=e589]: +
-      - generic [ref=e590]:
-        - button "Hide 4UG0" [ref=e591]:
-          - img [ref=e592]
+            - button "Add Representation" [disabled] [ref=e588]: +
+      - generic [ref=e589]:
+        - button "Hide 4UG0" [ref=e590]:
+          - img [ref=e591]
           - text: 4UG0
-        - generic [ref=e595]:
-          - button "Toggle visibility for cartoon representation" [ref=e596]:
-            - img [ref=e597]
-            - text: cartoon
-          - button "Delete cartoon representation" [ref=e599]: ✖
-        - button "Zoom to Chain:" [disabled] [ref=e600]
-        - button "Zoom to Residue:" [disabled] [ref=e601]
-      - generic [ref=e602]:
-        - button "Show Aligned" [disabled] [ref=e603]:
-          - img [ref=e604]
+        - button "Zoom to Chain:" [disabled] [ref=e593]
+        - button "Zoom to Residue:" [disabled] [ref=e594]
+      - generic [ref=e595]:
+        - button "Hide Aligned" [ref=e596]:
+          - img [ref=e597]
           - text: Aligned
-        - button "Zoom to Chain:" [disabled] [ref=e606]
-        - button "Zoom to Residue:" [disabled] [ref=e607]
-      - generic [ref=e611]:
-        - generic [ref=e613]:
-          - generic [ref=e615]:
-            - paragraph [ref=e616]: WebGL does not seem to be available.
-            - paragraph [ref=e617]: This can be caused by an outdated browser, graphics card driver issue, or bad weather. Sometimes, just restarting the browser helps. Also, make sure hardware acceleration is enabled in your browser.
-            - paragraph [ref=e618]:
+        - button "Zoom to Chain:" [disabled] [ref=e599]
+        - button "Zoom to Residue:" [disabled] [ref=e600]
+      - generic [ref=e604]:
+        - generic [ref=e606]:
+          - generic [ref=e608]:
+            - paragraph [ref=e609]: WebGL does not seem to be available.
+            - paragraph [ref=e610]: This can be caused by an outdated browser, graphics card driver issue, or bad weather. Sometimes, just restarting the browser helps. Also, make sure hardware acceleration is enabled in your browser.
+            - paragraph [ref=e611]:
               - text: For a list of supported browsers, refer to
-              - link "http://caniuse.com/#feat=webgl" [ref=e619] [cursor=pointer]:
+              - link "http://caniuse.com/#feat=webgl" [ref=e612] [cursor=pointer]:
                 - /url: http://caniuse.com/#feat=webgl
               - text: .
-          - button "Select Animation" [ref=e623]:
-            - img [ref=e625]
-          - generic [ref=e628]:
-            - button "Reset Zoom" [ref=e630]:
-              - img [ref=e632]
-            - button "Screenshot / State Snapshot" [ref=e635]:
-              - img [ref=e637]
-            - generic [ref=e639]:
-              - button "Toggle Controls Panel" [ref=e640]:
-                - img [ref=e642]
-              - button "Toggle Expanded Viewport" [ref=e645]:
-                - img [ref=e647]
-              - button "Settings / Controls Info" [ref=e649]:
-                - img [ref=e651]
-              - button "Illumination" [ref=e653]:
-                - img [ref=e655]
-              - button "Augmented/Virtual Reality unavailable" [disabled] [ref=e657]:
-                - img [ref=e659]
-            - button "Toggle Selection Mode" [ref=e663]:
+          - button "Select Animation" [ref=e616]:
+            - img [ref=e618]
+          - generic [ref=e621]:
+            - button "Reset Zoom" [ref=e623]:
+              - img [ref=e625]
+            - button "Screenshot / State Snapshot" [ref=e628]:
+              - img [ref=e630]
+            - generic [ref=e632]:
+              - button "Toggle Controls Panel" [ref=e633]:
+                - img [ref=e635]
+              - button "Toggle Expanded Viewport" [ref=e638]:
+                - img [ref=e640]
+              - button "Settings / Controls Info" [ref=e642]:
+                - img [ref=e644]
+              - button "Illumination" [ref=e646]:
+                - img [ref=e648]
+              - button "Augmented/Virtual Reality unavailable" [disabled] [ref=e650]:
+                - img [ref=e652]
+            - button "Toggle Selection Mode" [ref=e656]:
+              - img [ref=e658]
+        - generic [ref=e662]:
+          - generic [ref=e663]:
+            - generic "This shows a single sequence. Use the controls to show a different sequence. Use Ctrl or Cmd key to add a sequence range to focus; use Shift key to extend last focused/selected range." [ref=e664]:
               - img [ref=e665]
-        - generic [ref=e669]:
-          - generic [ref=e670]:
-            - generic "This shows a single sequence. Use the controls to show a different sequence. Use Ctrl or Cmd key to add a sequence range to focus; use Shift key to extend last focused/selected range." [ref=e671]:
-              - img [ref=e672]
             - text: Sequence of
-            - combobox "[Structure] 4UG0 | STRUCTURE OF THE HUMAN 80S RIBOSOME" [ref=e674]:
+            - combobox "[Structure] 4UG0 | STRUCTURE OF THE HUMAN 80S RIBOSOME" [ref=e667]:
               - option "4UG0 | STRUCTURE OF THE HUMAN 80S RIBOSOME" [selected]
-            - combobox "[Mode]" [ref=e675]:
+            - combobox "[Mode]" [ref=e668]:
               - option "Chain" [selected]
               - option "Polymers"
               - option "Everything"
-            - 'combobox "[Entity] 1: 28S ribosomal RNA" [ref=e676]':
+            - 'combobox "[Entity] 1: 28S ribosomal RNA" [ref=e669]':
               - 'option "1: 28S ribosomal RNA" [selected]'
               - 'option "2: 5S ribosomal RNA"'
               - 'option "3: 5.8S ribosomal RNA"'
@@ -863,363 +759,381 @@ Call log:
               - 'option "81: 40S RIBOSOMAL PROTEIN S30"'
               - 'option "82: MAGNESIUM ION"'
               - 'option "83: ZINC ION"'
-            - combobox "[Chain] A [auth L5]" [ref=e677]:
+            - combobox "[Chain] A [auth L5]" [ref=e670]:
               - option "A [auth L5]" [selected]
-          - generic [ref=e679]: 1 Whole Chain (5070 residues, 80184 elements)
-        - generic [ref=e682]:
-          - generic [ref=e683]:
-            - button "Home" [ref=e684]:
-              - img [ref=e686]
-            - button "State Tree" [ref=e688]:
-              - img [ref=e690]
-            - button "Plugin State" [ref=e692]:
-              - img [ref=e694]
-            - button "Help" [ref=e696]:
-              - img [ref=e698]
-            - button "Settings" [ref=e701]:
-              - img [ref=e703]
-          - generic [ref=e705]:
-            - generic [ref=e706]:
-              - img [ref=e708]
+          - generic [ref=e672]: 1 Whole Chain (5070 residues, 80184 elements)
+        - generic [ref=e675]:
+          - generic [ref=e676]:
+            - button "Home" [ref=e677]:
+              - img [ref=e679]
+            - button "State Tree" [ref=e681]:
+              - img [ref=e683]
+            - button "Plugin State" [ref=e685]:
+              - img [ref=e687]
+            - button "Help" [ref=e689]:
+              - img [ref=e691]
+            - button "Settings" [ref=e694]:
+              - img [ref=e696]
+          - generic [ref=e698]:
+            - generic [ref=e699]:
+              - img [ref=e701]
               - text: Home
-            - generic [ref=e710]:
-              - generic [ref=e711]:
-                - button "Download Structure" [ref=e713]:
-                  - img [ref=e715]
+            - generic [ref=e703]:
+              - generic [ref=e704]:
+                - button "Download Structure" [ref=e706]:
+                  - img [ref=e708]
                   - text: Download Structure
-                - generic [ref=e717]:
+                - generic [ref=e710]:
                   - text: Source
-                  - button "PDB" [ref=e719]
-                - generic [ref=e720]:
-                  - generic [ref=e721]:
-                    - generic "PDB Id(s). Click for help." [ref=e722]:
+                  - button "PDB" [ref=e712]
+                - generic [ref=e713]:
+                  - generic [ref=e714]:
+                    - generic "PDB Id(s). Click for help." [ref=e715]:
                       - text: PDB Id(s)
-                      - button "PDB Id(s). Click for help." [ref=e723]:
-                        - img [ref=e725]
-                    - textbox "PDB Id(s)" [ref=e728]: 1tqn
-                  - button "More Options" [ref=e729]:
-                    - img [ref=e731]
-                - button "Options" [ref=e735]:
-                  - img [ref=e737]
+                      - button "PDB Id(s). Click for help." [ref=e716]:
+                        - img [ref=e718]
+                    - textbox "PDB Id(s)" [ref=e721]: 1tqn
+                  - button "More Options" [ref=e722]:
+                    - img [ref=e724]
+                - button "Options" [ref=e728]:
+                  - img [ref=e730]
                   - text: Options
-                - generic [ref=e739]:
-                  - button "Set default params" [ref=e740]:
-                    - img [ref=e742]
-                  - button "Apply" [ref=e745]:
-                    - img [ref=e747]
+                - generic [ref=e732]:
+                  - button "Set default params" [ref=e733]:
+                    - img [ref=e735]
+                  - button "Apply" [ref=e738]:
+                    - img [ref=e740]
                     - text: Apply
-              - button "Download Density" [ref=e751]:
-                - img [ref=e753]
+              - button "Download Density" [ref=e744]:
+                - img [ref=e746]
                 - text: Download Density
-              - button "Download File" [ref=e757]:
-                - img [ref=e759]
+              - button "Download File" [ref=e750]:
+                - img [ref=e752]
                 - text: Download File
-              - button "Open Files" [ref=e763]:
-                - img [ref=e765]
+              - button "Open Files" [ref=e756]:
+                - img [ref=e758]
                 - text: Open Files
-              - button "Load Trajectory" [ref=e769]:
-                - img [ref=e771]
+              - button "Load Trajectory" [ref=e762]:
+                - img [ref=e764]
                 - text: Load Trajectory
-              - button "Download" [ref=e775]:
-                - img [ref=e777]
+              - button "Download" [ref=e768]:
+                - img [ref=e770]
                 - text: Download
-            - generic [ref=e779]: Remote States
-            - list [ref=e780]:
-              - listitem [ref=e781]:
-                - button "Zika+EM" [ref=e782]: Zika+EM
-              - listitem [ref=e783]:
-                - button "P-450 Superposition & Validation" [ref=e784]: P-450 Superposition & Validation
-              - listitem [ref=e785]:
-                - button "NPC" [ref=e786]: NPC
-              - listitem [ref=e787]:
-                - button "1RB8 Assembly Symmetry" [ref=e788]: 1RB8 Assembly Symmetry
-              - listitem [ref=e789]:
-                - button "Mon, 11 May 2026 08:52:30 GMT" [ref=e790]: Mon, 11 May 2026 08:52:30 GMT
-              - listitem [ref=e791]:
-                - button "Tue, 12 May 2026 13:13:29 GMT" [ref=e792]: Tue, 12 May 2026 13:13:29 GMT
-              - listitem [ref=e793]:
-                - button "Wed, 13 May 2026 02:34:36 GMT" [ref=e794]: Wed, 13 May 2026 02:34:36 GMT
-              - listitem [ref=e795]:
-                - button "Wed, 13 May 2026 05:59:44 GMT" [ref=e796]: Wed, 13 May 2026 05:59:44 GMT
-              - listitem [ref=e797]:
-                - button "Wed, 13 May 2026 07:08:52 GMT" [ref=e798]: Wed, 13 May 2026 07:08:52 GMT
-              - listitem [ref=e799]:
-                - button "Wed, 13 May 2026 07:50:33 GMT" [ref=e800]: Wed, 13 May 2026 07:50:33 GMT
-              - listitem [ref=e801]:
-                - button "Wed, 13 May 2026 07:50:42 GMT MN" [ref=e802]
-              - listitem [ref=e803]:
-                - button "Wed, 13 May 2026 07:50:47 GMT Mn" [ref=e804]
-              - listitem [ref=e805]:
-                - button "Wed, 13 May 2026 07:50:53 GMT Mn" [ref=e806]
-              - listitem [ref=e807]:
-                - button "Thu, 14 May 2026 02:24:29 GMT" [ref=e808]: Thu, 14 May 2026 02:24:29 GMT
-              - listitem [ref=e809]:
-                - button "Thu, 14 May 2026 02:24:47 GMT" [ref=e810]: Thu, 14 May 2026 02:24:47 GMT
-              - listitem [ref=e811]:
-                - button "Thu, 14 May 2026 02:24:48 GMT" [ref=e812]: Thu, 14 May 2026 02:24:48 GMT
-              - listitem [ref=e813]:
-                - button "Thu, 14 May 2026 02:24:49 GMT" [ref=e814]: Thu, 14 May 2026 02:24:49 GMT
-              - listitem [ref=e815]:
-                - button "Fri, 15 May 2026 04:25:42 GMT" [ref=e816]: Fri, 15 May 2026 04:25:42 GMT
-              - listitem [ref=e817]:
-                - button "Fri, 15 May 2026 04:25:52 GMT" [ref=e818]: Fri, 15 May 2026 04:25:52 GMT
-              - listitem [ref=e819]:
-                - button "Fri, 15 May 2026 06:54:30 GMT" [ref=e820]: Fri, 15 May 2026 06:54:30 GMT
-              - listitem [ref=e821]:
-                - button "lsd" [ref=e822]: lsd
-              - listitem [ref=e823]:
-                - button "Fri, 15 May 2026 07:19:41 GMT" [ref=e824]: Fri, 15 May 2026 07:19:41 GMT
-              - listitem [ref=e825]:
-                - button "Fri, 15 May 2026 07:19:43 GMT" [ref=e826]: Fri, 15 May 2026 07:19:43 GMT
-              - listitem [ref=e827]:
-                - button "Fri, 15 May 2026 16:20:00 GMT" [ref=e828]: Fri, 15 May 2026 16:20:00 GMT
-              - listitem [ref=e829]:
-                - button "Fri, 15 May 2026 20:27:48 GMT" [ref=e830]: Fri, 15 May 2026 20:27:48 GMT
-              - listitem [ref=e831]:
-                - button "Fri, 15 May 2026 20:27:52 GMT" [ref=e832]: Fri, 15 May 2026 20:27:52 GMT
-              - listitem [ref=e833]:
-                - button "e" [ref=e834]: e
-              - listitem [ref=e835]:
-                - button "Sat, 16 May 2026 23:25:14 GMT" [ref=e836]: Sat, 16 May 2026 23:25:14 GMT
-              - listitem [ref=e837]:
-                - button "Sun, 17 May 2026 07:06:27 GMT" [ref=e838]: Sun, 17 May 2026 07:06:27 GMT
-              - listitem [ref=e839]:
-                - button "Sun, 17 May 2026 07:06:29 GMT" [ref=e840]: Sun, 17 May 2026 07:06:29 GMT
-              - listitem [ref=e841]:
-                - button "Sun, 17 May 2026 14:52:01 GMT" [ref=e842]: Sun, 17 May 2026 14:52:01 GMT
-              - listitem [ref=e843]:
-                - button "Sun, 17 May 2026 14:52:03 GMT" [ref=e844]: Sun, 17 May 2026 14:52:03 GMT
-              - listitem [ref=e845]:
-                - button "Mon, 18 May 2026 12:59:52 GMT" [ref=e846]: Mon, 18 May 2026 12:59:52 GMT
-              - listitem [ref=e847]:
-                - button "Tue, 19 May 2026 10:39:51 GMT" [ref=e848]: Tue, 19 May 2026 10:39:51 GMT
-              - listitem [ref=e849]:
-                - button "Tue, 19 May 2026 10:39:53 GMT" [ref=e850]: Tue, 19 May 2026 10:39:53 GMT
-              - listitem [ref=e851]:
-                - button "Tue, 19 May 2026 10:39:54 GMT" [ref=e852]: Tue, 19 May 2026 10:39:54 GMT
-              - listitem [ref=e853]:
-                - button "Tue, 19 May 2026 11:12:55 GMT" [ref=e854]: Tue, 19 May 2026 11:12:55 GMT
-              - listitem [ref=e855]:
-                - button "Tue, 19 May 2026 18:55:43 GMT" [ref=e856]: Tue, 19 May 2026 18:55:43 GMT
-              - listitem [ref=e857]:
-                - button "Tue, 19 May 2026 18:55:44 GMT" [ref=e858]: Tue, 19 May 2026 18:55:44 GMT
-              - listitem [ref=e859]:
-                - button "Wed, 20 May 2026 02:03:45 GMT" [ref=e860]: Wed, 20 May 2026 02:03:45 GMT
-              - listitem [ref=e861]:
-                - button "Wed, 20 May 2026 02:05:07 GMT rs16910526_model" [ref=e862]
-              - listitem [ref=e863]:
-                - button "rs16910526_model" [ref=e864]: rs16910526_model
-              - listitem [ref=e865]:
-                - button "Wed, 20 May 2026 18:29:20 GMT" [ref=e866]: Wed, 20 May 2026 18:29:20 GMT
-              - listitem [ref=e867]:
-                - button "Wed, 20 May 2026 20:38:22 GMT" [ref=e868]: Wed, 20 May 2026 20:38:22 GMT
-              - listitem [ref=e869]:
-                - button "Thu, 21 May 2026 10:19:22 GMT" [ref=e870]: Thu, 21 May 2026 10:19:22 GMT
-              - listitem [ref=e871]:
-                - button "Thu, 21 May 2026 10:19:25 GMT" [ref=e872]: Thu, 21 May 2026 10:19:25 GMT
-              - listitem [ref=e873]:
-                - button "Thu, 21 May 2026 15:47:42 GMT" [ref=e874]: Thu, 21 May 2026 15:47:42 GMT
-              - listitem [ref=e875]:
-                - button "Thu, 21 May 2026 15:47:44 GMT" [ref=e876]: Thu, 21 May 2026 15:47:44 GMT
-              - listitem [ref=e877]:
-                - button "Fri, 22 May 2026 08:35:33 GMT" [ref=e878]: Fri, 22 May 2026 08:35:33 GMT
-              - listitem [ref=e879]:
-                - button "Sat, 23 May 2026 11:46:05 GMT" [ref=e880]: Sat, 23 May 2026 11:46:05 GMT
-              - listitem [ref=e881]:
-                - button "Mon, 25 May 2026 03:08:04 GMT" [ref=e882]: Mon, 25 May 2026 03:08:04 GMT
-              - listitem [ref=e883]:
-                - button "Mon, 25 May 2026 09:34:48 GMT" [ref=e884]: Mon, 25 May 2026 09:34:48 GMT
-              - listitem [ref=e885]:
-                - button "Mon, 25 May 2026 18:22:14 GMT" [ref=e886]: Mon, 25 May 2026 18:22:14 GMT
-              - listitem [ref=e887]:
-                - button "Tue, 26 May 2026 06:14:04 GMT" [ref=e888]: Tue, 26 May 2026 06:14:04 GMT
-              - listitem [ref=e889]:
-                - button "Tue, 26 May 2026 06:14:36 GMT" [ref=e890]: Tue, 26 May 2026 06:14:36 GMT
-              - listitem [ref=e891]:
-                - button "Tue, 26 May 2026 14:38:48 GMT" [ref=e892]: Tue, 26 May 2026 14:38:48 GMT
-              - listitem [ref=e893]:
-                - button "Tue, 26 May 2026 15:41:12 GMT" [ref=e894]: Tue, 26 May 2026 15:41:12 GMT
-              - listitem [ref=e895]:
-                - button "Tue, 26 May 2026 16:35:10 GMT" [ref=e896]: Tue, 26 May 2026 16:35:10 GMT
-              - listitem [ref=e897]:
-                - button "Tue, 26 May 2026 16:35:12 GMT" [ref=e898]: Tue, 26 May 2026 16:35:12 GMT
-              - listitem [ref=e899]:
-                - button "Tue, 26 May 2026 16:35:14 GMT" [ref=e900]: Tue, 26 May 2026 16:35:14 GMT
-              - listitem [ref=e901]:
-                - button "Tue, 26 May 2026 20:00:16 GMT" [ref=e902]: Tue, 26 May 2026 20:00:16 GMT
-              - listitem [ref=e903]:
-                - button "Tue, 26 May 2026 20:00:19 GMT" [ref=e904]: Tue, 26 May 2026 20:00:19 GMT
-              - listitem [ref=e905]:
-                - button "Tue, 26 May 2026 20:00:22 GMT" [ref=e906]: Tue, 26 May 2026 20:00:22 GMT
-              - listitem [ref=e907]:
-                - button "Tue, 26 May 2026 20:00:35 GMT" [ref=e908]: Tue, 26 May 2026 20:00:35 GMT
-              - listitem [ref=e909]:
-                - button "Tue, 26 May 2026 20:00:37 GMT" [ref=e910]: Tue, 26 May 2026 20:00:37 GMT
-              - listitem [ref=e911]:
-                - button "Tue, 26 May 2026 20:00:38 GMT" [ref=e912]: Tue, 26 May 2026 20:00:38 GMT
-              - listitem [ref=e913]:
-                - button "Tue, 26 May 2026 20:07:50 GMT" [ref=e914]: Tue, 26 May 2026 20:07:50 GMT
-              - listitem [ref=e915]:
-                - button "Wed, 27 May 2026 01:16:47 GMT" [ref=e916]: Wed, 27 May 2026 01:16:47 GMT
-              - listitem [ref=e917]:
-                - button "Wed, 27 May 2026 07:25:36 GMT" [ref=e918]: Wed, 27 May 2026 07:25:36 GMT
-              - listitem [ref=e919]:
-                - button "Wed, 27 May 2026 19:46:26 GMT" [ref=e920]: Wed, 27 May 2026 19:46:26 GMT
-              - listitem [ref=e921]:
-                - button "Wed, 27 May 2026 19:46:28 GMT" [ref=e922]: Wed, 27 May 2026 19:46:28 GMT
-              - listitem [ref=e923]:
-                - button "Wed, 27 May 2026 19:47:54 GMT" [ref=e924]: Wed, 27 May 2026 19:47:54 GMT
-              - listitem [ref=e925]:
-                - button "Thu, 28 May 2026 11:50:02 GMT" [ref=e926]: Thu, 28 May 2026 11:50:02 GMT
-              - listitem [ref=e927]:
-                - button "Thu, 28 May 2026 11:50:05 GMT" [ref=e928]: Thu, 28 May 2026 11:50:05 GMT
-              - listitem [ref=e929]:
-                - button "Thu, 28 May 2026 14:44:19 GMT" [ref=e930]: Thu, 28 May 2026 14:44:19 GMT
-              - listitem [ref=e931]:
-                - button "Thu, 28 May 2026 16:19:17 GMT" [ref=e932]: Thu, 28 May 2026 16:19:17 GMT
-              - listitem [ref=e933]:
-                - button "Thu, 28 May 2026 17:58:13 GMT" [ref=e934]: Thu, 28 May 2026 17:58:13 GMT
-              - listitem [ref=e935]:
-                - button "Fri, 29 May 2026 11:45:30 GMT" [ref=e936]: Fri, 29 May 2026 11:45:30 GMT
-              - listitem [ref=e937]:
-                - button "Fri, 29 May 2026 11:45:32 GMT" [ref=e938]: Fri, 29 May 2026 11:45:32 GMT
-              - listitem [ref=e939]:
-                - button "Test123" [ref=e940]: Test123
-              - listitem [ref=e941]:
-                - button "Hello-123" [ref=e942]: Hello-123
-            - generic [ref=e943]:
-              - generic [ref=e944]:
+            - generic [ref=e772]: Remote States
+            - list [ref=e773]:
+              - listitem [ref=e774]:
+                - button "Zika+EM" [ref=e775]: Zika+EM
+              - listitem [ref=e776]:
+                - button "P-450 Superposition & Validation" [ref=e777]: P-450 Superposition & Validation
+              - listitem [ref=e778]:
+                - button "NPC" [ref=e779]: NPC
+              - listitem [ref=e780]:
+                - button "1RB8 Assembly Symmetry" [ref=e781]: 1RB8 Assembly Symmetry
+              - listitem [ref=e782]:
+                - button "Mon, 11 May 2026 08:52:30 GMT" [ref=e783]: Mon, 11 May 2026 08:52:30 GMT
+              - listitem [ref=e784]:
+                - button "Tue, 12 May 2026 13:13:29 GMT" [ref=e785]: Tue, 12 May 2026 13:13:29 GMT
+              - listitem [ref=e786]:
+                - button "Wed, 13 May 2026 02:34:36 GMT" [ref=e787]: Wed, 13 May 2026 02:34:36 GMT
+              - listitem [ref=e788]:
+                - button "Wed, 13 May 2026 05:59:44 GMT" [ref=e789]: Wed, 13 May 2026 05:59:44 GMT
+              - listitem [ref=e790]:
+                - button "Wed, 13 May 2026 07:08:52 GMT" [ref=e791]: Wed, 13 May 2026 07:08:52 GMT
+              - listitem [ref=e792]:
+                - button "Wed, 13 May 2026 07:50:33 GMT" [ref=e793]: Wed, 13 May 2026 07:50:33 GMT
+              - listitem [ref=e794]:
+                - button "Wed, 13 May 2026 07:50:42 GMT MN" [ref=e795]
+              - listitem [ref=e796]:
+                - button "Wed, 13 May 2026 07:50:47 GMT Mn" [ref=e797]
+              - listitem [ref=e798]:
+                - button "Wed, 13 May 2026 07:50:53 GMT Mn" [ref=e799]
+              - listitem [ref=e800]:
+                - button "Thu, 14 May 2026 02:24:29 GMT" [ref=e801]: Thu, 14 May 2026 02:24:29 GMT
+              - listitem [ref=e802]:
+                - button "Thu, 14 May 2026 02:24:47 GMT" [ref=e803]: Thu, 14 May 2026 02:24:47 GMT
+              - listitem [ref=e804]:
+                - button "Thu, 14 May 2026 02:24:48 GMT" [ref=e805]: Thu, 14 May 2026 02:24:48 GMT
+              - listitem [ref=e806]:
+                - button "Thu, 14 May 2026 02:24:49 GMT" [ref=e807]: Thu, 14 May 2026 02:24:49 GMT
+              - listitem [ref=e808]:
+                - button "Fri, 15 May 2026 04:25:42 GMT" [ref=e809]: Fri, 15 May 2026 04:25:42 GMT
+              - listitem [ref=e810]:
+                - button "Fri, 15 May 2026 04:25:52 GMT" [ref=e811]: Fri, 15 May 2026 04:25:52 GMT
+              - listitem [ref=e812]:
+                - button "Fri, 15 May 2026 06:54:30 GMT" [ref=e813]: Fri, 15 May 2026 06:54:30 GMT
+              - listitem [ref=e814]:
+                - button "lsd" [ref=e815]: lsd
+              - listitem [ref=e816]:
+                - button "Fri, 15 May 2026 07:19:41 GMT" [ref=e817]: Fri, 15 May 2026 07:19:41 GMT
+              - listitem [ref=e818]:
+                - button "Fri, 15 May 2026 07:19:43 GMT" [ref=e819]: Fri, 15 May 2026 07:19:43 GMT
+              - listitem [ref=e820]:
+                - button "Fri, 15 May 2026 16:20:00 GMT" [ref=e821]: Fri, 15 May 2026 16:20:00 GMT
+              - listitem [ref=e822]:
+                - button "Fri, 15 May 2026 20:27:48 GMT" [ref=e823]: Fri, 15 May 2026 20:27:48 GMT
+              - listitem [ref=e824]:
+                - button "Fri, 15 May 2026 20:27:52 GMT" [ref=e825]: Fri, 15 May 2026 20:27:52 GMT
+              - listitem [ref=e826]:
+                - button "e" [ref=e827]: e
+              - listitem [ref=e828]:
+                - button "Sat, 16 May 2026 23:25:14 GMT" [ref=e829]: Sat, 16 May 2026 23:25:14 GMT
+              - listitem [ref=e830]:
+                - button "Sun, 17 May 2026 07:06:27 GMT" [ref=e831]: Sun, 17 May 2026 07:06:27 GMT
+              - listitem [ref=e832]:
+                - button "Sun, 17 May 2026 07:06:29 GMT" [ref=e833]: Sun, 17 May 2026 07:06:29 GMT
+              - listitem [ref=e834]:
+                - button "Sun, 17 May 2026 14:52:01 GMT" [ref=e835]: Sun, 17 May 2026 14:52:01 GMT
+              - listitem [ref=e836]:
+                - button "Sun, 17 May 2026 14:52:03 GMT" [ref=e837]: Sun, 17 May 2026 14:52:03 GMT
+              - listitem [ref=e838]:
+                - button "Mon, 18 May 2026 12:59:52 GMT" [ref=e839]: Mon, 18 May 2026 12:59:52 GMT
+              - listitem [ref=e840]:
+                - button "Tue, 19 May 2026 10:39:51 GMT" [ref=e841]: Tue, 19 May 2026 10:39:51 GMT
+              - listitem [ref=e842]:
+                - button "Tue, 19 May 2026 10:39:53 GMT" [ref=e843]: Tue, 19 May 2026 10:39:53 GMT
+              - listitem [ref=e844]:
+                - button "Tue, 19 May 2026 10:39:54 GMT" [ref=e845]: Tue, 19 May 2026 10:39:54 GMT
+              - listitem [ref=e846]:
+                - button "Tue, 19 May 2026 11:12:55 GMT" [ref=e847]: Tue, 19 May 2026 11:12:55 GMT
+              - listitem [ref=e848]:
+                - button "Tue, 19 May 2026 18:55:43 GMT" [ref=e849]: Tue, 19 May 2026 18:55:43 GMT
+              - listitem [ref=e850]:
+                - button "Tue, 19 May 2026 18:55:44 GMT" [ref=e851]: Tue, 19 May 2026 18:55:44 GMT
+              - listitem [ref=e852]:
+                - button "Wed, 20 May 2026 02:03:45 GMT" [ref=e853]: Wed, 20 May 2026 02:03:45 GMT
+              - listitem [ref=e854]:
+                - button "Wed, 20 May 2026 02:05:07 GMT rs16910526_model" [ref=e855]
+              - listitem [ref=e856]:
+                - button "rs16910526_model" [ref=e857]: rs16910526_model
+              - listitem [ref=e858]:
+                - button "Wed, 20 May 2026 18:29:20 GMT" [ref=e859]: Wed, 20 May 2026 18:29:20 GMT
+              - listitem [ref=e860]:
+                - button "Wed, 20 May 2026 20:38:22 GMT" [ref=e861]: Wed, 20 May 2026 20:38:22 GMT
+              - listitem [ref=e862]:
+                - button "Thu, 21 May 2026 10:19:22 GMT" [ref=e863]: Thu, 21 May 2026 10:19:22 GMT
+              - listitem [ref=e864]:
+                - button "Thu, 21 May 2026 10:19:25 GMT" [ref=e865]: Thu, 21 May 2026 10:19:25 GMT
+              - listitem [ref=e866]:
+                - button "Thu, 21 May 2026 15:47:42 GMT" [ref=e867]: Thu, 21 May 2026 15:47:42 GMT
+              - listitem [ref=e868]:
+                - button "Thu, 21 May 2026 15:47:44 GMT" [ref=e869]: Thu, 21 May 2026 15:47:44 GMT
+              - listitem [ref=e870]:
+                - button "Fri, 22 May 2026 08:35:33 GMT" [ref=e871]: Fri, 22 May 2026 08:35:33 GMT
+              - listitem [ref=e872]:
+                - button "Sat, 23 May 2026 11:46:05 GMT" [ref=e873]: Sat, 23 May 2026 11:46:05 GMT
+              - listitem [ref=e874]:
+                - button "Mon, 25 May 2026 03:08:04 GMT" [ref=e875]: Mon, 25 May 2026 03:08:04 GMT
+              - listitem [ref=e876]:
+                - button "Mon, 25 May 2026 09:34:48 GMT" [ref=e877]: Mon, 25 May 2026 09:34:48 GMT
+              - listitem [ref=e878]:
+                - button "Mon, 25 May 2026 18:22:14 GMT" [ref=e879]: Mon, 25 May 2026 18:22:14 GMT
+              - listitem [ref=e880]:
+                - button "Tue, 26 May 2026 06:14:04 GMT" [ref=e881]: Tue, 26 May 2026 06:14:04 GMT
+              - listitem [ref=e882]:
+                - button "Tue, 26 May 2026 06:14:36 GMT" [ref=e883]: Tue, 26 May 2026 06:14:36 GMT
+              - listitem [ref=e884]:
+                - button "Tue, 26 May 2026 14:38:48 GMT" [ref=e885]: Tue, 26 May 2026 14:38:48 GMT
+              - listitem [ref=e886]:
+                - button "Tue, 26 May 2026 15:41:12 GMT" [ref=e887]: Tue, 26 May 2026 15:41:12 GMT
+              - listitem [ref=e888]:
+                - button "Tue, 26 May 2026 16:35:10 GMT" [ref=e889]: Tue, 26 May 2026 16:35:10 GMT
+              - listitem [ref=e890]:
+                - button "Tue, 26 May 2026 16:35:12 GMT" [ref=e891]: Tue, 26 May 2026 16:35:12 GMT
+              - listitem [ref=e892]:
+                - button "Tue, 26 May 2026 16:35:14 GMT" [ref=e893]: Tue, 26 May 2026 16:35:14 GMT
+              - listitem [ref=e894]:
+                - button "Tue, 26 May 2026 20:00:16 GMT" [ref=e895]: Tue, 26 May 2026 20:00:16 GMT
+              - listitem [ref=e896]:
+                - button "Tue, 26 May 2026 20:00:19 GMT" [ref=e897]: Tue, 26 May 2026 20:00:19 GMT
+              - listitem [ref=e898]:
+                - button "Tue, 26 May 2026 20:00:22 GMT" [ref=e899]: Tue, 26 May 2026 20:00:22 GMT
+              - listitem [ref=e900]:
+                - button "Tue, 26 May 2026 20:00:35 GMT" [ref=e901]: Tue, 26 May 2026 20:00:35 GMT
+              - listitem [ref=e902]:
+                - button "Tue, 26 May 2026 20:00:37 GMT" [ref=e903]: Tue, 26 May 2026 20:00:37 GMT
+              - listitem [ref=e904]:
+                - button "Tue, 26 May 2026 20:00:38 GMT" [ref=e905]: Tue, 26 May 2026 20:00:38 GMT
+              - listitem [ref=e906]:
+                - button "Tue, 26 May 2026 20:07:50 GMT" [ref=e907]: Tue, 26 May 2026 20:07:50 GMT
+              - listitem [ref=e908]:
+                - button "Wed, 27 May 2026 01:16:47 GMT" [ref=e909]: Wed, 27 May 2026 01:16:47 GMT
+              - listitem [ref=e910]:
+                - button "Wed, 27 May 2026 07:25:36 GMT" [ref=e911]: Wed, 27 May 2026 07:25:36 GMT
+              - listitem [ref=e912]:
+                - button "Wed, 27 May 2026 19:46:26 GMT" [ref=e913]: Wed, 27 May 2026 19:46:26 GMT
+              - listitem [ref=e914]:
+                - button "Wed, 27 May 2026 19:46:28 GMT" [ref=e915]: Wed, 27 May 2026 19:46:28 GMT
+              - listitem [ref=e916]:
+                - button "Wed, 27 May 2026 19:47:54 GMT" [ref=e917]: Wed, 27 May 2026 19:47:54 GMT
+              - listitem [ref=e918]:
+                - button "Thu, 28 May 2026 11:50:02 GMT" [ref=e919]: Thu, 28 May 2026 11:50:02 GMT
+              - listitem [ref=e920]:
+                - button "Thu, 28 May 2026 11:50:05 GMT" [ref=e921]: Thu, 28 May 2026 11:50:05 GMT
+              - listitem [ref=e922]:
+                - button "Thu, 28 May 2026 14:44:19 GMT" [ref=e923]: Thu, 28 May 2026 14:44:19 GMT
+              - listitem [ref=e924]:
+                - button "Thu, 28 May 2026 16:19:17 GMT" [ref=e925]: Thu, 28 May 2026 16:19:17 GMT
+              - listitem [ref=e926]:
+                - button "Thu, 28 May 2026 17:58:13 GMT" [ref=e927]: Thu, 28 May 2026 17:58:13 GMT
+              - listitem [ref=e928]:
+                - button "Fri, 29 May 2026 11:45:30 GMT" [ref=e929]: Fri, 29 May 2026 11:45:30 GMT
+              - listitem [ref=e930]:
+                - button "Fri, 29 May 2026 11:45:32 GMT" [ref=e931]: Fri, 29 May 2026 11:45:32 GMT
+              - listitem [ref=e932]:
+                - button "Test123" [ref=e933]: Test123
+              - listitem [ref=e934]:
+                - button "Hello-123" [ref=e935]: Hello-123
+              - listitem [ref=e936]:
+                - button "Sat, 30 May 2026 07:45:05 GMT" [ref=e937]: Sat, 30 May 2026 07:45:05 GMT
+              - listitem [ref=e938]:
+                - button "Sat, 30 May 2026 07:45:09 GMT" [ref=e939]: Sat, 30 May 2026 07:45:09 GMT
+              - listitem [ref=e940]:
+                - button "Sat, 30 May 2026 07:45:09 GMT" [ref=e941]: Sat, 30 May 2026 07:45:09 GMT
+              - listitem [ref=e942]:
+                - button "Sat, 30 May 2026 13:27:20 GMT" [ref=e943]: Sat, 30 May 2026 13:27:20 GMT
+              - listitem [ref=e944]:
+                - button "Sat, 30 May 2026 13:27:23 GMT" [ref=e945]: Sat, 30 May 2026 13:27:23 GMT
+              - listitem [ref=e946]:
+                - button "Sat, 30 May 2026 13:27:26 GMT" [ref=e947]: Sat, 30 May 2026 13:27:26 GMT
+              - listitem [ref=e948]:
+                - button "Sat, 30 May 2026 13:27:33 GMT" [ref=e949]: Sat, 30 May 2026 13:27:33 GMT
+              - listitem [ref=e950]:
+                - button "Sat, 30 May 2026 13:27:46 GMT" [ref=e951]: Sat, 30 May 2026 13:27:46 GMT
+              - listitem [ref=e952]:
+                - button "Sat, 30 May 2026 13:27:49 GMT" [ref=e953]: Sat, 30 May 2026 13:27:49 GMT
+            - generic [ref=e954]:
+              - generic [ref=e955]:
                 - text: Server Url
-                - textbox "Server Url" [ref=e946]: https://webchem.ncbr.muni.cz/molstar-state
-              - button "Refresh" [ref=e948]:
-                - img [ref=e950]
+                - textbox "Server Url" [ref=e957]: https://webchem.ncbr.muni.cz/molstar-state
+              - button "Refresh" [ref=e959]:
+                - img [ref=e961]
                 - text: Refresh
-        - generic [ref=e954]:
-          - generic [ref=e955]:
-            - img [ref=e957]
+        - generic [ref=e965]:
+          - generic [ref=e966]:
+            - img [ref=e968]
             - text: Structure Tools
-          - generic [ref=e959]:
-            - button "Structure" [ref=e961]:
-              - img [ref=e963]
+          - generic [ref=e970]:
+            - button "Structure" [ref=e972]:
+              - img [ref=e974]
               - text: Structure
-            - generic [ref=e966]:
-              - button "4UG0 | STRUCTURE OF THE HUMAN 80S RIBOSOME" [ref=e967]
-              - button "Apply a structure presets to the current hierarchy." [ref=e968]:
-                - img [ref=e970]
-            - generic [ref=e972]:
-              - generic [ref=e973]:
-                - text: Type
-                - button "Assembly" [ref=e975]
-              - generic [ref=e976]:
-                - generic "Asm Id. Click for help." [ref=e977]:
-                  - text: Asm Id
-                  - button "Asm Id. Click for help." [ref=e978]:
-                    - img [ref=e980]
-                - 'button "1: Author Defined Assembly" [ref=e983]'
+            - generic [ref=e977]:
+              - button "4UG0 | STRUCTURE OF THE HUMAN 80S RIBOSOME" [ref=e978]
+              - button "Apply a structure presets to the current hierarchy." [ref=e979]:
+                - img [ref=e981]
+            - generic [ref=e983]:
               - generic [ref=e984]:
-                - generic "Dynamic Bonds. Click for help." [ref=e985]:
+                - text: Type
+                - button "Assembly" [ref=e986]
+              - generic [ref=e987]:
+                - generic "Asm Id. Click for help." [ref=e988]:
+                  - text: Asm Id
+                  - button "Asm Id. Click for help." [ref=e989]:
+                    - img [ref=e991]
+                - 'button "1: Author Defined Assembly" [ref=e994]'
+              - generic [ref=e995]:
+                - generic "Dynamic Bonds. Click for help." [ref=e996]:
                   - text: Dynamic Bonds
-                  - button "Dynamic Bonds. Click for help." [ref=e986]:
-                    - img [ref=e988]
-                - button "Off" [ref=e991]:
-                  - img [ref=e993]
+                  - button "Dynamic Bonds. Click for help." [ref=e997]:
+                    - img [ref=e999]
+                - button "Off" [ref=e1002]:
+                  - img [ref=e1004]
                   - text: "Off"
-            - generic [ref=e996]:
-              - button "Nothing Focused" [disabled] [ref=e997]
-              - button "Select a focus target to center on an show its surroundings. Hold shift to focus on multiple targets." [ref=e998]:
-                - img [ref=e1000]
-          - generic [ref=e1002]:
-            - button "Measurements" [ref=e1004]:
-              - img [ref=e1006]
-              - text: Measurements
-            - generic [ref=e1008]:
-              - button "Add" [ref=e1009]:
+            - generic [ref=e1007]:
+              - button "Nothing Focused" [disabled] [ref=e1008]
+              - button "Select a focus target to center on an show its surroundings. Hold shift to focus on multiple targets." [ref=e1009]:
                 - img [ref=e1011]
+          - generic [ref=e1013]:
+            - button "Measurements" [ref=e1015]:
+              - img [ref=e1017]
+              - text: Measurements
+            - generic [ref=e1019]:
+              - button "Add" [ref=e1020]:
+                - img [ref=e1022]
                 - text: Add
-              - button "Options" [ref=e1013]:
-                - img [ref=e1015]
-          - generic [ref=e1017]:
-            - button "Quick Styles" [ref=e1019]:
-              - img [ref=e1021]
+              - button "Options" [ref=e1024]:
+                - img [ref=e1026]
+          - generic [ref=e1028]:
+            - button "Quick Styles" [ref=e1030]:
+              - img [ref=e1032]
               - text: Quick Styles
-            - generic [ref=e1023]:
-              - generic [ref=e1025]: Apply Representation
-              - generic [ref=e1026]:
-                - button "Default" [ref=e1027]
-                - button "Cartoon" [ref=e1028]
-                - button "Spacefill" [ref=e1029]
-                - button "Surface" [ref=e1030]
-            - generic [ref=e1031]:
-              - generic [ref=e1033]: Apply Style
-              - generic [ref=e1034]:
-                - button "Default" [ref=e1035]
-                - button "Illustrative" [ref=e1036]
-          - generic [ref=e1037]:
-            - button "Components4UG0" [ref=e1039]:
-              - img [ref=e1041]
+            - generic [ref=e1034]:
+              - generic [ref=e1036]: Apply Representation
+              - generic [ref=e1037]:
+                - button "Default" [ref=e1038]
+                - button "Cartoon" [ref=e1039]
+                - button "Spacefill" [ref=e1040]
+                - button "Surface" [ref=e1041]
+            - generic [ref=e1042]:
+              - generic [ref=e1044]: Apply Style
+              - generic [ref=e1045]:
+                - button "Default" [ref=e1046]
+                - button "Illustrative" [ref=e1047]
+          - generic [ref=e1048]:
+            - button "Components4UG0" [ref=e1050]:
+              - img [ref=e1052]
               - text: Components4UG0
-            - generic [ref=e1043]:
-              - button "Preset" [ref=e1044]:
-                - img [ref=e1046]
+            - generic [ref=e1054]:
+              - button "Preset" [ref=e1055]:
+                - img [ref=e1057]
                 - text: Preset
-              - button "Add" [ref=e1048]:
-                - img [ref=e1050]
+              - button "Add" [ref=e1059]:
+                - img [ref=e1061]
                 - text: Add
-              - button "Options that are applied to all applicable representations." [ref=e1052]:
-                - img [ref=e1054]
-              - button "Some mistakes of the past can be undone." [disabled] [ref=e1056]:
-                - img [ref=e1058]
-            - generic [ref=e1061]:
-              - button "Polymer Cartoon" [ref=e1062]:
+              - button "Options that are applied to all applicable representations." [ref=e1063]:
+                - img [ref=e1065]
+              - button "Some mistakes of the past can be undone." [disabled] [ref=e1067]:
+                - img [ref=e1069]
+            - generic [ref=e1072]:
+              - button "Polymer Cartoon" [ref=e1073]:
                 - text: Polymer
-                - generic [ref=e1063]: Cartoon
-              - button "Hide component" [ref=e1064]:
-                - img [ref=e1066]
-              - button "Remove" [ref=e1068]:
-                - img [ref=e1070]
-              - button "Actions" [ref=e1072]:
-                - img [ref=e1074]
-          - generic [ref=e1076]:
-            - button "Volume Streaming4UG0" [ref=e1078]:
-              - img [ref=e1080]
-              - text: Volume Streaming4UG0
-            - generic [ref=e1082]:
-              - button "Enable" [ref=e1083]:
+                - generic [ref=e1074]: Cartoon
+              - button "Hide component" [ref=e1075]:
+                - img [ref=e1077]
+              - button "Remove" [ref=e1079]:
+                - img [ref=e1081]
+              - button "Actions" [ref=e1083]:
                 - img [ref=e1085]
+          - generic [ref=e1087]:
+            - button "Volume Streaming4UG0" [ref=e1089]:
+              - img [ref=e1091]
+              - text: Volume Streaming4UG0
+            - generic [ref=e1093]:
+              - button "Enable" [ref=e1094]:
+                - img [ref=e1096]
                 - text: Enable
-              - button "Options" [ref=e1087]:
-                - img [ref=e1089]
-        - list [ref=e1094]:
-          - listitem [ref=e1095]:
-            - generic [ref=e1096]: 17:10:15
-            - generic [ref=e1097]: Created 4ug0.cif in 72ms.
-          - listitem [ref=e1098]:
-            - generic [ref=e1099]: 17:10:15
-            - generic [ref=e1100]: Created CIF File in 269ms.
-          - listitem [ref=e1101]:
-            - generic [ref=e1102]: 17:10:16
-            - generic [ref=e1103]: Created 4UG0 in 169ms.
-          - listitem [ref=e1104]:
-            - generic [ref=e1105]: 17:10:16
-            - generic [ref=e1106]: Created Model 1 in 0ms.
-          - listitem [ref=e1107]:
-            - generic [ref=e1108]: 17:10:16
-            - generic [ref=e1109]: Created Model 1 in 0ms.
-          - listitem [ref=e1110]:
-            - generic [ref=e1111]: 17:10:16
-            - generic [ref=e1112]: Created Assembly 1 in 12ms.
-          - listitem [ref=e1113]:
-            - generic [ref=e1114]: 17:10:16
-            - generic [ref=e1115]: Created Assembly 1 in 0ms.
-          - listitem [ref=e1116]:
-            - generic [ref=e1117]: 17:10:16
-            - generic [ref=e1118]: Created Polymer in 2ms.
-          - listitem [ref=e1119]:
-            - generic [ref=e1120]: 17:10:16
-            - generic [ref=e1121]: Created Cartoon in 238ms.
-          - listitem [ref=e1122]:
-            - generic [ref=e1123]: 17:10:16
-            - generic [ref=e1124]: Updated Structure Focus Representation in 1ms.
+              - button "Options" [ref=e1098]:
+                - img [ref=e1100]
+        - list [ref=e1105]:
+          - listitem [ref=e1106]:
+            - generic [ref=e1107]: 22:56:31
+            - generic [ref=e1108]: Created 4ug0.cif in 79ms.
+          - listitem [ref=e1109]:
+            - generic [ref=e1110]: 22:56:31
+            - generic [ref=e1111]: Created CIF File in 229ms.
+          - listitem [ref=e1112]:
+            - generic [ref=e1113]: 22:56:31
+            - generic [ref=e1114]: Created 4UG0 in 157ms.
+          - listitem [ref=e1115]:
+            - generic [ref=e1116]: 22:56:31
+            - generic [ref=e1117]: Created Model 1 in 0ms.
+          - listitem [ref=e1118]:
+            - generic [ref=e1119]: 22:56:31
+            - generic [ref=e1120]: Created Model 1 in 0ms.
+          - listitem [ref=e1121]:
+            - generic [ref=e1122]: 22:56:31
+            - generic [ref=e1123]: Created Assembly 1 in 14ms.
+          - listitem [ref=e1124]:
+            - generic [ref=e1125]: 22:56:31
+            - generic [ref=e1126]: Created Assembly 1 in 0ms.
+          - listitem [ref=e1127]:
+            - generic [ref=e1128]: 22:56:31
+            - generic [ref=e1129]: Created Polymer in 2ms.
+          - listitem [ref=e1130]:
+            - generic [ref=e1131]: 22:56:32
+            - generic [ref=e1132]: Created Cartoon in 275ms.
+          - listitem [ref=e1133]:
+            - generic [ref=e1134]: 22:56:32
+            - generic [ref=e1135]: Updated Structure Focus Representation in 1ms.
 ```
 
 # Test source

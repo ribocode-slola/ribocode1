@@ -117,14 +117,25 @@ export function getLoadDataRowProps({
 	setRealignedRepRefs,
 	setRealignedStructRefs
 }: LoadDataRowPropsInput) {
-	return {
-		viewerTitle: viewer.moleculeAligned ? Aligned + `: ${viewer.moleculeAligned.name || viewer.moleculeAligned.filename}` : "",
-		isLoaded: isMoleculeAlignedLoaded,
-		onFileInputClick: viewer.handleFileInputButtonClick,
-		fileInputRef: viewer.fileInputRef,
-		onFileChange: (e: any) => handleFileChange(e, Aligned),
-		fileInputLabel: typeof arguments[0].fileInputLabel === 'string' ? arguments[0].fileInputLabel : `Load ${Aligned}`,
-		fileInputDisabled: typeof arguments[0].fileInputDisabled === 'boolean' ? arguments[0].fileInputDisabled : (!isMoleculeAlignedToLoaded || (typeof arguments[0].isAlignmentDataReady === 'boolean' ? !arguments[0].isAlignmentDataReady : !(viewer.moleculeAlignedTo && Object.keys(viewer.moleculeAlignedTo.alignmentData || {}).length > 0)) || !viewerReady || !otherViewerReady),
+	   return {
+			  // Use the correct molecule and loaded state for each row
+			  viewerTitle:
+				  Aligned === 'AlignedTo'
+					  ? (viewer.moleculeAlignedTo ? Aligned + `: ${viewer.moleculeAlignedTo.name || viewer.moleculeAlignedTo.label || viewer.moleculeAlignedTo.filename}` : "")
+					  : (viewer.moleculeAligned ? Aligned + `: ${viewer.moleculeAligned.name || viewer.moleculeAligned.label || viewer.moleculeAligned.filename}` : ""),
+			  isLoaded: Aligned === 'AlignedTo' ? isMoleculeAlignedToLoaded : isMoleculeAlignedLoaded,
+			  loadedFilename:
+				  Aligned === 'AlignedTo'
+					  ? (viewer.moleculeAlignedTo?.filename || viewer.moleculeAlignedTo?.name || viewer.moleculeAlignedTo?.label || "")
+					  : (viewer.moleculeAligned?.filename || viewer.moleculeAligned?.name || viewer.moleculeAligned?.label || ""),
+		   onFileInputClick: viewer.handleFileInputButtonClick,
+		   fileInputRef: viewer.fileInputRef,
+		   onFileChange: (e: any) => handleFileChange(e, Aligned),
+		   fileInputLabel: typeof arguments[0].fileInputLabel === 'string' ? arguments[0].fileInputLabel : `Load ${Aligned}`,
+		   fileInputDisabled:
+			   typeof arguments[0].fileInputDisabled === 'boolean'
+				   ? arguments[0].fileInputDisabled
+				   : false, // Always enabled unless explicitly disabled
 		representationType,
 		onRepresentationTypeChange: setRepresentationType,
 		representationTypeDisabled: !isMoleculeAlignedLoaded,
@@ -527,9 +538,19 @@ export function getMolstarContainerProps({
  * @property {Object} realignedMoleculeListProps - Props to pass to the RealignedMoleculeList component.
  * @property {Object} molstarContainerProps - Props to pass to the MolstarContainer component.
  */
+
+
+/**
+ * A column in the viewer that contains the LoadDataRow, MoleculeUI, RealignedMoleculeList, and MolstarContainer components.
+ * @param {ViewerColumnProps} props - The props for the ViewerColumn component.
+ * @returns {JSX.Element} The ViewerColumn component. 
+ */
+
+
 export interface ViewerColumnProps {
 	viewerKey: ViewerKey;
-	loadDataRowProps: any;
+	loadDataRowPropsAlignedTo: any;
+	loadDataRowPropsAligned: any;
 	moleculeUIAlignedToProps: any;
 	moleculeUIAlignedProps: any;
 	realignedMoleculeListProps: any;
@@ -538,14 +559,10 @@ export interface ViewerColumnProps {
 	idPrefix?: string;
 }
 
-/**
- * A column in the viewer that contains the LoadDataRow, MoleculeUI, RealignedMoleculeList, and MolstarContainer components.
- * @param {ViewerColumnProps} props - The props for the ViewerColumn component.
- * @returns {JSX.Element} The ViewerColumn component. 
- */
 const ViewerColumn: React.FC<ViewerColumnProps> = ({
 	viewerKey,
-	loadDataRowProps,
+	loadDataRowPropsAlignedTo,
+	loadDataRowPropsAligned,
 	moleculeUIAlignedToProps,
 	moleculeUIAlignedProps,
 	realignedMoleculeListProps,
@@ -553,17 +570,22 @@ const ViewerColumn: React.FC<ViewerColumnProps> = ({
 	testMode,
 	idPrefix
 }) => {
-	// Compose a unique idPrefix for this viewer column
 	const viewerIdPrefix = idPrefix ? `${idPrefix}-${idSuffix}-${viewerKey}` : `${idSuffix}-${viewerKey}`;
-	return (
-		<div className="Column" id={viewerIdPrefix}>
-			<LoadDataRow {...loadDataRowProps} testMode={testMode} idPrefix={viewerIdPrefix} />
-			<MoleculeUI key={moleculeUIAlignedToProps.key} {...(() => { const { key, ...rest } = moleculeUIAlignedToProps; return rest; })()} idPrefix={viewerIdPrefix} />
-			<MoleculeUI key={moleculeUIAlignedProps.key} {...(() => { const { key, ...rest } = moleculeUIAlignedProps; return rest; })()} idPrefix={viewerIdPrefix} />
-			<RealignedMoleculeList {...realignedMoleculeListProps} idPrefix={viewerIdPrefix} />
-			<MolstarContainer {...molstarContainerProps} idPrefix={viewerIdPrefix} viewerKey={viewerKey} />
-		</div>
-	);
+	       return (
+		       <div className="Column" id={viewerIdPrefix}>
+					   {/* Only render the correct loader in each column as per requirements */}
+					   {viewerKey === 'A' && (
+						   <LoadDataRow {...loadDataRowPropsAlignedTo} testMode={testMode} idPrefix={`${viewerIdPrefix}-alignedto`} />
+					   )}
+					   {viewerKey === 'B' && (
+						   <LoadDataRow {...loadDataRowPropsAligned} testMode={testMode} idPrefix={`${viewerIdPrefix}-aligned`} />
+					   )}
+			       <MoleculeUI key={moleculeUIAlignedToProps.key} {...(() => { const { key, ...rest } = moleculeUIAlignedToProps; return rest; })()} idPrefix={viewerIdPrefix} />
+			       <MoleculeUI key={moleculeUIAlignedProps.key} {...(() => { const { key, ...rest } = moleculeUIAlignedProps; return rest; })()} idPrefix={viewerIdPrefix} />
+			       <RealignedMoleculeList {...realignedMoleculeListProps} idPrefix={viewerIdPrefix} />
+			       <MolstarContainer {...molstarContainerProps} idPrefix={viewerIdPrefix} viewerKey={viewerKey} />
+		       </div>
+	       );
 };
 
 export default ViewerColumn;
