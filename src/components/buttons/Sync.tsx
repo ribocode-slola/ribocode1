@@ -8,11 +8,10 @@
  * @lastModified 2026-04-24
  * @see https://github.com/ribocode-slola/ribocode1
  */
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 import { Vec3 } from 'molstar/lib/mol-math/linear-algebra/3d/vec3';
 import type { ViewerKey } from '../../types/ribocode';
-import { A } from '../../constants/ribocode';
 import GenericSelectButton from './select/Select';
 
 /**
@@ -58,36 +57,42 @@ const SyncButton: React.FC<SyncButtonProps> = ({
     setSyncEnabled,
     id
 }) => {
+    const isApplyingSync = useRef(false);
+
     useEffect(() => {
         if (!syncEnabled || !viewerA || !viewerB) return;
-        // Determine source and target viewers based on activeViewer.
-        const sourceViewer = activeViewer === A ? viewerA : viewerB;
-        const targetViewer = activeViewer === A ? viewerB : viewerA;
-        if (!sourceViewer?.canvas3d?.camera || !targetViewer?.canvas3d?.camera) return;
-        // Get source and target cameras.
-        const sourceCamera = sourceViewer.canvas3d.camera;
-        const targetCamera = targetViewer.canvas3d.camera;
-        // Subscribe to source camera state changes.
-        const subscription = sourceCamera.stateChanged.subscribe(() => {
+        const syncCameraState = (sourceViewer: PluginUIContext, targetViewer: PluginUIContext) => {
+            if (isApplyingSync.current) return;
+
+            const sourceCamera = sourceViewer?.canvas3d?.camera;
+            const targetCamera = targetViewer?.canvas3d?.camera;
+            if (!sourceCamera || !targetCamera) return;
+
             const state = sourceCamera.getSnapshot();
-            console.log('Target radius before setState:', targetCamera.getSnapshot().radius);
-            targetCamera.setState({
-                ...targetCamera.state,
-                position: Vec3.clone(state.position),
-                target: Vec3.clone(state.target),
-                up: Vec3.clone(state.up),
-                radius: state.radius,
-            });
-            // Force target viewer to redraw.
-            if (targetViewer.canvas3d) {
-                targetViewer.canvas3d.requestDraw();
+            isApplyingSync.current = true;
+            try {
+                targetCamera.setState({
+                    ...targetCamera.state,
+                    position: Vec3.clone(state.position),
+                    target: Vec3.clone(state.target),
+                    up: Vec3.clone(state.up),
+                    radius: state.radius,
+                });
+                targetViewer.canvas3d?.requestDraw?.();
+            } finally {
+                isApplyingSync.current = false;
             }
-            console.log('Source radius:', state.radius);
-            console.log('Target radius after setState:', targetCamera.getSnapshot().radius);
-        });
-        // Cleanup subscription on effect cleanup.
-        return () => subscription.unsubscribe();
+        };
+
+        const subA = viewerA?.canvas3d?.camera?.stateChanged.subscribe(() => syncCameraState(viewerA, viewerB));
+        const subB = viewerB?.canvas3d?.camera?.stateChanged.subscribe(() => syncCameraState(viewerB, viewerA));
+
+        return () => {
+            subA?.unsubscribe?.();
+            subB?.unsubscribe?.();
+        };
     }, [syncEnabled, viewerA, viewerB, activeViewer]);
+
     // Return the sync select button.
     return (
         <GenericSelectButton

@@ -2,9 +2,7 @@
 - Save/Load session buttons added.
 - Code moved from App.tsx into hooks and components. Constants and Types defined separately. - Tests added for functional files.
 - End to End (E2E) testing added using Playwright
-- Updated documentation
-  - Added DeveloperGuide.md
-
+  
 ## [v0.7.0] - 2026-01-02
 - Added control to select a subunit to help filter chain selection.
 - Commented out `Load Dictionary` and `Load Alignment` buttons.

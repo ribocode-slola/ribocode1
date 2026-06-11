@@ -163,7 +163,7 @@ const MoleculeUI: React.FC<MoleculeUIProps> = ({
                         return (
                             <span key={ref} className="rep-btn-group">
                                 <button
-                                    onClick={() => onToggleRepVisibility ? onToggleRepVisibility(repId) : handleToggleRepVisibility(ref)}
+                                    onClick={() => onToggleRepVisibility ? onToggleRepVisibility(ref) : handleToggleRepVisibility(ref)}
                                     className="msp-btn msp-form-control"
                                     disabled={!isLoaded}
                                     aria-label={`Toggle visibility for ${typeName} representation`}

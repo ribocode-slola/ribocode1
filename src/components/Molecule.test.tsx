@@ -62,4 +62,33 @@ describe('MoleculeUI', () => {
         fireEvent.click(screen.getByLabelText('Remove Test Molecule'));
         expect(onRemove).toHaveBeenCalled();
     });
+
+    it('passes representation ref to onToggleRepVisibility', () => {
+        const onToggleRepVisibility = vi.fn();
+        const repRef = 'rep-ref-1';
+        const pluginWithRep = {
+            state: {
+                data: {
+                    cells: new Map([
+                        [repRef, {
+                            params: { values: { type: { name: 'spacefill' }, _ribocodeId: 'custom-id-1' } },
+                            state: { isHidden: false }
+                        }]
+                    ])
+                }
+            }
+        } as any;
+
+        render(
+            <MoleculeUI
+                {...baseProps}
+                plugin={pluginWithRep}
+                representationRefs={[repRef]}
+                onToggleRepVisibility={onToggleRepVisibility}
+            />
+        );
+
+        fireEvent.click(screen.getByLabelText('Toggle visibility for spacefill representation'));
+        expect(onToggleRepVisibility).toHaveBeenCalledWith(repRef);
+    });
 });

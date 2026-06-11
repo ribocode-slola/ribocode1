@@ -5,9 +5,9 @@
  *
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
  * 
- * @author Andy Turner <agdturner@gmail.com>
- * @version 1.0.0
- * @lastModified 2026-04-24
+ * @author Copilot, Andy Turner <agdturner@gmail.com>
+ * @version 1.0.1
+ * @lastModified 2026-06-11
  * @see https://github.com/ribocode-slola/ribocode1
  */
 import { useCallback } from 'react';
@@ -50,5 +50,11 @@ export async function handleToggle(viewer: any, moleculeKey: string, setVisible:
 
 // Dummy toggleVisibility for illustration (replace with actual import/logic)
 async function toggleVisibility(viewer: any, model: any) {
-    // ...actual visibility logic...
+    const vrc = viewer.ref?.current;
+    if (!vrc) return;
+    const ref = model?.cell?.transform?.ref;
+    if (!ref) return;
+    const { PluginCommands } = await import('molstar/lib/mol-plugin/commands');
+    await PluginCommands.State.ToggleVisibility.apply(vrc, [vrc, { state: vrc.state.data, ref }]);
+    vrc.canvas3d?.requestDraw?.();
 }

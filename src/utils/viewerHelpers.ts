@@ -49,8 +49,7 @@ export function createZoomHandler(
                 focusLociOnChain(
                     plugin,
                     structureRef,
-                    chainId,
-                    sync && syncPluginRef?.current ? syncPluginRef.current : undefined
+                    chainId
                 );
             } else if (property === 'residue-test') {
                 focusLociOnResidue(
@@ -59,7 +58,6 @@ export function createZoomHandler(
                     chainId,
                     residueId ?? '',
                     insCode,
-                    sync && syncPluginRef?.current ? syncPluginRef.current : undefined,
                     zoomExtraRadius,
                     zoomMinRadius
                 );
@@ -68,8 +66,7 @@ export function createZoomHandler(
                 focusLociOnChain(
                     plugin,
                     structureRef,
-                    chainId,
-                    sync && syncPluginRef?.current ? syncPluginRef.current : undefined
+                    chainId
                 );
             }
         }

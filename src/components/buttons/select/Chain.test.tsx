@@ -65,7 +65,7 @@ describe('ChainSelectButton', () => {
                 id="select-chain-test"
             />
         );
-        expect((getByLabelText('Select Chain') as HTMLSelectElement).value).toBe('Chain B');
+        expect((getByLabelText('Select Chain') as HTMLSelectElement).value).toBe('B');
         // Check id is present
         expect((getByLabelText('Select Chain') as HTMLSelectElement).id).toBe('select-chain-test');
     });
@@ -81,7 +81,7 @@ describe('ChainSelectButton', () => {
                 id="test-chain-select-onselect"
             />
         );
-        fireEvent.change(getByLabelText('Select Chain'), { target: { value: 'Chain C' } });
+        fireEvent.change(getByLabelText('Select Chain'), { target: { value: 'C' } });
         expect(onSelect).toHaveBeenCalledWith('C');
     });
 

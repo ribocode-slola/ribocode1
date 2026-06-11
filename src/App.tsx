@@ -5,9 +5,9 @@
  *
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT. See LICENSE file for more info.
  *
- * @author Andy Turner <agdturner@gmail.com>
- * @version 1.0.0
- * @lastModified 2026-04-24
+ * @author Copilot, Andy Turner <agdturner@gmail.com>
+ * @version 1.0.1
+ * @lastModified 2026-06-11
  * @see https://github.com/ribocode-slola/ribocode1
  */
 import React, { useEffect, useState, useRef, useCallback } from 'react';
@@ -207,6 +207,14 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 trajectory: viewerAMoleculeAlignedTo.trajectory,
                 alignmentData: viewerAMoleculeAlignedTo.alignmentData
             }));
+            viewerA.setIsMoleculeAlignedToVisible(true);
+            const structAAlignedTo = pluginA.managers.structure.hierarchy.current.structures[0];
+            if (structAAlignedTo) {
+                const refAAlignedTo = structAAlignedTo.cell.transform.ref;
+                molstarA.setStructureRef(AlignedTo, refAAlignedTo);
+                molstarA.addRepresentation(AlignedTo, refAAlignedTo, 'spacefill', { name: 'default', params: {} },
+                    (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)));
+            }
 
             // Load into Viewer B
             const viewerBMoleculeAlignedTo = await loadMoleculeFileToViewer(
@@ -226,6 +234,13 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             }));
             viewerB.setIsMoleculeAlignedToLoaded(true);
             viewerB.setIsMoleculeAlignedToVisible(true);
+                const structBAlignedTo = pluginB.managers.structure.hierarchy.current.structures[0];
+                if (structBAlignedTo) {
+                    const refBAlignedTo = structBAlignedTo.cell.transform.ref;
+                    molstarB.setStructureRef(AlignedTo, refBAlignedTo);
+                    molstarB.addRepresentation(AlignedTo, refBAlignedTo, 'spacefill', { name: 'default', params: {} },
+                        (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)));
+                }
 
         } else if (mode === Aligned) {
             if (alignedFile && alignedFile.name === file.name) {
@@ -234,6 +249,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             }
             setAlignedFile(file);
             setAlignedFilename(file.name);
+            const alignData = alignmentData ?? viewerA.moleculeAlignedTo?.alignmentData;
 
             // Load into Viewer A
             const assetFileA = Asset.File(file);
@@ -241,7 +257,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             let viewerAMoleculeAligned = null;
             if (pluginA) {
                 viewerAMoleculeAligned = await loadMoleculeFileToViewer(
-                    pluginA, assetFileA, true, true
+                    pluginA, assetFileA, false, true, alignData
                 );
             }
             if (viewerAMoleculeAligned) {
@@ -255,15 +271,23 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 }));
                 viewerA.setIsMoleculeAlignedLoaded(true);
                 viewerA.setIsMoleculeAlignedVisible(true);
+                const structAAligned = pluginA?.managers?.structure?.hierarchy?.current?.structures[1]
+                    ?? pluginA?.managers?.structure?.hierarchy?.current?.structures[0];
+                if (structAAligned) {
+                    const refAAligned = structAAligned.cell.transform.ref;
+                    molstarA.setStructureRef(Aligned, refAAligned);
+                    molstarA.addRepresentation(Aligned, refAAligned, 'spacefill', { name: 'default', params: {} },
+                        (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)));
+                }
             }
 
-            // Load into Viewer B
+            // Load into Viewer B and update state/filename for UI
             const assetFileB = Asset.File(file);
             const pluginB = viewerB.ref.current;
             let viewerBMoleculeAligned = null;
             if (pluginB) {
                 viewerBMoleculeAligned = await loadMoleculeFileToViewer(
-                    pluginB, assetFileB, true, true
+                    pluginB, assetFileB, false, true, alignData
                 );
             }
             if (viewerBMoleculeAligned) {
@@ -277,37 +301,16 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 }));
                 viewerB.setIsMoleculeAlignedLoaded(true);
                 viewerB.setIsMoleculeAlignedVisible(true);
+                setAlignedFilename(file.name); // Ensure filename is set for UI
+                const structBAligned = pluginB?.managers?.structure?.hierarchy?.current?.structures[1]
+                    ?? pluginB?.managers?.structure?.hierarchy?.current?.structures[0];
+                if (structBAligned) {
+                    const refBAligned = structBAligned.cell.transform.ref;
+                    molstarB.setStructureRef(Aligned, refBAligned);
+                    molstarB.addRepresentation(Aligned, refBAligned, 'spacefill', { name: 'default', params: {} },
+                        (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)));
+                }
             }
-        }
-        let alignData = alignmentData;
-        if (mode === Aligned && !alignData) {
-            alignData = viewerA.moleculeAlignedTo?.alignmentData;
-        }
-        // Viewer A
-        if (mode === AlignedTo) {
-            const viewerAMoleculeAlignedTo = await loadMoleculeFileToViewer(
-                pluginA, assetFile, true, true
-            );
-            if (!viewerAMoleculeAlignedTo) {
-                console.error('Failed to load molecule into viewer A.');
-                return;
-            }
-            viewerA.setMoleculeAlignedTo((prev: any) => ({
-                label: viewerAMoleculeAlignedTo.label,
-                name: viewerAMoleculeAlignedTo.name,
-                filename: viewerAMoleculeAlignedTo.filename ?? prev?.filename ?? "",
-                presetResult: viewerAMoleculeAlignedTo.presetResult ?? "Unknown",
-                trajectory: viewerAMoleculeAlignedTo.trajectory,
-                alignmentData: viewerAMoleculeAlignedTo.alignmentData
-            }));
-            const structureA = pluginA.managers.structure.hierarchy.current.structures[0];
-            const structureB = pluginB.managers.structure.hierarchy.current.structures[1];
-            if (structureB) {
-                const ref = structureB.cell.transform.ref;
-                molstarB.setStructureRef(Aligned, ref);
-            }
-            viewerB.setIsMoleculeAlignedLoaded(true);
-            viewerB.setIsMoleculeAlignedVisible(true);
         }
     };
 
@@ -426,10 +429,26 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         chainColorMaps,
         [viewerA.moleculeAlignedTo, viewerB.moleculeAlignedTo, representationTypeAlignedTo, structureRefAAlignedTo, structureRefBAlignedTo]
     );
+    useUpdateColors(
+        viewerB.ref.current,
+        colorsAlignedToFile.data,
+        setIsMoleculeAlignedToColoursLoaded,
+        themeNameAlignedTo,
+        chainColorMaps,
+        [viewerA.moleculeAlignedTo, viewerB.moleculeAlignedTo, representationTypeAlignedTo, structureRefAAlignedTo, structureRefBAlignedTo]
+    );
 
     // Use the custom hook for both color sets (Aligned)
     useUpdateColors(
         viewerA.ref.current,
+        colorsAlignedFile.data,
+        setIsMoleculeAlignedColoursLoaded,
+        themeNameAligned,
+        chainColorMaps,
+        [viewerA.moleculeAligned, viewerB.moleculeAligned, representationTypeAligned, structureRefAAligned, structureRefBAligned]
+    );
+    useUpdateColors(
+        viewerB.ref.current,
         colorsAlignedFile.data,
         setIsMoleculeAlignedColoursLoaded,
         themeNameAligned,
@@ -879,6 +898,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                         activeViewer={activeViewer}
                         syncEnabled={syncEnabled}
                         setSyncEnabled={setSyncEnabled}
+                        syncDisabled={!viewerA.isMoleculeAlignedLoaded || !viewerB.isMoleculeAlignedLoaded}
                         selectedChainIdAlignedTo={selectedChainIdAlignedTo}
                         selectedChainIdAligned={selectedChainIdAligned}
                         realignmentExists={realignmentExists}
@@ -969,7 +989,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     setRealignedRepRefs: setRealignedRepRefsA,
                                     setRealignedStructRefs: setRealignedStructRefsA,
                                     fileInputLabel: 'Load Aligned',
-                                    fileInputDisabled: false,
+                                    fileInputDisabled: !viewerA.isMoleculeAlignedToLoaded,
                                 })}
                                 moleculeUIAlignedToProps={getMoleculeUIAlignedToProps({
                                     molstar: molstarA,
@@ -1097,7 +1117,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     realignedStructRefs: realignedStructRefsB,
                                     otherRealignedStructRefs: realignedStructRefsA,
                                     isMoleculeAlignedLoaded: !!(viewerB.moleculeAligned && viewerB.moleculeAligned.filename),
-                                    isMoleculeAlignedToLoaded: false, // Only matters for AlignedTo loader
+                                    isMoleculeAlignedToLoaded: viewerB.isMoleculeAlignedToLoaded,
                                     viewerReady: viewerBReady,
                                     otherViewerReady: viewerAReady,
                                     representationType: representationTypeAligned,
@@ -1128,7 +1148,9 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     setRealignedRepRefs: setRealignedRepRefsB,
                                     setRealignedStructRefs: setRealignedStructRefsB,
                                     fileInputLabel: 'Load Aligned',
-                                    fileInputDisabled: false,
+                                    fileInputDisabled: !viewerB.isMoleculeAlignedToLoaded,
+                                    // Ensure loadedFilename is always passed explicitly for Aligned
+                                    loadedFilename: viewerB.moleculeAligned?.filename || viewerB.moleculeAligned?.name || viewerB.moleculeAligned?.label || '',
                                 })}
                                 moleculeUIAlignedToProps={getMoleculeUIAlignedToProps({
                                     molstar: molstarB,

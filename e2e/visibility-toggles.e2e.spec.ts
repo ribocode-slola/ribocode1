@@ -1,5 +1,5 @@
 /**
- * Playwright E2E test to ensure Aligned and AlignedTo buttons update independently.
+ * Playwright E2E test to ensure the visibility toggle for Aligned and AlignedTo works in both columns.
  *
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT
  * @author Copilot, Andy Turner <agdturner@gmail.com>
@@ -13,26 +13,36 @@ function dataPath(filename: string) {
   return path.resolve(__dirname, '../data/input', filename);
 }
 
-test('Aligned and AlignedTo buttons update independently', async ({ page }) => {
+test('Visibility toggles work for Aligned and AlignedTo in both columns', async ({ page }) => {
   await page.goto('http://localhost:5173/');
 
-  // Column A: Only Load AlignedTo loader should be present
+  // Load AlignedTo in column A
   const alignedToBtnA = page.locator('#viewer-column-A-alignedto-load-btn');
   await alignedToBtnA.click();
   const alignedToInputA = page.locator('#viewer-column-A-alignedto-file-input');
   await alignedToInputA.setInputFiles(dataPath('4ug0.cif'));
   await expect(page.locator('#viewer-column-A-alignedto-filename-label')).toHaveText(/4ug0\.cif/);
-  await expect(alignedToBtnA).toHaveCount(0);
 
-  // Column B: Only Load Aligned loader should be present
+  // Load Aligned in column B
   const alignedBtnB = page.locator('#viewer-column-B-aligned-load-btn');
   await alignedBtnB.click();
   const alignedInputB = page.locator('#viewer-column-B-aligned-file-input');
   await alignedInputB.setInputFiles(dataPath('6xu8.cif'));
   await expect(page.locator('#viewer-column-B-aligned-filename-label')).toHaveText(/6xu8\.cif/);
-  await expect(alignedBtnB).toHaveCount(0);
 
-  // Both file names should now be visible in their respective columns
-  await expect(page.locator('#viewer-column-A-alignedto-filename-label')).toHaveText(/4ug0\.cif/);
-  await expect(page.locator('#viewer-column-B-aligned-filename-label')).toHaveText(/6xu8\.cif/);
+  // Toggle visibility for AlignedTo in column A
+  const toggleAlignedToA = page.locator('#viewer-column-A-moleculeui-4ug0 #viewer-column-A-toggle-visibility-btn');
+  await expect(toggleAlignedToA).toBeVisible();
+  await toggleAlignedToA.click();
+  // Optionally, check for a class or style change indicating hidden state
+
+  // Toggle visibility for Aligned in column B
+  const toggleAlignedB = page.locator('#viewer-column-B-moleculeui-6xu8 #viewer-column-B-toggle-visibility-btn');
+  await expect(toggleAlignedB).toBeVisible();
+  await toggleAlignedB.click();
+  // Optionally, check for a class or style change indicating hidden state
+
+  // Toggle back to visible
+  await toggleAlignedToA.click();
+  await toggleAlignedB.click();
 });

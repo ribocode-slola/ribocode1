@@ -2,9 +2,9 @@
  * Playwright E2E test to ensure the Load Aligned button in Column B is not removed when only AlignedTo data are loaded.
  *
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT
- * @author Copilot
+ * @author Copilot, Andy Turner <agdturner@gmail.com>
  * @version 1.0.0
- * @lastModified 2026-05-30
+ * @lastModified 2026-06-11
  */
 import { test, expect } from '@playwright/test';
 import path from 'path';

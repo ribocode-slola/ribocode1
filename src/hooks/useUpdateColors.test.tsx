@@ -55,4 +55,46 @@ describe('useUpdateColors', () => {
     );
     expect(setIsColorsLoaded).toHaveBeenCalledWith(false);
   });
+
+  it('registers the same theme for two plugins (dual-viewer regression)', () => {
+    const setIsColorsLoadedA = vi.fn();
+    const setIsColorsLoadedB = vi.fn();
+    const registerThemeIfNeeded = vi.fn();
+    vi.spyOn(colorUtils, 'registerThemeIfNeeded').mockImplementation(registerThemeIfNeeded);
+
+    const colorFileData = [
+      { pdb_chain: 'A', color: '#FF0000' },
+      { pdb_chain: 'B', color: '#00FF00' },
+    ];
+    const pluginA = { id: 'A' };
+    const pluginB = { id: 'B' };
+    const chainColorMaps = new Map();
+
+    renderHook(() =>
+      useUpdateColors(
+        pluginA,
+        colorFileData,
+        setIsColorsLoadedA,
+        'Aligned-custom-chain-colors',
+        chainColorMaps,
+        []
+      )
+    );
+
+    renderHook(() =>
+      useUpdateColors(
+        pluginB,
+        colorFileData,
+        setIsColorsLoadedB,
+        'Aligned-custom-chain-colors',
+        chainColorMaps,
+        []
+      )
+    );
+
+    expect(registerThemeIfNeeded).toHaveBeenCalledWith(pluginA, 'Aligned-custom-chain-colors', chainColorMaps);
+    expect(registerThemeIfNeeded).toHaveBeenCalledWith(pluginB, 'Aligned-custom-chain-colors', chainColorMaps);
+    expect(setIsColorsLoadedA).toHaveBeenCalledWith(true);
+    expect(setIsColorsLoadedB).toHaveBeenCalledWith(true);
+  });
 });

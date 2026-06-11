@@ -9,7 +9,7 @@
  * @see https://github.com/ribocode-slola/ribocode1
  */
 import React from 'react';
-import GenericSelectButton, { idSuffix as selectIdSuffix } from './Select';
+import { idSuffix as selectIdSuffix } from './Select';
 
 /**
  * Props for the ChainSelectButton component.
@@ -47,33 +47,28 @@ const ChainSelectButton: React.FC<ChainSelectButtonProps> = ({
 	label,
 	id
 }) => {
-	// Map selectedChainId to its label value
-	const selectedLabel = selectedChainId ? chainLabels.get(selectedChainId) || '' : '';
 	// Order chainLabels by chainId
 	const orderedEntries = Array.from(chainLabels.entries()).sort(([idA], [idB]) => {
 		if (idA < idB) return -1;
 		if (idA > idB) return 1;
 		return 0;
 	});
-	const orderedOptions = orderedEntries.map(([_, labelValue]) => labelValue);
-	// When a label is selected, find the corresponding chainId
-	const handleSelect = (selectedLabel: string) => {
-		for (const [chainId, labelValue] of orderedEntries) {
-			if (labelValue === selectedLabel) {
-				onSelect(chainId);
-				break;
-			}
-		}
-	};
 	return (
-		<GenericSelectButton
-			label={label || 'Select Chain'}
-			options={orderedOptions}
-			selected={selectedLabel}
-			onSelect={handleSelect}
-			disabled={disabled}
-			id={id ?? selectIdSuffix}
-		/>
+		<label>
+			{label || 'Select Chain'}
+			<select
+				className="msp-select msp-form-control"
+				value={selectedChainId ?? ''}
+				onChange={e => onSelect(e.target.value)}
+				disabled={disabled}
+				id={id ?? selectIdSuffix}
+			>
+				<option value="" disabled>...</option>
+				{orderedEntries.map(([chainId, labelValue]) => (
+					<option key={chainId} value={chainId}>{labelValue}</option>
+				))}
+			</select>
+		</label>
 	);
 };
 

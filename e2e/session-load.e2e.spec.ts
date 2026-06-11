@@ -2,7 +2,7 @@
  * Playwright E2E test for full session load workflow in Ribocode
  * 
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT
- * @author Andy Turner <agdturner@gmail.com>
+ * @author Copilot, Andy Turner <agdturner@gmail.com>
  * @version 1.0.0
  * @lastModified 2026-04-24
  * @see https://github.com/ribocode-slola/ribocode1

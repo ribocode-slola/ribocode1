@@ -26,10 +26,11 @@ describe('GeneralControls', () => {
       zoomMinRadius: 16,
       setZoomMinRadius,
       viewerA: {},
-      viewerB: { isMoleculeAlignedToLoaded: true },
+      viewerB: {},
       activeViewer: 'A' as ViewerKey,
       syncEnabled: false,
       setSyncEnabled,
+      syncDisabled: false,
       selectedChainIdAlignedTo: A,
       selectedChainIdAligned: B,
       realignmentExists: false,
@@ -69,5 +70,27 @@ describe('GeneralControls', () => {
       <GeneralControls {...props} selectedChainIdAlignedTo="" />
     );
     expect(getByRole2('button', { name: /Re-align to Chains/i })).toBeDisabled();
+  });
+
+  it('disables the sync select when syncDisabled is true', () => {
+    const props = {
+      zoomExtraRadius: 20,
+      setZoomExtraRadius: vi.fn(),
+      zoomMinRadius: 16,
+      setZoomMinRadius: vi.fn(),
+      viewerA: {},
+      viewerB: {},
+      activeViewer: 'A' as ViewerKey,
+      syncEnabled: false,
+      setSyncEnabled: vi.fn(),
+      syncDisabled: true,
+      selectedChainIdAlignedTo: A,
+      selectedChainIdAligned: B,
+      realignmentExists: false,
+      handleRealignToChains: vi.fn(),
+    };
+
+    const { getByLabelText } = render(<GeneralControls {...props} />);
+    expect(getByLabelText(/Select Sync/i)).toBeDisabled();
   });
 });

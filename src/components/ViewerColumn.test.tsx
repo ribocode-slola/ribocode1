@@ -4,14 +4,14 @@
  *
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
  * 
- * @author Andy Turner <agdturner@gmail.com>
- * @version 1.0.0
- * @lastModified 2026-04-24
+ * @author Copilot, Andy Turner <agdturner@gmail.com>
+ * @version 1.0.1
+ * @lastModified 2026-06-11
  * @see https://github.com/ribocode-slola/ribocode1
  */
 import { vi } from 'vitest';
 import { render } from '@testing-library/react';
-import ViewerColumn, { idSuffix as viewerColumnIdSuffix } from './ViewerColumn';
+import ViewerColumn, { getMoleculeUIAlignedProps, idSuffix as viewerColumnIdSuffix } from './ViewerColumn';
 import { idSuffix as moleculeIdSuffix } from './Molecule';
 
 // Mock props for ViewerColumn
@@ -94,7 +94,8 @@ describe('ViewerColumn', () => {
         render(
             <ViewerColumn
                 viewerKey="A"
-                loadDataRowProps={loadDataRowProps}
+                loadDataRowPropsAlignedTo={loadDataRowProps}
+                loadDataRowPropsAligned={loadDataRowProps}
                 moleculeUIAlignedToProps={{ ...moleculeUIAlignedToProps, label: alignedToLabel }}
                 moleculeUIAlignedProps={{ ...moleculeUIAlignedProps, label: alignedLabel }}
                 realignedMoleculeListProps={realignedMoleculeListProps}
@@ -121,7 +122,8 @@ describe('ViewerColumn', () => {
         render(
             <ViewerColumn
                 viewerKey="A"
-                loadDataRowProps={loadDataRowProps}
+                loadDataRowPropsAlignedTo={loadDataRowProps}
+                loadDataRowPropsAligned={loadDataRowProps}
                 moleculeUIAlignedToProps={moleculeUIAlignedToProps}
                 moleculeUIAlignedProps={moleculeUIAlignedProps}
                 realignedMoleculeListProps={realignedMoleculeListProps}
@@ -135,5 +137,57 @@ describe('ViewerColumn', () => {
         // RibocodeViewer id
         const ribocodeViewer = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-ribocode-viewer`);
         expect(ribocodeViewer).toBeInTheDocument();
+    });
+
+    it('keeps representation visibility toggles local to one viewer even when sync is enabled', async () => {
+        const getCellA = vi.fn().mockReturnValue(undefined);
+        const getCellB = vi.fn().mockReturnValue(undefined);
+        const pluginA = {
+            state: { data: { cells: { get: getCellA } } },
+            canvas3d: { requestDraw: vi.fn() },
+        } as any;
+        const pluginB = {
+            state: { data: { cells: { get: getCellB } } },
+            canvas3d: { requestDraw: vi.fn() },
+        } as any;
+
+        const molstarA = {
+            pluginRef: { current: pluginA },
+            repIdMap: { Aligned: { shared: 'rep-a' } },
+        } as any;
+        const molstarB = {
+            pluginRef: { current: pluginB },
+            repIdMap: { Aligned: { shared: 'rep-b' } },
+        } as any;
+
+        const props = getMoleculeUIAlignedProps({
+            molstar: molstarA,
+            otherMolstar: molstarB,
+            viewer: { viewerKey: 'A', moleculeAligned: { label: 'Aligned' }, ref: { current: pluginA } },
+            isVisible: true,
+            onToggleVisibility: vi.fn(),
+            chainZoomLabel: '',
+            onChainZoom: vi.fn(),
+            chainZoomDisabled: false,
+            residueZoomLabel: '',
+            onResidueZoom: vi.fn(),
+            residueZoomDisabled: false,
+            isLoaded: true,
+            forceUpdate: vi.fn(),
+            representationRefs: ['rep-a'],
+            syncEnabled: true,
+            deleteRepresentation: vi.fn(),
+            repIdMap: { Aligned: { shared: 'rep-a' } },
+            Aligned: 'Aligned',
+            chainInfoAligned: {},
+            selectedChainIdAligned: '',
+            residueInfoAligned: {},
+            selectedResidueIdAligned: '',
+        });
+
+        props.onToggleRepVisibility('rep-a');
+
+        expect(getCellA).toHaveBeenCalledWith('rep-a');
+        expect(getCellB).not.toHaveBeenCalled();
     });
 });

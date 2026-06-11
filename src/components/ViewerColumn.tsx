@@ -3,9 +3,9 @@
  * 
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
  * 
- * @author Andy Turner <agdturner@gmail.com>
- * @version 1.0.0
- * @lastModified 2026-04-24
+ * @author Copilot, Andy Turner <agdturner@gmail.com>
+ * @version 1.0.1
+ * @lastModified 2026-06-11
  * @see https://github.com/ribocode-slola/ribocode1
  */
 import React from 'react';
@@ -71,6 +71,7 @@ export interface LoadDataRowPropsInput {
 	fileInputLabel?: string;
 	fileInputDisabled?: boolean;
 	isAlignmentDataReady?: boolean;
+	loadedFilename?: string;
 }
 
 /**
@@ -123,7 +124,7 @@ export function getLoadDataRowProps({
 				  Aligned === 'AlignedTo'
 					  ? (viewer.moleculeAlignedTo ? Aligned + `: ${viewer.moleculeAlignedTo.name || viewer.moleculeAlignedTo.label || viewer.moleculeAlignedTo.filename}` : "")
 					  : (viewer.moleculeAligned ? Aligned + `: ${viewer.moleculeAligned.name || viewer.moleculeAligned.label || viewer.moleculeAligned.filename}` : ""),
-			  isLoaded: Aligned === 'AlignedTo' ? isMoleculeAlignedToLoaded : isMoleculeAlignedLoaded,
+			  isLoaded: Aligned === 'AlignedTo' ? isMoleculeAlignedToLoaded : (viewer.moleculeAligned && viewer.moleculeAligned.filename ? true : false),
 			  loadedFilename:
 				  Aligned === 'AlignedTo'
 					  ? (viewer.moleculeAlignedTo?.filename || viewer.moleculeAlignedTo?.name || viewer.moleculeAlignedTo?.label || "")
@@ -138,18 +139,18 @@ export function getLoadDataRowProps({
 				   : false, // Always enabled unless explicitly disabled
 		representationType,
 		onRepresentationTypeChange: setRepresentationType,
-		representationTypeDisabled: !isMoleculeAlignedLoaded,
+		representationTypeDisabled: Aligned === 'AlignedTo' ? !isMoleculeAlignedToLoaded : !isMoleculeAlignedLoaded,
 		representationTypeSelector: (
 			<RepresentationSelectButton
 				label="Select Representation"
 				options={allowedRepresentationTypes as AllowedRepresentationType[]}
 				selected={representationType}
 				onSelect={option => setRepresentationType(option as AllowedRepresentationType)}
-				disabled={!isMoleculeAlignedLoaded}
+				disabled={Aligned === 'AlignedTo' ? !isMoleculeAlignedToLoaded : !isMoleculeAlignedLoaded}
 			/>
 		),
 		onAddColorsClick: colorsFile.handleButtonClick,
-		addColorsDisabled: !isMoleculeAlignedToLoaded,
+			addColorsDisabled: Aligned === 'AlignedTo' ? !isMoleculeAlignedToLoaded : !isMoleculeAlignedLoaded,
 		onAddRepresentationClick: () => {
 			let colorTheme;
 			if (isMoleculeColoursLoaded) {
@@ -158,7 +159,7 @@ export function getLoadDataRowProps({
 				colorTheme = { name: 'default', params: {} };
 			}
 			const repId = (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
-			if (viewer.moleculeAligned && structureRef) {
+			if ((Aligned === 'AlignedTo' ? viewer.moleculeAlignedTo : viewer.moleculeAligned) && structureRef) {
 				molstar.addRepresentation(
 					Aligned,
 					structureRef,
@@ -167,7 +168,7 @@ export function getLoadDataRowProps({
 					repId
 				);
 			}
-			if (otherViewer.moleculeAligned && otherStructureRef) {
+			if ((Aligned === 'AlignedTo' ? otherViewer.moleculeAlignedTo : otherViewer.moleculeAligned) && otherStructureRef) {
 				otherMolstar.addRepresentation(
 					Aligned,
 					otherStructureRef,
@@ -199,7 +200,7 @@ export function getLoadDataRowProps({
 				}
 			});
 		},
-		addRepresentationDisabled: !isMoleculeAlignedToLoaded || !representationType,
+		addRepresentationDisabled: Aligned === 'AlignedTo' ? (!isMoleculeAlignedToLoaded || !representationType) : (!isMoleculeAlignedLoaded || !representationType),
 		colorsInputRef: colorsFile.inputRef,
 		onColorsFileChange: colorsFile.handleFileChange,
 		selectedSubunit,
@@ -323,18 +324,19 @@ export function getMoleculeUIAlignedToProps({
 			}
 		},
 		onToggleRepVisibility: (ref: string) => {
-			[molstar, otherMolstar].forEach(molstarInstance => {
+			const toggleInInstance = (molstarInstance: any, actualRef: string) => {
 				const plugin = molstarInstance.pluginRef.current;
 				if (!plugin) return;
-				const cell = plugin.state?.data?.cells?.get(ref);
+				const cell = plugin.state?.data?.cells?.get(actualRef);
 				if (cell) {
 					import('molstar/lib/mol-plugin/commands').then(({ PluginCommands }) => {
-						PluginCommands.State.ToggleVisibility.apply(plugin, [plugin, { state: plugin.state.data, ref }]);
+						PluginCommands.State.ToggleVisibility.apply(plugin, [plugin, { state: plugin.state.data, ref: actualRef }]);
 						plugin.canvas3d?.requestDraw?.();
 						forceUpdate();
 					});
 				}
-			});
+			};
+			toggleInInstance(molstar, ref);
 		},
 	};
 }
@@ -427,18 +429,19 @@ export function getMoleculeUIAlignedProps({
 			}
 		},
 		onToggleRepVisibility: (ref: string) => {
-			[molstar, otherMolstar].forEach(molstarInstance => {
+			const toggleInInstance = (molstarInstance: any, actualRef: string) => {
 				const plugin = molstarInstance.pluginRef.current;
 				if (!plugin) return;
-				const cell = plugin.state?.data?.cells?.get(ref);
+				const cell = plugin.state?.data?.cells?.get(actualRef);
 				if (cell) {
 					import('molstar/lib/mol-plugin/commands').then(({ PluginCommands }) => {
-						PluginCommands.State.ToggleVisibility.apply(plugin, [plugin, { state: plugin.state.data, ref }]);
+						PluginCommands.State.ToggleVisibility.apply(plugin, [plugin, { state: plugin.state.data, ref: actualRef }]);
 						plugin.canvas3d?.requestDraw?.();
 						forceUpdate();
 					});
 				}
-			});
+			};
+			toggleInInstance(molstar, ref);
 		},
 	};
 }
