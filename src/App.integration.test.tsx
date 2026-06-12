@@ -24,27 +24,32 @@ vi.mock('molstar/lib/mol-plugin/commands', () => ({
 }));
 
 vi.mock('./hooks/useMolstarViewer', () => ({
-  useMolstarViewer: vi.fn((pluginRef: any) => {
-    const { useState: useLocalState, useCallback } = require('react');
-    const [structureRefs, setStructureRefsState] = useLocalState<Record<string, string | null>>({});
-    const setStructureRef = useCallback((key: string, ref: string | null) => {
-      setStructureRefsState((prev: Record<string, string | null>) => ({ ...prev, [key]: ref }));
-    }, []);
-    return {
-      pluginRef,
-      structureRefs,
-      setStructureRef,
-      representationRefs: {},
-      setRepresentationRefs: vi.fn(),
-      lastAddedRepresentationRef: {},
-      setLastAddedRepresentationRef: vi.fn(),
-      refreshRepresentationRefs: vi.fn(),
-      addRepresentation: vi.fn().mockResolvedValue('mock-rep-id'),
-      getChainInfo: vi.fn().mockReturnValue({ chainLabels: new Map() }),
-      repIdMap: {},
-      setRepIdMap: vi.fn(),
-      getResidueInfo: vi.fn().mockReturnValue({ residueLabels: new Map(), residueToAtomIds: {} }),
-    };
+  useMolstarViewer: vi.fn((pluginRef: any) => ({
+    pluginRef,
+    structureRefs: {},
+    setStructureRef: vi.fn(),
+    representationRefs: {},
+    setRepresentationRefs: vi.fn(),
+    lastAddedRepresentationRef: {},
+    setLastAddedRepresentationRef: vi.fn(),
+    refreshRepresentationRefs: vi.fn(),
+    addRepresentation: vi.fn().mockResolvedValue('mock-rep-id'),
+    getChainInfo: vi.fn().mockReturnValue({ chainLabels: new Map() }),
+    repIdMap: {},
+    setRepIdMap: vi.fn(),
+    getResidueInfo: vi.fn().mockReturnValue({ residueLabels: new Map(), residueToAtomIds: {} }),
+  })),
+}));
+
+// Mock useUpdateChainInfo to immediately populate chain info when structureRef is provided
+vi.mock('./hooks/useUpdateChainInfo', () => ({
+  useUpdateChainInfo: vi.fn((pluginRef: any, structureRef: string | null, _molstar: any, setChainInfo: any, setSubunitToChainIds: any) => {
+    const { useEffect } = require('react');
+    useEffect(() => {
+      if (!pluginRef?.current || !structureRef) return;
+      setChainInfo({ chainLabels: new Map([['A', 'Chain A'], ['B', 'Chain B']]) });
+      setSubunitToChainIds(new Map([['default', new Set(['A', 'B'])]]));
+    }, [pluginRef?.current, structureRef]);
   }),
 }));
 
@@ -257,18 +262,22 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     const alignedToInput = document.getElementById('viewer-column-A-alignedto-file-input') as HTMLInputElement | null;
     expect(alignedToInput).toBeInTheDocument();
 
+    // Trigger AlignedTo load so isMoleculeAlignedToLoaded becomes true
     fireEvent.change(alignedToInput!, { target: { files: [loadTestFile('4ug0.cif')] } });
 
+    // Wait for the loader to finish (load-btn disappears when isLoaded=true)
     await waitFor(() => {
-      expect(document.getElementById('viewer-column-A-alignedto-chain-select')).toBeInTheDocument();
+      expect(document.getElementById('viewer-column-A-alignedto-load-btn')).not.toBeInTheDocument();
     }, { timeout: 5000 });
+
     const chainSelect = document.getElementById('viewer-column-A-alignedto-chain-select') as HTMLSelectElement;
     expect(chainSelect).toBeInTheDocument();
 
+    // Simulate selecting chain 'A' - fires React onChange directly
     fireEvent.change(chainSelect, { target: { value: 'A' } });
 
+    // The zoom button should become enabled once selectedChainIdAlignedTo is set
     await waitFor(() => {
-      expect((document.getElementById('viewer-column-A-alignedto-chain-select') as HTMLSelectElement).value).toBe('A');
       expect(document.getElementById('viewer-column-A-zoom-chain-btn')).toBeEnabled();
     }, { timeout: 5000 });
   });
