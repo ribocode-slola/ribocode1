@@ -58,6 +58,7 @@ export function createZoomHandler(
                     chainId,
                     residueId ?? '',
                     insCode,
+                    sync && syncPluginRef?.current ? syncPluginRef.current : undefined,
                     zoomExtraRadius,
                     zoomMinRadius
                 );
