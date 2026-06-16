@@ -171,19 +171,19 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
 
     // Molecule loading logic extracted to useMoleculeLoader
     // Robust file loading logic for both AlignedTo and Aligned
-    const loadMoleculeIntoViewers = async (file: File, mode: string, alignmentData?: any) => {
+    const loadMoleculeIntoViewers = async (file: File, mode: string, alignmentData?: any): Promise<LoadedMolecule | undefined> => {
         const assetFile = Asset.File(file);
         const pluginA = viewerA.ref.current;
         const pluginB = viewerB.ref.current;
         if (!pluginA || !pluginB) {
             console.error('One or both viewers are not initialized.');
-            return;
+            return undefined;
         }
         // Prevent redundant state updates to break infinite update loops
         if (mode === AlignedTo) {
             if (alignedToFile && alignedToFile.name === file.name) {
                 // Already loaded, skip
-                return;
+                return viewerA.moleculeAlignedTo as LoadedMolecule | undefined;
             }
             setAlignedToFile(file);
             setAlignedToFilename(file.name);
@@ -197,7 +197,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             );
             if (!viewerAMoleculeAlignedTo) {
                 console.error('Failed to load molecule into viewer A.');
-                return;
+                return undefined;
             }
             viewerA.setMoleculeAlignedTo((prev: any) => ({
                 label: viewerAMoleculeAlignedTo.label,
@@ -222,7 +222,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             );
             if (!viewerBMoleculeAlignedTo) {
                 console.error('Failed to load molecule into viewer B.');
-                return;
+                return undefined;
             }
             viewerB.setMoleculeAlignedTo((prev: any) => ({
                 label: viewerBMoleculeAlignedTo.label,
@@ -242,10 +242,12 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                         (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)));
                 }
 
+            return viewerAMoleculeAlignedTo as LoadedMolecule;
+
         } else if (mode === Aligned) {
             if (alignedFile && alignedFile.name === file.name) {
                 // Already loaded, skip
-                return;
+                return viewerA.moleculeAligned as LoadedMolecule | undefined;
             }
             setAlignedFile(file);
             setAlignedFilename(file.name);
@@ -311,7 +313,11 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                         (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)));
                 }
             }
+
+            return (viewerAMoleculeAligned ?? viewerBMoleculeAligned ?? undefined) as LoadedMolecule | undefined;
         }
+
+        return undefined;
     };
 
     // Robust file input handler for both modes
@@ -744,11 +750,12 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 const alignedToMolecule = await loadMoleculeIntoViewers(alignedToFile, AlignedTo) as LoadedMolecule | undefined;
                 loadedAny = true;
                 if (alignedFile) {
+                    const restoredAlignmentData = alignedToMolecule?.alignmentData ?? alignmentDataRef.current;
                     // Defensive runtime check for alignmentData
-                    if (!alignedToMolecule || typeof alignedToMolecule !== 'object' || !('alignmentData' in alignedToMolecule) || !alignedToMolecule.alignmentData) {
+                    if (!restoredAlignmentData) {
                         alert('AlignedTo alignment data not available after load. Cannot load Aligned file.');
                     } else {
-                        await loadMoleculeIntoViewers(alignedFile, Aligned, alignedToMolecule.alignmentData);
+                        await loadMoleculeIntoViewers(alignedFile, Aligned, restoredAlignmentData);
                     }
                 }
             } else if (alignedFile) {
