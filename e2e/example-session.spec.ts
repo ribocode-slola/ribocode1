@@ -8,46 +8,56 @@
  * @see https://github.com/ribocode-slola/ribocode1
  */
 import { test, expect } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import path from 'path';
 
 const inputDir = path.resolve(__dirname, '../data/input');
 const alignedToFile = path.join(inputDir, '4ug0.cif');
 const alignedFile = path.join(inputDir, '6xu8.cif');
 
+async function completeRequiredFilesModal(page: Page) {
+  await expect(page.getByText('Load Session: Select Required Files')).toBeVisible();
+  const fileInputs = await page.$$('[data-testid^="session-load-modal-file-input-"]');
+
+  for (const input of fileInputs) {
+    const label = await input.evaluate((el: HTMLInputElement) => el.parentElement?.textContent || '');
+    if (label.includes('4ug0.cif')) {
+      await input.setInputFiles(alignedToFile);
+    } else if (label.includes('6xu8.cif')) {
+      await input.setInputFiles(alignedFile);
+    }
+  }
+
+  await expect(page.getByTestId('session-load-modal-load-btn')).toBeEnabled();
+  await page.getByTestId('session-load-modal-load-btn').click();
+}
+
 test.describe('Session Save/Load E2E', () => {
-  test('can load, save, and reload session with real data', async ({ page, context }) => {
-    // Go to app
-    await page.goto('http://localhost:5173/'); // Adjust port as needed
+  test('can load, save, and reload session with real data', async ({ page }) => {
+    await page.goto('http://localhost:5173/');
 
-    // Use robust IDs and clarify expected display names (uppercase for molecule names)
-    // Example selectors and assertions for E2E test
-    // Update selectors to use data-testid or id attributes that are unique and consistent
+    await page.click('#viewer-column-A-alignedto-load-btn');
+    await page.setInputFiles('#viewer-column-A-alignedto-file-input', alignedToFile);
+    await page.click('#viewer-column-B-aligned-load-btn');
+    await page.setInputFiles('#viewer-column-B-aligned-file-input', alignedFile);
 
-    // Example: Set file inputs using robust IDs
-    await page.setInputFiles('#viewer-column-A-load-btn + input[type="file"]', alignedToFile);
-    await page.setInputFiles('#viewer-column-B-load-btn + input[type="file"]', alignedFile);
+    await expect(page.locator('#viewer-column-A-alignedto-filename-label')).toHaveText(/4ug0\.cif/i);
+    await expect(page.locator('#viewer-column-B-aligned-load-btn')).toHaveCount(0, { timeout: 10000 });
 
-    // Open Session menu
     await page.click('#session-menu-btn');
-    // Save session
     await page.click('#session-menu-dropdown .session-menu-item:has-text("Save")');
-    // (Optionally check for download, or stub download behavior)
 
-    // Open Session menu again
+    await page.reload();
     await page.click('#session-menu-btn');
-    // Load session
     await page.click('#session-menu-dropdown .session-menu-item:has-text("Load")');
-    // Interact with modal: upload required files using robust IDs
-    await page.setInputFiles('#session-modal-alignedto-input', alignedToFile);
-    await page.setInputFiles('#session-modal-aligned-input', alignedFile);
-    // Click Load Session in modal
-    await page.click('#session-modal-load-btn');
 
-    // Assert that the molecule names (not filenames) are displayed in uppercase
-    await expect(page.getByText('4UG0')).toBeVisible();
-    await expect(page.getByText('6XU8')).toBeVisible();
+    await page.setInputFiles('#session-menu-file-input', path.resolve(__dirname, 'test-session.json'));
 
-    // Add comments to clarify that these are display names, not filenames
-    // If the UI is meant to show filenames, adjust the assertion accordingly
+    await completeRequiredFilesModal(page);
+
+    await expect(page.locator('#viewer-column-A-molstar-container')).toBeVisible();
+    await expect(page.locator('#viewer-column-B-molstar-container')).toBeVisible();
+    await expect(page.locator('#viewer-column-A-alignedto-filename-label')).toHaveText(/4ug0\.cif/i);
+    await expect(page.locator('#viewer-column-B-aligned-load-btn')).toHaveCount(0, { timeout: 20000 });
   });
 });

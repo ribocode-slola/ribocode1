@@ -12,6 +12,7 @@ import React from 'react';
 import { render, screen, waitFor, fireEvent, within, cleanup } from '@testing-library/react';
 import App from './App';
 import { vi, beforeAll, beforeEach, afterEach } from 'vitest';
+import { PluginCommands } from 'molstar/lib/mol-plugin/commands';
 
 vi.mock('./hooks/useSessionLoadModal', () => ({
   useSessionLoadModal: vi.fn((onSessionLoaded: any) => {
@@ -39,6 +40,16 @@ vi.mock('./hooks/useMolstarViewer', () => ({
     const structureRefs: Record<string, string> = {};
     const representationRefs: Record<string, string[]> = {};
     const repIdMap: Record<string, Record<string, string>> = {};
+    let repCounter = 0;
+    const addRepresentation = vi.fn(async (key: string, _structureRef: string, _type: string, _colorTheme: any, repId?: string) => {
+      const resolvedRepId = repId || `auto-rep-${repCounter++}`;
+      const repRef = `mock-${key}-${resolvedRepId}`;
+      if (!representationRefs[key]) representationRefs[key] = [];
+      representationRefs[key].push(repRef);
+      if (!repIdMap[key]) repIdMap[key] = {};
+      repIdMap[key][resolvedRepId] = repRef;
+      return resolvedRepId;
+    });
     const instance = {
       pluginRef,
       structureRefs,
@@ -52,7 +63,7 @@ vi.mock('./hooks/useMolstarViewer', () => ({
       lastAddedRepresentationRef: {},
       setLastAddedRepresentationRef: vi.fn(),
       refreshRepresentationRefs: vi.fn(),
-      addRepresentation: vi.fn().mockResolvedValue('mock-rep-id'),
+      addRepresentation,
       getChainInfo: vi.fn().mockReturnValue({ chainLabels: new Map() }),
       repIdMap,
       setRepIdMap: vi.fn((key: string, map: Record<string, string>) => {
@@ -341,7 +352,8 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     await waitFor(() => expect(screen.getByRole('banner')).toBeInTheDocument());
 
     const onSessionLoaded = (globalThis as any).__onSessionLoaded as ((session: any, files: Record<string, File>) => Promise<void>) | undefined;
-    expect(onSessionLoaded).toBeTypeOf('function');
+    expect(onSessionLoaded).toBeDefined();
+    expect(onSessionLoaded).toEqual(expect.any(Function));
 
     const session = {
       viewerA: { moleculeAlignedTo: { filename: '4ug0.cif' } },
@@ -364,19 +376,26 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     await waitFor(() => expect(screen.getByRole('banner')).toBeInTheDocument());
 
     const onSessionLoaded = (globalThis as any).__onSessionLoaded as ((session: any, files: Record<string, File>) => Promise<void>) | undefined;
-    expect(onSessionLoaded).toBeTypeOf('function');
+    expect(onSessionLoaded).toBeDefined();
+    expect(onSessionLoaded).toEqual(expect.any(Function));
 
     const session = {
       viewerA: {
         moleculeAlignedTo: {
           filename: '4ug0.cif',
-          representations: [{ type: 'cartoon', colorTheme: { name: 'AlignedTo-custom-chain-colors', params: {} } }],
+          representations: [
+            { type: 'cartoon', colorTheme: { name: 'AlignedTo-custom-chain-colors', params: {} }, visible: false },
+            { type: 'line', colorTheme: { name: 'default', params: {} }, visible: true }
+          ],
         },
       },
       viewerB: {
         moleculeAligned: {
           filename: '6xu8.cif',
-          representations: [{ type: 'cartoon', colorTheme: { name: 'Aligned-custom-chain-colors', params: {} } }],
+          representations: [
+            { type: 'cartoon', colorTheme: { name: 'Aligned-custom-chain-colors', params: {} }, visible: false },
+            { type: 'line', colorTheme: { name: 'default', params: {} }, visible: true }
+          ],
         },
       },
     };
@@ -390,7 +409,10 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     const instances = (globalThis as any).__molstarViewerInstances as any[];
     const addRepresentationCalls = instances.flatMap(instance => instance.addRepresentation.mock.calls);
     const restoredCartoonCalls = addRepresentationCalls.filter((args: any[]) => args[2] === 'cartoon');
+    const restoredLineCalls = addRepresentationCalls.filter((args: any[]) => args[2] === 'line');
     expect(restoredCartoonCalls.length).toBeGreaterThan(0);
+    expect(restoredLineCalls.length).toBeGreaterThan(0);
+    expect((PluginCommands.State.ToggleVisibility.apply as any)).toHaveBeenCalled();
   });
 
   it('shows a React error boundary or warning if AlignedTo triggers infinite recursion', async () => {

@@ -116,6 +116,7 @@ describe('getStructureRepresentations', () => {
     const repCell = {
       obj: { type: { name: 'Representation3D' }, props: { colorTheme: 'theme' } },
       params: { values: { type: { name: 'cartoon' } } },
+      state: { isHidden: false },
     };
     const compCell = { obj: { type: { name: 'Structure Component' } } };
     const plugin = {
@@ -140,6 +141,7 @@ describe('getStructureRepresentations', () => {
         type: 'Representation3D',
         params: repCell.params,
         colorTheme: 'theme',
+        visible: true,
         repRef: repRef,
       },
     ]);

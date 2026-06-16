@@ -21,6 +21,7 @@ import { useSessionLoadModal } from './hooks/useSessionLoadModal';
 import { useUpdateChainInfo } from './hooks/useUpdateChainInfo';
 import { useUpdateResidueInfo } from './hooks/useUpdateResidueInfo';
 import { useUpdateColors } from './hooks/useUpdateColors';
+import { PluginCommands as MolPluginCommands } from 'molstar/lib/mol-plugin/commands';
 import ViewerColumn , {
     getLoadDataRowProps,
     getMoleculeUIAlignedToProps,
@@ -66,6 +67,7 @@ interface AppProps {
 interface SessionRepresentationSpec {
     type: AllowedRepresentationType;
     colorTheme: { name: string; params?: Record<string, unknown> };
+    visible: boolean;
 }
 
 const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
@@ -186,7 +188,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         if (typeof colorThemeCandidate === 'string') {
             return {
                 type: typeCandidate as AllowedRepresentationType,
-                colorTheme: { name: colorThemeCandidate, params: {} }
+                colorTheme: { name: colorThemeCandidate, params: {} },
+                visible: rep?.visible !== false
             };
         }
         if (colorThemeCandidate && typeof colorThemeCandidate.name === 'string') {
@@ -195,12 +198,14 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 colorTheme: {
                     name: colorThemeCandidate.name,
                     params: colorThemeCandidate.params ?? {}
-                }
+                },
+                visible: rep?.visible !== false
             };
         }
         return {
             type: typeCandidate as AllowedRepresentationType,
-            colorTheme: { name: 'default', params: {} }
+            colorTheme: { name: 'default', params: {} },
+            visible: rep?.visible !== false
         };
     }, []);
 
@@ -221,6 +226,67 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             .map((rep: any) => normalizeSessionRepresentation(rep))
             .filter((rep: SessionRepresentationSpec | null): rep is SessionRepresentationSpec => !!rep);
     }, [normalizeSessionRepresentation]);
+
+    const waitForRepresentationRef = useCallback(async (
+        molstar: ReturnType<typeof useMolstarViewer>,
+        mode: MoleculeMode,
+        repId: string,
+        timeoutMs = 3000
+    ): Promise<string | null> => {
+        const start = Date.now();
+        while (Date.now() - start < timeoutMs) {
+            const repRef = molstar.repIdMap?.[mode]?.[repId];
+            if (repRef) return repRef;
+            await new Promise(resolve => setTimeout(resolve, 50));
+        }
+        return null;
+    }, []);
+
+    const setRepresentationVisible = useCallback(async (
+        plugin: PluginUIContext | null,
+        repRef: string,
+        visible: boolean
+    ): Promise<void> => {
+        if (!plugin) return;
+        const cell = plugin.state.data?.cells?.get?.(repRef);
+        if (cell) {
+            const isVisible = cell?.state?.isHidden !== true;
+            if (isVisible === visible) return;
+        }
+        await MolPluginCommands.State.ToggleVisibility.apply(plugin, [plugin, { state: plugin.state.data, ref: repRef }]);
+    }, []);
+
+    const restoreSessionRepresentations = useCallback(async (
+        mode: MoleculeMode,
+        reps: SessionRepresentationSpec[],
+        refA: string | null,
+        refB: string | null,
+        pluginA: PluginUIContext | null,
+        pluginB: PluginUIContext | null
+    ): Promise<void> => {
+        if (!reps.length) return;
+        for (const rep of reps) {
+            const repId = (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
+
+            if (refA) {
+                await molstarA.addRepresentation(mode, refA, rep.type, rep.colorTheme, repId);
+            }
+            if (refB) {
+                await molstarB.addRepresentation(mode, refB, rep.type, rep.colorTheme, repId);
+            }
+
+            if (!rep.visible) {
+                if (pluginA) {
+                    const repRefA = await waitForRepresentationRef(molstarA, mode, repId);
+                    if (repRefA) await setRepresentationVisible(pluginA, repRefA, false);
+                }
+                if (pluginB) {
+                    const repRefB = await waitForRepresentationRef(molstarB, mode, repId);
+                    if (repRefB) await setRepresentationVisible(pluginB, repRefB, false);
+                }
+            }
+        }
+    }, [molstarA, molstarB, setRepresentationVisible, waitForRepresentationRef]);
 
     const loadMoleculeIntoViewers = async (
         file: File,
@@ -300,15 +366,14 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                         (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)));
                 }
 
-            if (sessionRepresentations.length > 0 && refAAlignedTo && refBAlignedTo) {
-                for (const rep of sessionRepresentations) {
-                    const repId = (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
-                    await Promise.all([
-                        molstarA.addRepresentation(AlignedTo, refAAlignedTo, rep.type, rep.colorTheme, repId),
-                        molstarB.addRepresentation(AlignedTo, refBAlignedTo, rep.type, rep.colorTheme, repId)
-                    ]);
-                }
-            }
+            await restoreSessionRepresentations(
+                AlignedTo,
+                sessionRepresentations,
+                refAAlignedTo,
+                refBAlignedTo,
+                pluginA,
+                pluginB
+            );
 
             return viewerAMoleculeAlignedTo as LoadedMolecule;
 
@@ -383,16 +448,16 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                         (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)));
                 }
 
-                if (sessionRepresentations.length > 0 && refAAligned && refBAligned) {
-                    for (const rep of sessionRepresentations) {
-                        const repId = (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
-                        await Promise.all([
-                            molstarA.addRepresentation(Aligned, refAAligned, rep.type, rep.colorTheme, repId),
-                            molstarB.addRepresentation(Aligned, refBAligned, rep.type, rep.colorTheme, repId)
-                        ]);
-                    }
-                }
             }
+
+            await restoreSessionRepresentations(
+                Aligned,
+                sessionRepresentations,
+                refAAligned,
+                refBAligned,
+                pluginA,
+                pluginB
+            );
 
             return (viewerAMoleculeAligned ?? viewerBMoleculeAligned ?? undefined) as LoadedMolecule | undefined;
         }

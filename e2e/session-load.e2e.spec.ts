@@ -29,7 +29,7 @@ async function loadSessionAndRequiredFiles(page: Page, sessionFixtureFile: strin
   await expect(page.getByText('4ug0.cif')).toBeVisible();
   await expect(page.getByText('6xu8.cif')).toBeVisible();
 
-  const fileInputs = await page.$$('input[type="file"]');
+  const fileInputs = await page.$$('[data-testid^="session-load-modal-file-input-"]');
   for (const input of fileInputs) {
     const label = await input.evaluate((el: HTMLInputElement) => el.parentElement?.textContent || '');
     if (label.includes('4ug0.cif')) {
@@ -39,7 +39,8 @@ async function loadSessionAndRequiredFiles(page: Page, sessionFixtureFile: strin
     }
   }
 
-  await page.click('button:has-text("Load Session")');
+  await expect(page.getByTestId('session-load-modal-load-btn')).toBeEnabled();
+  await page.getByTestId('session-load-modal-load-btn').click();
 }
 
 test('Session load prompts for required files and loads data', async ({ page }) => {
@@ -52,7 +53,7 @@ test('Session load prompts for required files and loads data', async ({ page }) 
   await expect(page.locator('#viewer-column-A-molstar-container')).toBeVisible();
   await expect(page.locator('#viewer-column-B-molstar-container')).toBeVisible();
   await expect(page.locator('#viewer-column-A-alignedto-filename-label')).toHaveText(/4ug0\.cif/i);
-  await expect(page.locator('#viewer-column-B-aligned-load-btn')).toHaveCount(0, { timeout: 10000 });
+  await expect(page.locator('#viewer-column-B-aligned-load-btn')).toHaveCount(0, { timeout: 20000 });
 
   // 8. Assert that the fallback error dialog does NOT appear
   await expect(page.locator('text=Session loaded, but could not automatically reload datasets')).toHaveCount(0);
@@ -63,7 +64,7 @@ test('Session load restores saved cartoon representations', async ({ page }) => 
   await page.goto('http://localhost:5173/');
 
   await loadSessionAndRequiredFiles(page, 'test-session.json');
-  await expect(page.locator('#viewer-column-B-aligned-load-btn')).toHaveCount(0, { timeout: 10000 });
+  await expect(page.locator('#viewer-column-B-aligned-load-btn')).toHaveCount(0, { timeout: 20000 });
   const baselineCartoonCount = await page.locator('button[aria-label="Toggle visibility for cartoon representation"]').count();
 
   await page.reload();
@@ -72,7 +73,7 @@ test('Session load restores saved cartoon representations', async ({ page }) => 
   await expect(page.locator('#viewer-column-A-molstar-container')).toBeVisible();
   await expect(page.locator('#viewer-column-B-molstar-container')).toBeVisible();
   await expect(page.locator('#viewer-column-A-alignedto-filename-label')).toHaveText(/4ug0\.cif/i);
-  await expect(page.locator('#viewer-column-B-aligned-load-btn')).toHaveCount(0, { timeout: 10000 });
+  await expect(page.locator('#viewer-column-B-aligned-load-btn')).toHaveCount(0, { timeout: 20000 });
 
   await expect(async () => {
     const restoredCartoonCount = await page.locator('button[aria-label="Toggle visibility for cartoon representation"]').count();

@@ -143,6 +143,7 @@ export function getStructureRepresentations(plugin: any, structureRef: string) {
                         type: repCell.obj?.type?.name,
                         params: repCell.params,
                         colorTheme: repCell.obj?.props?.colorTheme,
+                        visible: repCell.state?.isHidden !== true,
                         repRef: repRef
                     });
                 }
