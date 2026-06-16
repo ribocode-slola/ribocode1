@@ -93,4 +93,19 @@ describe('LoadDataRow', () => {
         fireEvent.click(screen.getByLabelText('Add Representation'));
         expect(baseProps.onAddRepresentationClick).toHaveBeenCalled();
     });
+
+    it('renders long loaded filenames in the wrapping label element', () => {
+        const veryLongFilename = 'very_long_dataset_name_that_should_wrap_across_multiple_lines_in_the_column_layout_for_stability_and_readability_1234567890.cif';
+        const { container } = render(
+            <LoadDataRow
+                {...baseProps}
+                isLoaded={true}
+                loadedFilename={veryLongFilename}
+            />
+        );
+        const label = container.querySelector(`#${baseProps.idPrefix}-filename-label`) as HTMLDivElement | null;
+        expect(label).toBeInTheDocument();
+        expect(label).toHaveTextContent(veryLongFilename);
+        expect(label).toHaveClass('loaded-filename');
+    });
 });

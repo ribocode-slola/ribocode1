@@ -35,7 +35,15 @@ interface TwoColumnsContainerProps {
  * @returns The TwoColumnsContainer component.
  */
 const TwoColumnsContainer: React.FC<TwoColumnsContainerProps> = ({ left, right, idPrefix }) => (
-  <div className="Two-Columns-Container" id={idPrefix ? `${idPrefix}-${idSuffix}` : idSuffix}>
+  <div
+    className="Two-Columns-Container"
+    id={idPrefix ? `${idPrefix}-${idSuffix}` : idSuffix}
+    style={{
+      display: 'grid',
+      gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
+      alignItems: 'start',
+    }}
+  >
     {left}
     {right}
   </div>
