@@ -1,0 +1,21 @@
+{
+  "viewerA": {
+    "moleculeAlignedTo": {
+      "filename": "4ug0.cif"
+    }
+  },
+  "viewerB": {
+    "moleculeAligned": {
+      "filename": "6xu8.cif",
+      "representations": [
+        {
+          "type": "cartoon",
+          "colorTheme": {
+            "name": "Aligned-custom-chain-colors",
+            "params": {}
+          }
+        }
+      ]
+    }
+  }
+}

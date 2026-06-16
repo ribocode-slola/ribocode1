@@ -35,6 +35,7 @@ import { parseColorFileContent } from './utils/colors';
 import { useFileInput } from './hooks/useFileInput';
 import { useChainState } from './hooks/useChainState';
 import { getAtomDataFromStructureUnits } from './utils/data';
+import { getStructureRepresentations } from './utils/structure';
 import { parseDictionaryFileContent } from './utils/dictionary';
 import { useResidueState } from './hooks/useResidueState';
 import { useSubunitState } from './hooks/useSubunitState';
@@ -49,7 +50,7 @@ import { alignDatasetUsingChains } from 'molstar/lib/extensions/ribocode/utils/g
 import { Color } from 'molstar/lib/mol-util/color';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 import { AlignmentData } from 'molstar/lib/extensions/ribocode/types';
-import type { LoadedMolecule, ViewerKey } from './types/ribocode';
+import type { LoadedMolecule, ViewerKey, MoleculeMode } from './types/ribocode';
 import { A, B } from './constants/ribocode';
 import { makeFogSetters, makeCameraSetters, makeZoomHandler } from './utils/viewerHelpers';
 import { selectedAtomTypes } from './constants/ribocode';
@@ -60,6 +61,11 @@ import { selectedAtomTypes } from './constants/ribocode';
  */
 interface AppProps {
     testForceIsMoleculeAlignedLoaded?: boolean;
+}
+
+interface SessionRepresentationSpec {
+    type: AllowedRepresentationType;
+    colorTheme: { name: string; params?: Record<string, unknown> };
 }
 
 const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
@@ -171,7 +177,57 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
 
     // Molecule loading logic extracted to useMoleculeLoader
     // Robust file loading logic for both AlignedTo and Aligned
-    const loadMoleculeIntoViewers = async (file: File, mode: string, alignmentData?: any): Promise<LoadedMolecule | undefined> => {
+    const normalizeSessionRepresentation = useCallback((rep: any): SessionRepresentationSpec | null => {
+        const typeCandidate = rep?.params?.values?.type?.name ?? rep?.type;
+        if (!typeCandidate || !allowedRepresentationTypes.includes(typeCandidate as AllowedRepresentationType)) {
+            return null;
+        }
+        const colorThemeCandidate = rep?.params?.values?.colorTheme ?? rep?.colorTheme;
+        if (typeof colorThemeCandidate === 'string') {
+            return {
+                type: typeCandidate as AllowedRepresentationType,
+                colorTheme: { name: colorThemeCandidate, params: {} }
+            };
+        }
+        if (colorThemeCandidate && typeof colorThemeCandidate.name === 'string') {
+            return {
+                type: typeCandidate as AllowedRepresentationType,
+                colorTheme: {
+                    name: colorThemeCandidate.name,
+                    params: colorThemeCandidate.params ?? {}
+                }
+            };
+        }
+        return {
+            type: typeCandidate as AllowedRepresentationType,
+            colorTheme: { name: 'default', params: {} }
+        };
+    }, []);
+
+    const serializeRepresentationsForMode = useCallback((
+        molstar: ReturnType<typeof useMolstarViewer>,
+        pluginRef: React.RefObject<PluginUIContext | null>,
+        mode: MoleculeMode
+    ): SessionRepresentationSpec[] => {
+        const plugin = pluginRef.current;
+        const structureRef = molstar.structureRefs[mode];
+        if (!plugin || !structureRef) {
+            return [];
+        }
+        const rawReps = getStructureRepresentations(plugin, structureRef);
+        const defaultRepRef = molstar.repIdMap?.[mode]?.default;
+        return rawReps
+            .filter((rep: any) => !defaultRepRef || rep.repRef !== defaultRepRef)
+            .map((rep: any) => normalizeSessionRepresentation(rep))
+            .filter((rep: SessionRepresentationSpec | null): rep is SessionRepresentationSpec => !!rep);
+    }, [normalizeSessionRepresentation]);
+
+    const loadMoleculeIntoViewers = async (
+        file: File,
+        mode: string,
+        alignmentData?: any,
+        sessionRepresentations: SessionRepresentationSpec[] = []
+    ): Promise<LoadedMolecule | undefined> => {
         const assetFile = Asset.File(file);
         const pluginA = viewerA.ref.current;
         const pluginB = viewerB.ref.current;
@@ -208,9 +264,10 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 alignmentData: viewerAMoleculeAlignedTo.alignmentData
             }));
             viewerA.setIsMoleculeAlignedToVisible(true);
+            let refAAlignedTo: string | null = null;
             const structAAlignedTo = pluginA.managers.structure.hierarchy.current.structures[0];
             if (structAAlignedTo) {
-                const refAAlignedTo = structAAlignedTo.cell.transform.ref;
+                refAAlignedTo = structAAlignedTo.cell.transform.ref;
                 molstarA.setStructureRef(AlignedTo, refAAlignedTo);
                 molstarA.addRepresentation(AlignedTo, refAAlignedTo, 'spacefill', { name: 'default', params: {} },
                     (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)));
@@ -234,13 +291,24 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             }));
             viewerB.setIsMoleculeAlignedToLoaded(true);
             viewerB.setIsMoleculeAlignedToVisible(true);
+                let refBAlignedTo: string | null = null;
                 const structBAlignedTo = pluginB.managers.structure.hierarchy.current.structures[0];
                 if (structBAlignedTo) {
-                    const refBAlignedTo = structBAlignedTo.cell.transform.ref;
+                    refBAlignedTo = structBAlignedTo.cell.transform.ref;
                     molstarB.setStructureRef(AlignedTo, refBAlignedTo);
                     molstarB.addRepresentation(AlignedTo, refBAlignedTo, 'spacefill', { name: 'default', params: {} },
                         (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)));
                 }
+
+            if (sessionRepresentations.length > 0 && refAAlignedTo && refBAlignedTo) {
+                for (const rep of sessionRepresentations) {
+                    const repId = (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
+                    await Promise.all([
+                        molstarA.addRepresentation(AlignedTo, refAAlignedTo, rep.type, rep.colorTheme, repId),
+                        molstarB.addRepresentation(AlignedTo, refBAlignedTo, rep.type, rep.colorTheme, repId)
+                    ]);
+                }
+            }
 
             return viewerAMoleculeAlignedTo as LoadedMolecule;
 
@@ -252,6 +320,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             setAlignedFile(file);
             setAlignedFilename(file.name);
             const alignData = alignmentData ?? viewerA.moleculeAlignedTo?.alignmentData;
+            let refAAligned: string | null = null;
+            let refBAligned: string | null = null;
 
             // Load into Viewer A
             const assetFileA = Asset.File(file);
@@ -276,7 +346,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 const structAAligned = pluginA?.managers?.structure?.hierarchy?.current?.structures[1]
                     ?? pluginA?.managers?.structure?.hierarchy?.current?.structures[0];
                 if (structAAligned) {
-                    const refAAligned = structAAligned.cell.transform.ref;
+                    refAAligned = structAAligned.cell.transform.ref;
                     molstarA.setStructureRef(Aligned, refAAligned);
                     molstarA.addRepresentation(Aligned, refAAligned, 'spacefill', { name: 'default', params: {} },
                         (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)));
@@ -307,10 +377,20 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 const structBAligned = pluginB?.managers?.structure?.hierarchy?.current?.structures[1]
                     ?? pluginB?.managers?.structure?.hierarchy?.current?.structures[0];
                 if (structBAligned) {
-                    const refBAligned = structBAligned.cell.transform.ref;
+                    refBAligned = structBAligned.cell.transform.ref;
                     molstarB.setStructureRef(Aligned, refBAligned);
                     molstarB.addRepresentation(Aligned, refBAligned, 'spacefill', { name: 'default', params: {} },
                         (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)));
+                }
+
+                if (sessionRepresentations.length > 0 && refAAligned && refBAligned) {
+                    for (const rep of sessionRepresentations) {
+                        const repId = (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
+                        await Promise.all([
+                            molstarA.addRepresentation(Aligned, refAAligned, rep.type, rep.colorTheme, repId),
+                            molstarB.addRepresentation(Aligned, refBAligned, rep.type, rep.colorTheme, repId)
+                        ]);
+                    }
                 }
             }
 
@@ -702,6 +782,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 ? {
                     filename: viewerA.moleculeAlignedTo.filename,
                     alignmentData: viewerA.moleculeAlignedTo.alignmentData,
+                    representations: serializeRepresentationsForMode(molstarA, pluginRefA, AlignedTo),
                     // add other serializable fields as needed
                 }
                 : null,
@@ -709,6 +790,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 ? {
                     filename: viewerA.moleculeAligned.filename,
                     alignmentData: viewerA.moleculeAligned.alignmentData,
+                    representations: serializeRepresentationsForMode(molstarA, pluginRefA, Aligned),
                     // add other serializable fields as needed
                 }
                 : null,
@@ -718,12 +800,14 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 ? {
                     filename: viewerB.moleculeAlignedTo.filename,
                     alignmentData: viewerB.moleculeAlignedTo.alignmentData,
+                    representations: serializeRepresentationsForMode(molstarB, pluginRefB, AlignedTo),
                 }
                 : null,
             moleculeAligned: viewerB.moleculeAligned
                 ? {
                     filename: viewerB.moleculeAligned.filename,
                     alignmentData: viewerB.moleculeAligned.alignmentData,
+                    representations: serializeRepresentationsForMode(molstarB, pluginRefB, Aligned),
                 }
                 : null,
         },
@@ -734,11 +818,36 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
     const onSessionLoaded = useCallback(async (session: any, files: Record<string, File>) => {
         // Map filenames to semantic keys for compatibility
         const getFilename = (obj: any) => obj && typeof obj.filename === 'string' ? obj.filename : undefined;
+        const getRepresentations = (obj: any): SessionRepresentationSpec[] => {
+            if (!Array.isArray(obj?.representations)) return [];
+            return obj.representations
+                .map((rep: any) => normalizeSessionRepresentation(rep))
+                .filter((rep: SessionRepresentationSpec | null): rep is SessionRepresentationSpec => !!rep);
+        };
+        const firstNonEmptyRepresentations = (...sources: any[]): SessionRepresentationSpec[] => {
+            for (const src of sources) {
+                const reps = getRepresentations(src);
+                if (reps.length > 0) return reps;
+            }
+            return [];
+        };
         const alignedToFilename = getFilename(session.viewerA?.alignedTo) || getFilename(session.viewerA?.moleculeAlignedTo);
         const alignedFilename = getFilename(session.viewerB?.aligned) || getFilename(session.viewerB?.moleculeAligned);
         // Fallback: try viewerB.alignedTo or viewerA.aligned
         const altAlignedToFilename = getFilename(session.viewerB?.alignedTo) || getFilename(session.viewerB?.moleculeAlignedTo);
         const altAlignedFilename = getFilename(session.viewerA?.aligned) || getFilename(session.viewerA?.moleculeAligned);
+        const alignedToRepresentations = firstNonEmptyRepresentations(
+            session.viewerA?.alignedTo,
+            session.viewerA?.moleculeAlignedTo,
+            session.viewerB?.alignedTo,
+            session.viewerB?.moleculeAlignedTo
+        );
+        const alignedRepresentations = firstNonEmptyRepresentations(
+            session.viewerB?.aligned,
+            session.viewerB?.moleculeAligned,
+            session.viewerA?.aligned,
+            session.viewerA?.moleculeAligned
+        );
 
         // Try to get the files by filename
         const alignedToFile = (alignedToFilename && files[alignedToFilename]) || (altAlignedToFilename && files[altAlignedToFilename]);
@@ -747,7 +856,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         let loadedAny = false;
         try {
             if (alignedToFile) {
-                const alignedToMolecule = await loadMoleculeIntoViewers(alignedToFile, AlignedTo) as LoadedMolecule | undefined;
+                const alignedToMolecule = await loadMoleculeIntoViewers(alignedToFile, AlignedTo, undefined, alignedToRepresentations) as LoadedMolecule | undefined;
                 loadedAny = true;
                 if (alignedFile) {
                     const restoredAlignmentData = alignedToMolecule?.alignmentData ?? alignmentDataRef.current;
@@ -755,11 +864,11 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                     if (!restoredAlignmentData) {
                         alert('AlignedTo alignment data not available after load. Cannot load Aligned file.');
                     } else {
-                        await loadMoleculeIntoViewers(alignedFile, Aligned, restoredAlignmentData);
+                        await loadMoleculeIntoViewers(alignedFile, Aligned, restoredAlignmentData, alignedRepresentations);
                     }
                 }
             } else if (alignedFile) {
-                await loadMoleculeIntoViewers(alignedFile, Aligned);
+                await loadMoleculeIntoViewers(alignedFile, Aligned, undefined, alignedRepresentations);
                 loadedAny = true;
             }
             // TODO: Restore visibility and representations as needed
@@ -769,7 +878,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         } catch (e) {
             alert('Error loading session: ' + (e instanceof Error ? e.message : String(e)));
         }
-    }, [loadMoleculeIntoViewers]);
+    }, [loadMoleculeIntoViewers, normalizeSessionRepresentation]);
 
     // Initialize session load modal with the callback
     const { handleLoadSession, SessionLoadModal } = useSessionLoadModal(onSessionLoaded);

@@ -35,10 +35,11 @@ vi.mock('molstar/lib/mol-plugin/commands', () => ({
 
 vi.mock('./hooks/useMolstarViewer', () => ({
   useMolstarViewer: vi.fn((pluginRef: any) => {
+    const allInstances = ((globalThis as any).__molstarViewerInstances ||= []);
     const structureRefs: Record<string, string> = {};
     const representationRefs: Record<string, string[]> = {};
     const repIdMap: Record<string, Record<string, string>> = {};
-    return {
+    const instance = {
       pluginRef,
       structureRefs,
       setStructureRef: vi.fn((key: string, ref: string) => {
@@ -59,6 +60,8 @@ vi.mock('./hooks/useMolstarViewer', () => ({
       }),
       getResidueInfo: vi.fn().mockReturnValue({ residueLabels: new Map(), residueToAtomIds: {} }),
     };
+    allInstances.push(instance);
+    return instance;
   }),
 }));
 
@@ -275,6 +278,7 @@ describe('App integration: AlignedTo and Aligned loading', () => {
   beforeEach(() => {
     vi.useRealTimers();
     loadMoleculeFileToViewerMock?.mockClear?.();
+    (globalThis as any).__molstarViewerInstances = [];
   });
 
   afterEach(() => {
@@ -353,6 +357,40 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     const alignedCalls = loadMoleculeFileToViewerMock.mock.calls.filter((args: any[]) => args[2] === false);
     expect(alignedCalls.length).toBeGreaterThan(0);
     expect(alignedCalls[0][4]).toEqual({ rows: [1] });
+  });
+
+  it('restores saved additional representations on session load (regression)', async () => {
+    render(<App />);
+    await waitFor(() => expect(screen.getByRole('banner')).toBeInTheDocument());
+
+    const onSessionLoaded = (globalThis as any).__onSessionLoaded as ((session: any, files: Record<string, File>) => Promise<void>) | undefined;
+    expect(onSessionLoaded).toBeTypeOf('function');
+
+    const session = {
+      viewerA: {
+        moleculeAlignedTo: {
+          filename: '4ug0.cif',
+          representations: [{ type: 'cartoon', colorTheme: { name: 'AlignedTo-custom-chain-colors', params: {} } }],
+        },
+      },
+      viewerB: {
+        moleculeAligned: {
+          filename: '6xu8.cif',
+          representations: [{ type: 'cartoon', colorTheme: { name: 'Aligned-custom-chain-colors', params: {} } }],
+        },
+      },
+    };
+    const files = {
+      '4ug0.cif': loadTestFile('4ug0.cif'),
+      '6xu8.cif': loadTestFile('6xu8.cif'),
+    };
+
+    await onSessionLoaded!(session, files);
+
+    const instances = (globalThis as any).__molstarViewerInstances as any[];
+    const addRepresentationCalls = instances.flatMap(instance => instance.addRepresentation.mock.calls);
+    const restoredCartoonCalls = addRepresentationCalls.filter((args: any[]) => args[2] === 'cartoon');
+    expect(restoredCartoonCalls.length).toBeGreaterThan(0);
   });
 
   it('shows a React error boundary or warning if AlignedTo triggers infinite recursion', async () => {
