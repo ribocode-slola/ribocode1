@@ -103,6 +103,7 @@ describe('viewerHelpers', () => {
       'A',
       '25',
       'A',
+      syncPluginRef.current,
       5,
       2
     );
