@@ -66,6 +66,7 @@ vi.mock('./hooks/useMolstarViewer', () => ({
       addRepresentation,
       getChainInfo: vi.fn().mockReturnValue({ chainLabels: new Map() }),
       repIdMap,
+      repIdMapRef: { current: repIdMap },
       setRepIdMap: vi.fn((key: string, map: Record<string, string>) => {
         repIdMap[key] = map;
       }),
@@ -454,6 +455,96 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     const themes = cartoonCalls.map((args: any[]) => args[3]?.name);
     expect(themes).toContain('chain-id');
     expect(themes).toContain('sequence-id');
+  });
+
+  it('preserves viewer-specific representation visibility on session load (regression)', async () => {
+    render(<App />);
+    await waitFor(() => expect(screen.getByRole('banner')).toBeInTheDocument());
+
+    const onSessionLoaded = (globalThis as any).__onSessionLoaded as ((session: any, files: Record<string, File>) => Promise<void>) | undefined;
+    expect(onSessionLoaded).toBeDefined();
+    expect(onSessionLoaded).toEqual(expect.any(Function));
+
+    // Same representation type in both viewers, but different visibility.
+    const session = {
+      viewerA: {
+        moleculeAlignedTo: {
+          filename: '4ug0.cif',
+          representations: [
+            { type: 'cartoon', colorTheme: { name: 'AlignedTo-custom-chain-colors', params: {} }, visible: false },
+          ],
+        },
+      },
+      viewerB: {
+        moleculeAlignedTo: {
+          filename: '4ug0.cif',
+          representations: [
+            { type: 'cartoon', colorTheme: { name: 'AlignedTo-custom-chain-colors', params: {} }, visible: true },
+          ],
+        },
+        moleculeAligned: {
+          filename: '6xu8.cif',
+          representations: [],
+        },
+      },
+    };
+    const files = {
+      '4ug0.cif': loadTestFile('4ug0.cif'),
+      '6xu8.cif': loadTestFile('6xu8.cif'),
+    };
+
+    (PluginCommands.State.ToggleVisibility.apply as any).mockClear();
+    await onSessionLoaded!(session, files);
+
+    // Only viewer A's hidden representation should trigger a visibility toggle.
+    expect((PluginCommands.State.ToggleVisibility.apply as any)).toHaveBeenCalledTimes(1);
+  });
+
+  it('restores spacefill representations with per-viewer visibility (regression)', async () => {
+    render(<App />);
+    await waitFor(() => expect(screen.getByRole('banner')).toBeInTheDocument());
+
+    const onSessionLoaded = (globalThis as any).__onSessionLoaded as ((session: any, files: Record<string, File>) => Promise<void>) | undefined;
+    expect(onSessionLoaded).toBeDefined();
+    expect(onSessionLoaded).toEqual(expect.any(Function));
+
+    const session = {
+      viewerA: {
+        moleculeAlignedTo: { filename: '4ug0.cif', representations: [] },
+        moleculeAligned: {
+          filename: '6xu8.cif',
+          representations: [
+            { type: 'spacefill', colorTheme: { name: 'Aligned-custom-chain-colors', params: {} }, visible: false },
+            { type: 'spacefill', colorTheme: { name: 'default', params: {} }, visible: true },
+          ],
+        },
+      },
+      viewerB: {
+        moleculeAlignedTo: { filename: '4ug0.cif', representations: [] },
+        moleculeAligned: {
+          filename: '6xu8.cif',
+          representations: [
+            { type: 'spacefill', colorTheme: { name: 'Aligned-custom-chain-colors', params: {} }, visible: true },
+            { type: 'spacefill', colorTheme: { name: 'default', params: {} }, visible: false },
+          ],
+        },
+      },
+    };
+    const files = {
+      '4ug0.cif': loadTestFile('4ug0.cif'),
+      '6xu8.cif': loadTestFile('6xu8.cif'),
+    };
+
+    (PluginCommands.State.ToggleVisibility.apply as any).mockClear();
+    await onSessionLoaded!(session, files);
+
+    const instances = (globalThis as any).__molstarViewerInstances as any[];
+    const addCalls = instances.flatMap(instance => instance.addRepresentation.mock.calls);
+    const alignedSpacefillCalls = addCalls.filter((args: any[]) => args[0] === 'Aligned' && args[2] === 'spacefill');
+    expect(alignedSpacefillCalls.length).toBeGreaterThanOrEqual(4);
+
+    // Two hidden entries (one per viewer) should trigger exactly two toggles.
+    expect((PluginCommands.State.ToggleVisibility.apply as any)).toHaveBeenCalledTimes(2);
   });
 
   it('shows a React error boundary or warning if AlignedTo triggers infinite recursion', async () => {

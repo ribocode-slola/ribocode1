@@ -130,27 +130,65 @@ export function getResidueLoci(
  */
 export function getStructureRepresentations(plugin: any, structureRef: string) {
     const state = plugin.state.data;
-    const reps = [];
-    const children = state.tree.children.get(structureRef)?.toArray() || [];
-    for (const childRef of children) {
-        const cell = state.cells.get(childRef);
-        if (cell?.obj?.type?.name === 'Structure Component') {
-            const compChildren = state.tree.children.get(childRef)?.toArray() || [];
-            for (const repRef of compChildren) {
-                const repCell = state.cells.get(repRef);
-                if (repCell?.obj?.type?.name === 'Representation3D') {
-                    // The representation type and colorTheme are stored in transform.params,
-                    // not in obj.type (which is always 'Representation3D').
-                    const transformParams = repCell.transform?.params;
-                    reps.push({
-                        type: transformParams?.type?.name,
-                        colorTheme: transformParams?.colorTheme ?? repCell.obj?.props?.colorTheme,
-                        visible: repCell.state?.isHidden !== true,
-                        repRef: repRef
-                    });
+    const reps: Array<{
+        type: string | undefined;
+        colorTheme: any;
+        visible: boolean;
+        repRef: string;
+    }> = [];
+
+    const structures = plugin?.managers?.structure?.hierarchy?.current?.structures;
+    const struct = Array.isArray(structures)
+        ? structures.find((s: any) => s.cell.transform.ref === structureRef)
+        : null;
+
+    if (struct && Array.isArray(struct.components)) {
+        for (const comp of struct.components) {
+            if (Array.isArray(comp.representations)) {
+                for (const rep of comp.representations) {
+                    if (rep.cell?.transform?.ref) {
+                        const cell = state.cells.get(rep.cell.transform.ref);
+                        const transformParams = cell?.transform?.params;
+                        reps.push({
+                            type: transformParams?.type?.name,
+                            colorTheme: transformParams?.colorTheme ?? cell?.obj?.props?.colorTheme,
+                            visible: cell?.state?.isHidden !== true,
+                            repRef: rep.cell.transform.ref
+                        });
+                    }
                 }
             }
         }
+        return reps;
     }
+
+    // Fallback for test/mocked plugin state without managers.structure hierarchy
+    const treeChildren = state?.tree?.children;
+    if (!treeChildren || typeof treeChildren.get !== 'function') {
+        return reps;
+    }
+
+    const walk = (ref: string) => {
+        const childrenEntry = treeChildren.get(ref);
+        const children = childrenEntry?.toArray?.() ?? [];
+        for (const childRef of children) {
+            const cell = state.cells.get(childRef);
+            if (cell?.obj?.type?.name === 'Representation3D') {
+                const transformParams = cell?.transform?.params;
+                reps.push({
+                    type: transformParams?.type?.name,
+                    colorTheme: transformParams?.colorTheme ?? cell?.obj?.props?.colorTheme,
+                    visible: cell?.state?.isHidden !== true,
+                    repRef: childRef
+                });
+            }
+            walk(childRef);
+        }
+    };
+
+    walk(structureRef);
+    
     return reps;
 }
+
+

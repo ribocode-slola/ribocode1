@@ -73,4 +73,45 @@ describe('useSessionLoadModal integration', () => {
     fireEvent.click(screen.getByText('Cancel'));
     unmount2();
   });
+
+  it('loads embedded files immediately when Load All is used', async () => {
+    const onSessionLoaded = vi.fn();
+
+    const embeddedA = new File(['alpha'], 'molAlignedToA.cif', { type: 'chemical/x-cif' });
+    const embeddedB = new File(['beta'], 'molAlignedB.cif', { type: 'chemical/x-cif' });
+    const sessionData = {
+      schemaVersion: 2,
+      viewerA: { moleculeAlignedTo: { filename: 'molAlignedToA.cif' } },
+      viewerB: { moleculeAligned: { filename: 'molAlignedB.cif' } },
+      embeddedFiles: {
+        'molAlignedToA.cif': { mime: embeddedA.type, data: btoa('alpha') },
+        'molAlignedB.cif': { mime: embeddedB.type, data: btoa('beta') },
+      },
+    };
+    const sessionFile = new File([JSON.stringify(sessionData)], 'session-all.json', { type: 'application/json' });
+
+    function TestComponent() {
+      const { handleLoadAllSession, SessionLoadModal } = useSessionLoadModal(onSessionLoaded);
+      return (
+        <>
+          <input type="file" data-testid="session-input" onChange={handleLoadAllSession} />
+          {SessionLoadModal}
+        </>
+      );
+    }
+
+    render(<TestComponent />);
+    const input = screen.getByTestId('session-input') as HTMLInputElement;
+    Object.defineProperty(input, 'files', { value: [sessionFile] });
+    fireEvent.change(input);
+
+    await waitFor(() => {
+      expect(onSessionLoaded).toHaveBeenCalledTimes(1);
+    });
+
+    const [, files] = onSessionLoaded.mock.calls[0];
+    expect(files['molAlignedToA.cif']).toBeInstanceOf(File);
+    expect(files['molAlignedB.cif']).toBeInstanceOf(File);
+    expect(screen.queryByText('Load Session: Select Required Files')).not.toBeInTheDocument();
+  });
 });

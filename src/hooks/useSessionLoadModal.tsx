@@ -9,6 +9,7 @@
  * @see https://github.com/ribocode-slola/ribocode1
  */
 import React, { useState, useCallback } from 'react';
+import { embeddedSessionFilesToRecord } from '../utils/session';
 
 export interface RequiredSessionFile {
   key: string;
@@ -79,8 +80,42 @@ export function useSessionLoadModal(onSessionLoaded: (session: any, files: Recor
     onSessionLoaded(modalState.sessionData, files);
   }, [modalState, onSessionLoaded]);
 
+  const openSession = useCallback((session: any, loadAll: boolean) => {
+    const requiredFiles = collectRequiredFiles(session);
+    if (loadAll) {
+      const embeddedFiles = embeddedSessionFilesToRecord(session?.embeddedFiles);
+      if (Object.keys(embeddedFiles).length > 0) {
+        onSessionLoaded(session, embeddedFiles);
+        return;
+      }
+    }
+    if (requiredFiles.length === 0) {
+      onSessionLoaded(session, {});
+      return;
+    }
+    setModalState({ open: true, sessionData: session, requiredFiles, step: 0 });
+  }, [onSessionLoaded]);
+
+  const collectRequiredFiles = useCallback((session: any): RequiredSessionFile[] => {
+    const fileMap = new Map<string, RequiredSessionFile>();
+    const addFile = (filename: string | undefined, label: string) => {
+      if (filename && !fileMap.has(filename)) {
+        fileMap.set(filename, { key: filename, label, filename });
+      }
+    };
+    addFile(session.viewerA?.alignedTo?.filename, 'AlignedTo');
+    addFile(session.viewerA?.aligned?.filename, 'Aligned');
+    addFile(session.viewerA?.moleculeAlignedTo?.filename, 'AlignedTo');
+    addFile(session.viewerA?.moleculeAligned?.filename, 'Aligned');
+    addFile(session.viewerB?.alignedTo?.filename, 'AlignedTo');
+    addFile(session.viewerB?.aligned?.filename, 'Aligned');
+    addFile(session.viewerB?.moleculeAlignedTo?.filename, 'AlignedTo');
+    addFile(session.viewerB?.moleculeAligned?.filename, 'Aligned');
+    return Array.from(fileMap.values());
+  }, []);
+
   // Handler for loading session file (JSON)
-  const handleLoadSession = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLoadSession = useCallback((event: React.ChangeEvent<HTMLInputElement>, loadAll = false) => {
     const file = event.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
@@ -92,29 +127,14 @@ export function useSessionLoadModal(onSessionLoaded: (session: any, files: Recor
         alert('Failed to parse session: ' + err);
         return;
       }
-      // Collect all referenced filenames for AlignedTo/Aligned from both viewers, deduplicate by filename
-      const fileMap = new Map<string, RequiredSessionFile>();
-      // Helper to add file by filename as key
-      const addFile = (filename: string | undefined, label: string) => {
-        if (filename && !fileMap.has(filename)) {
-          fileMap.set(filename, { key: filename, label, filename });
-        }
-      };
-      // Viewer A
-      addFile(session.viewerA?.alignedTo?.filename, 'AlignedTo');
-      addFile(session.viewerA?.aligned?.filename, 'Aligned');
-      addFile(session.viewerA?.moleculeAlignedTo?.filename, 'AlignedTo');
-      addFile(session.viewerA?.moleculeAligned?.filename, 'Aligned');
-      // Viewer B
-      addFile(session.viewerB?.alignedTo?.filename, 'AlignedTo');
-      addFile(session.viewerB?.aligned?.filename, 'Aligned');
-      addFile(session.viewerB?.moleculeAlignedTo?.filename, 'AlignedTo');
-      addFile(session.viewerB?.moleculeAligned?.filename, 'Aligned');
-      const requiredFiles = Array.from(fileMap.values());
-      setModalState({ open: true, sessionData: session, requiredFiles, step: 0 });
+      openSession(session, loadAll);
     };
     reader.readAsText(file);
-  }, []);
+  }, [openSession]);
+
+  const handleLoadAllSession = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    handleLoadSession(event, true);
+  }, [handleLoadSession]);
 
   // Modal UI component
   const SessionLoadModal = modalState.open ? (
@@ -158,5 +178,5 @@ export function useSessionLoadModal(onSessionLoaded: (session: any, files: Recor
     </div>
   ) : null;
 
-  return { handleLoadSession, SessionLoadModal };
+  return { handleLoadSession, handleLoadAllSession, SessionLoadModal };
 }

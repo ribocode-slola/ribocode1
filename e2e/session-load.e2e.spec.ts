@@ -20,7 +20,7 @@ async function loadSessionAndRequiredFiles(page: Page, sessionFixtureFile: strin
   await page.click('button#session-menu-btn');
   await page.waitForSelector('#session-menu-dropdown', { state: 'visible' });
   await page.waitForTimeout(200);
-  await page.click('#session-menu-dropdown .session-menu-item:has-text("Load")');
+  await page.click('#session-menu-dropdown .session-menu-item:text-is("Load")');
 
   const sessionFilePath = path.resolve(__dirname, sessionFixtureFile);
   await page.setInputFiles('#session-menu-file-input', sessionFilePath);

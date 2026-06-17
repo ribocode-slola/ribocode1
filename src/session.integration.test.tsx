@@ -15,10 +15,14 @@ import App from './App';
 vi.mock('./hooks/useSessionSave', () => ({
   useSessionSave: (getSessionState: any) => vi.fn(),
 }));
+vi.mock('./hooks/useSessionSaveAll', () => ({
+  useSessionSaveAll: () => vi.fn(),
+}));
 vi.mock('./hooks/useSessionLoadModal', () => {
   return {
     useSessionLoadModal: (onSessionLoaded: any) => ({
       handleLoadSession: vi.fn(),
+      handleLoadAllSession: vi.fn(),
       SessionLoadModal: <div data-testid="session-modal">Session Modal</div>,
     }),
   };
@@ -52,5 +56,13 @@ describe('Session integration: load confirmation and modal', () => {
     fireEvent.click(loadItem);
     expect(clickSpy).toHaveBeenCalled();
     confirmSpy.mockRestore();
+  });
+
+  it('shows Save All and Load All menu items', async () => {
+    render(<App />);
+    const sessionBtn = screen.getByRole('button', { name: /session/i });
+    fireEvent.click(sessionBtn);
+    expect(screen.getByText('Save All')).toBeInTheDocument();
+    expect(screen.getByText('Load All')).toBeInTheDocument();
   });
 });

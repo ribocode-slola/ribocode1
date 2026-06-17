@@ -45,11 +45,11 @@ test.describe('Session Save/Load E2E', () => {
     await expect(page.locator('#viewer-column-B-aligned-load-btn')).toHaveCount(0, { timeout: 10000 });
 
     await page.click('#session-menu-btn');
-    await page.click('#session-menu-dropdown .session-menu-item:has-text("Save")');
+    await page.click('#session-menu-dropdown .session-menu-item:text-is("Save")');
 
     await page.reload();
     await page.click('#session-menu-btn');
-    await page.click('#session-menu-dropdown .session-menu-item:has-text("Load")');
+    await page.click('#session-menu-dropdown .session-menu-item:text-is("Load")');
 
     await page.setInputFiles('#session-menu-file-input', path.resolve(__dirname, 'test-session.json'));
 
