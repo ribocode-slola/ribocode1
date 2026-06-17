@@ -415,6 +415,47 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     expect((PluginCommands.State.ToggleVisibility.apply as any)).toHaveBeenCalled();
   });
 
+  it('restores multiple representations of the same type with different colorThemes (regression)', async () => {
+    render(<App />);
+    await waitFor(() => expect(screen.getByRole('banner')).toBeInTheDocument());
+
+    const onSessionLoaded = (globalThis as any).__onSessionLoaded as ((session: any, files: Record<string, File>) => Promise<void>) | undefined;
+    expect(onSessionLoaded).toBeDefined();
+    expect(onSessionLoaded).toEqual(expect.any(Function));
+
+    // Two cartoon representations with different color themes — each must be restored independently.
+    const session = {
+      viewerA: {
+        moleculeAlignedTo: {
+          filename: '4ug0.cif',
+          representations: [
+            { type: 'cartoon', colorTheme: { name: 'chain-id', params: {} }, visible: true },
+            { type: 'cartoon', colorTheme: { name: 'sequence-id', params: {} }, visible: true },
+          ],
+        },
+      },
+      viewerB: { moleculeAligned: { filename: '6xu8.cif', representations: [] } },
+    };
+    const files = {
+      '4ug0.cif': loadTestFile('4ug0.cif'),
+      '6xu8.cif': loadTestFile('6xu8.cif'),
+    };
+
+    await onSessionLoaded!(session, files);
+
+    const instances = (globalThis as any).__molstarViewerInstances as any[];
+    const addCalls = instances.flatMap(instance => instance.addRepresentation.mock.calls);
+    const cartoonCalls = addCalls.filter((args: any[]) => args[2] === 'cartoon');
+
+    // Both cartoon reps should have been added.
+    expect(cartoonCalls.length).toBeGreaterThanOrEqual(2);
+
+    // The color themes should be preserved — both distinct themes must appear.
+    const themes = cartoonCalls.map((args: any[]) => args[3]?.name);
+    expect(themes).toContain('chain-id');
+    expect(themes).toContain('sequence-id');
+  });
+
   it('shows a React error boundary or warning if AlignedTo triggers infinite recursion', async () => {
     render(<App />);
     const header = await screen.findByRole('banner');

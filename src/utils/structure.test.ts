@@ -113,9 +113,10 @@ describe('getStructureRepresentations', () => {
     const repRef = 'rep1';
     const compRef = 'comp1';
     const structureRef = 'struct1';
+    const colorTheme = { name: 'cartoon-color', params: {} };
     const repCell = {
-      obj: { type: { name: 'Representation3D' }, props: { colorTheme: 'theme' } },
-      params: { values: { type: { name: 'cartoon' } } },
+      obj: { type: { name: 'Representation3D' }, props: { colorTheme: 'fallback-theme' } },
+      transform: { params: { type: { name: 'cartoon' }, colorTheme } },
       state: { isHidden: false },
     };
     const compCell = { obj: { type: { name: 'Structure Component' } } };
@@ -138,9 +139,8 @@ describe('getStructureRepresentations', () => {
     const result = getStructureRepresentations(plugin, structureRef);
     expect(result).toEqual([
       {
-        type: 'Representation3D',
-        params: repCell.params,
-        colorTheme: 'theme',
+        type: 'cartoon',
+        colorTheme,
         visible: true,
         repRef: repRef,
       },

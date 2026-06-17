@@ -139,10 +139,12 @@ export function getStructureRepresentations(plugin: any, structureRef: string) {
             for (const repRef of compChildren) {
                 const repCell = state.cells.get(repRef);
                 if (repCell?.obj?.type?.name === 'Representation3D') {
+                    // The representation type and colorTheme are stored in transform.params,
+                    // not in obj.type (which is always 'Representation3D').
+                    const transformParams = repCell.transform?.params;
                     reps.push({
-                        type: repCell.obj?.type?.name,
-                        params: repCell.params,
-                        colorTheme: repCell.obj?.props?.colorTheme,
+                        type: transformParams?.type?.name,
+                        colorTheme: transformParams?.colorTheme ?? repCell.obj?.props?.colorTheme,
                         visible: repCell.state?.isHidden !== true,
                         repRef: repRef
                     });
