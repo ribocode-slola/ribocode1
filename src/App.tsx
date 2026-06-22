@@ -108,6 +108,8 @@ interface SessionUiState {
     showUniprotAccessionInChainLabels?: boolean;
 }
 
+const UNIPROT_CACHE_STORAGE_KEY = 'ribocode-uniprot-gene-cache-v1';
+
 const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
 
     // Store Files and filenames for aligned and alignedTo molecule reloads.
@@ -141,6 +143,9 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         []
     );
     const [uniprotGeneNames, setUniprotGeneNames] = useState<UniProtGeneNameCache>({});
+    const [pendingUniProtCount, setPendingUniProtCount] = useState(0);
+    const [inFlightUniProtCount, setInFlightUniProtCount] = useState(0);
+    const [completedUniProtCount, setCompletedUniProtCount] = useState(0);
     const uniprotGeneNamesRef = useRef<UniProtGeneNameCache>({});
     const pendingUniProtAccessionsRef = useRef<Set<string>>(new Set());
     const inFlightUniProtAccessionsRef = useRef<Set<string>>(new Set());
@@ -148,7 +153,36 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
 
     useEffect(() => {
         uniprotGeneNamesRef.current = uniprotGeneNames;
+        setCompletedUniProtCount(Object.keys(uniprotGeneNames).length);
     }, [uniprotGeneNames]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined' || !window.localStorage) return;
+        try {
+            const raw = window.localStorage.getItem(UNIPROT_CACHE_STORAGE_KEY);
+            if (!raw) return;
+            const parsed = JSON.parse(raw);
+            if (!parsed || typeof parsed !== 'object') return;
+            setUniprotGeneNames(prev => ({ ...parsed, ...prev }));
+            console.info(`[UniProt] Loaded ${Object.keys(parsed).length} cached accession lookups from local storage.`);
+        } catch (err) {
+            console.warn('[UniProt] Failed to read cache from local storage.', err);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (typeof window === 'undefined' || !window.localStorage) return;
+        try {
+            window.localStorage.setItem(UNIPROT_CACHE_STORAGE_KEY, JSON.stringify(uniprotGeneNames));
+        } catch (err) {
+            console.warn('[UniProt] Failed to save cache to local storage.', err);
+        }
+    }, [uniprotGeneNames]);
+
+    const syncUniProtQueueCounts = useCallback(() => {
+        setPendingUniProtCount(pendingUniProtAccessionsRef.current.size);
+        setInFlightUniProtCount(inFlightUniProtAccessionsRef.current.size);
+    }, []);
 
     const processUniProtQueue = useCallback(async () => {
         if (isProcessingUniProtQueueRef.current) return;
@@ -159,6 +193,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             while (pendingUniProtAccessionsRef.current.size > 0) {
                 const pending = Array.from(pendingUniProtAccessionsRef.current);
                 pendingUniProtAccessionsRef.current.clear();
+                syncUniProtQueueCounts();
 
                 const unresolved = pending.filter(accession => {
                     if (accession in uniprotGeneNamesRef.current) return false;
@@ -169,20 +204,29 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 if (!unresolved.length) continue;
 
                 unresolved.forEach(accession => inFlightUniProtAccessionsRef.current.add(accession));
-                const resolved = await fetchUniProtGeneNamesBatched(unresolved, {
+                syncUniProtQueueCounts();
+                console.info(`[UniProt] Looking up ${unresolved.length} accession(s) in background.`);
+
+                await fetchUniProtGeneNamesBatched(unresolved, {
                     batchSize: 20,
                     delayMs: 1200,
+                    onBatchResolved: (batch, resolvedBatch) => {
+                        setUniprotGeneNames(prev => ({ ...prev, ...resolvedBatch }));
+                        const matchedCount = Object.values(resolvedBatch).filter(Boolean).length;
+                        console.info(`[UniProt] Batch resolved: ${batch.length} accession(s), ${matchedCount} gene name(s) found.`);
+                    },
                 });
-                setUniprotGeneNames(prev => ({ ...prev, ...resolved }));
                 unresolved.forEach(accession => inFlightUniProtAccessionsRef.current.delete(accession));
+                syncUniProtQueueCounts();
             }
         } finally {
             isProcessingUniProtQueueRef.current = false;
+            syncUniProtQueueCounts();
             if (pendingUniProtAccessionsRef.current.size > 0) {
                 void processUniProtQueue();
             }
         }
-    }, []);
+    }, [syncUniProtQueueCounts]);
 
     const onUniprotAccessionsDiscovered = useCallback((accessions: Iterable<string>) => {
         let hasQueuedAny = false;
@@ -196,10 +240,15 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             hasQueuedAny = true;
         }
 
+        syncUniProtQueueCounts();
+        if (hasQueuedAny) {
+            console.info(`[UniProt] Queued ${pendingUniProtAccessionsRef.current.size} accession(s) for lookup.`);
+        }
+
         if (hasQueuedAny) {
             void processUniProtQueue();
         }
-    }, [processUniProtQueue]);
+    }, [processUniProtQueue, syncUniProtQueueCounts]);
 
     // Use a ref to always have the latest alignmentData from AlignedTo
     const alignmentDataRef = useRef<any>(null);
@@ -1530,6 +1579,11 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                         setZoomMinRadius={setZoomMinRadius}
                         showUniprotAccessionInChainLabels={showUniprotAccessionInChainLabels}
                         setShowUniprotAccessionInChainLabels={setShowUniprotAccessionInChainLabels}
+                        uniprotLookupStatus={{
+                            completed: completedUniProtCount,
+                            pending: pendingUniProtCount,
+                            inFlight: inFlightUniProtCount,
+                        }}
                         viewerA={viewerA.ref.current}
                         viewerB={viewerB.ref.current}
                         activeViewer={activeViewer}
