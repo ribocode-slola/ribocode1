@@ -8,7 +8,14 @@
  * @lastModified 2026-04-24
  * @see https://github.com/ribocode-slola/ribocode1
  */
+import { vi } from 'vitest';
 import { makeFogSetters, makeCameraSetters, createZoomHandler, makeZoomHandler } from './viewerHelpers';
+import { focusLociOnChain, focusLociOnResidue } from '../utils/structure';
+
+vi.mock('../utils/structure', () => ({
+  focusLociOnChain: vi.fn(),
+  focusLociOnResidue: vi.fn(),
+}));
 
 describe('viewerHelpers', () => {
   it('makeFogSetters returns correct setter functions', () => {
@@ -49,5 +56,56 @@ describe('viewerHelpers', () => {
       sync: false
     });
     expect(typeof handler.handleButtonClick).toBe('function');
+  });
+
+  it('syncs chain zoom to the other viewer when sync is enabled', async () => {
+    const pluginRef = { current: { id: 'plugin-a' } };
+    const syncPluginRef = { current: { id: 'plugin-b' } };
+    const handler = makeZoomHandler({
+      pluginRef: pluginRef as any,
+      structureRef: 'struct-a',
+      property: 'chain-test',
+      chainId: 'A',
+      sync: true,
+      syncPluginRef: syncPluginRef as any,
+    });
+
+    await handler.handleButtonClick();
+
+    expect(focusLociOnChain).toHaveBeenCalledWith(
+      pluginRef.current,
+      'struct-a',
+      'A'
+    );
+  });
+
+  it('syncs residue zoom with zoom options to the other viewer when sync is enabled', async () => {
+    const pluginRef = { current: { id: 'plugin-a' } };
+    const syncPluginRef = { current: { id: 'plugin-b' } };
+    const handler = createZoomHandler(
+      pluginRef as any,
+      'struct-a',
+      'residue-test',
+      'A',
+      true,
+      syncPluginRef as any,
+      '25',
+      'A',
+      5,
+      2
+    );
+
+    await handler.handleButtonClick();
+
+    expect(focusLociOnResidue).toHaveBeenCalledWith(
+      pluginRef.current,
+      'struct-a',
+      'A',
+      '25',
+      'A',
+      syncPluginRef.current,
+      5,
+      2
+    );
   });
 });

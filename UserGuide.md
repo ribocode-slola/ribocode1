@@ -37,12 +37,13 @@ The UI layout is as follows:
    - `MoleculeUI` components including:
      - `AlignedTo`
      - `Aligned`
+   - `Show Advanced Mol* Controls` button (toggles advanced Mol* interface for power users)
    - `Mol* Viewer A`
      - `3D Canvas`
-     - `Sequence Panel`
-     - `Main Menu`
-     - `Control Panel`
-     - `Log Panel`
+     - `Sequence Panel` (shown only when advanced controls are expanded)
+     - `Main Menu` (shown only when advanced controls are expanded)
+     - `Control Panel` (shown only when advanced controls are expanded)
+     - `Log Panel` (shown only when advanced controls are expanded)
  - Column `B`
    - `Load Molecule` 
      - `Load Aligned` button for loading the dataset to be aligned (`Aligned`)
@@ -55,12 +56,13 @@ The UI layout is as follows:
    - `MoleculeUI` components including:
      - `AlignedTo`
      - `Aligned`
+   - `Show Advanced Mol* Controls` button (toggles advanced Mol* interface for power users)
    - `Mol* Viewer B`
      - `3D Canvas`
-     - `Sequence Panel`
-     - `Main Menu`
-     - `Control Panel`
-     - `Log Panel`
+     - `Sequence Panel` (shown only when advanced controls are expanded)
+     - `Main Menu` (shown only when advanced controls are expanded)
+     - `Control Panel` (shown only when advanced controls are expanded)
+     - `Log Panel` (shown only when advanced controls are expanded)
 ```
 +-------------------------------------------------------------+
 |           RiboCode Mol* Viewer, Version, README             |
@@ -77,6 +79,7 @@ The UI layout is as follows:
 |      MoleculeUI Aligned      |      MoleculeUI Aligned      |
 |     MoleculeUI Re-aligned    |     MoleculeUI Re-aligned    |
 |              ...             |             ...              |
+| Show Advanced Mol* Controls  | Show Advanced Mol* Controls  |
 +------------------------------+------------------------------+
 |         Mol* Viewer A        |         Mol* Viewer B        |
 |  +------------------------+  |  +------------------------+  |
@@ -130,7 +133,7 @@ Ribosome data can be downloaded from the [RCSB Protein Data Bank](https://www.rc
 
 Sychronization is `Off` by default. If selected to be `On`, rotation/zoom in one `Mol* 3D Canvas` triggers rotation/zoom in the other.
 
-Please refer to the [Mol* viewer Documentation](https://molstar.org/viewer-docs/) for details of the Mol* UI. In the Ribocode `Molstar Container`, the `Mol* 3D Canvas` is at the top followed by the `Mol* Sequence Panel`, `Mol* Main Menu`, `Mol* Control Panel` and `Mol* Log Panel`. The Mol* viewer style is adapted so that the UI fits in a column of 600 pixels in width. 
+Please refer to the [Mol* viewer Documentation](https://molstar.org/viewer-docs/) for details of the Mol* UI. In each Ribocode `Molstar Container`, the `Mol* 3D Canvas` is always visible and the additional Mol* panels (`Sequence Panel`, `Main Menu`, `Control Panel`, `Log Panel`) are hidden by default for a cleaner workflow. Use the `Show Advanced Mol* Controls` button in a column to reveal these panels for advanced usage, and `Hide Advanced Mol* Controls` to collapse them again. The Mol* viewer style is adapted so that the UI fits in a column of 600 pixels in width.
 
 For convenience, users can save and load a session via the Session Menu. Loading a session does not load the data. For security reasons data loading is a manual process, but once the `AlignedTo` and `Aligned` data are selected, the representations are recreated and the loaded session should be in the state it was when the session was saved.
 

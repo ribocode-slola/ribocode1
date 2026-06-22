@@ -53,10 +53,21 @@
 
 .Two-Columns-Container {
 	display: grid;
-	grid-template-columns: 1fr 1fr;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 	gap: 32px;
 	width: 100%;
 	margin-bottom: 32px;
+}
+
+.Column {
+	min-width: 0;
+}
+
+.viewer-title,
+.loaded-filename {
+	white-space: normal;
+	overflow-wrap: anywhere;
+	word-break: break-word;
 }
 
 /* =========================
@@ -160,6 +171,15 @@
 .molstar-plugin-root > * {
 	position: relative !important;
 	box-sizing: border-box;
+}
+
+.molstar-advanced-controls-hidden .msp-layout-region:not(.msp-layout-main) {
+	display: none !important;
+}
+
+.molstar-advanced-controls-toggle {
+	margin-top: 8px;
+	margin-bottom: 8px;
 }
 
 .molstar-container {

@@ -1,0 +1,1067 @@
+# Instructions
+
+- Following Playwright test failed.
+- Explain why, be concise, respect Playwright best practices.
+- Provide a snippet of code with the fix, if possible.
+
+# Test info
+
+- Name: visibility-toggles.e2e.spec.ts >> Visibility toggles work for Aligned and AlignedTo in both columns
+- Location: e2e/visibility-toggles.e2e.spec.ts:16:5
+
+# Error details
+
+```
+Error: expect(locator).toHaveText(expected) failed
+
+Locator: locator('#viewer-column-B-aligned-filename-label')
+Expected pattern: /6xu8\.cif/
+Timeout: 5000ms
+Error: element(s) not found
+
+Call log:
+  - Expect "toHaveText" with timeout 5000ms
+  - waiting for locator('#viewer-column-B-aligned-filename-label')
+
+```
+
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - heading "RiboCode Mol* Viewer 0.7.1 (README | Docs)" [level=1] [ref=e5]:
+      - text: RiboCode Mol* Viewer 0.7.1 (
+      - link "README" [ref=e6] [cursor=pointer]:
+        - /url: https://github.com/ribocode-slola/ribocode1/?tab=readme-ov-file#ribocode
+      - text: "|"
+      - link "Docs" [ref=e7] [cursor=pointer]:
+        - /url: /docs/index.html
+      - text: )
+  - navigation [ref=e8]:
+    - button "Session ▾" [ref=e10]
+  - generic [ref=e11]:
+    - generic [ref=e12]:
+      - generic [ref=e13]:
+        - text: "Residue Zoom extraRadius:"
+        - spinbutton "Residue Zoom extraRadius:" [ref=e14]: "0"
+      - generic [ref=e15]:
+        - text: "minRadius:"
+        - spinbutton "minRadius:" [ref=e16]: "0"
+    - generic [ref=e17]:
+      - text: Select Sync
+      - combobox "Select Sync" [ref=e18]:
+        - option "..." [disabled]
+        - option "On"
+        - option "Off" [selected]
+    - button "Re-align to Chains" [disabled] [ref=e19]
+  - generic [ref=e20]:
+    - generic [ref=e21]:
+      - generic [ref=e22]:
+        - generic [ref=e23]: "AlignedTo: 4UG0 | STRUCTURE OF THE HUMAN 80S RIBOSOME"
+        - generic [ref=e24]: 4ug0.cif
+        - generic [ref=e25]:
+          - generic [ref=e26]:
+            - text: Select Subunit
+            - combobox "Select Subunit" [ref=e27]:
+              - option "..." [disabled]
+              - option "All" [selected]
+              - option "Large"
+              - option "Small"
+              - option "Other"
+          - generic [ref=e28]:
+            - text: Select Chain
+            - combobox "Select Chain" [ref=e29]:
+              - option "..." [disabled] [selected]
+              - option "0"
+              - option "1"
+              - option "2"
+              - option "3"
+              - option "4"
+              - option "5"
+              - option "6"
+              - option "7"
+              - option "8"
+              - option "9"
+              - option "10"
+              - option "11"
+              - option "12"
+              - option "13"
+              - option "14"
+              - option "15"
+              - option "16"
+              - option "17"
+              - option "18"
+              - option "19"
+              - option "20"
+              - option "21"
+              - option "22"
+              - option "23"
+              - option "24"
+              - option "25"
+              - option "26"
+              - option "27"
+              - option "28"
+              - option "29"
+              - option "30"
+              - option "31"
+              - option "32"
+              - option "33"
+              - option "34"
+              - option "35"
+              - option "36"
+              - option "37"
+              - option "38"
+              - option "39"
+              - option "40"
+              - option "41"
+              - option "42"
+              - option "43"
+              - option "44"
+              - option "45"
+              - option "46"
+              - option "47"
+              - option "48"
+              - option "49"
+              - option "50"
+              - option "51"
+              - option "52"
+              - option "53"
+              - option "54"
+              - option "55"
+              - option "56"
+              - option "57"
+              - option "58"
+              - option "59"
+              - option "60"
+              - option "61"
+              - option "62"
+              - option "63"
+              - option "64"
+              - option "65"
+              - option "66"
+              - option "67"
+              - option "68"
+              - option "69"
+              - option "70"
+              - option "71"
+              - option "72"
+              - option "73"
+              - option "74"
+              - option "75"
+              - option "76"
+              - option "77"
+              - option "78"
+              - option "79"
+              - option "80"
+              - option "81"
+              - option "82"
+              - option "83"
+              - option "84"
+              - option "85"
+              - option "86"
+              - option "87"
+              - option "88"
+              - option "89"
+              - option "90"
+              - option "91"
+              - option "92"
+              - option "93"
+              - option "94"
+              - option "95"
+              - option "96"
+              - option "97"
+              - option "98"
+              - option "99"
+              - option "100"
+              - option "101"
+          - generic [ref=e30]:
+            - text: Select Residue
+            - combobox "Select Residue" [disabled] [ref=e31]:
+              - option "..." [disabled] [selected]
+          - button "Load Colours" [ref=e33]
+          - generic [ref=e34]:
+            - generic [ref=e35]:
+              - text: Select Representation
+              - combobox "Select Representation" [ref=e36]:
+                - option "..." [disabled]
+                - option "spacefill" [selected]
+                - option "cartoon"
+                - option "gaussian-surface"
+                - option "gaussian-volume"
+                - option "line"
+            - button "Add Representation" [ref=e37]: +
+      - generic [ref=e38]:
+        - button "Hide 4UG0" [ref=e39]:
+          - img [ref=e40]
+          - text: 4UG0
+        - generic [ref=e42]:
+          - generic [ref=e43]:
+            - button "Toggle visibility for cartoon representation" [ref=e44]:
+              - img [ref=e45]
+              - text: cartoon
+            - button "Delete cartoon representation" [ref=e47]: ✖
+          - generic [ref=e48]:
+            - button "Toggle visibility for spacefill representation" [ref=e49]:
+              - img [ref=e50]
+              - text: spacefill
+            - button "Delete spacefill representation" [ref=e52]: ✖
+        - button "Zoom to Chain:" [disabled] [ref=e53]
+        - button "Zoom to Residue:" [disabled] [ref=e54]
+      - generic [ref=e55]:
+        - button "Hide 6XU8" [ref=e56]:
+          - img [ref=e57]
+          - text: 6XU8
+        - generic [ref=e59]:
+          - generic [ref=e60]:
+            - button "Toggle visibility for cartoon representation" [ref=e61]:
+              - img [ref=e62]
+              - text: cartoon
+            - button "Delete cartoon representation" [ref=e64]: ✖
+          - generic [ref=e65]:
+            - button "Toggle visibility for spacefill representation" [ref=e66]:
+              - img [ref=e67]
+              - text: spacefill
+            - button "Delete spacefill representation" [ref=e69]: ✖
+        - button "Zoom to Chain:" [disabled] [ref=e70]
+        - button "Zoom to Residue:" [disabled] [ref=e71]
+      - generic [ref=e75]:
+        - generic [ref=e77]:
+          - generic [ref=e79]:
+            - paragraph [ref=e80]: WebGL does not seem to be available.
+            - paragraph [ref=e81]: This can be caused by an outdated browser, graphics card driver issue, or bad weather. Sometimes, just restarting the browser helps. Also, make sure hardware acceleration is enabled in your browser.
+            - paragraph [ref=e82]:
+              - text: For a list of supported browsers, refer to
+              - link "http://caniuse.com/#feat=webgl" [ref=e83] [cursor=pointer]:
+                - /url: http://caniuse.com/#feat=webgl
+              - text: .
+          - button "Select Animation" [ref=e87]:
+            - img [ref=e89]
+          - generic [ref=e92]:
+            - button "Reset Zoom" [ref=e94]:
+              - img [ref=e96]
+            - button "Screenshot / State Snapshot" [ref=e99]:
+              - img [ref=e101]
+            - generic [ref=e103]:
+              - button "Toggle Controls Panel" [ref=e104]:
+                - img [ref=e106]
+              - button "Toggle Expanded Viewport" [ref=e109]:
+                - img [ref=e111]
+              - button "Settings / Controls Info" [ref=e113]:
+                - img [ref=e115]
+              - button "Illumination" [ref=e117]:
+                - img [ref=e119]
+              - button "Augmented/Virtual Reality unavailable" [disabled] [ref=e121]:
+                - img [ref=e123]
+            - button "Toggle Selection Mode" [ref=e127]:
+              - img [ref=e129]
+        - generic [ref=e133]:
+          - generic [ref=e134]:
+            - generic "This shows a single sequence. Use the controls to show a different sequence. Use Ctrl or Cmd key to add a sequence range to focus; use Shift key to extend last focused/selected range." [ref=e135]:
+              - img [ref=e136]
+            - text: Sequence of
+            - combobox "[Structure] 4UG0 | STRUCTURE OF THE HUMAN 80S RIBOSOME" [ref=e138]:
+              - option "4UG0 | STRUCTURE OF THE HUMAN 80S RIBOSOME" [selected]
+              - option "6XU8 | Drosophila melanogaster Ovary 80S ribosome"
+            - combobox "[Mode]" [ref=e139]:
+              - option "Chain" [selected]
+              - option "Polymers"
+              - option "Everything"
+            - 'combobox "[Entity] 1: 28S ribosomal RNA" [ref=e140]':
+              - 'option "1: 28S ribosomal RNA" [selected]'
+              - 'option "2: 5S ribosomal RNA"'
+              - 'option "3: 5.8S ribosomal RNA"'
+              - 'option "4: 60S RIBOSOMAL PROTEIN L8"'
+              - 'option "5: 60S RIBOSOMAL PROTEIN L3"'
+              - 'option "6: 60S RIBOSOMAL PROTEIN L4"'
+              - 'option "7: 60S RIBOSOMAL PROTEIN L5"'
+              - 'option "8: 60S RIBOSOMAL PROTEIN L6"'
+              - 'option "9: 60S RIBOSOMAL PROTEIN L7"'
+              - 'option "10: 60S RIBOSOMAL PROTEIN L7A"'
+              - 'option "11: 60S RIBOSOMAL PROTEIN L9"'
+              - 'option "12: 60S RIBOSOMAL PROTEIN L10-LIKE"'
+              - 'option "13: 60S RIBOSOMAL PROTEIN L11"'
+              - 'option "14: 60S RIBOSOMAL PROTEIN L13"'
+              - 'option "15: 60S RIBOSOMAL PROTEIN L14"'
+              - 'option "16: 60S RIBOSOMAL PROTEIN L15"'
+              - 'option "17: 60S RIBOSOMAL PROTEIN L13A"'
+              - 'option "18: 60S RIBOSOMAL PROTEIN L17"'
+              - 'option "19: 60S RIBOSOMAL PROTEIN L18"'
+              - 'option "20: 60S RIBOSOMAL PROTEIN L19"'
+              - 'option "21: 60S RIBOSOMAL PROTEIN L18A"'
+              - 'option "22: 60S RIBOSOMAL PROTEIN L21"'
+              - 'option "23: 60S RIBOSOMAL PROTEIN L22"'
+              - 'option "24: 60S RIBOSOMAL PROTEIN L23"'
+              - 'option "25: 60S RIBOSOMAL PROTEIN L24"'
+              - 'option "26: 60S RIBOSOMAL PROTEIN L23A"'
+              - 'option "27: 60S RIBOSOMAL PROTEIN L26"'
+              - 'option "28: 60S RIBOSOMAL PROTEIN L27"'
+              - 'option "29: 60S RIBOSOMAL PROTEIN L27A"'
+              - 'option "30: 60S RIBOSOMAL PROTEIN L29"'
+              - 'option "31: 60S RIBOSOMAL PROTEIN L30"'
+              - 'option "32: 60S RIBOSOMAL PROTEIN L31"'
+              - 'option "33: 60S RIBOSOMAL PROTEIN L32"'
+              - 'option "34: 60S RIBOSOMAL PROTEIN L35A"'
+              - 'option "35: 60S RIBOSOMAL PROTEIN L34"'
+              - 'option "36: 60S RIBOSOMAL PROTEIN L35"'
+              - 'option "37: 60S RIBOSOMAL PROTEIN L36"'
+              - 'option "38: 60S RIBOSOMAL PROTEIN L37"'
+              - 'option "39: 60S RIBOSOMAL PROTEIN L38"'
+              - 'option "40: 60S RIBOSOMAL PROTEIN L39"'
+              - 'option "41: UBIQUITIN-60S RIBOSOMAL PROTEIN L40"'
+              - 'option "42: 60S RIBOSOMAL PROTEIN L41"'
+              - 'option "43: 60S RIBOSOMAL PROTEIN L36A"'
+              - 'option "44: 60S RIBOSOMAL PROTEIN L37A"'
+              - 'option "45: 60S RIBOSOMAL PROTEIN L28"'
+              - 'option "46: 60S RIBOSOMAL PROTEIN L10A"'
+              - 'option "47: 18S ribosomal RNA"'
+              - 'option "48: HUMAN INITIATOR MET-TRNA-I"'
+              - 'option "49: 40S RIBOSOMAL PROTEIN SA"'
+              - 'option "50: 40S RIBOSOMAL PROTEIN S3A"'
+              - 'option "51: 40S RIBOSOMAL PROTEIN S3"'
+              - 'option "52: 40S RIBOSOMAL PROTEIN S4, X ISOFORM"'
+              - 'option "53: 40S RIBOSOMAL PROTEIN S5"'
+              - 'option "54: 40S RIBOSOMAL PROTEIN S7"'
+              - 'option "55: 40S RIBOSOMAL PROTEIN S8"'
+              - 'option "56: 40S RIBOSOMAL PROTEIN S10"'
+              - 'option "57: 40S RIBOSOMAL PROTEIN S11"'
+              - 'option "58: 40S RIBOSOMAL PROTEIN S15"'
+              - 'option "59: 40S RIBOSOMAL PROTEIN S16"'
+              - 'option "60: 40S RIBOSOMAL PROTEIN S17-LIKE"'
+              - 'option "61: 40S RIBOSOMAL PROTEIN S18"'
+              - 'option "62: 40S RIBOSOMAL PROTEIN S19"'
+              - 'option "63: 40S RIBOSOMAL PROTEIN S20"'
+              - 'option "64: 40S RIBOSOMAL PROTEIN S21"'
+              - 'option "65: 40S RIBOSOMAL PROTEIN S23"'
+              - 'option "66: 40S RIBOSOMAL PROTEIN S26"'
+              - 'option "67: 40S RIBOSOMAL PROTEIN S28"'
+              - 'option "68: 40S RIBOSOMAL PROTEIN S29"'
+              - 'option "69: UBIQUITIN-40S RIBOSOMAL PROTEIN S27A"'
+              - 'option "70: GUANINE NUCLEOTIDE-BINDING PROTEIN SUBUNIT BETA-2-LIKE 1"'
+              - 'option "71: 40S RIBOSOMAL PROTEIN S2"'
+              - 'option "72: 40S RIBOSOMAL PROTEIN S6"'
+              - 'option "73: 40S RIBOSOMAL PROTEIN S9"'
+              - 'option "74: 40S RIBOSOMAL PROTEIN"'
+              - 'option "75: 40S RIBOSOMAL PROTEIN S13"'
+              - 'option "76: 40S RIBOSOMAL PROTEIN S14"'
+              - 'option "77: 40S RIBOSOMAL PROTEIN S15A"'
+              - 'option "78: 40S RIBOSOMAL PROTEIN S24"'
+              - 'option "79: 40S RIBOSOMAL PROTEIN S25"'
+              - 'option "80: 40S RIBOSOMAL PROTEIN S27"'
+              - 'option "81: 40S RIBOSOMAL PROTEIN S30"'
+              - 'option "82: MAGNESIUM ION"'
+              - 'option "83: ZINC ION"'
+            - combobox "[Chain] A [auth L5]" [ref=e141]:
+              - option "A [auth L5]" [selected]
+          - generic [ref=e143]: 1 Whole Chain (5070 residues, 80184 elements)
+        - generic [ref=e146]:
+          - generic [ref=e147]:
+            - button "Home" [ref=e148]:
+              - img [ref=e150]
+            - button "State Tree" [ref=e152]:
+              - img [ref=e154]
+            - button "Plugin State" [ref=e156]:
+              - img [ref=e158]
+            - button "Help" [ref=e160]:
+              - img [ref=e162]
+            - button "Settings" [ref=e165]:
+              - img [ref=e167]
+          - generic [ref=e169]:
+            - generic [ref=e170]:
+              - img [ref=e172]
+              - text: Home
+            - generic [ref=e174]:
+              - generic [ref=e175]:
+                - button "Download Structure" [ref=e177]:
+                  - img [ref=e179]
+                  - text: Download Structure
+                - generic [ref=e181]:
+                  - text: Source
+                  - button "PDB" [ref=e183]
+                - generic [ref=e184]:
+                  - generic [ref=e185]:
+                    - generic "PDB Id(s). Click for help." [ref=e186]:
+                      - text: PDB Id(s)
+                      - button "PDB Id(s). Click for help." [ref=e187]:
+                        - img [ref=e189]
+                    - textbox "PDB Id(s)" [ref=e192]: 1tqn
+                  - button "More Options" [ref=e193]:
+                    - img [ref=e195]
+                - button "Options" [ref=e199]:
+                  - img [ref=e201]
+                  - text: Options
+                - generic [ref=e203]:
+                  - button "Set default params" [ref=e204]:
+                    - img [ref=e206]
+                  - button "Apply" [ref=e209]:
+                    - img [ref=e211]
+                    - text: Apply
+              - button "Download Density" [ref=e215]:
+                - img [ref=e217]
+                - text: Download Density
+              - button "Download File" [ref=e221]:
+                - img [ref=e223]
+                - text: Download File
+              - button "Open Files" [ref=e227]:
+                - img [ref=e229]
+                - text: Open Files
+              - button "Load Trajectory" [ref=e233]:
+                - img [ref=e235]
+                - text: Load Trajectory
+              - button "Download" [ref=e239]:
+                - img [ref=e241]
+                - text: Download
+            - generic [ref=e243]: Remote States
+            - list [ref=e244]:
+              - listitem [ref=e245]:
+                - button "Zika+EM" [ref=e246]: Zika+EM
+              - listitem [ref=e247]:
+                - button "P-450 Superposition & Validation" [ref=e248]: P-450 Superposition & Validation
+              - listitem [ref=e249]:
+                - button "NPC" [ref=e250]: NPC
+              - listitem [ref=e251]:
+                - button "1RB8 Assembly Symmetry" [ref=e252]: 1RB8 Assembly Symmetry
+              - listitem [ref=e253]:
+                - button "Tue, 16 Jun 2026 10:24:18 GMT Active site" [ref=e254]
+            - generic [ref=e255]:
+              - generic [ref=e256]:
+                - text: Server Url
+                - textbox "Server Url" [ref=e258]: https://webchem.ncbr.muni.cz/molstar-state
+              - button "Refresh" [ref=e260]:
+                - img [ref=e262]
+                - text: Refresh
+        - generic [ref=e266]:
+          - generic [ref=e267]:
+            - img [ref=e269]
+            - text: Structure Tools
+          - generic [ref=e271]:
+            - button "Structure" [ref=e273]:
+              - img [ref=e275]
+              - text: Structure
+            - generic [ref=e278]:
+              - button "2 structures" [ref=e279]
+              - button "Apply a structure presets to the current hierarchy." [ref=e280]:
+                - img [ref=e282]
+            - generic [ref=e285]:
+              - button "Nothing Focused" [disabled] [ref=e286]
+              - button "Select a focus target to center on an show its surroundings. Hold shift to focus on multiple targets." [ref=e287]:
+                - img [ref=e289]
+          - generic [ref=e291]:
+            - button "Measurements" [ref=e293]:
+              - img [ref=e295]
+              - text: Measurements
+            - generic [ref=e297]:
+              - button "Add" [ref=e298]:
+                - img [ref=e300]
+                - text: Add
+              - button "Options" [ref=e302]:
+                - img [ref=e304]
+          - generic [ref=e306]:
+            - button "Superposition" [ref=e308]:
+              - img [ref=e310]
+              - text: Superposition
+            - generic [ref=e312]:
+              - button "Chains" [ref=e313]:
+                - img [ref=e315]
+                - text: Chains
+              - button "Atoms" [ref=e317]:
+                - img [ref=e319]
+                - text: Atoms
+              - button "TM-align" [ref=e323]:
+                - img [ref=e325]
+                - text: TM-align
+              - button "Options" [ref=e327]:
+                - img [ref=e329]
+          - generic [ref=e331]:
+            - button "Quick Styles" [ref=e333]:
+              - img [ref=e335]
+              - text: Quick Styles
+            - generic [ref=e337]:
+              - generic [ref=e339]: Apply Representation
+              - generic [ref=e340]:
+                - button "Default" [ref=e341]
+                - button "Cartoon" [ref=e342]
+                - button "Spacefill" [ref=e343]
+                - button "Surface" [ref=e344]
+            - generic [ref=e345]:
+              - generic [ref=e347]: Apply Style
+              - generic [ref=e348]:
+                - button "Default" [ref=e349]
+                - button "Illustrative" [ref=e350]
+          - generic [ref=e351]:
+            - button "Components2 structures" [ref=e353]:
+              - img [ref=e355]
+              - text: Components2 structures
+            - generic [ref=e357]:
+              - button "Preset" [ref=e358]:
+                - img [ref=e360]
+                - text: Preset
+              - button "Add" [ref=e362]:
+                - img [ref=e364]
+                - text: Add
+              - button "Options that are applied to all applicable representations." [ref=e366]:
+                - img [ref=e368]
+              - button "Some mistakes of the past can be undone." [disabled] [ref=e370]:
+                - img [ref=e372]
+            - generic [ref=e375]:
+              - button "Polymer 2 reprs" [ref=e376]:
+                - text: Polymer
+                - generic [ref=e377]: 2 reprs
+              - button "Hide component" [ref=e378]:
+                - img [ref=e380]
+              - button "Remove" [ref=e382]:
+                - img [ref=e384]
+              - button "Actions" [ref=e386]:
+                - img [ref=e388]
+        - list [ref=e393]:
+          - listitem [ref=e394]:
+            - generic [ref=e395]: 23:23:23
+            - generic [ref=e396]: Created CIF File in 543ms.
+          - listitem [ref=e397]:
+            - generic [ref=e398]: 23:23:23
+            - generic [ref=e399]: Created 6XU8 in 294ms.
+          - listitem [ref=e400]:
+            - generic [ref=e401]: 23:23:24
+            - generic [ref=e402]: Created Model 1 in 0ms.
+          - listitem [ref=e403]:
+            - generic [ref=e404]: 23:23:24
+            - generic [ref=e405]: Created Model 1 in 0ms.
+          - listitem [ref=e406]:
+            - generic [ref=e407]: 23:23:24
+            - generic [ref=e408]: Created Assembly 1 in 16ms.
+          - listitem [ref=e409]:
+            - generic [ref=e410]: 23:23:24
+            - generic [ref=e411]: Created Assembly 1 in 1ms.
+          - listitem [ref=e412]:
+            - generic [ref=e413]: 23:23:24
+            - generic [ref=e414]: Created Polymer in 3ms.
+          - listitem [ref=e415]:
+            - generic [ref=e416]: 23:23:25
+            - generic [ref=e417]: Created Cartoon in 402ms.
+          - listitem [ref=e418]:
+            - generic [ref=e419]: 23:23:25
+            - generic [ref=e420]: Updated Structure Focus Representation in 2ms.
+          - listitem [ref=e421]:
+            - generic [ref=e422]: 23:23:25
+            - generic [ref=e423]: Created Spacefill in 503ms.
+    - generic [ref=e424]:
+      - generic [ref=e425]:
+        - generic [ref=e426]: "Aligned: 6XU8 | DROSOPHILA MELANOGASTER OVARY 80S RIBOSOME"
+        - generic [ref=e427]: 6xu8.cif
+        - generic [ref=e428]:
+          - generic [ref=e429]:
+            - text: Select Subunit
+            - combobox "Select Subunit" [ref=e430]:
+              - option "..." [disabled]
+              - option "All" [selected]
+              - option "Large"
+              - option "Small"
+              - option "Other"
+          - generic [ref=e431]:
+            - text: Select Chain
+            - combobox "Select Chain" [ref=e432]:
+              - option "..." [disabled] [selected]
+              - option "0"
+              - option "1"
+              - option "2"
+              - option "3"
+              - option "4"
+              - option "5"
+              - option "6"
+              - option "7"
+              - option "8"
+              - option "9"
+              - option "10"
+              - option "11"
+              - option "12"
+              - option "13"
+              - option "14"
+              - option "15"
+              - option "16"
+              - option "17"
+              - option "18"
+              - option "19"
+              - option "20"
+              - option "21"
+              - option "22"
+              - option "23"
+              - option "24"
+              - option "25"
+              - option "26"
+              - option "27"
+              - option "28"
+              - option "29"
+              - option "30"
+              - option "31"
+              - option "32"
+              - option "33"
+              - option "34"
+              - option "35"
+              - option "36"
+              - option "37"
+              - option "38"
+              - option "39"
+              - option "40"
+              - option "41"
+              - option "42"
+              - option "43"
+              - option "44"
+              - option "45"
+              - option "46"
+              - option "47"
+              - option "48"
+              - option "49"
+              - option "50"
+              - option "51"
+              - option "52"
+              - option "53"
+              - option "54"
+              - option "55"
+              - option "56"
+              - option "57"
+              - option "58"
+              - option "59"
+              - option "60"
+              - option "61"
+              - option "62"
+              - option "63"
+              - option "64"
+              - option "65"
+              - option "66"
+              - option "67"
+              - option "68"
+              - option "69"
+              - option "70"
+              - option "71"
+              - option "72"
+              - option "73"
+              - option "74"
+              - option "75"
+              - option "76"
+              - option "77"
+              - option "78"
+              - option "79"
+              - option "80"
+          - generic [ref=e433]:
+            - text: Select Residue
+            - combobox "Select Residue" [disabled] [ref=e434]:
+              - option "..." [disabled] [selected]
+          - button "Load Colours" [ref=e436]
+          - generic [ref=e437]:
+            - generic [ref=e438]:
+              - text: Select Representation
+              - combobox "Select Representation" [ref=e439]:
+                - option "..." [disabled]
+                - option "spacefill" [selected]
+                - option "cartoon"
+                - option "gaussian-surface"
+                - option "gaussian-volume"
+                - option "line"
+            - button "Add Representation" [ref=e440]: +
+      - generic [ref=e441]:
+        - button "Hide 4UG0" [ref=e442]:
+          - img [ref=e443]
+          - text: 4UG0
+        - generic [ref=e445]:
+          - generic [ref=e446]:
+            - button "Toggle visibility for cartoon representation" [ref=e447]:
+              - img [ref=e448]
+              - text: cartoon
+            - button "Delete cartoon representation" [ref=e450]: ✖
+          - generic [ref=e451]:
+            - button "Toggle visibility for spacefill representation" [ref=e452]:
+              - img [ref=e453]
+              - text: spacefill
+            - button "Delete spacefill representation" [ref=e455]: ✖
+        - button "Zoom to Chain:" [disabled] [ref=e456]
+        - button "Zoom to Residue:" [disabled] [ref=e457]
+      - generic [ref=e458]:
+        - button "Hide 6XU8" [ref=e459]:
+          - img [ref=e460]
+          - text: 6XU8
+        - generic [ref=e463]:
+          - button "Toggle visibility for cartoon representation" [ref=e464]:
+            - img [ref=e465]
+            - text: cartoon
+          - button "Delete cartoon representation" [ref=e467]: ✖
+        - button "Zoom to Chain:" [disabled] [ref=e468]
+        - button "Zoom to Residue:" [disabled] [ref=e469]
+      - generic [ref=e473]:
+        - generic [ref=e475]:
+          - generic [ref=e477]:
+            - paragraph [ref=e478]: WebGL does not seem to be available.
+            - paragraph [ref=e479]: This can be caused by an outdated browser, graphics card driver issue, or bad weather. Sometimes, just restarting the browser helps. Also, make sure hardware acceleration is enabled in your browser.
+            - paragraph [ref=e480]:
+              - text: For a list of supported browsers, refer to
+              - link "http://caniuse.com/#feat=webgl" [ref=e481] [cursor=pointer]:
+                - /url: http://caniuse.com/#feat=webgl
+              - text: .
+          - button "Select Animation" [ref=e485]:
+            - img [ref=e487]
+          - generic [ref=e490]:
+            - button "Reset Zoom" [ref=e492]:
+              - img [ref=e494]
+            - button "Screenshot / State Snapshot" [ref=e497]:
+              - img [ref=e499]
+            - generic [ref=e501]:
+              - button "Toggle Controls Panel" [ref=e502]:
+                - img [ref=e504]
+              - button "Toggle Expanded Viewport" [ref=e507]:
+                - img [ref=e509]
+              - button "Settings / Controls Info" [ref=e511]:
+                - img [ref=e513]
+              - button "Illumination" [ref=e515]:
+                - img [ref=e517]
+              - button "Augmented/Virtual Reality unavailable" [disabled] [ref=e519]:
+                - img [ref=e521]
+            - button "Toggle Selection Mode" [ref=e525]:
+              - img [ref=e527]
+          - generic [ref=e531]:
+            - button "Abort" [ref=e532]:
+              - img [ref=e534]
+            - generic [ref=e536]: Creating or updating UnitsVisual [68/81]
+        - generic [ref=e539]:
+          - generic [ref=e540]:
+            - generic "This shows a single sequence. Use the controls to show a different sequence. Use Ctrl or Cmd key to add a sequence range to focus; use Shift key to extend last focused/selected range." [ref=e541]:
+              - img [ref=e542]
+            - text: Sequence of
+            - combobox "[Structure] 4UG0 | STRUCTURE OF THE HUMAN 80S RIBOSOME" [ref=e544]:
+              - option "4UG0 | STRUCTURE OF THE HUMAN 80S RIBOSOME" [selected]
+              - option "6XU8 | Drosophila melanogaster Ovary 80S ribosome"
+            - combobox "[Mode]" [ref=e545]:
+              - option "Chain" [selected]
+              - option "Polymers"
+              - option "Everything"
+            - 'combobox "[Entity] 1: 28S ribosomal RNA" [ref=e546]':
+              - 'option "1: 28S ribosomal RNA" [selected]'
+              - 'option "2: 5S ribosomal RNA"'
+              - 'option "3: 5.8S ribosomal RNA"'
+              - 'option "4: 60S RIBOSOMAL PROTEIN L8"'
+              - 'option "5: 60S RIBOSOMAL PROTEIN L3"'
+              - 'option "6: 60S RIBOSOMAL PROTEIN L4"'
+              - 'option "7: 60S RIBOSOMAL PROTEIN L5"'
+              - 'option "8: 60S RIBOSOMAL PROTEIN L6"'
+              - 'option "9: 60S RIBOSOMAL PROTEIN L7"'
+              - 'option "10: 60S RIBOSOMAL PROTEIN L7A"'
+              - 'option "11: 60S RIBOSOMAL PROTEIN L9"'
+              - 'option "12: 60S RIBOSOMAL PROTEIN L10-LIKE"'
+              - 'option "13: 60S RIBOSOMAL PROTEIN L11"'
+              - 'option "14: 60S RIBOSOMAL PROTEIN L13"'
+              - 'option "15: 60S RIBOSOMAL PROTEIN L14"'
+              - 'option "16: 60S RIBOSOMAL PROTEIN L15"'
+              - 'option "17: 60S RIBOSOMAL PROTEIN L13A"'
+              - 'option "18: 60S RIBOSOMAL PROTEIN L17"'
+              - 'option "19: 60S RIBOSOMAL PROTEIN L18"'
+              - 'option "20: 60S RIBOSOMAL PROTEIN L19"'
+              - 'option "21: 60S RIBOSOMAL PROTEIN L18A"'
+              - 'option "22: 60S RIBOSOMAL PROTEIN L21"'
+              - 'option "23: 60S RIBOSOMAL PROTEIN L22"'
+              - 'option "24: 60S RIBOSOMAL PROTEIN L23"'
+              - 'option "25: 60S RIBOSOMAL PROTEIN L24"'
+              - 'option "26: 60S RIBOSOMAL PROTEIN L23A"'
+              - 'option "27: 60S RIBOSOMAL PROTEIN L26"'
+              - 'option "28: 60S RIBOSOMAL PROTEIN L27"'
+              - 'option "29: 60S RIBOSOMAL PROTEIN L27A"'
+              - 'option "30: 60S RIBOSOMAL PROTEIN L29"'
+              - 'option "31: 60S RIBOSOMAL PROTEIN L30"'
+              - 'option "32: 60S RIBOSOMAL PROTEIN L31"'
+              - 'option "33: 60S RIBOSOMAL PROTEIN L32"'
+              - 'option "34: 60S RIBOSOMAL PROTEIN L35A"'
+              - 'option "35: 60S RIBOSOMAL PROTEIN L34"'
+              - 'option "36: 60S RIBOSOMAL PROTEIN L35"'
+              - 'option "37: 60S RIBOSOMAL PROTEIN L36"'
+              - 'option "38: 60S RIBOSOMAL PROTEIN L37"'
+              - 'option "39: 60S RIBOSOMAL PROTEIN L38"'
+              - 'option "40: 60S RIBOSOMAL PROTEIN L39"'
+              - 'option "41: UBIQUITIN-60S RIBOSOMAL PROTEIN L40"'
+              - 'option "42: 60S RIBOSOMAL PROTEIN L41"'
+              - 'option "43: 60S RIBOSOMAL PROTEIN L36A"'
+              - 'option "44: 60S RIBOSOMAL PROTEIN L37A"'
+              - 'option "45: 60S RIBOSOMAL PROTEIN L28"'
+              - 'option "46: 60S RIBOSOMAL PROTEIN L10A"'
+              - 'option "47: 18S ribosomal RNA"'
+              - 'option "48: HUMAN INITIATOR MET-TRNA-I"'
+              - 'option "49: 40S RIBOSOMAL PROTEIN SA"'
+              - 'option "50: 40S RIBOSOMAL PROTEIN S3A"'
+              - 'option "51: 40S RIBOSOMAL PROTEIN S3"'
+              - 'option "52: 40S RIBOSOMAL PROTEIN S4, X ISOFORM"'
+              - 'option "53: 40S RIBOSOMAL PROTEIN S5"'
+              - 'option "54: 40S RIBOSOMAL PROTEIN S7"'
+              - 'option "55: 40S RIBOSOMAL PROTEIN S8"'
+              - 'option "56: 40S RIBOSOMAL PROTEIN S10"'
+              - 'option "57: 40S RIBOSOMAL PROTEIN S11"'
+              - 'option "58: 40S RIBOSOMAL PROTEIN S15"'
+              - 'option "59: 40S RIBOSOMAL PROTEIN S16"'
+              - 'option "60: 40S RIBOSOMAL PROTEIN S17-LIKE"'
+              - 'option "61: 40S RIBOSOMAL PROTEIN S18"'
+              - 'option "62: 40S RIBOSOMAL PROTEIN S19"'
+              - 'option "63: 40S RIBOSOMAL PROTEIN S20"'
+              - 'option "64: 40S RIBOSOMAL PROTEIN S21"'
+              - 'option "65: 40S RIBOSOMAL PROTEIN S23"'
+              - 'option "66: 40S RIBOSOMAL PROTEIN S26"'
+              - 'option "67: 40S RIBOSOMAL PROTEIN S28"'
+              - 'option "68: 40S RIBOSOMAL PROTEIN S29"'
+              - 'option "69: UBIQUITIN-40S RIBOSOMAL PROTEIN S27A"'
+              - 'option "70: GUANINE NUCLEOTIDE-BINDING PROTEIN SUBUNIT BETA-2-LIKE 1"'
+              - 'option "71: 40S RIBOSOMAL PROTEIN S2"'
+              - 'option "72: 40S RIBOSOMAL PROTEIN S6"'
+              - 'option "73: 40S RIBOSOMAL PROTEIN S9"'
+              - 'option "74: 40S RIBOSOMAL PROTEIN"'
+              - 'option "75: 40S RIBOSOMAL PROTEIN S13"'
+              - 'option "76: 40S RIBOSOMAL PROTEIN S14"'
+              - 'option "77: 40S RIBOSOMAL PROTEIN S15A"'
+              - 'option "78: 40S RIBOSOMAL PROTEIN S24"'
+              - 'option "79: 40S RIBOSOMAL PROTEIN S25"'
+              - 'option "80: 40S RIBOSOMAL PROTEIN S27"'
+              - 'option "81: 40S RIBOSOMAL PROTEIN S30"'
+              - 'option "82: MAGNESIUM ION"'
+              - 'option "83: ZINC ION"'
+            - combobox "[Chain] A [auth L5]" [ref=e547]:
+              - option "A [auth L5]" [selected]
+          - generic [ref=e549]: 1 Whole Chain (5070 residues, 80184 elements)
+        - generic [ref=e552]:
+          - generic [ref=e553]:
+            - button "Home" [ref=e554]:
+              - img [ref=e556]
+            - button "State Tree" [ref=e558]:
+              - img [ref=e560]
+            - button "Plugin State" [ref=e562]:
+              - img [ref=e564]
+            - button "Help" [ref=e566]:
+              - img [ref=e568]
+            - button "Settings" [ref=e571]:
+              - img [ref=e573]
+          - generic [ref=e575]:
+            - generic [ref=e576]:
+              - img [ref=e578]
+              - text: Home
+            - generic [ref=e580]:
+              - generic [ref=e581]:
+                - button "Download Structure" [ref=e583]:
+                  - img [ref=e585]
+                  - text: Download Structure
+                - generic [ref=e587]:
+                  - text: Source
+                  - button "PDB" [ref=e589]
+                - generic [ref=e590]:
+                  - generic [ref=e591]:
+                    - generic "PDB Id(s). Click for help." [ref=e592]:
+                      - text: PDB Id(s)
+                      - button "PDB Id(s). Click for help." [ref=e593]:
+                        - img [ref=e595]
+                    - textbox "PDB Id(s)" [ref=e598]: 1tqn
+                  - button "More Options" [ref=e599]:
+                    - img [ref=e601]
+                - button "Options" [ref=e605]:
+                  - img [ref=e607]
+                  - text: Options
+                - generic [ref=e609]:
+                  - button "Set default params" [ref=e610]:
+                    - img [ref=e612]
+                  - button "Apply" [ref=e615]:
+                    - img [ref=e617]
+                    - text: Apply
+              - button "Download Density" [ref=e621]:
+                - img [ref=e623]
+                - text: Download Density
+              - button "Download File" [ref=e627]:
+                - img [ref=e629]
+                - text: Download File
+              - button "Open Files" [ref=e633]:
+                - img [ref=e635]
+                - text: Open Files
+              - button "Load Trajectory" [ref=e639]:
+                - img [ref=e641]
+                - text: Load Trajectory
+              - button "Download" [ref=e645]:
+                - img [ref=e647]
+                - text: Download
+            - generic [ref=e649]: Remote States
+            - list [ref=e650]:
+              - listitem [ref=e651]:
+                - button "Zika+EM" [ref=e652]: Zika+EM
+              - listitem [ref=e653]:
+                - button "P-450 Superposition & Validation" [ref=e654]: P-450 Superposition & Validation
+              - listitem [ref=e655]:
+                - button "NPC" [ref=e656]: NPC
+              - listitem [ref=e657]:
+                - button "1RB8 Assembly Symmetry" [ref=e658]: 1RB8 Assembly Symmetry
+              - listitem [ref=e659]:
+                - button "Tue, 16 Jun 2026 10:24:18 GMT Active site" [ref=e660]
+            - generic [ref=e661]:
+              - generic [ref=e662]:
+                - text: Server Url
+                - textbox "Server Url" [ref=e664]: https://webchem.ncbr.muni.cz/molstar-state
+              - button "Refresh" [ref=e666]:
+                - img [ref=e668]
+                - text: Refresh
+        - generic [ref=e672]:
+          - generic [ref=e673]:
+            - img [ref=e675]
+            - text: Structure Tools
+          - generic [ref=e677]:
+            - button "Structure" [ref=e679]:
+              - img [ref=e681]
+              - text: Structure
+            - generic [ref=e684]:
+              - button "2 structures" [ref=e685]
+              - button "Apply a structure presets to the current hierarchy." [ref=e686]:
+                - img [ref=e688]
+            - generic [ref=e691]:
+              - button "Nothing Focused" [disabled] [ref=e692]
+              - button "Select a focus target to center on an show its surroundings. Hold shift to focus on multiple targets." [ref=e693]:
+                - img [ref=e695]
+          - generic [ref=e697]:
+            - button "Measurements" [ref=e699]:
+              - img [ref=e701]
+              - text: Measurements
+            - generic [ref=e703]:
+              - button "Add" [ref=e704]:
+                - img [ref=e706]
+                - text: Add
+              - button "Options" [ref=e708]:
+                - img [ref=e710]
+          - generic [ref=e712]:
+            - button "Superposition" [ref=e714]:
+              - img [ref=e716]
+              - text: Superposition
+            - generic [ref=e718]:
+              - button "Chains" [ref=e719]:
+                - img [ref=e721]
+                - text: Chains
+              - button "Atoms" [ref=e723]:
+                - img [ref=e725]
+                - text: Atoms
+              - button "TM-align" [ref=e729]:
+                - img [ref=e731]
+                - text: TM-align
+              - button "Options" [ref=e733]:
+                - img [ref=e735]
+          - generic [ref=e737]:
+            - button "Quick Styles" [ref=e739]:
+              - img [ref=e741]
+              - text: Quick Styles
+            - generic [ref=e743]:
+              - generic [ref=e745]: Apply Representation
+              - generic [ref=e746]:
+                - button "Default" [ref=e747]
+                - button "Cartoon" [ref=e748]
+                - button "Spacefill" [ref=e749]
+                - button "Surface" [ref=e750]
+            - generic [ref=e751]:
+              - generic [ref=e753]: Apply Style
+              - generic [ref=e754]:
+                - button "Default" [ref=e755]
+                - button "Illustrative" [ref=e756]
+          - generic [ref=e757]:
+            - button "Components2 structures" [ref=e759]:
+              - img [ref=e761]
+              - text: Components2 structures
+            - generic [ref=e763]:
+              - button "Preset" [ref=e764]:
+                - img [ref=e766]
+                - text: Preset
+              - button "Add" [ref=e768]:
+                - img [ref=e770]
+                - text: Add
+              - button "Options that are applied to all applicable representations." [ref=e772]:
+                - img [ref=e774]
+              - button "Some mistakes of the past can be undone." [disabled] [ref=e776]:
+                - img [ref=e778]
+            - generic [ref=e781]:
+              - button "Polymer 2 reprs" [ref=e782]:
+                - text: Polymer
+                - generic [ref=e783]: 2 reprs
+              - button "Hide component" [ref=e784]:
+                - img [ref=e786]
+              - button "Remove" [ref=e788]:
+                - img [ref=e790]
+              - button "Actions" [ref=e792]:
+                - img [ref=e794]
+        - list [ref=e799]:
+          - listitem [ref=e800]:
+            - generic [ref=e801]: 23:23:25
+            - generic [ref=e802]: Created 6xu8.cif in 590ms.
+          - listitem [ref=e803]:
+            - generic [ref=e804]: 23:23:26
+            - generic [ref=e805]: Created CIF File in 412ms.
+          - listitem [ref=e806]:
+            - generic [ref=e807]: 23:23:26
+            - generic [ref=e808]: Created 6XU8 in 206ms.
+          - listitem [ref=e809]:
+            - generic [ref=e810]: 23:23:26
+            - generic [ref=e811]: Created Model 1 in 0ms.
+          - listitem [ref=e812]:
+            - generic [ref=e813]: 23:23:26
+            - generic [ref=e814]: Created Model 1 in 0ms.
+          - listitem [ref=e815]:
+            - generic [ref=e816]: 23:23:26
+            - generic [ref=e817]: Created Assembly 1 in 12ms.
+          - listitem [ref=e818]:
+            - generic [ref=e819]: 23:23:26
+            - generic [ref=e820]: Created Assembly 1 in 0ms.
+          - listitem [ref=e821]:
+            - generic [ref=e822]: 23:23:26
+            - generic [ref=e823]: Created Polymer in 8ms.
+          - listitem [ref=e824]:
+            - generic [ref=e825]: 23:23:27
+            - generic [ref=e826]: Created Cartoon in 351ms.
+          - listitem [ref=e827]:
+            - generic [ref=e828]: 23:23:27
+            - generic [ref=e829]: Updated Structure Focus Representation in 1ms.
+```
+
+# Test source
+
+```ts
+  1  | /**
+  2  |  * Playwright E2E test to ensure the visibility toggle for Aligned and AlignedTo works in both columns.
+  3  |  *
+  4  |  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT
+  5  |  * @author Copilot, Andy Turner <agdturner@gmail.com>
+  6  |  * @version 1.0.0
+  7  |  * @lastModified 2026-06-11
+  8  |  */
+  9  | import { test, expect } from '@playwright/test';
+  10 | import path from 'path';
+  11 | 
+  12 | function dataPath(filename: string) {
+  13 |   return path.resolve(__dirname, '../data/input', filename);
+  14 | }
+  15 | 
+  16 | test('Visibility toggles work for Aligned and AlignedTo in both columns', async ({ page }) => {
+  17 |   await page.goto('http://localhost:5173/');
+  18 | 
+  19 |   // Load AlignedTo in column A
+  20 |   const alignedToBtnA = page.locator('#viewer-column-A-alignedto-load-btn');
+  21 |   await alignedToBtnA.click();
+  22 |   const alignedToInputA = page.locator('#viewer-column-A-alignedto-file-input');
+  23 |   await alignedToInputA.setInputFiles(dataPath('4ug0.cif'));
+  24 |   await expect(page.locator('#viewer-column-A-alignedto-filename-label')).toHaveText(/4ug0\.cif/);
+  25 | 
+  26 |   // Load Aligned in column B
+  27 |   const alignedBtnB = page.locator('#viewer-column-B-aligned-load-btn');
+  28 |   await alignedBtnB.click();
+  29 |   const alignedInputB = page.locator('#viewer-column-B-aligned-file-input');
+  30 |   await alignedInputB.setInputFiles(dataPath('6xu8.cif'));
+> 31 |   await expect(page.locator('#viewer-column-B-aligned-filename-label')).toHaveText(/6xu8\.cif/);
+     |                                                                         ^ Error: expect(locator).toHaveText(expected) failed
+  32 | 
+  33 |   // Toggle visibility for AlignedTo in column A
+  34 |   const toggleAlignedToA = page.locator('#viewer-column-A-moleculeui-4ug0 #viewer-column-A-toggle-visibility-btn');
+  35 |   await expect(toggleAlignedToA).toBeVisible();
+  36 |   await toggleAlignedToA.click();
+  37 |   // Optionally, check for a class or style change indicating hidden state
+  38 | 
+  39 |   // Toggle visibility for Aligned in column B
+  40 |   const toggleAlignedB = page.locator('#viewer-column-B-moleculeui-6xu8 #viewer-column-B-toggle-visibility-btn');
+  41 |   await expect(toggleAlignedB).toBeVisible();
+  42 |   await toggleAlignedB.click();
+  43 |   // Optionally, check for a class or style change indicating hidden state
+  44 | 
+  45 |   // Toggle back to visible
+  46 |   await toggleAlignedToA.click();
+  47 |   await toggleAlignedB.click();
+  48 | });
+  49 | 
+```

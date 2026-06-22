@@ -1,43 +1,63 @@
-// Playwright E2E test: Save/Load session with real datasets
-// Copyright (c) 2024-now Ribocode contributors, licensed under MIT
-// @author Andy Turner <agdturner@gmail.com>
-// @version 1.0.0
-// @lastModified 2026-04-24
-// @see https://github.com/ribocode-slola/ribocode1
-
+/**
+ * Playwright E2E test: Save/Load session with real datasets
+ * 
+ * Copyright (c) 2024-now Ribocode contributors, licensed under MIT
+ * @author Copilot, Andy Turner <agdturner@gmail.com>
+ * @version 1.0.0
+ * @lastModified 2026-06-11
+ * @see https://github.com/ribocode-slola/ribocode1
+ */
 import { test, expect } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import path from 'path';
 
 const inputDir = path.resolve(__dirname, '../data/input');
-const alignedToFile = path.join(inputDir, '4UG0.cif');
-const alignedFile = path.join(inputDir, '6XU8.cif');
+const alignedToFile = path.join(inputDir, '4ug0.cif');
+const alignedFile = path.join(inputDir, '6xu8.cif');
+
+async function completeRequiredFilesModal(page: Page) {
+  await expect(page.getByText('Load Session: Select Required Files')).toBeVisible();
+  const fileInputs = await page.$$('[data-testid^="session-load-modal-file-input-"]');
+
+  for (const input of fileInputs) {
+    const label = await input.evaluate((el: HTMLInputElement) => el.parentElement?.textContent || '');
+    if (label.includes('4ug0.cif')) {
+      await input.setInputFiles(alignedToFile);
+    } else if (label.includes('6xu8.cif')) {
+      await input.setInputFiles(alignedFile);
+    }
+  }
+
+  await expect(page.getByTestId('session-load-modal-load-btn')).toBeEnabled();
+  await page.getByTestId('session-load-modal-load-btn').click();
+}
 
 test.describe('Session Save/Load E2E', () => {
-  test('can load, save, and reload session with real data', async ({ page, context }) => {
-    // Go to app
-    await page.goto('http://localhost:5173/'); // Adjust port as needed
+  test('can load, save, and reload session with real data', async ({ page }) => {
+    await page.goto('http://localhost:5173/');
 
-    // Simulate loading AlignedTo and Aligned files (adapt selectors as needed)
-    // Example: await page.setInputFiles('input[type="file"][data-testid="alignedto-input"]', alignedToFile);
-    // Example: await page.setInputFiles('input[type="file"][data-testid="aligned-input"]', alignedFile);
+    await page.click('#viewer-column-A-alignedto-load-btn');
+    await page.setInputFiles('#viewer-column-A-alignedto-file-input', alignedToFile);
+    await page.click('#viewer-column-B-aligned-load-btn');
+    await page.setInputFiles('#viewer-column-B-aligned-file-input', alignedFile);
 
-    // Open Session menu
-    await page.click('text=Session');
-    // Save session
-    await page.click('text=Save');
-    // (Optionally check for download, or stub download behavior)
+    await expect(page.locator('#viewer-column-A-alignedto-filename-label')).toHaveText(/4ug0\.cif/i);
+    await expect(page.locator('#viewer-column-B-aligned-load-btn')).toHaveCount(0, { timeout: 10000 });
 
-    // Open Session menu again
-    await page.click('text=Session');
-    // Load session
-    await page.click('text=Load');
-    // Interact with modal: upload required files
-    // Example: await page.setInputFiles('input[type="file"][data-testid="modal-alignedto-input"]', alignedToFile);
-    // Example: await page.setInputFiles('input[type="file"][data-testid="modal-aligned-input"]', alignedFile);
-    // Click Load Session in modal
-    // await page.click('text=Load Session');
+    await page.click('#session-menu-btn');
+    await page.click('#session-menu-dropdown .session-menu-item:text-is("Save")');
 
-    // Add assertions to verify representations and visibility are restored
-    // Example: expect(await page.isVisible('text=Representation3D')).toBeTruthy();
+    await page.reload();
+    await page.click('#session-menu-btn');
+    await page.click('#session-menu-dropdown .session-menu-item:text-is("Load")');
+
+    await page.setInputFiles('#session-menu-file-input', path.resolve(__dirname, 'test-session.json'));
+
+    await completeRequiredFilesModal(page);
+
+    await expect(page.locator('#viewer-column-A-molstar-container')).toBeVisible();
+    await expect(page.locator('#viewer-column-B-molstar-container')).toBeVisible();
+    await expect(page.locator('#viewer-column-A-alignedto-filename-label')).toHaveText(/4ug0\.cif/i);
+    await expect(page.locator('#viewer-column-B-aligned-load-btn')).toHaveCount(0, { timeout: 20000 });
   });
 });

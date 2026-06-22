@@ -34,6 +34,7 @@ type MolstarContainerProps = {
     onMouseDown?: (viewerKey: ViewerKey) => void;
     onReady?: () => void;
     idPrefix?: string;
+    showAdvancedControls?: boolean;
 };
 
 /**
@@ -45,16 +46,26 @@ type MolstarContainerProps = {
  * @param ref Forwarded ref to expose methods to parent components.
  * @returns The MolstarContainer component.
  */
-const MolstarContainer = React.forwardRef(({ viewerKey, setViewer, onMouseDown, onReady, idPrefix }: MolstarContainerProps, ref) => {
+const MolstarContainer = React.forwardRef(({ viewerKey, setViewer, onMouseDown, onReady, idPrefix, showAdvancedControls = false }: MolstarContainerProps, ref) => {
+    // Use a ref callback to track when the container is mounted and ref is set
+    const [containerReady, setContainerReady] = useState(false);
     const containerRef = useRef<HTMLDivElement | null>(null);
+    const setContainerRef = (el: HTMLDivElement | null) => {
+        containerRef.current = el;
+        if (el) setContainerReady(true);
+        else setContainerReady(false);
+    };
     const pluginRef = useRef<PluginUIContext | null>(null);
     const [plugin, setPlugin] = useState<PluginUIContext | null>(null);
     const rootRef = useRef<ReactDOM.Root | null>(null);
     // Plugin lifecycle: initialization and cleanup
-    useEffect(() => {
+    React.useLayoutEffect(() => {
         const container = containerRef.current;
         console.log(`[MolstarContainer ${viewerKey}] Plugin init effect. containerRef.current:`, container);
-        if (!container) return;
+        if (!containerReady || !container) {
+            // Wait until the container is mounted and ref is set
+            return;
+        }
         // Cleanup previous plugin/root
         if (pluginRef.current) {
             pluginRef.current.dispose();
@@ -119,7 +130,7 @@ const MolstarContainer = React.forwardRef(({ viewerKey, setViewer, onMouseDown, 
                 rootRef.current = null;
             }
         };
-    }, [viewerKey, onReady]);
+    }, [viewerKey, onReady, containerReady]);
     // Update setViewer when plugin changes.
     useEffect(() => {
         if (plugin && setViewer) {
@@ -135,7 +146,11 @@ const MolstarContainer = React.forwardRef(({ viewerKey, setViewer, onMouseDown, 
     // Return the container with a dedicated plugin root for Mol*
     // Render RibocodeViewer and pass idPrefix
         return (
-            <div id={idPrefix ? `${idPrefix}-${idSuffix}` : idSuffix} className="molstar-container-root">
+            <div
+                id={idPrefix ? `${idPrefix}-${idSuffix}` : idSuffix}
+                className={`molstar-container-root ${showAdvancedControls ? 'molstar-advanced-controls-visible' : 'molstar-advanced-controls-hidden'}`}
+                ref={setContainerRef}
+            >
                 <RibocodeViewer
                     plugin={plugin}
                     viewerKey={viewerKey}
@@ -155,5 +170,7 @@ const MolstarContainer = React.forwardRef(({ viewerKey, setViewer, onMouseDown, 
 export default memo(
     MolstarContainer,
     (prevProps: MolstarContainerProps, nextProps: MolstarContainerProps) =>
-        prevProps.viewerKey === nextProps.viewerKey
+    prevProps.viewerKey === nextProps.viewerKey
+    && prevProps.idPrefix === nextProps.idPrefix
+    && prevProps.showAdvancedControls === nextProps.showAdvancedControls
 );

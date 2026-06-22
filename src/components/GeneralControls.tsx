@@ -45,6 +45,7 @@ interface GeneralControlsProps {
   activeViewer: ViewerKey;
   syncEnabled: boolean;
   setSyncEnabled: (v: boolean) => void;
+    syncDisabled: boolean;
   selectedChainIdAlignedTo: string;
   selectedChainIdAligned: string;
   realignmentExists: boolean;
@@ -67,6 +68,7 @@ const GeneralControls: React.FC<GeneralControlsProps> = ({
   activeViewer,
   syncEnabled,
   setSyncEnabled,
+  syncDisabled,
   selectedChainIdAlignedTo,
   selectedChainIdAligned,
   realignmentExists,
@@ -106,7 +108,7 @@ const GeneralControls: React.FC<GeneralControlsProps> = ({
       viewerA={viewerA}
       viewerB={viewerB}
       activeViewer={activeViewer}
-      disabled={!viewerB?.isMoleculeAlignedToLoaded}
+      disabled={syncDisabled}
       syncEnabled={syncEnabled}
       setSyncEnabled={setSyncEnabled}
       id={idPrefix ? `${idPrefix}-${syncSelectIdSuffix}` : syncSelectIdSuffix}

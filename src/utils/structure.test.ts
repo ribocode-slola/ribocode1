@@ -113,9 +113,11 @@ describe('getStructureRepresentations', () => {
     const repRef = 'rep1';
     const compRef = 'comp1';
     const structureRef = 'struct1';
+    const colorTheme = { name: 'cartoon-color', params: {} };
     const repCell = {
-      obj: { type: { name: 'Representation3D' }, props: { colorTheme: 'theme' } },
-      params: { values: { type: { name: 'cartoon' } } },
+      obj: { type: { name: 'Representation3D' }, props: { colorTheme: 'fallback-theme' } },
+      transform: { params: { type: { name: 'cartoon' }, colorTheme } },
+      state: { isHidden: false },
     };
     const compCell = { obj: { type: { name: 'Structure Component' } } };
     const plugin = {
@@ -137,10 +139,50 @@ describe('getStructureRepresentations', () => {
     const result = getStructureRepresentations(plugin, structureRef);
     expect(result).toEqual([
       {
-        type: 'Representation3D',
-        params: repCell.params,
-        colorTheme: 'theme',
+        type: 'cartoon',
+        colorTheme,
+        visible: true,
         repRef: repRef,
+      },
+    ]);
+  });
+
+  it('collects nested Representation3D nodes recursively', () => {
+    const structureRef = 'struct1';
+    const groupRef = 'group1';
+    const nestedRepRef = 'nested-rep1';
+
+    const nestedRepCell = {
+      obj: { type: { name: 'Representation3D' } },
+      transform: { params: { type: { name: 'line' }, colorTheme: { name: 'default', params: {} } } },
+      state: { isHidden: true },
+    };
+
+    const plugin = {
+      state: {
+        data: {
+          tree: {
+            children: new Map([
+              [structureRef, { toArray: () => [groupRef] }],
+              [groupRef, { toArray: () => [nestedRepRef] }],
+              [nestedRepRef, { toArray: () => [] }],
+            ]),
+          },
+          cells: new Map<any, any>([
+            [groupRef, { obj: { type: { name: 'Structure Component' } } }],
+            [nestedRepRef, nestedRepCell],
+          ]),
+        },
+      },
+    };
+
+    const result = getStructureRepresentations(plugin, structureRef);
+    expect(result).toEqual([
+      {
+        type: 'line',
+        colorTheme: { name: 'default', params: {} },
+        visible: false,
+        repRef: nestedRepRef,
       },
     ]);
   });

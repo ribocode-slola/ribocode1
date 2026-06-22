@@ -9,7 +9,7 @@
  * @see https://github.com/ribocode-slola/ribocode1
  */
 import React from 'react';
-import GenericSelectButton from './Select';
+import GenericSelectButton, { idSuffix as selectIdSuffix } from './Select';
 import { ResidueLabelInfo } from 'src/utils/residue';
 
 /**

@@ -9,6 +9,7 @@
  * @see https://github.com/ribocode-slola/ribocode1
  */
 import React, { useState, useCallback } from 'react';
+import { embeddedSessionFilesToRecord } from '../utils/session';
 
 export interface RequiredSessionFile {
   key: string;
@@ -33,14 +34,32 @@ export function useSessionLoadModal(onSessionLoaded: (session: any, files: Recor
   });
 
   // Handler for file input change
-  const handleSessionFileChange = useCallback((idx: number, file: File | null) => {
+  const handleSessionFileChange = useCallback((idx: number, file: File | null, fileList?: FileList | null) => {
     setModalState(prev => {
       const requiredFiles = [...prev.requiredFiles];
-      if (file && file.name === requiredFiles[idx].filename) {
-        requiredFiles[idx] = { ...requiredFiles[idx], file };
-      } else {
-        alert(`Selected file name (${file?.name}) does not match required file (${requiredFiles[idx].filename}). Please try again.`);
+      if (!file) return prev;
+      // Find all required file indices that match this filename
+      const matchingIndices = requiredFiles
+        .map((rf, i) => rf.filename === file.name ? i : -1)
+        .filter(i => i !== -1);
+      if (matchingIndices.length === 0) {
+        alert(`Selected file name (${file.name}) does not match any required file. Please try again.`);
         return prev;
+      }
+      // Assign the selected file to all matching requirements
+      for (const i of matchingIndices) {
+        requiredFiles[i] = { ...requiredFiles[i], file };
+      }
+      // Try to auto-assign the other required file if in the same directory
+      if (fileList && fileList.length > 1) {
+        for (let j = 0; j < requiredFiles.length; ++j) {
+          if (!requiredFiles[j].file) {
+            const match = Array.from(fileList).find(f => f.name === requiredFiles[j].filename);
+            if (match) {
+              requiredFiles[j] = { ...requiredFiles[j], file: match };
+            }
+          }
+        }
       }
       return { ...prev, requiredFiles };
     });
@@ -61,8 +80,42 @@ export function useSessionLoadModal(onSessionLoaded: (session: any, files: Recor
     onSessionLoaded(modalState.sessionData, files);
   }, [modalState, onSessionLoaded]);
 
+  const openSession = useCallback((session: any, loadAll: boolean) => {
+    const requiredFiles = collectRequiredFiles(session);
+    if (loadAll) {
+      const embeddedFiles = embeddedSessionFilesToRecord(session?.embeddedFiles);
+      if (Object.keys(embeddedFiles).length > 0) {
+        onSessionLoaded(session, embeddedFiles);
+        return;
+      }
+    }
+    if (requiredFiles.length === 0) {
+      onSessionLoaded(session, {});
+      return;
+    }
+    setModalState({ open: true, sessionData: session, requiredFiles, step: 0 });
+  }, [onSessionLoaded]);
+
+  const collectRequiredFiles = useCallback((session: any): RequiredSessionFile[] => {
+    const fileMap = new Map<string, RequiredSessionFile>();
+    const addFile = (filename: string | undefined, label: string) => {
+      if (filename && !fileMap.has(filename)) {
+        fileMap.set(filename, { key: filename, label, filename });
+      }
+    };
+    addFile(session.viewerA?.alignedTo?.filename, 'AlignedTo');
+    addFile(session.viewerA?.aligned?.filename, 'Aligned');
+    addFile(session.viewerA?.moleculeAlignedTo?.filename, 'AlignedTo');
+    addFile(session.viewerA?.moleculeAligned?.filename, 'Aligned');
+    addFile(session.viewerB?.alignedTo?.filename, 'AlignedTo');
+    addFile(session.viewerB?.aligned?.filename, 'Aligned');
+    addFile(session.viewerB?.moleculeAlignedTo?.filename, 'AlignedTo');
+    addFile(session.viewerB?.moleculeAligned?.filename, 'Aligned');
+    return Array.from(fileMap.values());
+  }, []);
+
   // Handler for loading session file (JSON)
-  const handleLoadSession = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLoadSession = useCallback((event: React.ChangeEvent<HTMLInputElement>, loadAll = false) => {
     const file = event.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
@@ -74,45 +127,56 @@ export function useSessionLoadModal(onSessionLoaded: (session: any, files: Recor
         alert('Failed to parse session: ' + err);
         return;
       }
-      // Determine required files from session
-      const requiredFiles: RequiredSessionFile[] = [];
-      if (session.viewerA && session.viewerA.alignedTo && session.viewerA.alignedTo.filename) {
-        requiredFiles.push({ key: 'alignedToA', label: 'AlignedTo (Viewer A)', filename: session.viewerA.alignedTo.filename });
-      }
-      if (session.viewerB && session.viewerB.aligned && session.viewerB.aligned.filename) {
-        requiredFiles.push({ key: 'alignedB', label: 'Aligned (Viewer B)', filename: session.viewerB.aligned.filename });
-      } else if (session.viewerA && session.viewerA.aligned && session.viewerA.aligned.filename) {
-        requiredFiles.push({ key: 'alignedA', label: 'Aligned (Viewer A)', filename: session.viewerA.aligned.filename });
-      }
-      setModalState({ open: true, sessionData: session, requiredFiles, step: 0 });
+      openSession(session, loadAll);
     };
     reader.readAsText(file);
-  }, []);
+  }, [openSession]);
+
+  const handleLoadAllSession = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    handleLoadSession(event, true);
+  }, [handleLoadSession]);
 
   // Modal UI component
   const SessionLoadModal = modalState.open ? (
-    <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.4)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ background: '#fff', padding: 32, borderRadius: 8, minWidth: 320, boxShadow: '0 2px 16px rgba(0,0,0,0.2)' }}>
+    <div
+      style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.4)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      data-testid="session-load-modal-root"
+    >
+      <div style={{ background: '#fff', padding: 32, borderRadius: 8, minWidth: 320, boxShadow: '0 2px 16px rgba(0,0,0,0.2)' }} data-testid="session-load-modal-content">
         <h2>Load Session: Select Required Files</h2>
         <ol>
           {modalState.requiredFiles.map((f, idx) => (
             <li key={f.key} style={{ marginBottom: 16 }}>
               <div><b>{f.label}</b>: <span style={{ color: '#555' }}>{f.filename}</span></div>
-              <input type="file" style={{ marginTop: 8 }}
-                onChange={e => handleSessionFileChange(idx, e.target.files?.[0] || null)}
+              <input
+                type="file"
+                style={{ marginTop: 8 }}
+                onChange={e => handleSessionFileChange(idx, e.target.files?.[0] || null, e.target.files)}
                 accept={undefined}
+                data-testid={`session-load-modal-file-input-${idx}`}
               />
               {f.file && <span style={{ color: 'green', marginLeft: 8 }}>✓ Selected</span>}
             </li>
           ))}
         </ol>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <button onClick={() => setModalState({ open: false, sessionData: null, requiredFiles: [], step: 0 })}>Cancel</button>
-          <button onClick={handleSessionLoadProceed} disabled={!modalState.requiredFiles.every(f => f.file)}>Load Session</button>
+          <button
+            onClick={() => setModalState({ open: false, sessionData: null, requiredFiles: [], step: 0 })}
+            data-testid="session-load-modal-cancel-btn"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSessionLoadProceed}
+            disabled={!modalState.requiredFiles.every(f => f.file)}
+            data-testid="session-load-modal-load-btn"
+          >
+            Load Session
+          </button>
         </div>
       </div>
     </div>
   ) : null;
 
-  return { handleLoadSession, SessionLoadModal };
+  return { handleLoadSession, handleLoadAllSession, SessionLoadModal };
 }

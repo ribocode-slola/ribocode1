@@ -37,4 +37,19 @@ describe('TwoColumnsContainer', () => {
     const rootDiv = container.querySelector('.Two-Columns-Container');
     expect(rootDiv).toHaveAttribute('id', `test-columns-${twoColumnsContainerIdSuffix}`);
   });
+
+  it('keeps columns side by side using a fixed two-column grid', () => {
+    const { container } = render(
+      <TwoColumnsContainer
+        left={<div>Left</div>}
+        right={<div>Right</div>}
+      />
+    );
+    const rootDiv = container.querySelector('.Two-Columns-Container') as HTMLDivElement;
+    expect(rootDiv).toHaveStyle({
+      display: 'grid',
+      gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
+      alignItems: 'start',
+    });
+  });
 });

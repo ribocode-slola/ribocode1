@@ -5,21 +5,24 @@
  *
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT. See LICENSE file for more info.
  *
- * @author Andy Turner <agdturner@gmail.com>
- * @version 1.0.0
- * @lastModified 2026-04-24
+ * @author Copilot, Andy Turner <agdturner@gmail.com>
+ * @version 1.0.1
+ * @lastModified 2026-06-11
  * @see https://github.com/ribocode-slola/ribocode1
  */
 import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { useConfirm } from './hooks/useConfirm';
 import { SelectionProvider } from './context/SelectionContext';
 import { ViewerStateProvider } from './context/ViewerStateContext';
 import { SyncProvider } from './context/SyncContext';
 import { handleToggle } from './handlers/uiHandlers';
 import { useSessionSave } from './hooks/useSessionSave';
+import { useSessionSaveAll } from './hooks/useSessionSaveAll';
 import { useSessionLoadModal } from './hooks/useSessionLoadModal';
 import { useUpdateChainInfo } from './hooks/useUpdateChainInfo';
 import { useUpdateResidueInfo } from './hooks/useUpdateResidueInfo';
 import { useUpdateColors } from './hooks/useUpdateColors';
+import { PluginCommands as MolPluginCommands } from 'molstar/lib/mol-plugin/commands';
 import ViewerColumn , {
     getLoadDataRowProps,
     getMoleculeUIAlignedToProps,
@@ -34,6 +37,7 @@ import { parseColorFileContent } from './utils/colors';
 import { useFileInput } from './hooks/useFileInput';
 import { useChainState } from './hooks/useChainState';
 import { getAtomDataFromStructureUnits } from './utils/data';
+import { getStructureRepresentations } from './utils/structure';
 import { parseDictionaryFileContent } from './utils/dictionary';
 import { useResidueState } from './hooks/useResidueState';
 import { useSubunitState } from './hooks/useSubunitState';
@@ -48,7 +52,7 @@ import { alignDatasetUsingChains } from 'molstar/lib/extensions/ribocode/utils/g
 import { Color } from 'molstar/lib/mol-util/color';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 import { AlignmentData } from 'molstar/lib/extensions/ribocode/types';
-import type { LoadedMolecule, ViewerKey } from './types/ribocode';
+import type { LoadedMolecule, ViewerKey, MoleculeMode } from './types/ribocode';
 import { A, B } from './constants/ribocode';
 import { makeFogSetters, makeCameraSetters, makeZoomHandler } from './utils/viewerHelpers';
 import { selectedAtomTypes } from './constants/ribocode';
@@ -59,6 +63,12 @@ import { selectedAtomTypes } from './constants/ribocode';
  */
 interface AppProps {
     testForceIsMoleculeAlignedLoaded?: boolean;
+}
+
+interface SessionRepresentationSpec {
+    type: AllowedRepresentationType;
+    colorTheme: { name: string; params?: Record<string, unknown> };
+    visible: boolean;
 }
 
 const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
@@ -165,45 +175,209 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
     const [realignedMoleculesA, setRealignedMoleculesA] = useState<Array<{ id: string, file: File, label: string, from: string, to: string }>>([]);
     const [realignedMoleculesB, setRealignedMoleculesB] = useState<Array<{ id: string, file: File, label: string, from: string, to: string }>>([]);
 
+    // Use custom confirmation hook
+    const confirm = useConfirm();
+
     // Molecule loading logic extracted to useMoleculeLoader
     // Robust file loading logic for both AlignedTo and Aligned
-    const loadMoleculeIntoViewers = async (file: File, mode: string, alignmentData?: any) => {
+    const normalizeSessionRepresentation = useCallback((rep: any): SessionRepresentationSpec | null => {
+        const typeCandidate = rep?.params?.values?.type?.name ?? rep?.type;
+        if (!typeCandidate || !allowedRepresentationTypes.includes(typeCandidate as AllowedRepresentationType)) {
+            return null;
+        }
+        const colorThemeCandidate = rep?.params?.values?.colorTheme ?? rep?.colorTheme;
+        if (typeof colorThemeCandidate === 'string') {
+            return {
+                type: typeCandidate as AllowedRepresentationType,
+                colorTheme: { name: colorThemeCandidate, params: {} },
+                visible: rep?.visible !== false
+            };
+        }
+        if (colorThemeCandidate && typeof colorThemeCandidate.name === 'string') {
+            return {
+                type: typeCandidate as AllowedRepresentationType,
+                colorTheme: {
+                    name: colorThemeCandidate.name,
+                    params: colorThemeCandidate.params ?? {}
+                },
+                visible: rep?.visible !== false
+            };
+        }
+        return {
+            type: typeCandidate as AllowedRepresentationType,
+            colorTheme: { name: 'default', params: {} },
+            visible: rep?.visible !== false
+        };
+    }, []);
+
+    const serializeRepresentationsForMode = useCallback((
+        molstar: ReturnType<typeof useMolstarViewer>,
+        pluginRef: React.RefObject<PluginUIContext | null>,
+        mode: MoleculeMode
+    ): SessionRepresentationSpec[] => {
+        const plugin = pluginRef.current;
+        const structureRef = molstar.structureRefs[mode];
+        if (!plugin || !structureRef) {
+            return [];
+        }
+        const rawReps = getStructureRepresentations(plugin, structureRef);
+        const normalized = rawReps
+            .map((rep: any) => normalizeSessionRepresentation(rep))
+            .filter((rep: SessionRepresentationSpec | null): rep is SessionRepresentationSpec => !!rep);
+        console.log(`[serializeRepresentationsForMode] ${mode}: captured ${rawReps.length} reps, normalized to ${normalized.length}:`, normalized.map(r => `${r.type}(${r.visible ? 'visible' : 'hidden'})`).join(', '));
+        return normalized;
+    }, [normalizeSessionRepresentation]);
+
+    const waitForRepresentationRef = useCallback(async (
+        molstar: ReturnType<typeof useMolstarViewer>,
+        mode: MoleculeMode,
+        repId: string,
+        timeoutMs = 3000
+    ): Promise<string | null> => {
+        const start = Date.now();
+        while (Date.now() - start < timeoutMs) {
+            // Use the ref (always current) rather than repIdMap state (stale closure)
+            const repRef = molstar.repIdMapRef?.current?.[mode]?.[repId];
+            if (repRef) {
+                console.log(`[waitForRepresentationRef] Found ref for ${mode}/${repId.substring(0, 6)} after ${Date.now() - start}ms`);
+                return repRef;
+            }
+            await new Promise(resolve => setTimeout(resolve, 50));
+        }
+        console.warn(`[waitForRepresentationRef] Timeout waiting for ref ${mode}/${repId.substring(0, 6)} after ${timeoutMs}ms`);
+        return null;
+    }, []);
+
+    const setRepresentationVisible = useCallback(async (
+        plugin: PluginUIContext | null,
+        repRef: string,
+        visible: boolean
+    ): Promise<void> => {
+        if (!plugin) {
+            console.warn(`[setRepresentationVisible] Plugin is null for ref ${repRef.substring(repRef.length - 6)}`);
+            return;
+        }
+        const cell = plugin.state.data?.cells?.get?.(repRef);
+        if (cell) {
+            const isVisible = cell?.state?.isHidden !== true;
+            console.log(`[setRepresentationVisible] Ref ${repRef.substring(repRef.length - 6)}: currently ${isVisible ? 'visible' : 'hidden'}, wanting ${visible ? 'visible' : 'hidden'}`);
+            if (isVisible === visible) {
+                console.log(`[setRepresentationVisible] No change needed for ${repRef.substring(repRef.length - 6)}`);
+                return;
+            }
+        } else {
+            console.warn(`[setRepresentationVisible] Cell not found for ref ${repRef.substring(repRef.length - 6)}`);
+        }
+        console.log(`[setRepresentationVisible] Toggling ${repRef.substring(repRef.length - 6)} to ${visible ? 'visible' : 'hidden'}`);
+        await MolPluginCommands.State.ToggleVisibility.apply(plugin, [plugin, { state: plugin.state.data, ref: repRef }]);
+    }, []);
+
+    const restoreSessionRepresentations = useCallback(async (
+        mode: MoleculeMode,
+        repsA: SessionRepresentationSpec[],
+        repsB: SessionRepresentationSpec[],
+        refA: string | null,
+        refB: string | null,
+        pluginA: PluginUIContext | null,
+        pluginB: PluginUIContext | null
+    ): Promise<void> => {
+        console.log(`[restoreSessionRepresentations] Mode=${mode}, repsA=${repsA.length}, repsB=${repsB.length}`);
+        const restoreForViewer = async (
+            reps: SessionRepresentationSpec[],
+            molstar: ReturnType<typeof useMolstarViewer>,
+            structureRef: string | null,
+            plugin: PluginUIContext | null,
+            viewerName: string
+        ) => {
+            if (!reps.length || !structureRef) {
+                console.log(`[restoreForViewer] Skipping ${viewerName}: reps.length=${reps.length}, structureRef=${structureRef ? 'set' : 'null'}`);
+                return;
+            }
+            console.log(`[restoreForViewer] Restoring ${reps.length} reps to ${viewerName}`);
+
+            const existingReps = plugin ? getStructureRepresentations(plugin, structureRef) : [];
+            const usedExistingRepRefs = new Set<string>();
+            const getColorThemeName = (theme: any): string => {
+                if (typeof theme === 'string') return theme;
+                return theme?.name ?? 'default';
+            };
+
+            for (const rep of reps) {
+                const exactMatch = existingReps.find(existing =>
+                    !usedExistingRepRefs.has(existing.repRef) &&
+                    existing.type === rep.type &&
+                    getColorThemeName(existing.colorTheme) === getColorThemeName(rep.colorTheme)
+                );
+                const typeOnlyMatch = existingReps.find(existing =>
+                    !usedExistingRepRefs.has(existing.repRef) &&
+                    existing.type === rep.type
+                );
+                const existingMatch = exactMatch ?? typeOnlyMatch;
+
+                if (existingMatch && plugin) {
+                    usedExistingRepRefs.add(existingMatch.repRef);
+                    console.log(`[restoreForViewer] Reusing existing ${rep.type} in ${viewerName}`);
+                    if (existingMatch.visible !== rep.visible) {
+                        await setRepresentationVisible(plugin, existingMatch.repRef, rep.visible);
+                    }
+                    continue;
+                }
+
+                const repId = (typeof crypto !== 'undefined' && crypto.randomUUID
+                    ? crypto.randomUUID()
+                    : Math.random().toString(36).slice(2));
+
+                await molstar.addRepresentation(mode, structureRef, rep.type, rep.colorTheme, repId);
+
+                if (!rep.visible && plugin) {
+                    const repRef = await waitForRepresentationRef(molstar, mode, repId);
+                    if (repRef) {
+                        console.log(`[restoreForViewer] Hiding ${rep.type} in ${viewerName}`);
+                        await setRepresentationVisible(plugin, repRef, false);
+                    } else {
+                        console.warn(`[restoreForViewer] Failed to find ref for restored ${rep.type} in ${viewerName}`);
+                    }
+                }
+            }
+        };
+
+        await restoreForViewer(repsA, molstarA, refA, pluginA, 'Viewer A');
+        await restoreForViewer(repsB, molstarB, refB, pluginB, 'Viewer B');
+    }, [molstarA, molstarB, setRepresentationVisible, waitForRepresentationRef]);
+
+    const loadMoleculeIntoViewers = async (
+        file: File,
+        mode: string,
+        alignmentData?: any,
+        sessionRepresentationsA: SessionRepresentationSpec[] = [],
+        sessionRepresentationsB: SessionRepresentationSpec[] = []
+    ): Promise<LoadedMolecule | undefined> => {
         const assetFile = Asset.File(file);
         const pluginA = viewerA.ref.current;
         const pluginB = viewerB.ref.current;
         if (!pluginA || !pluginB) {
             console.error('One or both viewers are not initialized.');
-            return;
+            return undefined;
         }
         // Prevent redundant state updates to break infinite update loops
         if (mode === AlignedTo) {
             if (alignedToFile && alignedToFile.name === file.name) {
                 // Already loaded, skip
-                return;
+                return viewerA.moleculeAlignedTo as LoadedMolecule | undefined;
             }
             setAlignedToFile(file);
             setAlignedToFilename(file.name);
             if (expectedAlignedToFilename) setExpectedAlignedToFilename(null);
-        } else if (mode === Aligned) {
-            if (alignedFile && alignedFile.name === file.name) {
-                // Already loaded, skip
-                return;
-            }
-            setAlignedFile(file);
-            setAlignedFilename(file.name);
-        }
-        let alignData = alignmentData;
-        if (mode === Aligned && !alignData) {
-            alignData = viewerA.moleculeAlignedTo?.alignmentData;
-        }
-        // Viewer A
-        if (mode === AlignedTo) {
+            // Ensure the loader button disappears after upload
+            viewerA.setIsMoleculeAlignedToLoaded(true);
+
+            // Load into Viewer A
             const viewerAMoleculeAlignedTo = await loadMoleculeFileToViewer(
                 pluginA, assetFile, true, true
             );
             if (!viewerAMoleculeAlignedTo) {
                 console.error('Failed to load molecule into viewer A.');
-                return;
+                return undefined;
             }
             viewerA.setMoleculeAlignedTo((prev: any) => ({
                 label: viewerAMoleculeAlignedTo.label,
@@ -213,20 +387,21 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 trajectory: viewerAMoleculeAlignedTo.trajectory,
                 alignmentData: viewerAMoleculeAlignedTo.alignmentData
             }));
-            const structureA = pluginA.managers.structure.hierarchy.current.structures[0];
-            if (structureA) {
-                const ref = structureA.cell.transform.ref;
-                molstarA.setStructureRef(AlignedTo, ref);
-            }
-            viewerA.setIsMoleculeAlignedToLoaded(true);
             viewerA.setIsMoleculeAlignedToVisible(true);
-            // Viewer B
+            let refAAlignedTo: string | null = null;
+            const structAAlignedTo = pluginA.managers.structure.hierarchy.current.structures[0];
+            if (structAAlignedTo) {
+                refAAlignedTo = structAAlignedTo.cell.transform.ref;
+                molstarA.setStructureRef(AlignedTo, refAAlignedTo);
+            }
+
+            // Load into Viewer B
             const viewerBMoleculeAlignedTo = await loadMoleculeFileToViewer(
-                pluginB, assetFile, false, true
+                pluginB, assetFile, true, true
             );
             if (!viewerBMoleculeAlignedTo) {
                 console.error('Failed to load molecule into viewer B.');
-                return;
+                return undefined;
             }
             viewerB.setMoleculeAlignedTo((prev: any) => ({
                 label: viewerBMoleculeAlignedTo.label,
@@ -234,61 +409,112 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 filename: viewerBMoleculeAlignedTo.filename ?? prev?.filename ?? "",
                 presetResult: viewerBMoleculeAlignedTo.presetResult ?? "Unknown",
                 trajectory: viewerBMoleculeAlignedTo.trajectory,
+                alignmentData: viewerBMoleculeAlignedTo.alignmentData
             }));
-            const structureB = pluginB.managers.structure.hierarchy.current.structures[0];
-            if (structureB) {
-                const ref = structureB.cell.transform.ref;
-                molstarB.setStructureRef(AlignedTo, ref);
-            }
             viewerB.setIsMoleculeAlignedToLoaded(true);
             viewerB.setIsMoleculeAlignedToVisible(true);
+                let refBAlignedTo: string | null = null;
+                const structBAlignedTo = pluginB.managers.structure.hierarchy.current.structures[0];
+                if (structBAlignedTo) {
+                    refBAlignedTo = structBAlignedTo.cell.transform.ref;
+                    molstarB.setStructureRef(AlignedTo, refBAlignedTo);
+                }
+
+            await restoreSessionRepresentations(
+                AlignedTo,
+                sessionRepresentationsA,
+                sessionRepresentationsB,
+                refAAlignedTo,
+                refBAlignedTo,
+                pluginA,
+                pluginB
+            );
+
+            return viewerAMoleculeAlignedTo as LoadedMolecule;
+
         } else if (mode === Aligned) {
-            // alignData should always be present due to UI constraints; no warning or early return needed.
-            // Viewer A
-            const viewerAMoleculeAligned = await loadMoleculeFileToViewer(
-                pluginA, assetFile, false, true, alignData
+            if (alignedFile && alignedFile.name === file.name) {
+                // Already loaded, skip
+                return viewerA.moleculeAligned as LoadedMolecule | undefined;
+            }
+            setAlignedFile(file);
+            setAlignedFilename(file.name);
+            const alignData = alignmentData ?? viewerA.moleculeAlignedTo?.alignmentData;
+            let refAAligned: string | null = null;
+            let refBAligned: string | null = null;
+
+            // Load into Viewer A
+            const assetFileA = Asset.File(file);
+            const pluginA = viewerA.ref.current;
+            let viewerAMoleculeAligned = null;
+            if (pluginA) {
+                viewerAMoleculeAligned = await loadMoleculeFileToViewer(
+                    pluginA, assetFileA, false, true, alignData
+                );
+            }
+            if (viewerAMoleculeAligned) {
+                viewerA.setMoleculeAligned((prev: any) => ({
+                    label: viewerAMoleculeAligned.label,
+                    name: viewerAMoleculeAligned.name,
+                    filename: viewerAMoleculeAligned.filename ?? file.name,
+                    presetResult: viewerAMoleculeAligned.presetResult ?? "Unknown",
+                    trajectory: viewerAMoleculeAligned.trajectory,
+                    alignmentData: viewerAMoleculeAligned.alignmentData
+                }));
+                viewerA.setIsMoleculeAlignedLoaded(true);
+                viewerA.setIsMoleculeAlignedVisible(true);
+                const structAAligned = pluginA?.managers?.structure?.hierarchy?.current?.structures[1]
+                    ?? pluginA?.managers?.structure?.hierarchy?.current?.structures[0];
+                if (structAAligned) {
+                    refAAligned = structAAligned.cell.transform.ref;
+                    molstarA.setStructureRef(Aligned, refAAligned);
+                }
+            }
+
+            // Load into Viewer B and update state/filename for UI
+            const assetFileB = Asset.File(file);
+            const pluginB = viewerB.ref.current;
+            let viewerBMoleculeAligned = null;
+            if (pluginB) {
+                viewerBMoleculeAligned = await loadMoleculeFileToViewer(
+                    pluginB, assetFileB, false, true, alignData
+                );
+            }
+            if (viewerBMoleculeAligned) {
+                viewerB.setMoleculeAligned((prev: any) => ({
+                    label: viewerBMoleculeAligned.label,
+                    name: viewerBMoleculeAligned.name,
+                    filename: viewerBMoleculeAligned.filename ?? file.name,
+                    presetResult: viewerBMoleculeAligned.presetResult ?? "Unknown",
+                    trajectory: viewerBMoleculeAligned.trajectory,
+                    alignmentData: viewerBMoleculeAligned.alignmentData
+                }));
+                viewerB.setIsMoleculeAlignedLoaded(true);
+                viewerB.setIsMoleculeAlignedVisible(true);
+                setAlignedFilename(file.name); // Ensure filename is set for UI
+                const structBAligned = pluginB?.managers?.structure?.hierarchy?.current?.structures[1]
+                    ?? pluginB?.managers?.structure?.hierarchy?.current?.structures[0];
+                if (structBAligned) {
+                    refBAligned = structBAligned.cell.transform.ref;
+                    molstarB.setStructureRef(Aligned, refBAligned);
+                }
+
+            }
+
+            await restoreSessionRepresentations(
+                Aligned,
+                sessionRepresentationsA,
+                sessionRepresentationsB,
+                refAAligned,
+                refBAligned,
+                pluginA,
+                pluginB
             );
-            if (!viewerAMoleculeAligned) {
-                console.error('Failed to load molecule into viewer A.');
-                return;
-            }
-            viewerA.setMoleculeAligned((prev: any) => ({
-                label: viewerAMoleculeAligned.label,
-                name: viewerAMoleculeAligned.name,
-                filename: viewerAMoleculeAligned.filename ?? prev?.filename ?? "",
-                presetResult: viewerAMoleculeAligned.presetResult ?? "Unknown",
-                trajectory: viewerAMoleculeAligned.trajectory,
-            }));
-            const structureA = pluginA.managers.structure.hierarchy.current.structures[1];
-            if (structureA) {
-                const ref = structureA.cell.transform.ref;
-                molstarA.setStructureRef(Aligned, ref);
-            }
-            viewerA.setIsMoleculeAlignedLoaded(true);
-            viewerA.setIsMoleculeAlignedVisible(true);
-            // Viewer B
-            const viewerBMoleculeAligned = await loadMoleculeFileToViewer(
-                pluginB, assetFile, false, true, alignData
-            );
-            if (!viewerBMoleculeAligned) {
-                console.error('Failed to load molecule into viewer B.');
-                return;
-            }
-            viewerB.setMoleculeAligned((prev: any) => ({
-                label: viewerBMoleculeAligned.label,
-                name: viewerBMoleculeAligned.name,
-                filename: viewerBMoleculeAligned.filename ?? prev?.filename ?? "",
-                presetResult: viewerBMoleculeAligned.presetResult ?? "Unknown",
-                trajectory: viewerBMoleculeAligned.trajectory,
-            }));
-            const structureB = pluginB.managers.structure.hierarchy.current.structures[1];
-            if (structureB) {
-                const ref = structureB.cell.transform.ref;
-                molstarB.setStructureRef(Aligned, ref);
-            }
-            viewerB.setIsMoleculeAlignedLoaded(true);
-            viewerB.setIsMoleculeAlignedVisible(true);
+
+            return (viewerAMoleculeAligned ?? viewerBMoleculeAligned ?? undefined) as LoadedMolecule | undefined;
         }
+
+        return undefined;
     };
 
     // Robust file input handler for both modes
@@ -406,10 +632,26 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         chainColorMaps,
         [viewerA.moleculeAlignedTo, viewerB.moleculeAlignedTo, representationTypeAlignedTo, structureRefAAlignedTo, structureRefBAlignedTo]
     );
+    useUpdateColors(
+        viewerB.ref.current,
+        colorsAlignedToFile.data,
+        setIsMoleculeAlignedToColoursLoaded,
+        themeNameAlignedTo,
+        chainColorMaps,
+        [viewerA.moleculeAlignedTo, viewerB.moleculeAlignedTo, representationTypeAlignedTo, structureRefAAlignedTo, structureRefBAlignedTo]
+    );
 
     // Use the custom hook for both color sets (Aligned)
     useUpdateColors(
         viewerA.ref.current,
+        colorsAlignedFile.data,
+        setIsMoleculeAlignedColoursLoaded,
+        themeNameAligned,
+        chainColorMaps,
+        [viewerA.moleculeAligned, viewerB.moleculeAligned, representationTypeAligned, structureRefAAligned, structureRefBAligned]
+    );
+    useUpdateColors(
+        viewerB.ref.current,
         colorsAlignedFile.data,
         setIsMoleculeAlignedColoursLoaded,
         themeNameAligned,
@@ -653,36 +895,170 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
     // Session save: use custom hook
     const handleSaveSession = useSessionSave(() => ({
         viewerA: {
-            moleculeAlignedTo: viewerA.moleculeAlignedTo,
-            moleculeAligned: viewerA.moleculeAligned,
+            moleculeAlignedTo: viewerA.moleculeAlignedTo
+                ? {
+                    filename: viewerA.moleculeAlignedTo.filename,
+                    alignmentData: viewerA.moleculeAlignedTo.alignmentData,
+                    representations: serializeRepresentationsForMode(molstarA, pluginRefA, AlignedTo),
+                    // add other serializable fields as needed
+                }
+                : null,
+            moleculeAligned: viewerA.moleculeAligned
+                ? {
+                    filename: viewerA.moleculeAligned.filename,
+                    alignmentData: viewerA.moleculeAligned.alignmentData,
+                    representations: serializeRepresentationsForMode(molstarA, pluginRefA, Aligned),
+                    // add other serializable fields as needed
+                }
+                : null,
         },
         viewerB: {
-            moleculeAlignedTo: viewerB.moleculeAlignedTo,
-            moleculeAligned: viewerB.moleculeAligned,
+            moleculeAlignedTo: viewerB.moleculeAlignedTo
+                ? {
+                    filename: viewerB.moleculeAlignedTo.filename,
+                    alignmentData: viewerB.moleculeAlignedTo.alignmentData,
+                    representations: serializeRepresentationsForMode(molstarB, pluginRefB, AlignedTo),
+                }
+                : null,
+            moleculeAligned: viewerB.moleculeAligned
+                ? {
+                    filename: viewerB.moleculeAligned.filename,
+                    alignmentData: viewerB.moleculeAligned.alignmentData,
+                    representations: serializeRepresentationsForMode(molstarB, pluginRefB, Aligned),
+                }
+                : null,
         },
-        // Add more state as needed
+        // Add more serializable state as needed
     }));
+
+    const handleSaveSessionAll = useSessionSaveAll(
+        () => ({
+            viewerA: {
+                moleculeAlignedTo: viewerA.moleculeAlignedTo
+                    ? {
+                        filename: viewerA.moleculeAlignedTo.filename,
+                        alignmentData: viewerA.moleculeAlignedTo.alignmentData,
+                        representations: serializeRepresentationsForMode(molstarA, pluginRefA, AlignedTo),
+                    }
+                    : null,
+                moleculeAligned: viewerA.moleculeAligned
+                    ? {
+                        filename: viewerA.moleculeAligned.filename,
+                        alignmentData: viewerA.moleculeAligned.alignmentData,
+                        representations: serializeRepresentationsForMode(molstarA, pluginRefA, Aligned),
+                    }
+                    : null,
+            },
+            viewerB: {
+                moleculeAlignedTo: viewerB.moleculeAlignedTo
+                    ? {
+                        filename: viewerB.moleculeAlignedTo.filename,
+                        alignmentData: viewerB.moleculeAlignedTo.alignmentData,
+                        representations: serializeRepresentationsForMode(molstarB, pluginRefB, AlignedTo),
+                    }
+                    : null,
+                moleculeAligned: viewerB.moleculeAligned
+                    ? {
+                        filename: viewerB.moleculeAligned.filename,
+                        alignmentData: viewerB.moleculeAligned.alignmentData,
+                        representations: serializeRepresentationsForMode(molstarB, pluginRefB, Aligned),
+                    }
+                    : null,
+            },
+        }),
+        () => {
+            const embeddedFiles: Record<string, File | null | undefined> = {};
+            if (alignedToFile?.name) embeddedFiles[alignedToFile.name] = alignedToFile;
+            if (alignedFile?.name) embeddedFiles[alignedFile.name] = alignedFile;
+            return embeddedFiles;
+        }
+    );
 
     // Define the session loaded callback with proper typing and error handling
     const onSessionLoaded = useCallback(async (session: any, files: Record<string, File>) => {
-        // Loads molecules and restores state from session. Expand as needed.
+        // Map filenames to semantic keys for compatibility
+        const getFilename = (obj: any) => obj && typeof obj.filename === 'string' ? obj.filename : undefined;
+        const getRepresentations = (obj: any): SessionRepresentationSpec[] => {
+            if (!Array.isArray(obj?.representations)) return [];
+            return obj.representations
+                .map((rep: any) => normalizeSessionRepresentation(rep))
+                .filter((rep: SessionRepresentationSpec | null): rep is SessionRepresentationSpec => !!rep);
+        };
+        const firstNonEmptyRepresentations = (...sources: any[]): SessionRepresentationSpec[] => {
+            for (const src of sources) {
+                const reps = getRepresentations(src);
+                if (reps.length > 0) return reps;
+            }
+            return [];
+        };
+        const alignedToFilename = getFilename(session.viewerA?.alignedTo) || getFilename(session.viewerA?.moleculeAlignedTo);
+        const alignedFilename = getFilename(session.viewerB?.aligned) || getFilename(session.viewerB?.moleculeAligned);
+        // Fallback: try viewerB.alignedTo or viewerA.aligned
+        const altAlignedToFilename = getFilename(session.viewerB?.alignedTo) || getFilename(session.viewerB?.moleculeAlignedTo);
+        const altAlignedFilename = getFilename(session.viewerA?.aligned) || getFilename(session.viewerA?.moleculeAligned);
+        const alignedToRepresentationsA = firstNonEmptyRepresentations(
+            session.viewerA?.alignedTo,
+            session.viewerA?.moleculeAlignedTo,
+            session.viewerB?.alignedTo,
+            session.viewerB?.moleculeAlignedTo
+        );
+        const alignedToRepresentationsB = firstNonEmptyRepresentations(
+            session.viewerB?.alignedTo,
+            session.viewerB?.moleculeAlignedTo,
+            session.viewerA?.alignedTo,
+            session.viewerA?.moleculeAlignedTo
+        );
+        const alignedRepresentationsA = firstNonEmptyRepresentations(
+            session.viewerA?.aligned,
+            session.viewerA?.moleculeAligned,
+            session.viewerB?.aligned,
+            session.viewerB?.moleculeAligned
+        );
+        const alignedRepresentationsB = firstNonEmptyRepresentations(
+            session.viewerB?.aligned,
+            session.viewerB?.moleculeAligned,
+            session.viewerA?.aligned,
+            session.viewerA?.moleculeAligned
+        );
+
+        // Try to get the files by filename
+        const alignedToFile = (alignedToFilename && files[alignedToFilename]) || (altAlignedToFilename && files[altAlignedToFilename]);
+        const alignedFile = (alignedFilename && files[alignedFilename]) || (altAlignedFilename && files[altAlignedFilename]);
+
         let loadedAny = false;
         try {
-            if (files.alignedToA) {
-                // Explicitly type the result for clarity and type safety
-                const alignedToMolecule = await loadMoleculeIntoViewers(files.alignedToA, AlignedTo) as LoadedMolecule | undefined;
+            if (alignedToFile) {
+                const alignedToMolecule = await loadMoleculeIntoViewers(
+                    alignedToFile,
+                    AlignedTo,
+                    undefined,
+                    alignedToRepresentationsA,
+                    alignedToRepresentationsB
+                ) as LoadedMolecule | undefined;
                 loadedAny = true;
-                if (files.alignedB || files.alignedA) {
-                    const alignedFile = files.alignedB || files.alignedA;
+                if (alignedFile) {
+                    const restoredAlignmentData = alignedToMolecule?.alignmentData ?? alignmentDataRef.current;
                     // Defensive runtime check for alignmentData
-                    if (!alignedToMolecule || typeof alignedToMolecule !== 'object' || !('alignmentData' in alignedToMolecule) || !alignedToMolecule.alignmentData) {
+                    if (!restoredAlignmentData) {
                         alert('AlignedTo alignment data not available after load. Cannot load Aligned file.');
                     } else {
-                        await loadMoleculeIntoViewers(alignedFile, Aligned, alignedToMolecule.alignmentData);
+                        await loadMoleculeIntoViewers(
+                            alignedFile,
+                            Aligned,
+                            restoredAlignmentData,
+                            alignedRepresentationsA,
+                            alignedRepresentationsB
+                        );
                     }
                 }
-            } else if (files.alignedB || files.alignedA) {
-                await loadMoleculeIntoViewers(files.alignedB || files.alignedA, Aligned);
+            } else if (alignedFile) {
+                await loadMoleculeIntoViewers(
+                    alignedFile,
+                    Aligned,
+                    undefined,
+                    alignedRepresentationsA,
+                    alignedRepresentationsB
+                );
                 loadedAny = true;
             }
             // TODO: Restore visibility and representations as needed
@@ -692,10 +1068,10 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         } catch (e) {
             alert('Error loading session: ' + (e instanceof Error ? e.message : String(e)));
         }
-    }, [loadMoleculeIntoViewers]);
+    }, [loadMoleculeIntoViewers, normalizeSessionRepresentation]);
 
     // Initialize session load modal with the callback
-    const { handleLoadSession, SessionLoadModal } = useSessionLoadModal(onSessionLoaded);
+    const { handleLoadSession, handleLoadAllSession, SessionLoadModal } = useSessionLoadModal(onSessionLoaded);
 
     // Return the main app component.
     return (
@@ -712,13 +1088,22 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                 id="session-menu-btn"
                                 onClick={e => {
                                     const menu = document.getElementById('session-menu-dropdown');
-                                    if (menu) menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+                                    if (menu) {
+                                        const willOpen = menu.style.display !== 'block';
+                                        menu.style.display = willOpen ? 'block' : 'none';
+                                        console.log(`[SessionMenu] Menu ${willOpen ? 'opened' : 'closed'} by button click`);
+                                    }
                                 }}
                                 onBlur={e => {
-                                    setTimeout(() => {
-                                        const menu = document.getElementById('session-menu-dropdown');
-                                        if (menu) menu.style.display = 'none';
-                                    }, 150);
+                                    if (process.env.NODE_ENV !== 'test') {
+                                        setTimeout(() => {
+                                            const menu = document.getElementById('session-menu-dropdown');
+                                            if (menu) {
+                                                menu.style.display = 'none';
+                                                console.log('[SessionMenu] Menu closed by blur');
+                                            }
+                                        }, 150);
+                                    }
                                 }}
                             >
                                 Session ▾
@@ -743,30 +1128,91 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                 <div
                                     className="session-menu-item session-menu-item-border"
                                     onClick={() => {
-                                        document.getElementById('session-menu-file-input')?.click();
+                                        void handleSaveSessionAll();
+                                        document.getElementById('session-menu-dropdown')!.style.display = 'none';
+                                    }}
+                                    tabIndex={0}
+                                    onKeyDown={e => { if (e.key === 'Enter') void handleSaveSessionAll(); }}
+                                    style={{ padding: '8px 16px', cursor: 'pointer', borderBottom: '1px solid #eee' }}
+                                >
+                                    Save All
+                                </div>
+                                <div
+                                    className="session-menu-item session-menu-item-border"
+                                    onClick={() => {
+                                        console.log('[SessionMenu] Load menu item clicked');
+                                        if (confirm('Loading a session will unload all current data and replace the session. Please save your work first if needed. Continue?')) {
+                                            console.log('[SessionMenu] Triggering file input for session load');
+                                            document.getElementById('session-menu-file-input')?.click();
+                                        }
                                         setTimeout(() => {
-                                            document.getElementById('session-menu-dropdown')!.style.display = 'none';
+                                            const dropdown = document.getElementById('session-menu-dropdown');
+                                            if (dropdown) dropdown.style.display = 'none';
                                         }, 0);
                                     }}
                                     tabIndex={0}
-                                    onKeyDown={e => { if (e.key === 'Enter') document.getElementById('session-menu-file-input')?.click(); }}
+                                    onKeyDown={e => {
+                                        if (e.key === 'Enter') {
+                                            console.log('[SessionMenu] Load menu item activated by Enter key');
+                                            if (confirm('Loading a session will unload all current data and replace the session. Please save your work first if needed. Continue?')) {
+                                                console.log('[SessionMenu] Triggering file input for session load (Enter)');
+                                                document.getElementById('session-menu-file-input')?.click();
+                                            }
+                                            setTimeout(() => {
+                                                const dropdown = document.getElementById('session-menu-dropdown');
+                                                if (dropdown) dropdown.style.display = 'none';
+                                            }, 0);
+                                        }
+                                    }}
                                     style={{ padding: '8px 16px', cursor: 'pointer', borderBottom: '1px solid #eee' }}
                                 >
                                     Load
                                 </div>
                                 <div
+                                    className="session-menu-item session-menu-item-border"
+                                    onClick={() => {
+                                        console.log('[SessionMenu] Load All menu item clicked');
+                                        if (confirm('Loading a session will unload all current data and replace the session. Please save your work first if needed. Continue?')) {
+                                            console.log('[SessionMenu] Triggering file input for session load all');
+                                            document.getElementById('session-menu-file-input-all')?.click();
+                                        }
+                                        setTimeout(() => {
+                                            const dropdown = document.getElementById('session-menu-dropdown');
+                                            if (dropdown) dropdown.style.display = 'none';
+                                        }, 0);
+                                    }}
+                                    tabIndex={0}
+                                    onKeyDown={e => {
+                                        if (e.key === 'Enter') {
+                                            console.log('[SessionMenu] Load All menu item activated by Enter key');
+                                            if (confirm('Loading a session will unload all current data and replace the session. Please save your work first if needed. Continue?')) {
+                                                console.log('[SessionMenu] Triggering file input for session load all (Enter)');
+                                                document.getElementById('session-menu-file-input-all')?.click();
+                                            }
+                                            setTimeout(() => {
+                                                const dropdown = document.getElementById('session-menu-dropdown');
+                                                if (dropdown) dropdown.style.display = 'none';
+                                            }, 0);
+                                        }
+                                    }}
+                                    style={{ padding: '8px 16px', cursor: 'pointer', borderBottom: '1px solid #eee' }}
+                                >
+                                    Load All
+                                </div>
+                                <div
                                     className="session-menu-item"
                                     onClick={() => {
-                                        if (window.confirm('Restarting will unload all data and reset the session. Please save your work first if needed. Continue?')) {
+                                        if (confirm('Restarting will unload all data and reset the session. Please save your work first if needed. Continue?')) {
                                             window.location.reload();
                                         } else {
-                                            document.getElementById('session-menu-dropdown')!.style.display = 'none';
+                                            const dropdown = document.getElementById('session-menu-dropdown');
+                                            if (dropdown) dropdown.style.display = 'none';
                                         }
                                     }}
                                     tabIndex={0}
                                     onKeyDown={e => {
                                         if (e.key === 'Enter') {
-                                            if (window.confirm('Restarting will unload all data and reset the session. Please save your work first if needed. Continue?')) {
+                                            if (confirm('Restarting will unload all data and reset the session. Please save your work first if needed. Continue?')) {
                                                 window.location.reload();
                                             } else {
                                                 document.getElementById('session-menu-dropdown')!.style.display = 'none';
@@ -783,7 +1229,20 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                 type="file"
                                 accept="application/json"
                                 style={{ display: 'none' }}
-                                onChange={handleLoadSession}
+                                onChange={e => {
+                                    console.log('[SessionMenu] File input changed (session load)');
+                                    handleLoadSession(e);
+                                }}
+                            />
+                            <input
+                                id="session-menu-file-input-all"
+                                type="file"
+                                accept="application/json"
+                                style={{ display: 'none' }}
+                                onChange={e => {
+                                    console.log('[SessionMenu] File input changed (session load all)');
+                                    handleLoadAllSession(e);
+                                }}
                             />
                         </div>
                     </nav>
@@ -798,6 +1257,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                         activeViewer={activeViewer}
                         syncEnabled={syncEnabled}
                         setSyncEnabled={setSyncEnabled}
+                        syncDisabled={!viewerA.isMoleculeAlignedLoaded || !viewerB.isMoleculeAlignedLoaded}
                         selectedChainIdAlignedTo={selectedChainIdAlignedTo}
                         selectedChainIdAligned={selectedChainIdAligned}
                         realignmentExists={realignmentExists}
@@ -808,7 +1268,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                         left={
                             <ViewerColumn
                                 viewerKey={A}
-                                loadDataRowProps={getLoadDataRowProps({
+                                loadDataRowPropsAlignedTo={getLoadDataRowProps({
                                     viewer: viewerA,
                                     otherViewer: viewerB,
                                     molstar: molstarA,
@@ -846,9 +1306,49 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     realignedRepRefs: realignedRepRefsA,
                                     setRealignedRepRefs: setRealignedRepRefsA,
                                     setRealignedStructRefs: setRealignedStructRefsA,
-                                    // Override for left column:
                                     fileInputLabel: 'Load AlignedTo',
                                     fileInputDisabled: false,
+                                })}
+                                loadDataRowPropsAligned={getLoadDataRowProps({
+                                    viewer: viewerA,
+                                    otherViewer: viewerB,
+                                    molstar: molstarA,
+                                    otherMolstar: molstarB,
+                                    realignedStructRefs: realignedStructRefsA,
+                                    otherRealignedStructRefs: realignedStructRefsB,
+                                    isMoleculeAlignedLoaded: viewerA.isMoleculeAlignedLoaded,
+                                    isMoleculeAlignedToLoaded: viewerA.isMoleculeAlignedToLoaded,
+                                    viewerReady: viewerAReady,
+                                    otherViewerReady: viewerBReady,
+                                    representationType: representationTypeAligned,
+                                    setRepresentationType: setRepresentationTypeAligned,
+                                    colorsFile: colorsAlignedFile,
+                                    isMoleculeColoursLoaded: isMoleculeAlignedColoursLoaded,
+                                    structureRef: structureRefAAligned,
+                                    otherStructureRef: structureRefBAligned,
+                                    selectedSubunit: selectedSubunitAligned,
+                                    setSelectedSubunit: setSelectedSubunitAligned,
+                                    subunitToChainIds: subunitToChainIdsAligned,
+                                    chainInfo: chainInfoAligned,
+                                    selectedChainId: selectedChainIdAligned,
+                                    setSelectedChainId: setSelectedChainIdAligned,
+                                    residueInfo: residueInfoAligned,
+                                    selectedResidueId: selectedResidueIdAligned,
+                                    setSelectedResidueId: setSelectedResidueIdAligned,
+                                    fog: fogA,
+                                    setFog: makeFogSetters(setFogA),
+                                    camera: cameraA,
+                                    setCamera: makeCameraSetters(setCameraA),
+                                    updateFog,
+                                    handleFileChange,
+                                    Aligned: Aligned,
+                                    allowedRepresentationTypes,
+                                    syncEnabled,
+                                    realignedRepRefs: realignedRepRefsA,
+                                    setRealignedRepRefs: setRealignedRepRefsA,
+                                    setRealignedStructRefs: setRealignedStructRefsA,
+                                    fileInputLabel: 'Load Aligned',
+                                    fileInputDisabled: !viewerA.isMoleculeAlignedToLoaded,
                                 })}
                                 moleculeUIAlignedToProps={getMoleculeUIAlignedToProps({
                                     molstar: molstarA,
@@ -927,16 +1427,56 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                         right={
                             <ViewerColumn
                                 viewerKey={B}
-                                loadDataRowProps={getLoadDataRowProps({
+                                loadDataRowPropsAlignedTo={getLoadDataRowProps({
                                     viewer: viewerB,
                                     otherViewer: viewerA,
                                     molstar: molstarB,
                                     otherMolstar: molstarA,
                                     realignedStructRefs: realignedStructRefsB,
                                     otherRealignedStructRefs: realignedStructRefsA,
-                                    isMoleculeAlignedLoaded: viewerB.isMoleculeAlignedLoaded,
-                                    // Always use latest state for enabling Load Aligned
-                                    isMoleculeAlignedToLoaded: viewerA.isMoleculeAlignedToLoaded,
+                                    isMoleculeAlignedLoaded: false, // Only matters for Aligned loader
+                                    isMoleculeAlignedToLoaded: viewerB.isMoleculeAlignedToLoaded, // Only matters for AlignedTo loader
+                                    viewerReady: viewerBReady,
+                                    otherViewerReady: viewerAReady,
+                                    representationType: representationTypeAlignedTo,
+                                    setRepresentationType: setRepresentationTypeAlignedTo,
+                                    colorsFile: colorsAlignedToFile,
+                                    isMoleculeColoursLoaded: isMoleculeAlignedToColoursLoaded,
+                                    structureRef: structureRefBAlignedTo,
+                                    otherStructureRef: structureRefAAlignedTo,
+                                    selectedSubunit: selectedSubunitAlignedTo,
+                                    setSelectedSubunit: setSelectedSubunitAlignedTo,
+                                    subunitToChainIds: subunitToChainIdsAlignedTo,
+                                    chainInfo: chainInfoAlignedTo,
+                                    selectedChainId: selectedChainIdAlignedTo,
+                                    setSelectedChainId: setSelectedChainIdAlignedTo,
+                                    residueInfo: residueInfoAlignedTo,
+                                    selectedResidueId: selectedResidueIdAlignedTo,
+                                    setSelectedResidueId: setSelectedResidueIdAlignedTo,
+                                    fog: fogB,
+                                    setFog: makeFogSetters(setFogB),
+                                    camera: cameraB,
+                                    setCamera: makeCameraSetters(setCameraB),
+                                    updateFog,
+                                    handleFileChange,
+                                    Aligned: AlignedTo,
+                                    allowedRepresentationTypes,
+                                    syncEnabled,
+                                    realignedRepRefs: realignedRepRefsB,
+                                    setRealignedRepRefs: setRealignedRepRefsB,
+                                    setRealignedStructRefs: setRealignedStructRefsB,
+                                    fileInputLabel: 'Load AlignedTo',
+                                    fileInputDisabled: false,
+                                })}
+                                loadDataRowPropsAligned={getLoadDataRowProps({
+                                    viewer: viewerB,
+                                    otherViewer: viewerA,
+                                    molstar: molstarB,
+                                    otherMolstar: molstarA,
+                                    realignedStructRefs: realignedStructRefsB,
+                                    otherRealignedStructRefs: realignedStructRefsA,
+                                    isMoleculeAlignedLoaded: !!(viewerB.moleculeAligned && viewerB.moleculeAligned.filename),
+                                    isMoleculeAlignedToLoaded: viewerB.isMoleculeAlignedToLoaded,
                                     viewerReady: viewerBReady,
                                     otherViewerReady: viewerAReady,
                                     representationType: representationTypeAligned,
@@ -966,9 +1506,10 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     realignedRepRefs: realignedRepRefsB,
                                     setRealignedRepRefs: setRealignedRepRefsB,
                                     setRealignedStructRefs: setRealignedStructRefsB,
-                                    // Override for right column:
                                     fileInputLabel: 'Load Aligned',
-                                    fileInputDisabled: process.env.NODE_ENV === 'test' ? false : !alignmentDataReady,
+                                    fileInputDisabled: !viewerB.isMoleculeAlignedToLoaded,
+                                    // Ensure loadedFilename is always passed explicitly for Aligned
+                                    loadedFilename: viewerB.moleculeAligned?.filename || viewerB.moleculeAligned?.name || viewerB.moleculeAligned?.label || '',
                                 })}
                                 moleculeUIAlignedToProps={getMoleculeUIAlignedToProps({
                                     molstar: molstarB,

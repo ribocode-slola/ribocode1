@@ -1,9 +1,13 @@
-## [v0.7.1] - 2026-04-26
-- Save/Load session buttons added.
-- Code pulled from App.tsx into hooks and components. Constants and Types defined separately. Tests added for functional files.
-- Updated documentation
-  - Added a DeveloperGuide.md
+## [v0.7.2] - 2026-06-22
+- Added per-column `Show Advanced Mol* Controls` / `Hide Advanced Mol* Controls` button below each viewer.
+- Advanced Mol* interface panels (sequence, menu, controls, log) are now hidden by default to reduce UI clutter.
+- Core Mol* `3D Canvas` remains visible by default, with advanced panels available on demand for power users.
 
+## [v0.7.1] - 2026-05-29
+- Save/Load session buttons added.
+- Code moved from App.tsx into hooks and components. Constants and Types defined separately. - Tests added for functional files.
+- End to End (E2E) testing added using Playwright
+  
 ## [v0.7.0] - 2026-01-02
 - Added control to select a subunit to help filter chain selection.
 - Commented out `Load Dictionary` and `Load Alignment` buttons.

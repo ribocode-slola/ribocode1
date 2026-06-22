@@ -3,9 +3,9 @@
  * 
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
  * 
- * @author Andy Turner <agdturner@gmail.com>
- * @version 1.0.0
- * @lastModified 2026-04-24
+ * @author Copilot, Andy Turner <agdturner@gmail.com>
+ * @version 1.0.1
+ * @lastModified 2026-06-11
  * @see https://github.com/ribocode-slola/ribocode1
  */
 import React from 'react';
@@ -40,7 +40,8 @@ const AlignedViewersPanel: React.FC<AlignedViewersPanelProps> = ({ leftProps, ri
             left={
                 <ViewerColumn
                     viewerKey={leftProps.viewerKey}
-                    loadDataRowProps={getLoadDataRowProps(leftProps.loadDataRowProps)}
+                    loadDataRowPropsAlignedTo={leftProps.loadDataRowPropsAlignedTo}
+                    loadDataRowPropsAligned={leftProps.loadDataRowPropsAligned}
                     moleculeUIAlignedToProps={getMoleculeUIAlignedToProps(leftProps.moleculeUIAlignedToProps)}
                     moleculeUIAlignedProps={getMoleculeUIAlignedProps(leftProps.moleculeUIAlignedProps)}
                     realignedMoleculeListProps={getRealignedMoleculeListProps(leftProps.realignedMoleculeListProps)}
@@ -50,7 +51,8 @@ const AlignedViewersPanel: React.FC<AlignedViewersPanelProps> = ({ leftProps, ri
             right={
                 <ViewerColumn
                     viewerKey={rightProps.viewerKey}
-                    loadDataRowProps={getLoadDataRowProps(rightProps.loadDataRowProps)}
+                    loadDataRowPropsAlignedTo={rightProps.loadDataRowPropsAlignedTo}
+                    loadDataRowPropsAligned={rightProps.loadDataRowPropsAligned}
                     moleculeUIAlignedToProps={getMoleculeUIAlignedToProps(rightProps.moleculeUIAlignedToProps)}
                     moleculeUIAlignedProps={getMoleculeUIAlignedProps(rightProps.moleculeUIAlignedProps)}
                     realignedMoleculeListProps={getRealignedMoleculeListProps(rightProps.realignedMoleculeListProps)}

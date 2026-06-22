@@ -1,3 +1,4 @@
+// (Session load confirmation tests moved to session.integration.test.tsx)
 /**
  * Basic test suite for App component.
  * 
@@ -50,3 +51,5 @@ describe('App session dropdown menu', () => {
     expect(restartItem).toBeInTheDocument();
   });
 });
+
+// (Session file input trigger tests moved to session.integration.test.tsx)
