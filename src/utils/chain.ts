@@ -9,7 +9,13 @@
  * @see https://github.com/ribocode-slola/ribocode1
  */
 import { Structure } from 'molstar/lib/mol-model/structure';
-import { buildEntityToUniprotMap } from './rpNameTable';
+import { buildEntityToUniprotMap, inferSpeciesKeyFromModel, RpNameLookupBySpecies } from './rpNameTable';
+
+function isLookupBySpecies(
+    lookup?: Map<string, string> | RpNameLookupBySpecies
+): lookup is RpNameLookupBySpecies {
+    return !!lookup && typeof lookup === 'object' && 'all' in lookup;
+}
 
 /**
  * Extracts chain IDs and labels from a Mol* Structure object.
@@ -28,7 +34,7 @@ import { buildEntityToUniprotMap } from './rpNameTable';
  */
 export function getChainInfo(
     structure: Structure,
-    rpNameLookup?: Map<string, string>
+    rpNameLookup?: Map<string, string> | RpNameLookupBySpecies
 ): { chainLabels: Map<string, string> } {
     const chainLabels: Map<string, string> = new Map();
     const units = structure.units;
@@ -51,6 +57,13 @@ export function getChainInfo(
             entityToUniprot = buildEntityToUniprotMap(model);
         }
 
+        const speciesKey = isLookupBySpecies(rpNameLookup)
+            ? inferSpeciesKeyFromModel(model)
+            : undefined;
+        const activeLookup = isLookupBySpecies(rpNameLookup)
+            ? (speciesKey ? rpNameLookup[speciesKey] : rpNameLookup.all)
+            : rpNameLookup;
+
         for (let i = 0; i < chains._rowCount; i++) {
             const authId: string = auth_asym_id.value(i);
             if (chainLabels.has(authId)) continue; // deduplicate across units
@@ -65,7 +78,10 @@ export function getChainInfo(
                     : undefined;
                 const uniprot = entityId ? entityToUniprot.get(entityId) : undefined;
                 if (uniprot) {
-                    familyName = rpNameLookup.get(uniprot);
+                    familyName = activeLookup?.get(uniprot);
+                    if (!familyName && isLookupBySpecies(rpNameLookup)) {
+                        familyName = rpNameLookup.all.get(uniprot);
+                    }
                 }
             }
 

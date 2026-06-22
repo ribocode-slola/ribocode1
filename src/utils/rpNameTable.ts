@@ -18,11 +18,33 @@
  * @see https://github.com/ribocode-slola/ribocode1
  */
 
+export type RpSpeciesKey = 'arabidopsis' | 'drosophila' | 'human' | 'yeast';
+
 /**
  * Column indices in the CSV that hold semicolon-separated UniProt accession codes.
  * 0=family, 1=human_old_name, 2=yeast_old_name, 3=arabidopsis, 4=drosophila, 5=human, 6=yeast
  */
-const UNIPROT_COL_INDICES = [3, 4, 5, 6];
+const UNIPROT_COL_INDEX_BY_SPECIES: Record<RpSpeciesKey, number> = {
+    arabidopsis: 3,
+    drosophila: 4,
+    human: 5,
+    yeast: 6,
+};
+
+const ALL_SPECIES: RpSpeciesKey[] = ['arabidopsis', 'drosophila', 'human', 'yeast'];
+
+export interface RpNameLookupBySpecies {
+    all: Map<string, string>;
+    arabidopsis: Map<string, string>;
+    drosophila: Map<string, string>;
+    human: Map<string, string>;
+    yeast: Map<string, string>;
+}
+
+function normalizeSpeciesSelection(species?: RpSpeciesKey | RpSpeciesKey[]): RpSpeciesKey[] {
+    if (!species) return ALL_SPECIES;
+    return Array.isArray(species) ? species : [species];
+}
 
 /**
  * Parses the RP_name_table_uniprot.csv content into a lookup map.
@@ -33,9 +55,14 @@ const UNIPROT_COL_INDICES = [3, 4, 5, 6];
  * @param csvText - Raw text content of RP_name_table_uniprot.csv.
  * @returns Map from UniProt accession code → gene family name.
  */
-export function parseRpNameTable(csvText: string): Map<string, string> {
+export function parseRpNameTable(
+    csvText: string,
+    species?: RpSpeciesKey | RpSpeciesKey[]
+): Map<string, string> {
     const lookup = new Map<string, string>();
     const lines = csvText.split('\n');
+    const selectedSpecies = normalizeSpeciesSelection(species);
+    const selectedColumns = selectedSpecies.map(s => UNIPROT_COL_INDEX_BY_SPECIES[s]);
     // Skip header row (line 0)
     for (let i = 1; i < lines.length; i++) {
         const line = lines[i].trim();
@@ -43,7 +70,7 @@ export function parseRpNameTable(csvText: string): Map<string, string> {
         const cols = line.split(',');
         const family = cols[0]?.trim();
         if (!family) continue;
-        for (const ci of UNIPROT_COL_INDICES) {
+        for (const ci of selectedColumns) {
             const cellValue = cols[ci] || '';
             const codes = cellValue.split(';');
             for (const code of codes) {
@@ -55,6 +82,49 @@ export function parseRpNameTable(csvText: string): Map<string, string> {
         }
     }
     return lookup;
+}
+
+/**
+ * Builds lookups for all species columns and each individual species column.
+ */
+export function parseRpNameTableBySpecies(csvText: string): RpNameLookupBySpecies {
+    return {
+        all: parseRpNameTable(csvText),
+        arabidopsis: parseRpNameTable(csvText, 'arabidopsis'),
+        drosophila: parseRpNameTable(csvText, 'drosophila'),
+        human: parseRpNameTable(csvText, 'human'),
+        yeast: parseRpNameTable(csvText, 'yeast'),
+    };
+}
+
+/**
+ * Best-effort detection of source species for a model from mmCIF entity source categories.
+ */
+export function inferSpeciesKeyFromModel(model: any): RpSpeciesKey | undefined {
+    const db = model?.sourceData?.data?.db;
+    if (!db) return undefined;
+
+    const names: string[] = [];
+    const pushValues = (category: any, fieldName: string) => {
+        if (!category || !category[fieldName]?.value) return;
+        const rowCount = category._rowCount ?? 0;
+        for (let i = 0; i < rowCount; i++) {
+            const value = category[fieldName].value(i);
+            if (value) names.push(String(value).toLowerCase());
+        }
+    };
+
+    pushValues(db.entity_src_nat, 'pdbx_organism_scientific');
+    pushValues(db.pdbx_entity_src_syn, 'organism_scientific');
+    pushValues(db.entity_src_gen, 'pdbx_gene_src_scientific_name');
+
+    const text = names.join(' | ');
+    if (!text) return undefined;
+    if (/arabidopsis/.test(text)) return 'arabidopsis';
+    if (/drosophila/.test(text)) return 'drosophila';
+    if (/homo\s+sapiens|human/.test(text)) return 'human';
+    if (/saccharomyces|yeast/.test(text)) return 'yeast';
+    return undefined;
 }
 
 /**

@@ -137,4 +137,24 @@ describe('ChainSelectButton', () => {
         expect(getByText('1')).toBeInTheDocument();
         expect(getByText('2')).toBeInTheDocument();
     });
+
+    it('orders options by label text rather than chain id', () => {
+        const unorderedById = new Map([
+            ['B', 'uL2 [B]'],
+            ['A', 'eS1 [A]'],
+            ['C', 'uS3 [C]']
+        ]);
+        const { getByRole } = render(
+            <ChainSelectButton
+                disabled={false}
+                chainLabels={unorderedById}
+                selectedChainId={''}
+                onSelect={() => {}}
+                id="chain-order-test"
+            />
+        );
+        const select = getByRole('combobox', { name: 'Select Chain' }) as HTMLSelectElement;
+        const optionValues = Array.from(select.options).map(o => o.textContent);
+        expect(optionValues).toEqual(['...', 'eS1 [A]', 'uL2 [B]', 'uS3 [C]']);
+    });
 });

@@ -8,7 +8,7 @@
  * @lastModified 2026-06-22
  * @see https://github.com/ribocode-slola/ribocode1
  */
-import { parseRpNameTable, buildEntityToUniprotMap } from './rpNameTable';
+import { parseRpNameTable, parseRpNameTableBySpecies, buildEntityToUniprotMap, inferSpeciesKeyFromModel } from './rpNameTable';
 
 describe('parseRpNameTable', () => {
     const HEADER = 'family,human_old_name,yeast_old_name,arabdidopsis_homologs,drosophila_homologs,human_homologs,yeast_homologs';
@@ -49,6 +49,21 @@ describe('parseRpNameTable', () => {
         expect(lookup.get('P23396')).toBe('uS3');
         // yeast (col 6)
         expect(lookup.get('A0A6A5Q3Q1')).toBe('uS3');
+    });
+
+    it('can parse only the selected species column', () => {
+        const csv = [
+            HEADER,
+            'uS2,S0,SA,ARA_ONLY,DRO_ONLY,HUMAN_ONLY,YEAST_ONLY'
+        ].join('\n');
+
+        const humanLookup = parseRpNameTable(csv, 'human');
+        const yeastLookup = parseRpNameTable(csv, 'yeast');
+
+        expect(humanLookup.get('HUMAN_ONLY')).toBe('uS2');
+        expect(humanLookup.has('YEAST_ONLY')).toBe(false);
+        expect(yeastLookup.get('YEAST_ONLY')).toBe('uS2');
+        expect(yeastLookup.has('HUMAN_ONLY')).toBe(false);
     });
 
     it('ignores blank lines in the CSV', () => {
@@ -98,6 +113,76 @@ describe('parseRpNameTable', () => {
         expect(lookup.get('B9DG17')).toBe('uS2');
         expect(lookup.get('P38979')).toBe('uS2');
         expect(lookup.get('P46654')).toBe('uS2');
+    });
+});
+
+describe('parseRpNameTableBySpecies', () => {
+    const HEADER = 'family,human_old_name,yeast_old_name,arabdidopsis_homologs,drosophila_homologs,human_homologs,yeast_homologs';
+
+    it('returns distinct lookups for each species and all columns', () => {
+        const csv = [
+            HEADER,
+            'eS1,S1,S3A,ARA1,DRO1,HUM1,YEA1'
+        ].join('\n');
+
+        const lookups = parseRpNameTableBySpecies(csv);
+
+        expect(lookups.arabidopsis.get('ARA1')).toBe('eS1');
+        expect(lookups.drosophila.get('DRO1')).toBe('eS1');
+        expect(lookups.human.get('HUM1')).toBe('eS1');
+        expect(lookups.yeast.get('YEA1')).toBe('eS1');
+        expect(lookups.all.get('ARA1')).toBe('eS1');
+        expect(lookups.all.get('YEA1')).toBe('eS1');
+    });
+});
+
+describe('inferSpeciesKeyFromModel', () => {
+    it('detects human from entity_src_nat scientific name', () => {
+        const model = {
+            sourceData: {
+                data: {
+                    db: {
+                        entity_src_nat: {
+                            _rowCount: 1,
+                            pdbx_organism_scientific: { value: () => 'Homo sapiens' }
+                        }
+                    }
+                }
+            }
+        };
+        expect(inferSpeciesKeyFromModel(model)).toBe('human');
+    });
+
+    it('detects yeast from pdbx_entity_src_syn scientific name', () => {
+        const model = {
+            sourceData: {
+                data: {
+                    db: {
+                        pdbx_entity_src_syn: {
+                            _rowCount: 1,
+                            organism_scientific: { value: () => 'Saccharomyces cerevisiae' }
+                        }
+                    }
+                }
+            }
+        };
+        expect(inferSpeciesKeyFromModel(model)).toBe('yeast');
+    });
+
+    it('returns undefined when no known species is found', () => {
+        const model = {
+            sourceData: {
+                data: {
+                    db: {
+                        entity_src_nat: {
+                            _rowCount: 1,
+                            pdbx_organism_scientific: { value: () => 'Unknown organism' }
+                        }
+                    }
+                }
+            }
+        };
+        expect(inferSpeciesKeyFromModel(model)).toBeUndefined();
     });
 });
 

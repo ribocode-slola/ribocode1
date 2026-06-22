@@ -10,6 +10,7 @@
  */
 import { useEffect } from 'react';
 import { getChainInfo } from '../utils/chain';
+import { RpNameLookupBySpecies } from '../utils/rpNameTable';
 
 /**
  * Custom hook to update chain info and subunit-to-chain mapping for a Mol* structure.
@@ -30,7 +31,7 @@ export function useUpdateChainInfo(
   setChainInfo: React.Dispatch<React.SetStateAction<{ chainLabels: Map<string, string> }>>,
   setSubunitToChainIds: React.Dispatch<React.SetStateAction<Map<string, Set<string>>>>,
   label?: string,
-  rpNameLookup?: Map<string, string>
+  rpNameLookup?: Map<string, string> | RpNameLookupBySpecies
 ) {
   useEffect(() => {
     if (!pluginRef.current || !structureRef) return;
