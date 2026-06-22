@@ -28,6 +28,7 @@ describe('GeneralControls', () => {
       setZoomMinRadius,
       showUniprotAccessionInChainLabels: true,
       setShowUniprotAccessionInChainLabels,
+      uniprotLookupStatus: { completed: 5, pending: 2, inFlight: 1 },
       viewerA: {},
       viewerB: {},
       activeViewer: 'A' as ViewerKey,
@@ -57,6 +58,7 @@ describe('GeneralControls', () => {
     const showUniProtToggle = getByLabelText(/Show UniProt accession in chain labels/i);
     fireEvent.click(showUniProtToggle);
     expect(setShowUniprotAccessionInChainLabels).toHaveBeenCalledWith(false);
+    expect(getByText(/UniProt cache: 5 cached, 2 pending, 1 in-flight/i)).toBeInTheDocument();
 
     // Test SyncButton (actually a select) is rendered and works
     const syncSelect = getByLabelText(/Select Sync/i);
@@ -87,6 +89,7 @@ describe('GeneralControls', () => {
       setZoomMinRadius: vi.fn(),
       showUniprotAccessionInChainLabels: true,
       setShowUniprotAccessionInChainLabels: vi.fn(),
+      uniprotLookupStatus: { completed: 0, pending: 0, inFlight: 0 },
       viewerA: {},
       viewerB: {},
       activeViewer: 'A' as ViewerKey,

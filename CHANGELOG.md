@@ -1,3 +1,8 @@
+## [v0.8.3] - 2026-06-22
+- Added live UniProt lookup status reporting in `General Controls` (cached, pending, and in-flight counts).
+- Added explicit UniProt lookup progress logging and incremental per-batch chain label updates during background resolution.
+- Added local-storage persistence for UniProt lookup results so cache survives browser reloads in addition to session save/load.
+
 ## [v0.8.2] - 2026-06-22
 - Added UniProt gene-name enrichment for chain labels with background, rate-limited lookup and session-cached results.
 - Added a `Show UniProt accession in chain labels` toggle in `General Controls`, persisted in session `uiState` and restored on load.

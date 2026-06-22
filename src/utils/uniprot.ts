@@ -76,6 +76,7 @@ export async function fetchUniProtGeneNamesBatched(
         delayMs?: number;
         fetchFn?: FetchLike;
         signal?: AbortSignal;
+        onBatchResolved?: (batch: string[], resolved: UniProtGeneNameCache) => void;
     }
 ): Promise<UniProtGeneNameCache> {
     const {
@@ -83,6 +84,7 @@ export async function fetchUniProtGeneNamesBatched(
         delayMs = 1200,
         fetchFn = fetch,
         signal,
+        onBatchResolved,
     } = options || {};
 
     const unique = Array.from(new Set(Array.from(accessions).map(a => a.trim()).filter(Boolean)));
@@ -97,10 +99,14 @@ export async function fetchUniProtGeneNamesBatched(
         try {
             const resolved = await fetchUniProtGeneNames(batch, fetchFn);
             Object.assign(result, resolved);
+            onBatchResolved?.(batch, resolved);
         } catch {
+            const failed: UniProtGeneNameCache = {};
             for (const accession of batch) {
                 result[accession] = null;
+                failed[accession] = null;
             }
+            onBatchResolved?.(batch, failed);
         }
 
         if (i + batchSize < unique.length && delayMs > 0) {

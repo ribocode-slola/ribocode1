@@ -42,6 +42,11 @@ interface GeneralControlsProps {
   setZoomMinRadius: (v: number) => void;
   showUniprotAccessionInChainLabels: boolean;
   setShowUniprotAccessionInChainLabels: (v: boolean) => void;
+  uniprotLookupStatus?: {
+    completed: number;
+    pending: number;
+    inFlight: number;
+  };
   viewerA: any;
   viewerB: any;
   activeViewer: ViewerKey;
@@ -67,6 +72,7 @@ const GeneralControls: React.FC<GeneralControlsProps> = ({
   setZoomMinRadius,
   showUniprotAccessionInChainLabels,
   setShowUniprotAccessionInChainLabels,
+  uniprotLookupStatus,
   viewerA,
   viewerB,
   activeViewer,
@@ -117,6 +123,12 @@ const GeneralControls: React.FC<GeneralControlsProps> = ({
         />
         Show UniProt accession in chain labels
       </label>
+      <span
+        id={`${idPrefix}-uniprot-status`}
+        style={{ fontSize: 12, color: '#555' }}
+      >
+        UniProt cache: {uniprotLookupStatus?.completed ?? 0} cached, {uniprotLookupStatus?.pending ?? 0} pending, {uniprotLookupStatus?.inFlight ?? 0} in-flight
+      </span>
     </div>
     <SyncButton
       viewerA={viewerA}
