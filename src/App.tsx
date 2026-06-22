@@ -10,7 +10,7 @@
  * @lastModified 2026-06-11
  * @see https://github.com/ribocode-slola/ribocode1
  */
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useConfirm } from './hooks/useConfirm';
 import { SelectionProvider } from './context/SelectionContext';
 import { ViewerStateProvider } from './context/ViewerStateContext';
@@ -56,6 +56,8 @@ import type { LoadedMolecule, ViewerKey, MoleculeMode } from './types/ribocode';
 import { A, B } from './constants/ribocode';
 import { makeFogSetters, makeCameraSetters, makeZoomHandler } from './utils/viewerHelpers';
 import { selectedAtomTypes } from './constants/ribocode';
+import { parseRpNameTableBySpecies } from './utils/rpNameTable';
+import rpNameTableCsv from '../data/input/RP_name_table_uniprot.csv?raw';
 
 /**
  * The main App component.
@@ -130,6 +132,10 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
     const [viewerAReady, setViewerAReady] = useState(false);
     const [viewerBReady, setViewerBReady] = useState(false);
     const [syncEnabled, setSyncEnabled] = useState(false);
+    const rpNameLookupBySpecies = useMemo(
+        () => parseRpNameTableBySpecies(rpNameTableCsv),
+        []
+    );
 
     // Use a ref to always have the latest alignmentData from AlignedTo
     const alignmentDataRef = useRef<any>(null);
@@ -725,8 +731,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
     );
 
     // Custom hooks for updating chain info and subunit-to-chain mapping for both viewers.
-    useUpdateChainInfo(viewerA.ref, structureRefAAlignedTo, molstarA, setChainInfoAlignedTo, setSubunitToChainIdsAlignedTo, AlignedTo);
-    useUpdateChainInfo(viewerB.ref, structureRefBAligned, molstarB, setChainInfoAligned, setSubunitToChainIdsAligned, Aligned);
+    useUpdateChainInfo(viewerA.ref, structureRefAAlignedTo, molstarA, setChainInfoAlignedTo, setSubunitToChainIdsAlignedTo, AlignedTo, rpNameLookupBySpecies);
+    useUpdateChainInfo(viewerB.ref, structureRefBAligned, molstarB, setChainInfoAligned, setSubunitToChainIdsAligned, Aligned, rpNameLookupBySpecies);
 
     // Generalized effect for residue ID selection and info update.
     useUpdateResidueInfo(viewerA.ref, structureRefAAlignedTo, molstarA, selectedChainIdAlignedTo, setResidueInfoAlignedTo, selectedResidueIdAlignedTo, setSelectedResidueIdAlignedTo, AlignedTo);

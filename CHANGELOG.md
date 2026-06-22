@@ -1,3 +1,9 @@
+## [v0.8.0] - 2026-06-22
+- Updated chain labels to prefer ribosomal `family` names from `RP_name_table_uniprot.csv` (first column), shown in selectors as `<family> [<label>]` when matched.
+- Added species-aware RP lookup resolution so each dataset uses the correct homolog column (arabidopsis, drosophila, human, yeast) with robust fallback to all-species mapping.
+- Updated chain select option ordering to sort by displayed family label rather than raw chain ID.
+- Added regression tests for species-specific CSV parsing, species inference from mmCIF source metadata, family label resolution, and chain option ordering.
+
 ## [v0.7.4] - 2026-06-22
 - Extended session save/load to persist and restore UI state exactly, including `Residue Zoom` (`extraRadius`, `minRadius`), subunit/chain/residue selections for both columns, sync state, and active viewer.
 - Added camera snapshot persistence for both viewers so orientation and zoom radius are restored on session load.

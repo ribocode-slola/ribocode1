@@ -10,6 +10,7 @@
  */
 import { vi } from 'vitest';
 import { getChainInfo } from './chain';
+import { RpNameLookupBySpecies } from './rpNameTable';
 
 describe('getChainInfo', () => {
     let originalWarn: any;
@@ -175,5 +176,95 @@ describe('getChainInfo with rpNameLookup enrichment', () => {
         });
         const result = getChainInfo(structure, rpNameLookup);
         expect(result.chainLabels.get('A')).toBe('eS1 [A]');
+    });
+
+    it('uses species-specific lookup when available', () => {
+        const rpNameLookupBySpecies: RpNameLookupBySpecies = {
+            all: new Map([['P61247', 'ALL_FAMILY']]),
+            arabidopsis: new Map(),
+            drosophila: new Map(),
+            human: new Map([['P61247', 'HUMAN_FAMILY']]),
+            yeast: new Map([['P61247', 'YEAST_FAMILY']]),
+        };
+
+        const structure = {
+            units: [
+                {
+                    model: {
+                        atomicHierarchy: {
+                            chains: {
+                                _rowCount: 1,
+                                auth_asym_id: { value: () => 'A' },
+                                label_asym_id: { value: () => 'AA' },
+                                label_entity_id: { value: () => '1' },
+                            }
+                        },
+                        sourceData: {
+                            data: {
+                                db: {
+                                    struct_ref: {
+                                        _rowCount: 1,
+                                        entity_id: { value: () => '1' },
+                                        pdbx_db_accession: { value: () => 'P61247' }
+                                    },
+                                    entity_src_nat: {
+                                        _rowCount: 1,
+                                        pdbx_organism_scientific: { value: () => 'Homo sapiens' }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            ]
+        } as any;
+
+        const result = getChainInfo(structure, rpNameLookupBySpecies);
+        expect(result.chainLabels.get('A')).toBe('HUMAN_FAMILY [AA]');
+    });
+
+    it('falls back to all-species lookup when species is unknown', () => {
+        const rpNameLookupBySpecies: RpNameLookupBySpecies = {
+            all: new Map([['P61247', 'ALL_FAMILY']]),
+            arabidopsis: new Map(),
+            drosophila: new Map(),
+            human: new Map(),
+            yeast: new Map(),
+        };
+
+        const structure = {
+            units: [
+                {
+                    model: {
+                        atomicHierarchy: {
+                            chains: {
+                                _rowCount: 1,
+                                auth_asym_id: { value: () => 'A' },
+                                label_asym_id: { value: () => 'AA' },
+                                label_entity_id: { value: () => '1' },
+                            }
+                        },
+                        sourceData: {
+                            data: {
+                                db: {
+                                    struct_ref: {
+                                        _rowCount: 1,
+                                        entity_id: { value: () => '1' },
+                                        pdbx_db_accession: { value: () => 'P61247' }
+                                    },
+                                    entity_src_nat: {
+                                        _rowCount: 1,
+                                        pdbx_organism_scientific: { value: () => 'Unknown organism' }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            ]
+        } as any;
+
+        const result = getChainInfo(structure, rpNameLookupBySpecies);
+        expect(result.chainLabels.get('A')).toBe('ALL_FAMILY [AA]');
     });
 });

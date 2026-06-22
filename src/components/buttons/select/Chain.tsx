@@ -47,11 +47,11 @@ const ChainSelectButton: React.FC<ChainSelectButtonProps> = ({
 	label,
 	id
 }) => {
-	// Order chainLabels by chainId
-	const orderedEntries = Array.from(chainLabels.entries()).sort(([idA], [idB]) => {
-		if (idA < idB) return -1;
-		if (idA > idB) return 1;
-		return 0;
+	// Order chain labels by display label first (e.g. family name), then chainId.
+	const orderedEntries = Array.from(chainLabels.entries()).sort(([idA, labelA], [idB, labelB]) => {
+		const byLabel = labelA.localeCompare(labelB, undefined, { numeric: true, sensitivity: 'base' });
+		if (byLabel !== 0) return byLabel;
+		return idA.localeCompare(idB, undefined, { numeric: true, sensitivity: 'base' });
 	});
 	return (
 		<label>
