@@ -37,8 +37,18 @@ vi.mock('molstar/lib/mol-plugin/commands', () => ({
       ToggleVisibility: {
         apply: vi.fn().mockResolvedValue(undefined),
       },
+      RemoveObject: {
+        apply: vi.fn().mockResolvedValue(undefined),
+      },
     },
   },
+}));
+
+vi.mock('./utils/structure', () => ({
+  getStructureRepresentations: vi.fn((_plugin: any, structureRef: string) => {
+    const byRef = (globalThis as any).__mockStructureRepsByRef || {};
+    return byRef[structureRef] || [];
+  }),
 }));
 
 vi.mock('./hooks/useMolstarViewer', () => ({
@@ -320,6 +330,8 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     vi.useRealTimers();
     loadMoleculeFileToViewerMock?.mockClear?.();
     (globalThis as any).__molstarViewerInstances = [];
+    (globalThis as any).__mockStructureRepsByRef = {};
+    (PluginCommands.State.RemoveObject.apply as any).mockClear?.();
   });
 
   afterEach(() => {
@@ -585,6 +597,62 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     const themes = cartoonCalls.map((args: any[]) => args[3]?.name);
     expect(themes).toContain('chain-id');
     expect(themes).toContain('sequence-id');
+  });
+
+  it('replaces type-only matched representation when saved colorTheme differs (regression)', async () => {
+    render(<App />);
+    await waitFor(() => expect(screen.getByRole('banner')).toBeInTheDocument());
+
+    const onSessionLoaded = (globalThis as any).__onSessionLoaded as ((session: any, files: Record<string, File>) => Promise<void>) | undefined;
+    expect(onSessionLoaded).toBeDefined();
+
+    (globalThis as any).__mockStructureRepsByRef = {
+      'mock-ref-0': [
+        {
+          repRef: 'existing-cartoon-ref',
+          type: 'cartoon',
+          colorTheme: { name: 'default', params: {} },
+          visible: true,
+        },
+      ],
+    };
+
+    const session = {
+      viewerA: {
+        moleculeAlignedTo: {
+          filename: '4ug0.cif',
+          representations: [
+            { type: 'cartoon', colorTheme: { name: 'chain-id', params: { palette: 'set-1' } }, visible: true },
+          ],
+        },
+      },
+      viewerB: {
+        moleculeAligned: {
+          filename: '6xu8.cif',
+          representations: [],
+        },
+      },
+    };
+    const files = {
+      '4ug0.cif': loadTestFile('4ug0.cif'),
+      '6xu8.cif': loadTestFile('6xu8.cif'),
+    };
+
+    await onSessionLoaded!(session, files);
+
+    expect((PluginCommands.State.RemoveObject.apply as any)).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.arrayContaining([
+        expect.anything(),
+        expect.objectContaining({ ref: 'existing-cartoon-ref' }),
+      ])
+    );
+
+    const instances = (globalThis as any).__molstarViewerInstances as any[];
+    const addCalls = instances.flatMap(instance => instance.addRepresentation.mock.calls);
+    const cartoonCalls = addCalls.filter((args: any[]) => args[2] === 'cartoon');
+    expect(cartoonCalls.some((args: any[]) => args[3]?.name === 'chain-id')).toBe(true);
+    expect(cartoonCalls.some((args: any[]) => args[3]?.params?.palette === 'set-1')).toBe(true);
   });
 
   it('preserves viewer-specific representation visibility on session load (regression)', async () => {

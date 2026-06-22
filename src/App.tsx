@@ -368,30 +368,47 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
 
             const existingReps = plugin ? getStructureRepresentations(plugin, structureRef) : [];
             const usedExistingRepRefs = new Set<string>();
-            const getColorThemeName = (theme: any): string => {
-                if (typeof theme === 'string') return theme;
-                return theme?.name ?? 'default';
+            const normalizeTheme = (theme: any): { name: string; params: Record<string, unknown> } => {
+                if (typeof theme === 'string') return { name: theme, params: {} };
+                return {
+                    name: theme?.name ?? 'default',
+                    params: theme?.params ?? {}
+                };
+            };
+            const areThemesEqual = (themeA: any, themeB: any): boolean => {
+                const normalizedA = normalizeTheme(themeA);
+                const normalizedB = normalizeTheme(themeB);
+                return normalizedA.name === normalizedB.name
+                    && JSON.stringify(normalizedA.params) === JSON.stringify(normalizedB.params);
             };
 
             for (const rep of reps) {
                 const exactMatch = existingReps.find(existing =>
                     !usedExistingRepRefs.has(existing.repRef) &&
                     existing.type === rep.type &&
-                    getColorThemeName(existing.colorTheme) === getColorThemeName(rep.colorTheme)
+                    areThemesEqual(existing.colorTheme, rep.colorTheme)
                 );
                 const typeOnlyMatch = existingReps.find(existing =>
                     !usedExistingRepRefs.has(existing.repRef) &&
                     existing.type === rep.type
                 );
-                const existingMatch = exactMatch ?? typeOnlyMatch;
 
-                if (existingMatch && plugin) {
-                    usedExistingRepRefs.add(existingMatch.repRef);
+                if (exactMatch && plugin) {
+                    usedExistingRepRefs.add(exactMatch.repRef);
                     console.log(`[restoreForViewer] Reusing existing ${rep.type} in ${viewerName}`);
-                    if (existingMatch.visible !== rep.visible) {
-                        await setRepresentationVisible(plugin, existingMatch.repRef, rep.visible);
+                    if (exactMatch.visible !== rep.visible) {
+                        await setRepresentationVisible(plugin, exactMatch.repRef, rep.visible);
                     }
                     continue;
+                }
+
+                if (typeOnlyMatch && plugin) {
+                    usedExistingRepRefs.add(typeOnlyMatch.repRef);
+                    console.log(`[restoreForViewer] Replacing ${rep.type} in ${viewerName} due to colorTheme mismatch`);
+                    await MolPluginCommands.State.RemoveObject.apply(plugin, [plugin, {
+                        state: plugin.state.data,
+                        ref: typeOnlyMatch.repRef,
+                    }]);
                 }
 
                 const repId = (typeof crypto !== 'undefined' && crypto.randomUUID

@@ -1,3 +1,6 @@
+## [v0.8.1] - 2026-06-22
+- Fixed session restore representation matching so saved color themes are preserved; type-only matches with different themes are now replaced with the saved representation.
+
 ## [v0.8.0] - 2026-06-22
 - Updated chain labels to prefer ribosomal `family` names from `RP_name_table_uniprot.csv` (first column), shown in selectors as `<family> [<label>]` when matched.
 - Added species-aware RP lookup resolution so each dataset uses the correct homolog column (arabidopsis, drosophila, human, yeast) with robust fallback to all-species mapping.
