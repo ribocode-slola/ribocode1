@@ -24,6 +24,13 @@ vi.mock('./hooks/useSessionLoadModal', () => ({
   }),
 }));
 
+vi.mock('./hooks/useSessionSave', () => ({
+  useSessionSave: vi.fn((getSessionState: any) => {
+    (globalThis as any).__getSessionState = getSessionState;
+    return vi.fn();
+  }),
+}));
+
 vi.mock('molstar/lib/mol-plugin/commands', () => ({
   PluginCommands: {
     State: {
@@ -70,7 +77,13 @@ vi.mock('./hooks/useMolstarViewer', () => ({
       setRepIdMap: vi.fn((key: string, map: Record<string, string>) => {
         repIdMap[key] = map;
       }),
-      getResidueInfo: vi.fn().mockReturnValue({ residueLabels: new Map(), residueToAtomIds: {} }),
+      getResidueInfo: vi.fn().mockReturnValue({
+        residueLabels: new Map([
+          ['10', { id: '10', name: 'GLY 10', compId: 'GLY', seqNumber: 10, insCode: '' }],
+          ['20', { id: '20', name: 'ALA 20', compId: 'ALA', seqNumber: 20, insCode: '' }],
+        ]),
+        residueToAtomIds: { '10': ['1'], '20': ['2'] },
+      }),
     };
     allInstances.push(instance);
     return instance;
@@ -114,6 +127,19 @@ vi.mock('molstar/lib/extensions/ribocode/structure', () => {
 // Mock MolstarContainer to always render a stub and trigger viewer loaded state
 vi.mock('./components/MolstarContainer', () => {
   const React = require('react');
+  const createMockCamera = () => ({
+    state: { mode: 'perspective' },
+    stateChanged: {
+      subscribe: vi.fn(() => ({ unsubscribe: vi.fn() })),
+    },
+    getSnapshot: vi.fn(() => ({
+      position: [1, 2, 3],
+      target: [4, 5, 6],
+      up: [0, 1, 0],
+      radius: 10,
+    })),
+    setState: vi.fn(),
+  });
   const buildStructure = (ref: string) => ({
     cell: {
       transform: { ref },
@@ -141,7 +167,10 @@ vi.mock('./components/MolstarContainer', () => {
       },
     },
     state: { data: {} },
-    canvas3d: { requestDraw: () => {} },
+    canvas3d: {
+      requestDraw: vi.fn(),
+      camera: createMockCamera(),
+    },
   });
   const mockPluginA = buildPlugin();
   const mockPluginB = buildPlugin();
@@ -370,6 +399,107 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     const alignedCalls = loadMoleculeFileToViewerMock.mock.calls.filter((args: any[]) => args[2] === false);
     expect(alignedCalls.length).toBeGreaterThan(0);
     expect(alignedCalls[0][4]).toEqual({ rows: [1] });
+  });
+
+  it('includes zoom and selection UI state in saved session payload', async () => {
+    render(<App />);
+    await waitFor(() => expect(screen.getByRole('banner')).toBeInTheDocument());
+
+    const alignedToInput = document.getElementById('viewer-column-A-alignedto-file-input') as HTMLInputElement | null;
+    const alignedInput = document.getElementById('viewer-column-B-aligned-file-input') as HTMLInputElement | null;
+    const alignedLoadBtn = document.getElementById('viewer-column-B-aligned-load-btn') as HTMLButtonElement | null;
+    expect(alignedToInput).toBeInTheDocument();
+    expect(alignedInput).toBeInTheDocument();
+    expect(alignedLoadBtn).toBeInTheDocument();
+
+    fireEvent.change(alignedToInput!, { target: { files: [loadTestFile('4ug0.cif')] } });
+    await waitFor(() => {
+      expect(document.getElementById('viewer-column-B-aligned-load-btn')).not.toBeDisabled();
+    }, { timeout: 5000 });
+    fireEvent.change(alignedInput!, { target: { files: [loadTestFile('6xu8.cif')] } });
+    fireEvent.click(alignedLoadBtn!);
+
+    await waitFor(() => {
+      expect(document.getElementById('viewer-column-A-alignedto-subunit-select')).toBeInTheDocument();
+      expect(document.getElementById('viewer-column-B-aligned-subunit-select')).toBeInTheDocument();
+      expect(document.getElementById('generalcontrols-sync-select')).toBeInTheDocument();
+    }, { timeout: 5000 });
+
+    fireEvent.change(document.getElementById('generalcontrols-zoom-extra-radius') as HTMLInputElement, { target: { value: '24' } });
+    fireEvent.change(document.getElementById('generalcontrols-zoom-min-radius') as HTMLInputElement, { target: { value: '12' } });
+    fireEvent.change(document.getElementById('generalcontrols-sync-select') as HTMLSelectElement, { target: { value: 'On' } });
+    fireEvent.change(document.getElementById('viewer-column-A-alignedto-subunit-select') as HTMLSelectElement, { target: { value: 'Large' } });
+    fireEvent.change(document.getElementById('viewer-column-B-aligned-subunit-select') as HTMLSelectElement, { target: { value: 'Small' } });
+
+    const getSessionState = (globalThis as any).__getSessionState as (() => any) | undefined;
+    expect(getSessionState).toBeDefined();
+    const session = getSessionState!();
+
+    expect(session.uiState.zoom).toEqual({ extraRadius: 24, minRadius: 12 });
+    expect(session.uiState.syncEnabled).toBe(true);
+    expect(session.uiState.selections.alignedTo).toEqual(expect.objectContaining({
+      subunit: 'Large',
+    }));
+    expect(session.uiState.selections.aligned).toEqual(expect.objectContaining({
+      subunit: 'Small',
+    }));
+    expect(session.uiState.cameraSnapshots.viewerA).toEqual(expect.objectContaining({ radius: 10 }));
+    expect(session.uiState.cameraSnapshots.viewerB).toEqual(expect.objectContaining({ radius: 10 }));
+  });
+
+  it('restores zoom, selectors, and camera snapshot from session uiState', async () => {
+    render(<App />);
+    await waitFor(() => expect(screen.getByRole('banner')).toBeInTheDocument());
+
+    const onSessionLoaded = (globalThis as any).__onSessionLoaded as ((session: any, files: Record<string, File>) => Promise<void>) | undefined;
+    expect(onSessionLoaded).toBeDefined();
+
+    const session = {
+      viewerA: { moleculeAlignedTo: { filename: '4ug0.cif' } },
+      viewerB: { moleculeAligned: { filename: '6xu8.cif' } },
+      uiState: {
+        zoom: { extraRadius: 31, minRadius: 14 },
+        syncEnabled: true,
+        selections: {
+          alignedTo: { subunit: 'Large', chainId: 'A', residueId: '10' },
+          aligned: { subunit: 'Small', chainId: 'B', residueId: '20' },
+        },
+        cameraSnapshots: {
+          viewerA: { position: [10, 11, 12], target: [1, 2, 3], up: [0, 1, 0], radius: 42 },
+          viewerB: { position: [20, 21, 22], target: [4, 5, 6], up: [0, 1, 0], radius: 84 },
+        }
+      }
+    };
+    const files = {
+      '4ug0.cif': loadTestFile('4ug0.cif'),
+      '6xu8.cif': loadTestFile('6xu8.cif'),
+    };
+
+    const pluginA = (globalThis as any).__mockPluginA;
+    const pluginB = (globalThis as any).__mockPluginB;
+    pluginA.canvas3d.camera.setState.mockClear();
+    pluginB.canvas3d.camera.setState.mockClear();
+
+    await onSessionLoaded!(session, files);
+
+    await waitFor(() => {
+      expect((document.getElementById('generalcontrols-zoom-extra-radius') as HTMLInputElement).value).toBe('31');
+      expect((document.getElementById('generalcontrols-zoom-min-radius') as HTMLInputElement).value).toBe('14');
+      expect((document.getElementById('generalcontrols-sync-select') as HTMLSelectElement).value).toBe('On');
+    }, { timeout: 5000 });
+
+    expect(pluginA.canvas3d.camera.setState).toHaveBeenCalledWith(expect.objectContaining({
+      position: [10, 11, 12],
+      target: [1, 2, 3],
+      up: [0, 1, 0],
+      radius: 42,
+    }));
+    expect(pluginB.canvas3d.camera.setState).toHaveBeenCalledWith(expect.objectContaining({
+      position: [20, 21, 22],
+      target: [4, 5, 6],
+      up: [0, 1, 0],
+      radius: 84,
+    }));
   });
 
   it('restores saved additional representations on session load (regression)', async () => {

@@ -71,6 +71,38 @@ interface SessionRepresentationSpec {
     visible: boolean;
 }
 
+interface SerializableCameraSnapshot {
+    position: [number, number, number];
+    target: [number, number, number];
+    up: [number, number, number];
+    radius: number;
+}
+
+interface SessionUiState {
+    zoom?: {
+        extraRadius: number;
+        minRadius: number;
+    };
+    selections?: {
+        alignedTo?: {
+            subunit?: string;
+            chainId?: string;
+            residueId?: string;
+        };
+        aligned?: {
+            subunit?: string;
+            chainId?: string;
+            residueId?: string;
+        };
+    };
+    syncEnabled?: boolean;
+    activeViewer?: ViewerKey;
+    cameraSnapshots?: {
+        viewerA?: SerializableCameraSnapshot;
+        viewerB?: SerializableCameraSnapshot;
+    };
+}
+
 const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
 
     // Store Files and filenames for aligned and alignedTo molecule reloads.
@@ -227,6 +259,39 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         console.log(`[serializeRepresentationsForMode] ${mode}: captured ${rawReps.length} reps, normalized to ${normalized.length}:`, normalized.map(r => `${r.type}(${r.visible ? 'visible' : 'hidden'})`).join(', '));
         return normalized;
     }, [normalizeSessionRepresentation]);
+
+    const getSerializableCameraSnapshot = useCallback((viewerRef: React.RefObject<PluginUIContext | null>): SerializableCameraSnapshot | undefined => {
+        const snapshot = viewerRef.current?.canvas3d?.camera?.getSnapshot?.();
+        if (!snapshot) return undefined;
+        const toTuple3 = (value: any): [number, number, number] | null => {
+            if (!value || value.length < 3) return null;
+            const x = Number(value[0]);
+            const y = Number(value[1]);
+            const z = Number(value[2]);
+            if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) return null;
+            return [x, y, z];
+        };
+        const position = toTuple3(snapshot.position);
+        const target = toTuple3(snapshot.target);
+        const up = toTuple3(snapshot.up);
+        const radius = Number(snapshot.radius);
+        if (!position || !target || !up || !Number.isFinite(radius)) return undefined;
+        return { position, target, up, radius };
+    }, []);
+
+    const applySerializableCameraSnapshot = useCallback((viewerRef: React.RefObject<PluginUIContext | null>, snapshot?: SerializableCameraSnapshot) => {
+        if (!snapshot) return;
+        const camera = viewerRef.current?.canvas3d?.camera;
+        if (!camera || typeof camera.setState !== 'function') return;
+        camera.setState({
+            ...camera.state,
+            position: [...snapshot.position] as any,
+            target: [...snapshot.target] as any,
+            up: [...snapshot.up] as any,
+            radius: snapshot.radius,
+        });
+        viewerRef.current?.canvas3d?.requestDraw?.();
+    }, []);
 
     const waitForRepresentationRef = useCallback(async (
         molstar: ReturnType<typeof useMolstarViewer>,
@@ -936,7 +1001,30 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 }
                 : null,
         },
-        // Add more serializable state as needed
+        uiState: {
+            zoom: {
+                extraRadius: zoomExtraRadius,
+                minRadius: zoomMinRadius,
+            },
+            selections: {
+                alignedTo: {
+                    subunit: selectedSubunitAlignedTo,
+                    chainId: selectedChainIdAlignedTo,
+                    residueId: selectedResidueIdAlignedTo,
+                },
+                aligned: {
+                    subunit: selectedSubunitAligned,
+                    chainId: selectedChainIdAligned,
+                    residueId: selectedResidueIdAligned,
+                },
+            },
+            syncEnabled,
+            activeViewer,
+            cameraSnapshots: {
+                viewerA: getSerializableCameraSnapshot(viewerA.ref),
+                viewerB: getSerializableCameraSnapshot(viewerB.ref),
+            },
+        } as SessionUiState,
     }));
 
     const handleSaveSessionAll = useSessionSaveAll(
@@ -973,6 +1061,30 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                     }
                     : null,
             },
+            uiState: {
+                zoom: {
+                    extraRadius: zoomExtraRadius,
+                    minRadius: zoomMinRadius,
+                },
+                selections: {
+                    alignedTo: {
+                        subunit: selectedSubunitAlignedTo,
+                        chainId: selectedChainIdAlignedTo,
+                        residueId: selectedResidueIdAlignedTo,
+                    },
+                    aligned: {
+                        subunit: selectedSubunitAligned,
+                        chainId: selectedChainIdAligned,
+                        residueId: selectedResidueIdAligned,
+                    },
+                },
+                syncEnabled,
+                activeViewer,
+                cameraSnapshots: {
+                    viewerA: getSerializableCameraSnapshot(viewerA.ref),
+                    viewerB: getSerializableCameraSnapshot(viewerB.ref),
+                },
+            } as SessionUiState,
         }),
         () => {
             const embeddedFiles: Record<string, File | null | undefined> = {};
@@ -1069,14 +1181,49 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 );
                 loadedAny = true;
             }
-            // TODO: Restore visibility and representations as needed
+            const uiState = session?.uiState as SessionUiState | undefined;
+            if (uiState?.zoom) {
+                if (Number.isFinite(uiState.zoom.extraRadius)) setZoomExtraRadius(uiState.zoom.extraRadius);
+                if (Number.isFinite(uiState.zoom.minRadius)) setZoomMinRadius(uiState.zoom.minRadius);
+            }
+            if (uiState?.selections?.alignedTo) {
+                if (typeof uiState.selections.alignedTo.subunit === 'string') setSelectedSubunitAlignedTo(uiState.selections.alignedTo.subunit as any);
+                if (typeof uiState.selections.alignedTo.chainId === 'string') setSelectedChainIdAlignedTo(uiState.selections.alignedTo.chainId);
+                if (typeof uiState.selections.alignedTo.residueId === 'string') setSelectedResidueIdAlignedTo(uiState.selections.alignedTo.residueId);
+            }
+            if (uiState?.selections?.aligned) {
+                if (typeof uiState.selections.aligned.subunit === 'string') setSelectedSubunitAligned(uiState.selections.aligned.subunit as any);
+                if (typeof uiState.selections.aligned.chainId === 'string') setSelectedChainIdAligned(uiState.selections.aligned.chainId);
+                if (typeof uiState.selections.aligned.residueId === 'string') setSelectedResidueIdAligned(uiState.selections.aligned.residueId);
+            }
+            if (typeof uiState?.syncEnabled === 'boolean') {
+                setSyncEnabled(uiState.syncEnabled);
+            }
+            if (uiState?.activeViewer === A || uiState?.activeViewer === B) {
+                setActiveViewer(uiState.activeViewer);
+            }
+            if (uiState?.cameraSnapshots) {
+                applySerializableCameraSnapshot(viewerA.ref, uiState.cameraSnapshots.viewerA);
+                applySerializableCameraSnapshot(viewerB.ref, uiState.cameraSnapshots.viewerB);
+            }
+
             if (!loadedAny) {
                 alert('Session loaded, but could not automatically reload datasets. Please reload the required files manually.');
             }
         } catch (e) {
             alert('Error loading session: ' + (e instanceof Error ? e.message : String(e)));
         }
-    }, [loadMoleculeIntoViewers, normalizeSessionRepresentation]);
+    }, [
+        loadMoleculeIntoViewers,
+        normalizeSessionRepresentation,
+        applySerializableCameraSnapshot,
+        setSelectedSubunitAlignedTo,
+        setSelectedSubunitAligned,
+        setSelectedChainIdAlignedTo,
+        setSelectedChainIdAligned,
+        setSelectedResidueIdAlignedTo,
+        setSelectedResidueIdAligned,
+    ]);
 
     // Initialize session load modal with the callback
     const { handleLoadSession, handleLoadAllSession, SessionLoadModal } = useSessionLoadModal(onSessionLoaded);
