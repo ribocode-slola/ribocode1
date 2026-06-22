@@ -137,10 +137,34 @@ describe('getChainInfo with rpNameLookup enrichment', () => {
             structRef: [{ entityId: '1', accession: 'P61247' }]
         });
         const result = getChainInfo(structure, rpNameLookup);
-        expect(result.chainLabels.get('A')).toBe('eS1 [AA]');
+        expect(result.chainLabels.get('A')).toBe('eS1 | P61247 [AA]');
     });
 
-    it('falls back to default label when UniProt is not in rpNameLookup', () => {
+    it('uses gene name when available for UniProt accession', () => {
+        const rpNameLookup = new Map([['P61247', 'eS1']]);
+        const structure = makeStructure({
+            authId: 'A',
+            labelId: 'AA',
+            entityId: '1',
+            structRef: [{ entityId: '1', accession: 'P61247' }]
+        });
+        const result = getChainInfo(structure, rpNameLookup, { P61247: 'RPS3A' });
+        expect(result.chainLabels.get('A')).toBe('eS1 | RPS3A (P61247) [AA]');
+    });
+
+    it('hides UniProt accession from label when configured', () => {
+        const rpNameLookup = new Map([['P61247', 'eS1']]);
+        const structure = makeStructure({
+            authId: 'A',
+            labelId: 'AA',
+            entityId: '1',
+            structRef: [{ entityId: '1', accession: 'P61247' }]
+        });
+        const result = getChainInfo(structure, rpNameLookup, { P61247: 'RPS3A' }, false);
+        expect(result.chainLabels.get('A')).toBe('eS1 | RPS3A [AA]');
+    });
+
+    it('falls back to UniProt accession label when family mapping is unavailable', () => {
         const rpNameLookup = new Map([['P99999', 'someFamily']]); // P61247 not present
         const structure = makeStructure({
             authId: 'A',
@@ -149,7 +173,7 @@ describe('getChainInfo with rpNameLookup enrichment', () => {
             structRef: [{ entityId: '1', accession: 'P61247' }]
         });
         const result = getChainInfo(structure, rpNameLookup);
-        expect(result.chainLabels.get('A')).toBe('AA [auth A]');
+        expect(result.chainLabels.get('A')).toBe('P61247 [AA]');
     });
 
     it('falls back to default label when struct_ref is absent', () => {
@@ -175,7 +199,7 @@ describe('getChainInfo with rpNameLookup enrichment', () => {
             structRef: [{ entityId: '1', accession: 'P61247' }]
         });
         const result = getChainInfo(structure, rpNameLookup);
-        expect(result.chainLabels.get('A')).toBe('eS1 [A]');
+        expect(result.chainLabels.get('A')).toBe('eS1 | P61247 [A]');
     });
 
     it('uses species-specific lookup when available', () => {
@@ -220,7 +244,7 @@ describe('getChainInfo with rpNameLookup enrichment', () => {
         } as any;
 
         const result = getChainInfo(structure, rpNameLookupBySpecies);
-        expect(result.chainLabels.get('A')).toBe('HUMAN_FAMILY [AA]');
+        expect(result.chainLabels.get('A')).toBe('HUMAN_FAMILY | P61247 [AA]');
     });
 
     it('falls back to all-species lookup when species is unknown', () => {
@@ -265,6 +289,6 @@ describe('getChainInfo with rpNameLookup enrichment', () => {
         } as any;
 
         const result = getChainInfo(structure, rpNameLookupBySpecies);
-        expect(result.chainLabels.get('A')).toBe('ALL_FAMILY [AA]');
+        expect(result.chainLabels.get('A')).toBe('ALL_FAMILY | P61247 [AA]');
     });
 });

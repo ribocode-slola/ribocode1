@@ -440,6 +440,7 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     fireEvent.change(document.getElementById('generalcontrols-zoom-extra-radius') as HTMLInputElement, { target: { value: '24' } });
     fireEvent.change(document.getElementById('generalcontrols-zoom-min-radius') as HTMLInputElement, { target: { value: '12' } });
     fireEvent.change(document.getElementById('generalcontrols-sync-select') as HTMLSelectElement, { target: { value: 'On' } });
+    fireEvent.click(document.getElementById('generalcontrols-show-uniprot-accession') as HTMLInputElement);
     fireEvent.change(document.getElementById('viewer-column-A-alignedto-subunit-select') as HTMLSelectElement, { target: { value: 'Large' } });
     fireEvent.change(document.getElementById('viewer-column-B-aligned-subunit-select') as HTMLSelectElement, { target: { value: 'Small' } });
 
@@ -449,6 +450,7 @@ describe('App integration: AlignedTo and Aligned loading', () => {
 
     expect(session.uiState.zoom).toEqual({ extraRadius: 24, minRadius: 12 });
     expect(session.uiState.syncEnabled).toBe(true);
+    expect(session.uiState.showUniprotAccessionInChainLabels).toBe(false);
     expect(session.uiState.selections.alignedTo).toEqual(expect.objectContaining({
       subunit: 'Large',
     }));
@@ -472,6 +474,7 @@ describe('App integration: AlignedTo and Aligned loading', () => {
       uiState: {
         zoom: { extraRadius: 31, minRadius: 14 },
         syncEnabled: true,
+        showUniprotAccessionInChainLabels: false,
         selections: {
           alignedTo: { subunit: 'Large', chainId: 'A', residueId: '10' },
           aligned: { subunit: 'Small', chainId: 'B', residueId: '20' },
@@ -498,6 +501,7 @@ describe('App integration: AlignedTo and Aligned loading', () => {
       expect((document.getElementById('generalcontrols-zoom-extra-radius') as HTMLInputElement).value).toBe('31');
       expect((document.getElementById('generalcontrols-zoom-min-radius') as HTMLInputElement).value).toBe('14');
       expect((document.getElementById('generalcontrols-sync-select') as HTMLSelectElement).value).toBe('On');
+      expect((document.getElementById('generalcontrols-show-uniprot-accession') as HTMLInputElement).checked).toBe(false);
     }, { timeout: 5000 });
 
     expect(pluginA.canvas3d.camera.setState).toHaveBeenCalledWith(expect.objectContaining({

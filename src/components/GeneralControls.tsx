@@ -40,6 +40,8 @@ interface GeneralControlsProps {
   setZoomExtraRadius: (v: number) => void;
   zoomMinRadius: number;
   setZoomMinRadius: (v: number) => void;
+  showUniprotAccessionInChainLabels: boolean;
+  setShowUniprotAccessionInChainLabels: (v: boolean) => void;
   viewerA: any;
   viewerB: any;
   activeViewer: ViewerKey;
@@ -63,6 +65,8 @@ const GeneralControls: React.FC<GeneralControlsProps> = ({
   setZoomExtraRadius,
   zoomMinRadius,
   setZoomMinRadius,
+  showUniprotAccessionInChainLabels,
+  setShowUniprotAccessionInChainLabels,
   viewerA,
   viewerB,
   activeViewer,
@@ -102,6 +106,16 @@ const GeneralControls: React.FC<GeneralControlsProps> = ({
           onChange={e => setZoomMinRadius(Number(e.target.value))}
           id={`${idPrefix}-zoom-min-radius`}
         />
+      </label>
+      <label>
+        <input
+          type="checkbox"
+          checked={showUniprotAccessionInChainLabels}
+          onChange={e => setShowUniprotAccessionInChainLabels(e.target.checked)}
+          id={`${idPrefix}-show-uniprot-accession`}
+          style={{ marginRight: 4 }}
+        />
+        Show UniProt accession in chain labels
       </label>
     </div>
     <SyncButton

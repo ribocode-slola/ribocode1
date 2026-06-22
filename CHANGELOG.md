@@ -1,3 +1,7 @@
+## [v0.8.2] - 2026-06-22
+- Added UniProt gene-name enrichment for chain labels with background, rate-limited lookup and session-cached results.
+- Added a `Show UniProt accession in chain labels` toggle in `General Controls`, persisted in session `uiState` and restored on load.
+
 ## [v0.8.1] - 2026-06-22
 - Fixed session restore representation matching so saved color themes are preserved; type-only matches with different themes are now replaced with the saved representation.
 

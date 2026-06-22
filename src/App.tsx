@@ -57,6 +57,7 @@ import { A, B } from './constants/ribocode';
 import { makeFogSetters, makeCameraSetters, makeZoomHandler } from './utils/viewerHelpers';
 import { selectedAtomTypes } from './constants/ribocode';
 import { parseRpNameTableBySpecies } from './utils/rpNameTable';
+import { fetchUniProtGeneNamesBatched, UniProtGeneNameCache } from './utils/uniprot';
 import rpNameTableCsv from '../data/input/RP_name_table_uniprot.csv?raw';
 
 /**
@@ -103,6 +104,8 @@ interface SessionUiState {
         viewerA?: SerializableCameraSnapshot;
         viewerB?: SerializableCameraSnapshot;
     };
+    uniprotGeneNames?: UniProtGeneNameCache;
+    showUniprotAccessionInChainLabels?: boolean;
 }
 
 const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
@@ -132,10 +135,71 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
     const [viewerAReady, setViewerAReady] = useState(false);
     const [viewerBReady, setViewerBReady] = useState(false);
     const [syncEnabled, setSyncEnabled] = useState(false);
+    const [showUniprotAccessionInChainLabels, setShowUniprotAccessionInChainLabels] = useState(true);
     const rpNameLookupBySpecies = useMemo(
         () => parseRpNameTableBySpecies(rpNameTableCsv),
         []
     );
+    const [uniprotGeneNames, setUniprotGeneNames] = useState<UniProtGeneNameCache>({});
+    const uniprotGeneNamesRef = useRef<UniProtGeneNameCache>({});
+    const pendingUniProtAccessionsRef = useRef<Set<string>>(new Set());
+    const inFlightUniProtAccessionsRef = useRef<Set<string>>(new Set());
+    const isProcessingUniProtQueueRef = useRef(false);
+
+    useEffect(() => {
+        uniprotGeneNamesRef.current = uniprotGeneNames;
+    }, [uniprotGeneNames]);
+
+    const processUniProtQueue = useCallback(async () => {
+        if (isProcessingUniProtQueueRef.current) return;
+        if (typeof fetch !== 'function' || process.env.NODE_ENV === 'test') return;
+
+        isProcessingUniProtQueueRef.current = true;
+        try {
+            while (pendingUniProtAccessionsRef.current.size > 0) {
+                const pending = Array.from(pendingUniProtAccessionsRef.current);
+                pendingUniProtAccessionsRef.current.clear();
+
+                const unresolved = pending.filter(accession => {
+                    if (accession in uniprotGeneNamesRef.current) return false;
+                    if (inFlightUniProtAccessionsRef.current.has(accession)) return false;
+                    return true;
+                });
+
+                if (!unresolved.length) continue;
+
+                unresolved.forEach(accession => inFlightUniProtAccessionsRef.current.add(accession));
+                const resolved = await fetchUniProtGeneNamesBatched(unresolved, {
+                    batchSize: 20,
+                    delayMs: 1200,
+                });
+                setUniprotGeneNames(prev => ({ ...prev, ...resolved }));
+                unresolved.forEach(accession => inFlightUniProtAccessionsRef.current.delete(accession));
+            }
+        } finally {
+            isProcessingUniProtQueueRef.current = false;
+            if (pendingUniProtAccessionsRef.current.size > 0) {
+                void processUniProtQueue();
+            }
+        }
+    }, []);
+
+    const onUniprotAccessionsDiscovered = useCallback((accessions: Iterable<string>) => {
+        let hasQueuedAny = false;
+        for (const raw of accessions) {
+            const accession = raw.trim();
+            if (!accession) continue;
+            if (accession in uniprotGeneNamesRef.current) continue;
+            if (inFlightUniProtAccessionsRef.current.has(accession)) continue;
+            if (pendingUniProtAccessionsRef.current.has(accession)) continue;
+            pendingUniProtAccessionsRef.current.add(accession);
+            hasQueuedAny = true;
+        }
+
+        if (hasQueuedAny) {
+            void processUniProtQueue();
+        }
+    }, [processUniProtQueue]);
 
     // Use a ref to always have the latest alignmentData from AlignedTo
     const alignmentDataRef = useRef<any>(null);
@@ -748,8 +812,30 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
     );
 
     // Custom hooks for updating chain info and subunit-to-chain mapping for both viewers.
-    useUpdateChainInfo(viewerA.ref, structureRefAAlignedTo, molstarA, setChainInfoAlignedTo, setSubunitToChainIdsAlignedTo, AlignedTo, rpNameLookupBySpecies);
-    useUpdateChainInfo(viewerB.ref, structureRefBAligned, molstarB, setChainInfoAligned, setSubunitToChainIdsAligned, Aligned, rpNameLookupBySpecies);
+    useUpdateChainInfo(
+        viewerA.ref,
+        structureRefAAlignedTo,
+        molstarA,
+        setChainInfoAlignedTo,
+        setSubunitToChainIdsAlignedTo,
+        AlignedTo,
+        rpNameLookupBySpecies,
+        uniprotGeneNames,
+        onUniprotAccessionsDiscovered,
+        showUniprotAccessionInChainLabels
+    );
+    useUpdateChainInfo(
+        viewerB.ref,
+        structureRefBAligned,
+        molstarB,
+        setChainInfoAligned,
+        setSubunitToChainIdsAligned,
+        Aligned,
+        rpNameLookupBySpecies,
+        uniprotGeneNames,
+        onUniprotAccessionsDiscovered,
+        showUniprotAccessionInChainLabels
+    );
 
     // Generalized effect for residue ID selection and info update.
     useUpdateResidueInfo(viewerA.ref, structureRefAAlignedTo, molstarA, selectedChainIdAlignedTo, setResidueInfoAlignedTo, selectedResidueIdAlignedTo, setSelectedResidueIdAlignedTo, AlignedTo);
@@ -1047,6 +1133,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 viewerA: getSerializableCameraSnapshot(viewerA.ref),
                 viewerB: getSerializableCameraSnapshot(viewerB.ref),
             },
+            uniprotGeneNames,
+            showUniprotAccessionInChainLabels,
         } as SessionUiState,
     }));
 
@@ -1107,6 +1195,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                     viewerA: getSerializableCameraSnapshot(viewerA.ref),
                     viewerB: getSerializableCameraSnapshot(viewerB.ref),
                 },
+                uniprotGeneNames,
+                showUniprotAccessionInChainLabels,
             } as SessionUiState,
         }),
         () => {
@@ -1229,6 +1319,12 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 applySerializableCameraSnapshot(viewerA.ref, uiState.cameraSnapshots.viewerA);
                 applySerializableCameraSnapshot(viewerB.ref, uiState.cameraSnapshots.viewerB);
             }
+            if (uiState?.uniprotGeneNames && typeof uiState.uniprotGeneNames === 'object') {
+                setUniprotGeneNames(prev => ({ ...prev, ...uiState.uniprotGeneNames }));
+            }
+            if (typeof uiState?.showUniprotAccessionInChainLabels === 'boolean') {
+                setShowUniprotAccessionInChainLabels(uiState.showUniprotAccessionInChainLabels);
+            }
 
             if (!loadedAny) {
                 alert('Session loaded, but could not automatically reload datasets. Please reload the required files manually.');
@@ -1246,6 +1342,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         setSelectedChainIdAligned,
         setSelectedResidueIdAlignedTo,
         setSelectedResidueIdAligned,
+        setUniprotGeneNames,
+        setShowUniprotAccessionInChainLabels,
     ]);
 
     // Initialize session load modal with the callback
@@ -1430,6 +1528,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                         setZoomExtraRadius={setZoomExtraRadius}
                         zoomMinRadius={zoomMinRadius}
                         setZoomMinRadius={setZoomMinRadius}
+                        showUniprotAccessionInChainLabels={showUniprotAccessionInChainLabels}
+                        setShowUniprotAccessionInChainLabels={setShowUniprotAccessionInChainLabels}
                         viewerA={viewerA.ref.current}
                         viewerB={viewerB.ref.current}
                         activeViewer={activeViewer}
