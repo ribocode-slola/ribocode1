@@ -18,6 +18,7 @@ describe('GeneralControls', () => {
   it('renders and responds to user input', () => {
     const setZoomExtraRadius = vi.fn();
     const setZoomMinRadius = vi.fn();
+    const setShowUniprotAccessionInChainLabels = vi.fn();
     const setSyncEnabled = vi.fn();
     const handleRealignToChains = vi.fn();
     const props = {
@@ -25,6 +26,8 @@ describe('GeneralControls', () => {
       setZoomExtraRadius,
       zoomMinRadius: 16,
       setZoomMinRadius,
+      showUniprotAccessionInChainLabels: true,
+      setShowUniprotAccessionInChainLabels,
       viewerA: {},
       viewerB: {},
       activeViewer: 'A' as ViewerKey,
@@ -50,6 +53,10 @@ describe('GeneralControls', () => {
     const minRadiusInput = getByLabelText(/minRadius/i);
     fireEvent.change(minRadiusInput, { target: { value: '18' } });
     expect(setZoomMinRadius).toHaveBeenCalledWith(18);
+
+    const showUniProtToggle = getByLabelText(/Show UniProt accession in chain labels/i);
+    fireEvent.click(showUniProtToggle);
+    expect(setShowUniprotAccessionInChainLabels).toHaveBeenCalledWith(false);
 
     // Test SyncButton (actually a select) is rendered and works
     const syncSelect = getByLabelText(/Select Sync/i);
@@ -78,6 +85,8 @@ describe('GeneralControls', () => {
       setZoomExtraRadius: vi.fn(),
       zoomMinRadius: 16,
       setZoomMinRadius: vi.fn(),
+      showUniprotAccessionInChainLabels: true,
+      setShowUniprotAccessionInChainLabels: vi.fn(),
       viewerA: {},
       viewerB: {},
       activeViewer: 'A' as ViewerKey,

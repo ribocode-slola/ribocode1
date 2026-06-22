@@ -130,7 +130,7 @@ describe('useUpdateChainInfo', () => {
     expect(setChainInfo).toHaveBeenCalled();
     const updater = setChainInfo.mock.calls[0][0];
     const result = updater({ chainLabels: new Map() });
-    expect(result.chainLabels.get('A')).toBe('eS1 [AA]');
+    expect(result.chainLabels.get('A')).toBe('eS1 | P61247 [AA]');
   });
 
   it('does nothing if pluginRef.current is null', () => {

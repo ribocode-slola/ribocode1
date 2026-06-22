@@ -11,6 +11,38 @@
 import { Structure } from 'molstar/lib/mol-model/structure';
 import { buildEntityToUniprotMap, inferSpeciesKeyFromModel, RpNameLookupBySpecies } from './rpNameTable';
 
+function buildChainLabel(
+    labelId: string,
+    authId: string,
+    familyName?: string,
+    uniprotAccession?: string,
+    geneName?: string,
+    showUniprotAccessionInLabel = true
+): string {
+    const targetId = labelId || authId;
+    const defaultLabel = labelId ? `${labelId} [auth ${authId}]` : `[auth ${authId}]`;
+
+    if (!familyName && !uniprotAccession && !geneName) {
+        return defaultLabel;
+    }
+
+    const prefixParts: string[] = [];
+    if (familyName) prefixParts.push(familyName);
+    if (geneName && uniprotAccession) {
+        prefixParts.push(showUniprotAccessionInLabel ? `${geneName} (${uniprotAccession})` : geneName);
+    } else if (geneName) {
+        prefixParts.push(geneName);
+    } else if (uniprotAccession && showUniprotAccessionInLabel) {
+        prefixParts.push(uniprotAccession);
+    }
+
+    if (prefixParts.length === 0) {
+        return defaultLabel;
+    }
+
+    return `${prefixParts.join(' | ')} [${targetId}]`;
+}
+
 function isLookupBySpecies(
     lookup?: Map<string, string> | RpNameLookupBySpecies
 ): lookup is RpNameLookupBySpecies {
@@ -34,13 +66,21 @@ function isLookupBySpecies(
  */
 export function getChainInfo(
     structure: Structure,
-    rpNameLookup?: Map<string, string> | RpNameLookupBySpecies
-): { chainLabels: Map<string, string> } {
+    rpNameLookup?: Map<string, string> | RpNameLookupBySpecies,
+    geneNameLookup?: Record<string, string | null>,
+    showUniprotAccessionInLabel = true
+): {
+    chainLabels: Map<string, string>;
+    chainToUniprot: Map<string, string>;
+    uniprotAccessions: Set<string>;
+} {
     const chainLabels: Map<string, string> = new Map();
+    const chainToUniprot: Map<string, string> = new Map();
+    const uniprotAccessions: Set<string> = new Set();
     const units = structure.units;
     if (!units || units.length === 0) {
         console.warn('No units found in structure.');
-        return { chainLabels };
+        return { chainLabels, chainToUniprot, uniprotAccessions };
     }
     units.forEach(unit => {
         // Only process atomic units
@@ -72,12 +112,16 @@ export function getChainInfo(
 
             // Attempt to resolve gene family name via UniProt
             let familyName: string | undefined;
+            let uniprotAccession: string | undefined;
             if (rpNameLookup && entityToUniprot) {
                 const entityId = chains.label_entity_id?.value
                     ? String(chains.label_entity_id.value(i))
                     : undefined;
                 const uniprot = entityId ? entityToUniprot.get(entityId) : undefined;
                 if (uniprot) {
+                    uniprotAccession = uniprot;
+                    uniprotAccessions.add(uniprot);
+                    chainToUniprot.set(authId, uniprot);
                     familyName = activeLookup?.get(uniprot);
                     if (!familyName && isLookupBySpecies(rpNameLookup)) {
                         familyName = rpNameLookup.all.get(uniprot);
@@ -85,14 +129,17 @@ export function getChainInfo(
                 }
             }
 
-            let label: string;
-            if (familyName) {
-                label = `${familyName} [${labelId || authId}]`;
-            } else {
-                label = labelId ? `${labelId} [auth ${authId}]` : `[auth ${authId}]`;
-            }
+            const geneName = uniprotAccession ? geneNameLookup?.[uniprotAccession] ?? undefined : undefined;
+            const label = buildChainLabel(
+                labelId,
+                authId,
+                familyName,
+                uniprotAccession,
+                geneName ?? undefined,
+                showUniprotAccessionInLabel
+            );
             chainLabels.set(authId, label);
         }
     });
-    return { chainLabels };
+    return { chainLabels, chainToUniprot, uniprotAccessions };
 }

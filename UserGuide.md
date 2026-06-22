@@ -24,6 +24,7 @@ The UI layout is as follows:
  - `General Controls`
    - `Resdue Zoom` controls
    - `Select Sync` control for synchronization
+   - `Show UniProt accession in chain labels` toggle for chain selector labels
    - `Re-align to Chains` control
  - Column `A`
    - `Load Molecule`
@@ -136,5 +137,7 @@ Sychronization is `Off` by default. If selected to be `On`, rotation/zoom in one
 Please refer to the [Mol* viewer Documentation](https://molstar.org/viewer-docs/) for details of the Mol* UI. In each Ribocode `Molstar Container`, the `Mol* 3D Canvas` is always visible and the additional Mol* panels (`Sequence Panel`, `Main Menu`, `Control Panel`, `Log Panel`) are hidden by default for a cleaner workflow. Use the `Show Advanced Mol* Controls` button in a column to reveal these panels for advanced usage, and `Hide Advanced Mol* Controls` to collapse them again. The Mol* viewer style is adapted so that the UI fits in a column of 600 pixels in width.
 
 For convenience, users can save and load a session via the Session Menu. Loading a session does not load the data. For security reasons data loading is a manual process, but once the `AlignedTo` and `Aligned` data are selected, the representations are recreated and the loaded session should be in the state it was when the session was saved.
+
+Session `uiState` also persists the `Show UniProt accession in chain labels` setting, so chain label formatting is restored consistently when a session is loaded.
 
 ---

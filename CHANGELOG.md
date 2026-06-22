@@ -1,5 +1,7 @@
 ## [v0.8.1] - 2026-06-22
 - Fixed session restore representation matching so saved color themes are preserved; type-only matches with different themes are now replaced with the saved representation.
+- Added UniProt gene-name enrichment for chain labels with background, rate-limited lookup and session-cached results.
+- Added a `Show UniProt accession in chain labels` toggle in `General Controls`, persisted in session `uiState` and restored on load.
 
 ## [v0.8.0] - 2026-06-22
 - Updated chain labels to prefer ribosomal `family` names from `RP_name_table_uniprot.csv` (first column), shown in selectors as `<family> [<label>]` when matched.

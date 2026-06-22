@@ -31,7 +31,10 @@ export function useUpdateChainInfo(
   setChainInfo: React.Dispatch<React.SetStateAction<{ chainLabels: Map<string, string> }>>,
   setSubunitToChainIds: React.Dispatch<React.SetStateAction<Map<string, Set<string>>>>,
   label?: string,
-  rpNameLookup?: Map<string, string> | RpNameLookupBySpecies
+  rpNameLookup?: Map<string, string> | RpNameLookupBySpecies,
+  geneNameLookup?: Record<string, string | null>,
+  onUniprotAccessionsDiscovered?: (accessions: Iterable<string>) => void,
+  showUniprotAccessionInChainLabels = true
 ) {
   useEffect(() => {
     if (!pluginRef.current || !structureRef) return;
@@ -45,7 +48,16 @@ export function useUpdateChainInfo(
       if (!structureObj) return;
 
       // Use getChainInfo to extract auth-based chain labels (with optional family name enrichment)
-      const { chainLabels } = getChainInfo(structureObj, rpNameLookup);
+      const { chainLabels, uniprotAccessions } = getChainInfo(
+        structureObj,
+        rpNameLookup,
+        geneNameLookup,
+        showUniprotAccessionInChainLabels
+      );
+
+      if (onUniprotAccessionsDiscovered && uniprotAccessions.size > 0) {
+        onUniprotAccessionsDiscovered(uniprotAccessions);
+      }
 
       // Build subunit-to-chain mapping (subunit defaults to 'default' for all chains)
       const subunitToChainIds = new Map<string, Set<string>>();
@@ -103,5 +115,5 @@ export function useUpdateChainInfo(
       console.warn(`[useUpdateChainInfo][${label}] failed:`, err);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pluginRef, structureRef, molstar, setChainInfo, setSubunitToChainIds, label, rpNameLookup]);
+  }, [pluginRef, structureRef, molstar, setChainInfo, setSubunitToChainIds, label, rpNameLookup, geneNameLookup, onUniprotAccessionsDiscovered, showUniprotAccessionInChainLabels]);
 }
