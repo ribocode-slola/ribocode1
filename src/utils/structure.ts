@@ -62,19 +62,25 @@ export function getChainLoci(plugin: PluginUIContext, structureRef: string, chai
 
 /**
  * Focus the camera on a chain loci, with optional sync to another plugin.
+ * Accepts zoom options for extraRadius and minRadius (same as focusLociOnResidue).
  */
 export function focusLociOnChain(
     plugin: PluginUIContext,
     structureRef: string,
     chainId: string,
     syncPlugin?: PluginUIContext,
-    getChainLociFn: (plugin: PluginUIContext, structureRef: string, chainId: string) => any = getChainLoci
+    getChainLociFn: (plugin: PluginUIContext, structureRef: string, chainId: string) => any = getChainLoci,
+    zoomExtraRadius?: number,
+    zoomMinRadius?: number
 ) {
     const loci = getChainLociFn(plugin, structureRef, chainId);
     if (!loci) return;
-    plugin.managers.camera.focusLoci(loci);
+    const focusOptions = (zoomExtraRadius !== undefined && zoomMinRadius !== undefined)
+        ? { extraRadius: zoomExtraRadius, minRadius: zoomMinRadius }
+        : undefined;
+    plugin.managers.camera.focusLoci(loci, focusOptions);
     if (syncPlugin) {
-        syncPlugin.managers.camera.focusLoci(loci);
+        syncPlugin.managers.camera.focusLoci(loci, focusOptions);
     }
 }
 

@@ -1,3 +1,8 @@
+## [v0.7.3] - 2026-06-22
+- Fixed residue zoom so the `Residue Zoom extraRadius` and `minRadius` settings are forwarded to Mol*.
+- Added regression tests for residue zoom option forwarding.
+- Kept the `RP_name_table_uniprot.csv` chain label lookup and related chain/residue selection fixes.
+
 ## [v0.7.2] - 2026-06-22
 - Added per-column `Show Advanced Mol* Controls` / `Hide Advanced Mol* Controls` button below each viewer.
 - Advanced Mol* interface panels (sequence, menu, controls, log) are now hidden by default to reduce UI clutter.

@@ -73,12 +73,38 @@ describe('structure', () => {
     describe('focusLociOnChain', () => {
         it('calls camera.focusLoci if loci is found', () => {
             focusLociOnChain(plugin, structureRef, chainId, undefined, () => lociObj);
-            expect(plugin.managers.camera.focusLoci).toHaveBeenCalledWith(lociObj);
+            expect(plugin.managers.camera.focusLoci).toHaveBeenCalledWith(lociObj, undefined);
         });
         it('does not call camera.focusLoci if loci is null', () => {
             (plugin.managers.camera.focusLoci as ReturnType<typeof vi.fn>).mockClear();
             focusLociOnChain(plugin, structureRef, chainId, undefined, () => null);
             expect(plugin.managers.camera.focusLoci).not.toHaveBeenCalled();
+        });
+        it('passes extraRadius and minRadius as focus options when both are provided', () => {
+            (plugin.managers.camera.focusLoci as ReturnType<typeof vi.fn>).mockClear();
+            focusLociOnChain(plugin, structureRef, chainId, undefined, () => lociObj, 20, 16);
+            expect(plugin.managers.camera.focusLoci).toHaveBeenCalledWith(
+                lociObj,
+                { extraRadius: 20, minRadius: 16 }
+            );
+        });
+        it('passes no focus options when only one zoom param is provided', () => {
+            (plugin.managers.camera.focusLoci as ReturnType<typeof vi.fn>).mockClear();
+            // Only zoomExtraRadius provided → no options object
+            focusLociOnChain(plugin, structureRef, chainId, undefined, () => lociObj, 20, undefined);
+            expect(plugin.managers.camera.focusLoci).toHaveBeenCalledWith(lociObj, undefined);
+        });
+        it('also focuses sync plugin with same options when syncPlugin is provided', () => {
+            const syncPlugin = {
+                managers: { camera: { focusLoci: vi.fn() } }
+            } as any;
+            focusLociOnChain(plugin, structureRef, chainId, syncPlugin, () => lociObj, 10, 5);
+            expect(plugin.managers.camera.focusLoci).toHaveBeenCalledWith(
+                lociObj, { extraRadius: 10, minRadius: 5 }
+            );
+            expect(syncPlugin.managers.camera.focusLoci).toHaveBeenCalledWith(
+                lociObj, { extraRadius: 10, minRadius: 5 }
+            );
         });
     });
 

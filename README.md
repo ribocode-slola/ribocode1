@@ -6,6 +6,8 @@
 Ribocode orchestrates a User Interface (UI) based on two styled [Mol*](https://github.com/molstar/molstar) viewers and is specifically geared for comparing two [ribosome](https://en.wikipedia.org/wiki/Ribosome) datasets in [3D](https://en.wikipedia.org/wiki/Three-dimensional_space). It is deployed as a [Progressive Web App (PWA)](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps) via GitHub Pages that can be easily duplicated. The latest version is released at the following URL:
 * https://ribocode-slola.github.io/ribocode1/
 
+An official Ribocode release includes deployment of the GitHub Pages PWA build.
+
 The user requires a recent [Web browser](https://en.wikipedia.org/wiki/Web_browser) (e.g. [Firefox](https://www.firefox.com/)) that will run [JavaScript](https://developer.mozilla.org/en-US/docs/Web/JavaScript).
 
 Once installed as a PWA, Ribocode can be used offline.

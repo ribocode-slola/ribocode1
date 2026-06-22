@@ -4,8 +4,8 @@
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
  * 
  * @author Andy Turner <agdturner@gmail.com>
- * @version 1.0.0
- * @lastModified 2026-04-24
+ * @version 1.0.1
+ * @lastModified 2026-06-22
  * @see https://github.com/ribocode-slola/ribocode1
  */
 import { vi } from 'vitest';
@@ -72,10 +72,43 @@ describe('viewerHelpers', () => {
 
     await handler.handleButtonClick();
 
+    // zoomExtraRadius/zoomMinRadius not supplied → undefined; syncPlugin passed
     expect(focusLociOnChain).toHaveBeenCalledWith(
       pluginRef.current,
       'struct-a',
-      'A'
+      'A',
+      syncPluginRef.current,
+      undefined,
+      undefined,
+      undefined
+    );
+  });
+
+  it('passes zoomExtraRadius and zoomMinRadius to chain zoom handler', async () => {
+    const pluginRef = { current: { id: 'plugin-a' } };
+    const handler = createZoomHandler(
+      pluginRef as any,
+      'struct-a',
+      'chain-test',
+      'B',
+      false,
+      undefined,
+      undefined,
+      undefined,
+      20,
+      16
+    );
+
+    await handler.handleButtonClick();
+
+    expect(focusLociOnChain).toHaveBeenCalledWith(
+      pluginRef.current,
+      'struct-a',
+      'B',
+      undefined,
+      undefined,
+      20,
+      16
     );
   });
 
@@ -106,6 +139,34 @@ describe('viewerHelpers', () => {
       syncPluginRef.current,
       5,
       2
+    );
+  });
+
+  it('passes zoomExtraRadius/minRadius for residue zoom when sync is disabled', async () => {
+    const pluginRef = { current: { id: 'plugin-a' } };
+    const handler = makeZoomHandler({
+      pluginRef: pluginRef as any,
+      structureRef: 'struct-a',
+      property: 'residue-test',
+      chainId: 'B',
+      sync: false,
+      residueId: '10',
+      insCode: '',
+      zoomExtraRadius: 24,
+      zoomMinRadius: 12,
+    });
+
+    await handler.handleButtonClick();
+
+    expect(focusLociOnResidue).toHaveBeenCalledWith(
+      pluginRef.current,
+      'struct-a',
+      'B',
+      '10',
+      '',
+      undefined,
+      24,
+      12
     );
   });
 });

@@ -49,7 +49,11 @@ export function createZoomHandler(
                 focusLociOnChain(
                     plugin,
                     structureRef,
-                    chainId
+                    chainId,
+                    sync && syncPluginRef?.current ? syncPluginRef.current : undefined,
+                    undefined,        // use default getChainLociFn
+                    zoomExtraRadius,
+                    zoomMinRadius
                 );
             } else if (property === 'residue-test') {
                 focusLociOnResidue(

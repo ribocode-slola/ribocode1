@@ -149,8 +149,9 @@ export function getResidueInfo(
             });
         }
     }
-    console.info('[getResidueInfo] residueLabels:', residueLabels);
-    console.info('[getResidueInfo] residueToAtomIds:', residueToAtomIds);
+    // Debug logging disabled to avoid console spam; uncomment if needed:
+    // console.info('[getResidueInfo] residueLabels:', residueLabels);
+    // console.info('[getResidueInfo] residueToAtomIds:', residueToAtomIds);
     return {
         residueLabels: residueLabels,
         residueToAtomIds: residueToAtomIds

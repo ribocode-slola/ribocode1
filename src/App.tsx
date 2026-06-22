@@ -710,7 +710,9 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         sync: syncEnabled,
         syncPluginRef: viewerB.ref,
         residueId: selectedResidueIdAlignedTo,
-        insCode: residueInfoAlignedTo.residueLabels.get(selectedResidueIdAlignedTo)?.insCode
+        insCode: residueInfoAlignedTo.residueLabels.get(selectedResidueIdAlignedTo)?.insCode,
+        zoomExtraRadius,
+        zoomMinRadius
     });
     const residueZoomAAligned = makeZoomHandler({
         pluginRef: viewerA.ref,
@@ -720,7 +722,9 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         sync: syncEnabled,
         syncPluginRef: viewerB.ref,
         residueId: selectedResidueIdAligned,
-        insCode: residueInfoAligned.residueLabels.get(selectedResidueIdAligned)?.insCode
+        insCode: residueInfoAligned.residueLabels.get(selectedResidueIdAligned)?.insCode,
+        zoomExtraRadius,
+        zoomMinRadius
     });
     const residueZoomBAlignedTo = makeZoomHandler({
         pluginRef: viewerB.ref,
@@ -730,7 +734,9 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         sync: syncEnabled,
         syncPluginRef: viewerA.ref,
         residueId: selectedResidueIdAlignedTo,
-        insCode: residueInfoAlignedTo.residueLabels.get(selectedResidueIdAlignedTo)?.insCode
+        insCode: residueInfoAlignedTo.residueLabels.get(selectedResidueIdAlignedTo)?.insCode,
+        zoomExtraRadius,
+        zoomMinRadius
     });
     const residueZoomBAligned = makeZoomHandler({
         pluginRef: viewerB.ref,
@@ -740,7 +746,9 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         sync: syncEnabled,
         syncPluginRef: viewerA.ref,
         residueId: selectedResidueIdAligned,
-        insCode: residueInfoAligned.residueLabels.get(selectedResidueIdAligned)?.insCode
+        insCode: residueInfoAligned.residueLabels.get(selectedResidueIdAligned)?.insCode,
+        zoomExtraRadius,
+        zoomMinRadius
     });
 
     // Unified robust delete handler for any representation
