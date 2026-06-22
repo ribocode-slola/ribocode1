@@ -90,7 +90,5 @@ describe('getResidueInfo', () => {
             insCode: ''
         });
         expect(result.residueToAtomIds['10']).toEqual(['5']);
-        expect(console.info).toHaveBeenCalledWith('[getResidueInfo] residueLabels:', expect.any(Map));
-        expect(console.info).toHaveBeenCalledWith('[getResidueInfo] residueToAtomIds:', expect.any(Object));
     });
 });

@@ -1,7 +1,12 @@
+## [v0.7.3] - 2026-06-22
+- Fixed residue zoom wiring in `App.tsx` so `Residue Zoom extraRadius` and `minRadius` are passed through to Mol* focus calls.
+- Added regression coverage for residue zoom option forwarding in `viewerHelpers` tests.
+- Included chain/residue selection reliability fixes and chain label improvements using `RP_name_table_uniprot.csv` lookup data.
+
 ## [v0.7.2] - 2026-06-22
-- Added per-column `Show Advanced Mol* Controls` / `Hide Advanced Mol* Controls` button below each viewer.
-- Advanced Mol* interface panels (sequence, menu, controls, log) are now hidden by default to reduce UI clutter.
-- Core Mol* `3D Canvas` remains visible by default, with advanced panels available on demand for power users.
+- Added per-column `Show Advanced Mol* Controls` / `Hide Advanced Mol* Controls` toggle below each viewer.
+- Hid non-canvas Mol* interface panels (sequence, menu, controls, log) by default to reduce UI clutter.
+- Kept the core Mol* `3D Canvas` visible, with advanced panels available on demand.
 
 ## [v0.7.1] - 2026-05-29
 - Save/Load session buttons added.

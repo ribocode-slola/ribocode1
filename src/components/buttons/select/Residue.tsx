@@ -4,18 +4,18 @@
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
  *
  * @author Andy Turner <agdturner@gmail.com>
- * @version 1.0.0
- * @lastModified 2026-04-24
+ * @version 1.0.1
+ * @lastModified 2026-06-22
  * @see https://github.com/ribocode-slola/ribocode1
  */
 import React from 'react';
-import GenericSelectButton, { idSuffix as selectIdSuffix } from './Select';
+import { idSuffix as selectIdSuffix } from './Select';
 import { ResidueLabelInfo } from 'src/utils/residue';
 
 /**
  * Props for the ResidueSelectButton component.
  * @property disabled Whether the select button is disabled.
- * @property residueIds The array of residue IDs to select from.
+ * @property residueLabels The map of residue IDs to labels to select from.
  * @property selectedResidueId The currently selected residue ID.
  * @property onSelect Callback function when a residue ID is selected.
  * @property label Optional label for the select button.
@@ -32,12 +32,18 @@ export interface ResidueSelectButtonProps {
 
 /**
  * A select button for residues.
+ *
+ * Uses the residue ID as the underlying `<option>` value and displays the
+ * human-readable label (e.g. "LEU 70") as the option text.  This avoids the
+ * fragile name-based reverse-lookup that the previous GenericSelectButton
+ * wrapper required.
+ *
  * @param disabled Whether the select button is disabled.
- * @param residueLabels The map of residue IDs to labels to select from.
+ * @param residueLabels Map from residue ID → ResidueLabelInfo.
  * @param selectedResidueId The currently selected residue ID.
- * @param onSelect Callback function when a residue ID is selected.
- * @param label Optional label for the select button.
- * @param id A unique identifier for the select button.
+ * @param onSelect Callback invoked with the selected residue ID.
+ * @param label Optional label for the select element.
+ * @param id A unique identifier for the select element.
  * @returns The ResidueSelectButton component.
  */
 const ResidueSelectButton: React.FC<ResidueSelectButtonProps> = ({
@@ -48,26 +54,27 @@ const ResidueSelectButton: React.FC<ResidueSelectButtonProps> = ({
 	label,
 	id
 }) => {
-	// Map selectedResidueId to its label value
-	const selectedLabel = selectedResidueId ? residueLabels.get(String(selectedResidueId).trim())?.name || '' : '';
-	// When a label is selected, find the corresponding residueId (as trimmed string)
-	const handleSelect = (selectedLabel: string) => {
-		for (const [id, info] of residueLabels.entries()) {
-			if (info.name === selectedLabel) {
-				onSelect(String(id).trim());
-				break;
-			}
-		}
-	};
+	// Sort by sequence number (ascending), with insertion code as tiebreaker
+	const orderedEntries = Array.from(residueLabels.entries()).sort(
+		([, a], [, b]) =>
+			a.seqNumber - b.seqNumber || a.insCode.localeCompare(b.insCode)
+	);
 	return (
-		<GenericSelectButton
-			label={label || 'Select Residue'}
-			options={Array.from(residueLabels.values()).map(info => info.name)}
-			selected={selectedLabel}
-			onSelect={handleSelect}
-			disabled={disabled}
-			id={id ?? selectIdSuffix}
-		/>
+		<label>
+			{label || 'Select Residue'}
+			<select
+				className="msp-select msp-form-control"
+				value={selectedResidueId ?? ''}
+				onChange={e => onSelect(e.target.value)}
+				disabled={disabled}
+				id={id ?? selectIdSuffix}
+			>
+				<option value="" disabled>...</option>
+				{orderedEntries.map(([residueId, info]) => (
+					<option key={residueId} value={residueId}>{info.name}</option>
+				))}
+			</select>
+		</label>
 	);
 };
 

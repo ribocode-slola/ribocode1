@@ -256,8 +256,10 @@ The app header version text is read directly from `package.json` in `src/compone
 1. Bump version using one of the commands above.
 2. Add/update the release entry in `CHANGELOG.md`.
 3. Run tests (for example `npm test` and any targeted E2E tests as needed).
-4. Commit version/doc/code changes together.
-5. Optionally add a git tag (e.g., `vX.Y.Z`) when publishing.
+4. Commit version/doc/code changes together and push to `main`.
+5. Deploy the PWA build with `npm run deploy`.
+6. Create and push a release tag (e.g., `vX.Y.Z`).
+7. Publish the GitHub release notes for the tag.
 
 
 ## Tests

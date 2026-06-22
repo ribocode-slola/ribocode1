@@ -4,11 +4,12 @@
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
  *
  * @author Andy Turner <agdturner@gmail.com>
- * @version 1.0.0
- * @lastModified 2026-04-24
+ * @version 1.0.1
+ * @lastModified 2026-06-22
  * @see https://github.com/ribocode-slola/ribocode1
  */
 import { useEffect } from 'react';
+import { getChainInfo } from '../utils/chain';
 
 /**
  * Custom hook to update chain info and subunit-to-chain mapping for a Mol* structure.
@@ -19,6 +20,8 @@ import { useEffect } from 'react';
  * @param setChainInfo - Setter for chain info state.
  * @param setSubunitToChainIds - Setter for subunit-to-chain mapping state.
  * @param label - Optional label for logging/debugging.
+ * @param rpNameLookup - Optional Map<uniprotCode, familyName> from parseRpNameTable() to
+ *   enrich chain labels with gene family names (e.g. "uS2 [AA]" instead of "AA [auth A]").
  */
 export function useUpdateChainInfo(
   pluginRef: React.RefObject<any>,
@@ -26,7 +29,8 @@ export function useUpdateChainInfo(
   molstar: any,
   setChainInfo: React.Dispatch<React.SetStateAction<{ chainLabels: Map<string, string> }>>,
   setSubunitToChainIds: React.Dispatch<React.SetStateAction<Map<string, Set<string>>>>,
-  label?: string
+  label?: string,
+  rpNameLookup?: Map<string, string>
 ) {
   useEffect(() => {
     if (!pluginRef.current || !structureRef) return;
@@ -38,23 +42,18 @@ export function useUpdateChainInfo(
         (s: any) => s.cell.transform.ref === structureRef
       )?.cell.obj?.data;
       if (!structureObj) return;
-      // Extract chain labels and subunit-to-chain mapping
-      const chainLabels = new Map<string, string>();
+
+      // Use getChainInfo to extract auth-based chain labels (with optional family name enrichment)
+      const { chainLabels } = getChainInfo(structureObj, rpNameLookup);
+
+      // Build subunit-to-chain mapping (subunit defaults to 'default' for all chains)
       const subunitToChainIds = new Map<string, Set<string>>();
-      for (const unit of structureObj.units) {
-        // Use chainGroupId as the chain identifier (Mol* convention)
-        const chainId = unit.chainGroupId;
-        if (chainId === undefined || chainId === null || chainId === '') {
-          // eslint-disable-next-line no-console
-          console.warn(`[useUpdateChainInfo][${label}] Skipping unit with invalid chainGroupId:`, unit);
-          continue;
-        }
-        const labelVal = unit.label || chainId;
-        const subunit = unit.subunit || 'default';
-        chainLabels.set(chainId, labelVal);
+      for (const [chainId] of chainLabels) {
+        const subunit = 'default';
         if (!subunitToChainIds.has(subunit)) subunitToChainIds.set(subunit, new Set());
         subunitToChainIds.get(subunit)!.add(chainId);
       }
+
       if (chainLabels.size === 0) {
         // eslint-disable-next-line no-console
         console.warn(`[useUpdateChainInfo][${label}] No valid chains found in structure. State not updated.`);
@@ -96,13 +95,12 @@ export function useUpdateChainInfo(
         if (changed) return subunitToChainIds;
         return prev;
       });
-      if (label) {
-        // eslint-disable-next-line no-console
-        console.log(`[useUpdateChainInfo][${label}] chainLabels:`, chainLabels, 'subunitToChainIds:', subunitToChainIds);
-      }
+      // Debug logging disabled to avoid console spam; uncomment if needed:
+      // if (label) console.log(`[useUpdateChainInfo][${label}] chainLabels:`, chainLabels, 'subunitToChainIds:', subunitToChainIds);
     } catch (err) {
       // eslint-disable-next-line no-console
       console.warn(`[useUpdateChainInfo][${label}] failed:`, err);
     }
-  }, [pluginRef, structureRef, molstar, setChainInfo, setSubunitToChainIds, label]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pluginRef, structureRef, molstar, setChainInfo, setSubunitToChainIds, label, rpNameLookup]);
 }
