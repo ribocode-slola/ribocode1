@@ -18,12 +18,14 @@ Welcome to the Ribocode Developer Guide!
   - [General Rules](#general-rules)
   - [Examples](#examples)
   - [Updating Existing Components](#updating-existing-components)
+- [Mol* Advanced Controls Toggle](#mol-advanced-controls-toggle)
 - [Mol*](#mol*)
 - [Documentation](#documentation)
   - [How to Generate Documentation](#how-to-generate-documentation)
   - [Configuration](#configuration)
   - [Deployment Recommendation](#deployment-recommendation)
 - [Deployment](#deployment)
+- [Versioning](#versioning)
 - [Tests](#tests)
   - [Test File Structure](#test-file-structure)
   - [Creating Tests](#creating-tests)
@@ -139,6 +141,21 @@ Notes:
 - Some UI components for loading dictionary/alignment data and for advanced visualization controls (e.g., fog, camera planes) exist but may be hidden or under development.
 - All major logic is modularized for maintainability, with helpers, types, and constants extracted to their own files.
 
+## Mol* Advanced Controls Toggle
+
+To reduce UI clutter for common workflows, each viewer column includes a dedicated advanced-controls toggle for the embedded Mol* interface.
+
+- The button is rendered in `ViewerColumn` and defaults to collapsed:
+  - Label when collapsed: `Show Advanced Mol* Controls`
+  - Label when expanded: `Hide Advanced Mol* Controls`
+- The toggle state is passed to `MolstarContainer` via `showAdvancedControls`.
+- In collapsed mode, only the Mol* main viewport (`3D Canvas`) is shown.
+- In expanded mode, additional Mol* regions (sequence/menu/control/log panels) are shown.
+- The CSS behavior is implemented in `App.css` using:
+  - `.molstar-advanced-controls-hidden .msp-layout-region:not(.msp-layout-main)`
+
+This keeps default user workflows focused on Ribocode controls while preserving full Mol* UI access for advanced users.
+
 ## UI Element IDs and `data-testid` Conventions
 
 To ensure robust, maintainable, and testable UI code, Ribocode uses the following conventions for element IDs and `data-testid` attributes:
@@ -161,6 +178,7 @@ To ensure robust, maintainable, and testable UI code, Ribocode uses the followin
 ```jsx
 <button id="viewer-column-a-load-btn" data-testid="viewer-column-a-load-btn">Load AlignedTo</button>
 <input id="viewer-column-a-file-input" data-testid="viewer-column-a-file-input" type="file" />
+<button id="viewer-column-a-advanced-molstar-controls-toggle-btn" data-testid="viewer-column-a-advanced-molstar-controls-toggle-btn">Show Advanced Mol* Controls</button>
 ```
 
 #### General Guidelines
@@ -214,6 +232,32 @@ There is a [CHANGELOG](./CHANGELOG.md) which summarises changes, particularly ch
 
 To serve out the `gh-pages` branch for your fork on `GitHub Pages` to create a PWA deployment use the following command:
 * ```npm run deploy```
+
+## Versioning
+
+Ribocode versioning is driven by `package.json` and `package-lock.json`.
+
+### Recommended bump commands
+
+From the project root, use one of the npm scripts:
+
+- `npm run version:patch`
+- `npm run version:minor`
+- `npm run version:major`
+
+These run `npm version <level> --no-git-tag-version` and update both `package.json` and `package-lock.json`.
+
+### UI version display
+
+The app header version text is read directly from `package.json` in `src/components/AppHeader.tsx`, so no manual edit is required there when bumping versions.
+
+### Release checklist
+
+1. Bump version using one of the commands above.
+2. Add/update the release entry in `CHANGELOG.md`.
+3. Run tests (for example `npm test` and any targeted E2E tests as needed).
+4. Commit version/doc/code changes together.
+5. Optionally add a git tag (e.g., `vX.Y.Z`) when publishing.
 
 
 ## Tests

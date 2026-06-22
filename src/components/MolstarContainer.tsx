@@ -34,6 +34,7 @@ type MolstarContainerProps = {
     onMouseDown?: (viewerKey: ViewerKey) => void;
     onReady?: () => void;
     idPrefix?: string;
+    showAdvancedControls?: boolean;
 };
 
 /**
@@ -45,7 +46,7 @@ type MolstarContainerProps = {
  * @param ref Forwarded ref to expose methods to parent components.
  * @returns The MolstarContainer component.
  */
-const MolstarContainer = React.forwardRef(({ viewerKey, setViewer, onMouseDown, onReady, idPrefix }: MolstarContainerProps, ref) => {
+const MolstarContainer = React.forwardRef(({ viewerKey, setViewer, onMouseDown, onReady, idPrefix, showAdvancedControls = false }: MolstarContainerProps, ref) => {
     // Use a ref callback to track when the container is mounted and ref is set
     const [containerReady, setContainerReady] = useState(false);
     const containerRef = useRef<HTMLDivElement | null>(null);
@@ -147,7 +148,7 @@ const MolstarContainer = React.forwardRef(({ viewerKey, setViewer, onMouseDown, 
         return (
             <div
                 id={idPrefix ? `${idPrefix}-${idSuffix}` : idSuffix}
-                className="molstar-container-root"
+                className={`molstar-container-root ${showAdvancedControls ? 'molstar-advanced-controls-visible' : 'molstar-advanced-controls-hidden'}`}
                 ref={setContainerRef}
             >
                 <RibocodeViewer
@@ -169,5 +170,7 @@ const MolstarContainer = React.forwardRef(({ viewerKey, setViewer, onMouseDown, 
 export default memo(
     MolstarContainer,
     (prevProps: MolstarContainerProps, nextProps: MolstarContainerProps) =>
-        prevProps.viewerKey === nextProps.viewerKey
+    prevProps.viewerKey === nextProps.viewerKey
+    && prevProps.idPrefix === nextProps.idPrefix
+    && prevProps.showAdvancedControls === nextProps.showAdvancedControls
 );

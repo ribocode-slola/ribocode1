@@ -3,7 +3,7 @@
 
 # Ribocode
 
-Ribocode orchestrates a User Interface (UI) based on two styled [Mol*](https://github.com/molstar/molstar) viewers and is specifically geared for comparing two [ribosome](https://en.wikipedia.org/wiki/Ribosome) datasets in [3D](https://en.wikipedia.org/wiki/Three-dimensional_space). It is deployed as a [Progressive Web App (PWA)](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps) via GitHub Pages that can be easily duplicated. The latest vesion is released at the following URL:
+Ribocode orchestrates a User Interface (UI) based on two styled [Mol*](https://github.com/molstar/molstar) viewers and is specifically geared for comparing two [ribosome](https://en.wikipedia.org/wiki/Ribosome) datasets in [3D](https://en.wikipedia.org/wiki/Three-dimensional_space). It is deployed as a [Progressive Web App (PWA)](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps) via GitHub Pages that can be easily duplicated. The latest version is released at the following URL:
 * https://ribocode-slola.github.io/ribocode1/
 
 The user requires a recent [Web browser](https://en.wikipedia.org/wiki/Web_browser) (e.g. [Firefox](https://www.firefox.com/)) that will run [JavaScript](https://developer.mozilla.org/en-US/docs/Web/JavaScript).
@@ -13,9 +13,13 @@ Once installed as a PWA, Ribocode can be used offline.
 
 ## Documentation
 
+For recent UI and workflow updates, see the [CHANGELOG](./CHANGELOG.md).
+
 The generated API documentation is available at [`/docs/`](./docs/index.html) after building the project, or at `/docs/` in the deployed app (e.g., https://ribocode-slola.github.io/ribocode1/docs/).
 
 Please see the [User Guide](./UserGuide.md) for help using Ribocode.
+
+For a cleaner default workspace, each viewer column shows the Mol* `3D Canvas` and hides extra Mol* panels by default. Advanced users can expand these per column using `Show Advanced Mol* Controls`.
 
 Ribocode source code is mostly [TypeScript](https://www.typescriptlang.org/). The UI is based on the [React](https://react.dev/) library. Build and deployment is based on [Node](https://nodejs.org/) and [Vite](https://vite.dev/). General deployment is via [GitHub](https://github.com/). Other key technologies used for development include [Git](https://git-scm.com/), [GitHub Copilot](https://docs.github.com/en/copilot) and [Visual Studio Code](https://code.visualstudio.com/).
 
@@ -29,17 +33,44 @@ To get started with development:
 	git clone https://github.com/ribocode-slola/ribocode1.git
 	cd ribocode1
 	```
-2. Install dependencies:
+2. Use Node 24.11.0+.
+3. Install dependencies:
 	```sh
 	npm install
 	```
-3. Start the development server:
+4. Start the development server:
 	```sh
 	npm run dev
 	```
 	The app will be available at http://localhost:5173/
 
 For more details, see the [Developer Guide](./DeveloperGuide.md).
+
+## Typical Workflows
+
+### First-use workflow 1: Load datasets, then save session
+
+1. Load `AlignedTo` data.
+2. Load `Aligned` data.
+3. Work with representations/visibility and other controls.
+4. Save session state:
+   - `Session > Save` to save session configuration.
+   - `Session > Save All` to save session configuration together with wrapped input data for sharing with another user.
+
+Saved sessions should preserve created representations and their visibilities so the state can be restored on load.
+
+### First-use workflow 2: Load a shared all-in-one session
+
+1. Use `Session > Load All`.
+2. Select a file supplied by another user.
+3. Continue analysis from that restored state.
+
+### Second-use workflow: Load a saved session and reattach data
+
+1. Use `Session > Load` to load a previously saved session file.
+2. When prompted, load the required `AlignedTo` and `Aligned` data files.
+   - The filenames should match those referenced in the session file.
+3. Continue work, then save again via `Session > Save` and/or `Session > Save All`.
 
 ## Testing
 

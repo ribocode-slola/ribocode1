@@ -10,6 +10,7 @@
  */
 import React from 'react';
 import './AppHeader.css';
+import packageJson from '../../package.json';
 
 /**
  * Suffix for the AppHeader root id, used for consistent id construction in code and tests.
@@ -24,7 +25,7 @@ export const idSuffix = 'app-header';
 const AppHeader: React.FC = () => (
   <header className="app-header" id={idSuffix}>
     <h1 className="app-title">
-      RiboCode Mol* Viewer 0.7.1
+      {`RiboCode Mol* Viewer ${packageJson.version}`}
       {' ('}
       <a href="https://github.com/ribocode-slola/ribocode1/?tab=readme-ov-file#ribocode" target="_blank" rel="noopener noreferrer">README</a>
       {' | '}

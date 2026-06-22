@@ -173,6 +173,15 @@
 	box-sizing: border-box;
 }
 
+.molstar-advanced-controls-hidden .msp-layout-region:not(.msp-layout-main) {
+	display: none !important;
+}
+
+.molstar-advanced-controls-toggle {
+	margin-top: 8px;
+	margin-bottom: 8px;
+}
+
 .molstar-container {
 	/*
 	 * This class is used as a wrapper for the Mol* plugin in MolstarContainer.tsx.

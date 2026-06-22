@@ -10,7 +10,7 @@
  * @see https://github.com/ribocode-slola/ribocode1
  */
 import { vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { fireEvent, render } from '@testing-library/react';
 import ViewerColumn, { getMoleculeUIAlignedProps, idSuffix as viewerColumnIdSuffix } from './ViewerColumn';
 import { idSuffix as moleculeIdSuffix } from './Molecule';
 
@@ -81,7 +81,9 @@ const realignedMoleculeListProps = {
     setOtherRealignedRepRefs: vi.fn(),
     setOtherRealignedStructRefs: vi.fn(),
 };
-const molstarContainerProps = {};
+const molstarContainerProps = {
+    setViewer: vi.fn(),
+};
 
 describe('ViewerColumn', () => {
 
@@ -137,6 +139,37 @@ describe('ViewerColumn', () => {
         // RibocodeViewer id
         const ribocodeViewer = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-ribocode-viewer`);
         expect(ribocodeViewer).toBeInTheDocument();
+    });
+
+    it('renders advanced Mol* controls toggle collapsed by default and toggles open/closed', () => {
+        const idPrefix = 'test-root';
+        render(
+            <ViewerColumn
+                viewerKey="A"
+                loadDataRowPropsAlignedTo={loadDataRowProps}
+                loadDataRowPropsAligned={loadDataRowProps}
+                moleculeUIAlignedToProps={moleculeUIAlignedToProps}
+                moleculeUIAlignedProps={moleculeUIAlignedProps}
+                realignedMoleculeListProps={realignedMoleculeListProps}
+                molstarContainerProps={molstarContainerProps}
+                idPrefix={idPrefix}
+            />
+        );
+
+        const toggleButton = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-advanced-molstar-controls-toggle-btn`);
+        expect(toggleButton).toBeInTheDocument();
+        expect(toggleButton).toHaveTextContent('Show Advanced Mol* Controls');
+
+        const molstarContainer = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-molstar-container`);
+        expect(molstarContainer).toHaveClass('molstar-advanced-controls-hidden');
+
+        fireEvent.click(toggleButton as HTMLElement);
+        expect(toggleButton).toHaveTextContent('Hide Advanced Mol* Controls');
+        expect(molstarContainer).toHaveClass('molstar-advanced-controls-visible');
+
+        fireEvent.click(toggleButton as HTMLElement);
+        expect(toggleButton).toHaveTextContent('Show Advanced Mol* Controls');
+        expect(molstarContainer).toHaveClass('molstar-advanced-controls-hidden');
     });
 
     it('keeps representation visibility toggles local to one viewer even when sync is enabled', async () => {

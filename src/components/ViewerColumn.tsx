@@ -574,6 +574,7 @@ const ViewerColumn: React.FC<ViewerColumnProps> = ({
 	idPrefix
 }) => {
 	const viewerIdPrefix = idPrefix ? `${idPrefix}-${idSuffix}-${viewerKey}` : `${idSuffix}-${viewerKey}`;
+	const [showAdvancedMolstarControls, setShowAdvancedMolstarControls] = React.useState(false);
 	       return (
 		       <div className="Column" id={viewerIdPrefix}>
 					   {/* Only render the correct loader in each column as per requirements */}
@@ -586,7 +587,21 @@ const ViewerColumn: React.FC<ViewerColumnProps> = ({
 			       <MoleculeUI key={moleculeUIAlignedToProps.key} {...(() => { const { key, ...rest } = moleculeUIAlignedToProps; return rest; })()} idPrefix={viewerIdPrefix} />
 			       <MoleculeUI key={moleculeUIAlignedProps.key} {...(() => { const { key, ...rest } = moleculeUIAlignedProps; return rest; })()} idPrefix={viewerIdPrefix} />
 			       <RealignedMoleculeList {...realignedMoleculeListProps} idPrefix={viewerIdPrefix} />
-			       <MolstarContainer {...molstarContainerProps} idPrefix={viewerIdPrefix} viewerKey={viewerKey} />
+			       <button
+				   id={`${viewerIdPrefix}-advanced-molstar-controls-toggle-btn`}
+				   data-testid={`${viewerIdPrefix}-advanced-molstar-controls-toggle-btn`}
+				   className="molstar-file-btn molstar-advanced-controls-toggle"
+				   type="button"
+				   onClick={() => setShowAdvancedMolstarControls((current) => !current)}
+			   >
+				   {showAdvancedMolstarControls ? 'Hide Advanced Mol* Controls' : 'Show Advanced Mol* Controls'}
+			       </button>
+			       <MolstarContainer
+				   {...molstarContainerProps}
+				   idPrefix={viewerIdPrefix}
+				   viewerKey={viewerKey}
+				   showAdvancedControls={showAdvancedMolstarControls}
+			       />
 		       </div>
 	       );
 };
