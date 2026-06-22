@@ -1,3 +1,8 @@
+## [v0.7.4] - 2026-06-22
+- Extended session save/load to persist and restore UI state exactly, including `Residue Zoom` (`extraRadius`, `minRadius`), subunit/chain/residue selections for both columns, sync state, and active viewer.
+- Added camera snapshot persistence for both viewers so orientation and zoom radius are restored on session load.
+- Added integration coverage for `uiState` save/restore behavior, including regression checks for sync and camera state restoration.
+
 ## [v0.7.3] - 2026-06-22
 - Fixed residue zoom wiring in `App.tsx` so `Residue Zoom extraRadius` and `minRadius` are passed through to Mol* focus calls.
 - Added regression coverage for residue zoom option forwarding in `viewerHelpers` tests.
