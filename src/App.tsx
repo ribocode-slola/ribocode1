@@ -57,7 +57,7 @@ import { A, B } from './constants/ribocode';
 import { makeFogSetters, makeCameraSetters, makeZoomHandler } from './utils/viewerHelpers';
 import { selectedAtomTypes } from './constants/ribocode';
 import { parseRpNameTableBySpecies } from './utils/rpNameTable';
-import { fetchUniProtGeneNamesBatched, UniProtGeneNameCache } from './utils/uniprot';
+import { extractUniProtAccessionsFromText, fetchUniProtGeneNamesBatched, UniProtGeneNameCache } from './utils/uniprot';
 import rpNameTableCsv from '../data/input/RP_name_table_uniprot.csv?raw';
 
 /**
@@ -110,6 +110,14 @@ interface SessionUiState {
 
 const UNIPROT_CACHE_STORAGE_KEY = 'ribocode-uniprot-gene-cache-v1';
 
+function filterResolvedGeneNames(cache: unknown): UniProtGeneNameCache {
+    if (!cache || typeof cache !== 'object') return {};
+    const entries = Object.entries(cache as Record<string, unknown>)
+        .map(([accession, gene]) => [String(accession).trim(), typeof gene === 'string' ? gene.trim() : ''] as const)
+        .filter(([accession, gene]) => accession.length > 0 && gene.length > 0);
+    return Object.fromEntries(entries);
+}
+
 const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
 
     // Store Files and filenames for aligned and alignedTo molecule reloads.
@@ -154,6 +162,12 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
     useEffect(() => {
         uniprotGeneNamesRef.current = uniprotGeneNames;
         setCompletedUniProtCount(Object.keys(uniprotGeneNames).length);
+        const values = Object.values(uniprotGeneNames);
+        const resolvedGeneNames = values.filter(Boolean).length;
+        const unresolvedGeneNames = values.length - resolvedGeneNames;
+        if (values.length > 0) {
+            console.info(`[UniProt] Cache summary: ${resolvedGeneNames} gene name(s), ${unresolvedGeneNames} unresolved accession(s).`);
+        }
     }, [uniprotGeneNames]);
 
     useEffect(() => {
@@ -162,9 +176,9 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             const raw = window.localStorage.getItem(UNIPROT_CACHE_STORAGE_KEY);
             if (!raw) return;
             const parsed = JSON.parse(raw);
-            if (!parsed || typeof parsed !== 'object') return;
-            setUniprotGeneNames(prev => ({ ...parsed, ...prev }));
-            console.info(`[UniProt] Loaded ${Object.keys(parsed).length} cached accession lookups from local storage.`);
+            const resolvedOnly = filterResolvedGeneNames(parsed);
+            setUniprotGeneNames(prev => ({ ...resolvedOnly, ...prev }));
+            console.info(`[UniProt] Loaded ${Object.keys(resolvedOnly).length} cached gene name(s) from local storage.`);
         } catch (err) {
             console.warn('[UniProt] Failed to read cache from local storage.', err);
         }
@@ -173,7 +187,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
     useEffect(() => {
         if (typeof window === 'undefined' || !window.localStorage) return;
         try {
-            window.localStorage.setItem(UNIPROT_CACHE_STORAGE_KEY, JSON.stringify(uniprotGeneNames));
+            const resolvedOnly = filterResolvedGeneNames(uniprotGeneNames);
+            window.localStorage.setItem(UNIPROT_CACHE_STORAGE_KEY, JSON.stringify(resolvedOnly));
         } catch (err) {
             console.warn('[UniProt] Failed to save cache to local storage.', err);
         }
@@ -230,9 +245,11 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
 
     const onUniprotAccessionsDiscovered = useCallback((accessions: Iterable<string>) => {
         let hasQueuedAny = false;
+        let discoveredCount = 0;
         for (const raw of accessions) {
             const accession = raw.trim();
             if (!accession) continue;
+            discoveredCount += 1;
             if (accession in uniprotGeneNamesRef.current) continue;
             if (inFlightUniProtAccessionsRef.current.has(accession)) continue;
             if (pendingUniProtAccessionsRef.current.has(accession)) continue;
@@ -243,12 +260,33 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         syncUniProtQueueCounts();
         if (hasQueuedAny) {
             console.info(`[UniProt] Queued ${pendingUniProtAccessionsRef.current.size} accession(s) for lookup.`);
+        } else if (discoveredCount > 0) {
+            console.info(`[UniProt] Discovered ${discoveredCount} accession(s), but all were already cached or queued.`);
         }
 
         if (hasQueuedAny) {
             void processUniProtQueue();
         }
     }, [processUniProtQueue, syncUniProtQueueCounts]);
+
+    const discoverUniprotAccessionsFromFile = useCallback(async (file: File) => {
+        const lower = file.name.toLowerCase();
+        const isCifLike = lower.endsWith('.cif') || lower.endsWith('.mmcif');
+        if (!isCifLike) return;
+
+        try {
+            const text = await file.text();
+            const accessions = extractUniProtAccessionsFromText(text);
+            if (accessions.size > 0) {
+                console.info(`[UniProt] File scan discovered ${accessions.size} accession(s) from ${file.name}.`);
+                onUniprotAccessionsDiscovered(accessions);
+            } else {
+                console.info(`[UniProt] File scan found no UniProt-style accessions in ${file.name}.`);
+            }
+        } catch (err) {
+            console.warn(`[UniProt] Failed to scan ${file.name} for accessions.`, err);
+        }
+    }, [onUniprotAccessionsDiscovered]);
 
     // Use a ref to always have the latest alignmentData from AlignedTo
     const alignmentDataRef = useRef<any>(null);
@@ -553,6 +591,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         sessionRepresentationsA: SessionRepresentationSpec[] = [],
         sessionRepresentationsB: SessionRepresentationSpec[] = []
     ): Promise<LoadedMolecule | undefined> => {
+        void discoverUniprotAccessionsFromFile(file);
         const assetFile = Asset.File(file);
         const pluginA = viewerA.ref.current;
         const pluginB = viewerB.ref.current;
@@ -1369,7 +1408,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 applySerializableCameraSnapshot(viewerB.ref, uiState.cameraSnapshots.viewerB);
             }
             if (uiState?.uniprotGeneNames && typeof uiState.uniprotGeneNames === 'object') {
-                setUniprotGeneNames(prev => ({ ...prev, ...uiState.uniprotGeneNames }));
+                const resolvedOnly = filterResolvedGeneNames(uiState.uniprotGeneNames);
+                setUniprotGeneNames(prev => ({ ...prev, ...resolvedOnly }));
             }
             if (typeof uiState?.showUniprotAccessionInChainLabels === 'boolean') {
                 setShowUniprotAccessionInChainLabels(uiState.showUniprotAccessionInChainLabels);

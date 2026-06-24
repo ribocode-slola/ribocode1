@@ -183,6 +183,45 @@ describe('getChainInfo with rpNameLookup enrichment', () => {
         expect(result.chainLabels.get('B')).toBe('BB [auth B]');
     });
 
+    it('falls back to struct_ref_seq chain mapping when label_entity_id is missing', () => {
+        const rpNameLookup = new Map([['P61247', 'eS1']]);
+        const structure = {
+            units: [
+                {
+                    model: {
+                        atomicHierarchy: {
+                            chains: {
+                                _rowCount: 1,
+                                auth_asym_id: { value: () => 'AA' },
+                                label_asym_id: { value: () => 'AA' },
+                            }
+                        },
+                        sourceData: {
+                            data: {
+                                db: {
+                                    struct_ref: {
+                                        _rowCount: 0,
+                                        entity_id: { value: () => undefined },
+                                        pdbx_db_accession: { value: () => undefined }
+                                    },
+                                    struct_ref_seq: {
+                                        _rowCount: 1,
+                                        pdbx_strand_id: { value: () => 'AA' },
+                                        pdbx_db_accession: { value: () => 'P61247' }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            ]
+        } as any;
+
+        const result = getChainInfo(structure, rpNameLookup);
+        expect(result.chainLabels.get('AA')).toBe('eS1 | P61247 [AA]');
+        expect(result.uniprotAccessions.has('P61247')).toBe(true);
+    });
+
     it('falls back to authId in brackets when labelId is missing and no family found', () => {
         const rpNameLookup = new Map<string, string>();
         const structure = makeStructure({ authId: 'C' }); // no labelId, no structRef

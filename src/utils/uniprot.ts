@@ -6,6 +6,8 @@ export type UniProtGeneNameCache = Record<string, string | null>;
 
 type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
+const UNIPROT_ACCESSION_PATTERN = /\b(?:[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9](?:[A-Z][A-Z0-9]{2}[0-9]){1,2})\b/g;
+
 function sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -20,12 +22,16 @@ function parseTsvGeneResponse(tsv: string): UniProtGeneNameCache {
 
     const result: UniProtGeneNameCache = {};
     for (let i = 1; i < lines.length; i++) {
-        const [accessionRaw, geneRaw] = lines[i].split('\t');
+        const columns = lines[i].split('\t');
+        const accessionRaw = columns[0];
         const accession = (accessionRaw || '').trim();
         if (!accession) continue;
 
-        const firstGene = (geneRaw || '')
-            .split(/[\s,;]+/)
+        const firstGene = columns
+            .slice(1)
+            .map(col => (col || '').trim())
+            .find(Boolean)
+            ?.split(/[\s,;]+/)
             .map(v => v.trim())
             .find(Boolean);
 
@@ -37,7 +43,12 @@ function parseTsvGeneResponse(tsv: string): UniProtGeneNameCache {
 function buildSearchUrl(accessions: string[]): string {
     const clauses = accessions.map(a => `accession:${a}`).join(' OR ');
     const query = encodeURIComponent(`(${clauses})`);
-    return `https://rest.uniprot.org/uniprotkb/search?query=${query}&fields=accession,gene_primary&format=tsv&size=${accessions.length}`;
+    return `https://rest.uniprot.org/uniprotkb/search?query=${query}&fields=accession,gene_primary,gene_names&format=tsv&size=${accessions.length}`;
+}
+
+export function extractUniProtAccessionsFromText(text: string): Set<string> {
+    const matches = text.match(UNIPROT_ACCESSION_PATTERN) || [];
+    return new Set(matches.map(v => v.trim()).filter(Boolean));
 }
 
 export async function fetchUniProtGeneNames(
