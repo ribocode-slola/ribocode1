@@ -57,7 +57,7 @@ import { A, B } from './constants/ribocode';
 import { makeFogSetters, makeCameraSetters, makeZoomHandler } from './utils/viewerHelpers';
 import { selectedAtomTypes } from './constants/ribocode';
 import { parseRpNameTableBySpecies } from './utils/rpNameTable';
-import { extractUniProtAccessionsFromText, fetchUniProtGeneNamesBatched, UniProtGeneNameCache } from './utils/uniprot';
+import { extractUniProtAccessionsFromText, fetchUniProtGeneNamesBatched, parseChainToUniProtFromCifText, UniProtGeneNameCache } from './utils/uniprot';
 import rpNameTableCsv from '../data/input/RP_name_table_uniprot.csv?raw';
 
 /**
@@ -154,6 +154,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
     const [pendingUniProtCount, setPendingUniProtCount] = useState(0);
     const [inFlightUniProtCount, setInFlightUniProtCount] = useState(0);
     const [completedUniProtCount, setCompletedUniProtCount] = useState(0);
+    const [alignedToChainToUniProtOverride, setAlignedToChainToUniProtOverride] = useState<Map<string, string>>(new Map());
+    const [alignedChainToUniProtOverride, setAlignedChainToUniProtOverride] = useState<Map<string, string>>(new Map());
     const uniprotGeneNamesRef = useRef<UniProtGeneNameCache>({});
     const pendingUniProtAccessionsRef = useRef<Set<string>>(new Set());
     const inFlightUniProtAccessionsRef = useRef<Set<string>>(new Set());
@@ -269,7 +271,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         }
     }, [processUniProtQueue, syncUniProtQueueCounts]);
 
-    const discoverUniprotAccessionsFromFile = useCallback(async (file: File) => {
+    const discoverUniprotAccessionsFromFile = useCallback(async (file: File, mode?: string) => {
         const lower = file.name.toLowerCase();
         const isCifLike = lower.endsWith('.cif') || lower.endsWith('.mmcif');
         if (!isCifLike) return;
@@ -277,6 +279,19 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         try {
             const text = await file.text();
             const accessions = extractUniProtAccessionsFromText(text);
+            const chainToUniProt = parseChainToUniProtFromCifText(text);
+
+            if (chainToUniProt.size > 0) {
+                if (mode === AlignedTo) {
+                    setAlignedToChainToUniProtOverride(chainToUniProt);
+                } else if (mode === Aligned) {
+                    setAlignedChainToUniProtOverride(chainToUniProt);
+                }
+                console.info(`[UniProt] Parsed ${chainToUniProt.size} chain->UniProt mapping(s) from ${file.name}.`);
+            } else {
+                console.info(`[UniProt] Parsed 0 chain->UniProt mappings from ${file.name}.`);
+            }
+
             if (accessions.size > 0) {
                 console.info(`[UniProt] File scan discovered ${accessions.size} accession(s) from ${file.name}.`);
                 onUniprotAccessionsDiscovered(accessions);
@@ -608,7 +623,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         options?: { hideInRightViewerByDefault?: boolean }
     ): Promise<LoadedMolecule | undefined> => {
         const hideInRightViewerByDefault = options?.hideInRightViewerByDefault === true;
-        void discoverUniprotAccessionsFromFile(file);
+        void discoverUniprotAccessionsFromFile(file, mode);
         const assetFile = Asset.File(file);
         const pluginA = viewerA.ref.current;
         const pluginB = viewerB.ref.current;
@@ -939,7 +954,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         rpNameLookupBySpecies,
         uniprotGeneNames,
         onUniprotAccessionsDiscovered,
-        showUniprotAccessionInChainLabels
+        showUniprotAccessionInChainLabels,
+        alignedToChainToUniProtOverride
     );
     useUpdateChainInfo(
         viewerB.ref,
@@ -951,7 +967,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         rpNameLookupBySpecies,
         uniprotGeneNames,
         onUniprotAccessionsDiscovered,
-        showUniprotAccessionInChainLabels
+        showUniprotAccessionInChainLabels,
+        alignedChainToUniProtOverride
     );
 
     // Generalized effect for residue ID selection and info update.

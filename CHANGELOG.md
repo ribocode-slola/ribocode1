@@ -1,3 +1,12 @@
+## [v0.9.0] - 2026-07-23
+- Updated default post-load visibility behavior:
+	- `AlignedTo` loads hidden by default in `Viewer B`.
+	- `Aligned` loads hidden by default in `Viewer A`.
+- Added and updated Playwright E2E coverage for visibility defaults and toggle behavior, and stabilized session representation-restore assertions.
+- Added fallback chain-to-UniProt mapping from uploaded mmCIF text so chain labels can include accessions even when runtime Mol* model categories (`struct_ref` / `struct_ref_seq`) are unavailable.
+- Wired `Show UniProt accession in chain labels` so Select Chain labels now include/removes accessions based on toggle state with reduced console logging noise.
+- Updated `UserGuide.md` to document the visibility and chain-label behavior.
+
 ## [v0.8.4] - 2026-07-23
 - Updated default visibility behavior after loading datasets:
 	- `AlignedTo` is now hidden by default in `Viewer B` after loading via `Load AlignedTo`.

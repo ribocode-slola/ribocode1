@@ -4,11 +4,11 @@
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
  *
  * @author Andy Turner <agdturner@gmail.com>
- * @version 1.0.1
- * @lastModified 2026-06-22
+ * @version 1.1.0
+ * @lastModified 2026-07-23
  * @see https://github.com/ribocode-slola/ribocode1
  */
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { getChainInfo } from '../utils/chain';
 import { RpNameLookupBySpecies } from '../utils/rpNameTable';
 
@@ -34,8 +34,12 @@ export function useUpdateChainInfo(
   rpNameLookup?: Map<string, string> | RpNameLookupBySpecies,
   geneNameLookup?: Record<string, string | null>,
   onUniprotAccessionsDiscovered?: (accessions: Iterable<string>) => void,
-  showUniprotAccessionInChainLabels = true
+  showUniprotAccessionInChainLabels = true,
+  chainToUniprotOverride?: Map<string, string>
 ) {
+  const lastLoggedSummaryRef = useRef<string>('');
+  const lastDiscoveredAccessionsKeyRef = useRef<string>('');
+
   useEffect(() => {
     if (!pluginRef.current || !structureRef) return;
     // Guard: pluginRef.current.managers must exist
@@ -48,15 +52,20 @@ export function useUpdateChainInfo(
       if (!structureObj) return;
 
       // Use getChainInfo to extract auth-based chain labels (with optional family name enrichment)
-      const { chainLabels, uniprotAccessions } = getChainInfo(
+      const { chainLabels, chainToUniprot, uniprotAccessions } = getChainInfo(
         structureObj,
         rpNameLookup,
         geneNameLookup,
-        showUniprotAccessionInChainLabels
+        showUniprotAccessionInChainLabels,
+        chainToUniprotOverride
       );
 
       if (onUniprotAccessionsDiscovered && uniprotAccessions.size > 0) {
-        onUniprotAccessionsDiscovered(uniprotAccessions);
+        const accessionsKey = Array.from(uniprotAccessions).sort().join('|');
+        if (accessionsKey !== lastDiscoveredAccessionsKeyRef.current) {
+          lastDiscoveredAccessionsKeyRef.current = accessionsKey;
+          onUniprotAccessionsDiscovered(uniprotAccessions);
+        }
       }
 
       // Build subunit-to-chain mapping (subunit defaults to 'default' for all chains)
@@ -108,12 +117,28 @@ export function useUpdateChainInfo(
         if (changed) return subunitToChainIds;
         return prev;
       });
-      // Debug logging disabled to avoid console spam; uncomment if needed:
-      // if (label) console.log(`[useUpdateChainInfo][${label}] chainLabels:`, chainLabels, 'subunitToChainIds:', subunitToChainIds);
+
+      if (process.env.NODE_ENV !== 'test') {
+        const mappedAccessions = chainToUniprot.size;
+        const labelsWithAccession = mappedAccessions > 0
+          ? Array.from(chainToUniprot.entries()).filter(([chainId, accession]) => {
+              const labelText = chainLabels.get(chainId) ?? '';
+              return labelText.includes(accession);
+            }).length
+          : 0;
+        const summary = `${label}|${showUniprotAccessionInChainLabels ? 'on' : 'off'}|${chainLabels.size}|${mappedAccessions}|${labelsWithAccession}`;
+        if (summary !== lastLoggedSummaryRef.current) {
+          lastLoggedSummaryRef.current = summary;
+          console.info(
+            `[useUpdateChainInfo][${label}] toggle=${showUniprotAccessionInChainLabels ? 'on' : 'off'} ` +
+            `chains=${chainLabels.size} mappedAccessions=${mappedAccessions} labelsWithAccession=${labelsWithAccession}`
+          );
+        }
+      }
     } catch (err) {
       // eslint-disable-next-line no-console
       console.warn(`[useUpdateChainInfo][${label}] failed:`, err);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pluginRef, structureRef, molstar, setChainInfo, setSubunitToChainIds, label, rpNameLookup, geneNameLookup, onUniprotAccessionsDiscovered, showUniprotAccessionInChainLabels]);
+  }, [pluginRef, structureRef, molstar, setChainInfo, setSubunitToChainIds, label, rpNameLookup, geneNameLookup, onUniprotAccessionsDiscovered, showUniprotAccessionInChainLabels, chainToUniprotOverride]);
 }

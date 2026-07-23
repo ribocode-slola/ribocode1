@@ -4,8 +4,8 @@
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
  * 
  * @author Andy Turner <agdturner@gmail.com>
- * @version 1.0.1
- * @lastModified 2026-06-22
+ * @version 1.1.0
+ * @lastModified 2026-07-23
  * @see https://github.com/ribocode-slola/ribocode1
  */
 import { Structure } from 'molstar/lib/mol-model/structure';
@@ -80,7 +80,8 @@ export function getChainInfo(
     structure: Structure,
     rpNameLookup?: Map<string, string> | RpNameLookupBySpecies,
     geneNameLookup?: Record<string, string | null>,
-    showUniprotAccessionInLabel = true
+    showUniprotAccessionInLabel = true,
+    chainToUniprotOverride?: Map<string, string>
 ): {
     chainLabels: Map<string, string>;
     chainToUniprot: Map<string, string>;
@@ -89,6 +90,7 @@ export function getChainInfo(
     const chainLabels: Map<string, string> = new Map();
     const chainToUniprot: Map<string, string> = new Map();
     const uniprotAccessions: Set<string> = new Set();
+    let loggedEmptyMappingDiagnostics = false;
     const units = structure.units;
     if (!units || units.length === 0) {
         console.warn('No units found in structure.');
@@ -109,6 +111,45 @@ export function getChainInfo(
         if (rpNameLookup) {
             entityToUniprot = buildEntityToUniprotMap(model);
             chainToUniprotMap = buildChainToUniprotMap(model);
+            if (
+                !loggedEmptyMappingDiagnostics
+                && entityToUniprot.size === 0
+                && chainToUniprotMap.size === 0
+                && (!chainToUniprotOverride || chainToUniprotOverride.size === 0)
+                && process.env.NODE_ENV !== 'test'
+            ) {
+                loggedEmptyMappingDiagnostics = true;
+                const db = model?.sourceData?.data?.db;
+                const dbKeys = db ? Object.keys(db) : [];
+                const structRef = db?.struct_ref;
+                const structRefSeq = db?.struct_ref_seq;
+                const structRefRowCount = structRef?._rowCount ?? 0;
+                const structRefSeqRowCount = structRefSeq?._rowCount ?? 0;
+                const structRefSample = structRefRowCount > 0
+                    ? {
+                        dbName: structRef.db_name?.value?.(0),
+                        entityId: structRef.entity_id?.value?.(0),
+                        accession: structRef.pdbx_db_accession?.value?.(0),
+                    }
+                    : null;
+                const structRefSeqSample = structRefSeqRowCount > 0
+                    ? {
+                        strandId: structRefSeq.pdbx_strand_id?.value?.(0),
+                        accession: structRefSeq.pdbx_db_accession?.value?.(0),
+                        refId: structRefSeq.ref_id?.value?.(0),
+                    }
+                    : null;
+
+                console.warn('[getChainInfo] No UniProt mappings produced for model.', {
+                    dbKeys: dbKeys.slice(0, 40),
+                    hasStructRef: !!structRef,
+                    hasStructRefSeq: !!structRefSeq,
+                    structRefRowCount,
+                    structRefSeqRowCount,
+                    structRefSample,
+                    structRefSeqSample,
+                });
+            }
         }
 
         const speciesKey = isLookupBySpecies(rpNameLookup)
@@ -127,7 +168,12 @@ export function getChainInfo(
             // Attempt to resolve gene family name via UniProt
             let familyName: string | undefined;
             let uniprotAccession: string | undefined;
-            if (rpNameLookup && entityToUniprot) {
+            if (chainToUniprotOverride && chainToUniprotOverride.size > 0) {
+                uniprotAccession = chainToUniprotOverride.get(authId)
+                    ?? (labelId ? chainToUniprotOverride.get(labelId) : undefined);
+            }
+
+            if (!uniprotAccession && rpNameLookup && entityToUniprot) {
                 const entityId = getEntityIdForChain(chains, i);
                 const uniprot = entityId ? entityToUniprot.get(entityId) : undefined;
                 if (uniprot) {
@@ -136,14 +182,14 @@ export function getChainInfo(
                     uniprotAccession = chainToUniprotMap?.get(authId)
                         ?? (labelId ? chainToUniprotMap?.get(labelId) : undefined);
                 }
+            }
 
-                if (uniprotAccession) {
-                    uniprotAccessions.add(uniprotAccession);
-                    chainToUniprot.set(authId, uniprotAccession);
-                    familyName = activeLookup?.get(uniprotAccession);
-                    if (!familyName && isLookupBySpecies(rpNameLookup)) {
-                        familyName = rpNameLookup.all.get(uniprotAccession);
-                    }
+            if (uniprotAccession) {
+                uniprotAccessions.add(uniprotAccession);
+                chainToUniprot.set(authId, uniprotAccession);
+                familyName = activeLookup?.get(uniprotAccession);
+                if (!familyName && isLookupBySpecies(rpNameLookup)) {
+                    familyName = rpNameLookup.all.get(uniprotAccession);
                 }
             }
 
