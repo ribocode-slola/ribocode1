@@ -6,8 +6,8 @@
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT. See LICENSE file for more info.
  *
  * @author Copilot, Andy Turner <agdturner@gmail.com>
- * @version 1.0.1
- * @lastModified 2026-06-11
+ * @version 1.1.0
+ * @lastModified 2026-06-24
  * @see https://github.com/ribocode-slola/ribocode1
  */
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
@@ -494,6 +494,21 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         await MolPluginCommands.State.ToggleVisibility.apply(plugin, [plugin, { state: plugin.state.data, ref: repRef }]);
     }, []);
 
+    const setMoleculeVisible = useCallback(async (
+        plugin: PluginUIContext | null,
+        molecule: any,
+        visible: boolean
+    ): Promise<void> => {
+        if (!plugin) return;
+        const ref = (molecule?.presetResult as any)?.model?.cell?.transform?.ref;
+        if (!ref) return;
+        const cell = plugin.state.data?.cells?.get?.(ref);
+        const isVisible = cell?.state?.isHidden !== true;
+        if (isVisible === visible) return;
+        await MolPluginCommands.State.ToggleVisibility.apply(plugin, [plugin, { state: plugin.state.data, ref }]);
+        plugin.canvas3d?.requestDraw?.();
+    }, []);
+
     const restoreSessionRepresentations = useCallback(async (
         mode: MoleculeMode,
         repsA: SessionRepresentationSpec[],
@@ -589,8 +604,10 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         mode: string,
         alignmentData?: any,
         sessionRepresentationsA: SessionRepresentationSpec[] = [],
-        sessionRepresentationsB: SessionRepresentationSpec[] = []
+        sessionRepresentationsB: SessionRepresentationSpec[] = [],
+        options?: { hideInRightViewerByDefault?: boolean }
     ): Promise<LoadedMolecule | undefined> => {
+        const hideInRightViewerByDefault = options?.hideInRightViewerByDefault === true;
         void discoverUniprotAccessionsFromFile(file);
         const assetFile = Asset.File(file);
         const pluginA = viewerA.ref.current;
@@ -652,7 +669,12 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 alignmentData: viewerBMoleculeAlignedTo.alignmentData
             }));
             viewerB.setIsMoleculeAlignedToLoaded(true);
-            viewerB.setIsMoleculeAlignedToVisible(true);
+            if (hideInRightViewerByDefault) {
+                await setMoleculeVisible(pluginB, viewerBMoleculeAlignedTo, false);
+                viewerB.setIsMoleculeAlignedToVisible(false);
+            } else {
+                viewerB.setIsMoleculeAlignedToVisible(true);
+            }
                 let refBAlignedTo: string | null = null;
                 const structBAlignedTo = pluginB.managers.structure.hierarchy.current.structures[0];
                 if (structBAlignedTo) {
@@ -702,7 +724,12 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                     alignmentData: viewerAMoleculeAligned.alignmentData
                 }));
                 viewerA.setIsMoleculeAlignedLoaded(true);
-                viewerA.setIsMoleculeAlignedVisible(true);
+                if (hideInRightViewerByDefault) {
+                    await setMoleculeVisible(pluginA, viewerAMoleculeAligned, false);
+                    viewerA.setIsMoleculeAlignedVisible(false);
+                } else {
+                    viewerA.setIsMoleculeAlignedVisible(true);
+                }
                 const structAAligned = pluginA?.managers?.structure?.hierarchy?.current?.structures[1]
                     ?? pluginA?.managers?.structure?.hierarchy?.current?.structures[0];
                 if (structAAligned) {
@@ -772,7 +799,9 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             }
             // Use the ref for alignmentData to avoid async state issues
             const alignmentData = mode === Aligned ? alignmentDataRef.current : undefined;
-            await loadMoleculeIntoViewers(file, mode, alignmentData);
+            await loadMoleculeIntoViewers(file, mode, alignmentData, [], [], {
+                hideInRightViewerByDefault: true,
+            });
         },
         [expectedAlignedToFilename, alignedFilename]
     );

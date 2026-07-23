@@ -16,6 +16,7 @@
     "noFallthroughCasesInSwitch": true,
     "module": "esnext", // Use ESNext modules for modern bundlers
     "moduleResolution": "node", // Resolve modules like Node.js
+    "types": ["node"],
     "resolveJsonModule": true, // Allow importing JSON files
     "isolatedModules": true, // Required for React with TypeScript
     "baseUrl": ".", // Required for paths to work

@@ -112,7 +112,8 @@ When the `AlignedTo` dataset is loaded several things happen:
   - The `AlignedTo` `Select Subunit` and `Select Chain` buttons become actionable.
   - The `Load Aligned` button becomes actionable.
   - The `MoleculeUI` for `AlignedTo` in both columns populates and becomes actionable.
-  - A default `cartoon` style 3D visual representation of the dataset should appear in both `Viewer A` and `Viewer B`.
+  - A default `cartoon` style 3D visual representation of the dataset appears in `Viewer A`.
+  - In `Viewer B`, the loaded `AlignedTo` dataset is hidden by default. Use the `AlignedTo` visibility (eye) button in `MoleculeUI` to show it.
 
 Next, the user can do several things:
   - Additional representations can be added via the `+` button in the `Representation` component of the `LoadMoleculeUI`. Initially this is set to add a `spacefill` representation, but other representation types can be selected.
@@ -126,6 +127,7 @@ Next, the user can do several things:
   - A chain can be selected from the `Select Chain` control.
   
 * As an `Aligned` dataset is loaded, it's atom positions are centralized and aligned with the centralized `AlignedTo` atom positions using an algorithm.
+* In `Viewer A`, the loaded `Aligned` dataset is hidden by default. Use the `Aligned` visibility (eye) button in `MoleculeUI` to show it.
 * If a chain is selected, the `Select Residue` control becomes actionable and in the `Zoom to Chain` control becomes actionable to zoom to the selected chain.
 * If a residue is selected, the `Zoom to Residue` control becomes actionable to zoom to the selected residue within the chain. The selected residue will be in the viewer centre. How much is displayed around that depends on the `Residue Zoom` settings.
 * If chains are selected for both `AlignedTo` and `Aligned` molecules, the `Re-align` button can be actioned to add a new re-aligned representation to the viewers. Multiple ones of these can be created. They can also be removed.
