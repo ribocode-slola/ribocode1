@@ -8,7 +8,7 @@
  * @lastModified 2026-06-22
  * @see https://github.com/ribocode-slola/ribocode1
  */
-import { parseRpNameTable, parseRpNameTableBySpecies, buildEntityToUniprotMap, inferSpeciesKeyFromModel } from './rpNameTable';
+import { parseRpNameTable, parseRpNameTableBySpecies, buildEntityToUniprotMap, buildChainToUniprotMap, inferSpeciesKeyFromModel } from './rpNameTable';
 
 describe('parseRpNameTable', () => {
     const HEADER = 'family,human_old_name,yeast_old_name,arabdidopsis_homologs,drosophila_homologs,human_homologs,yeast_homologs';
@@ -237,6 +237,24 @@ describe('buildEntityToUniprotMap', () => {
         expect(map.get('1')).toBe('P61247');
     });
 
+    it('ignores placeholder accession values', () => {
+        const model = {
+            sourceData: {
+                data: {
+                    db: {
+                        struct_ref: {
+                            _rowCount: 2,
+                            entity_id: { value: (i: number) => ['1', '2'][i] },
+                            pdbx_db_accession: { value: (i: number) => ['?', '.'][i] }
+                        }
+                    }
+                }
+            }
+        };
+        const map = buildEntityToUniprotMap(model);
+        expect(map.size).toBe(0);
+    });
+
     it('returns an empty map when struct_ref throws', () => {
         const model = {
             sourceData: {
@@ -250,5 +268,50 @@ describe('buildEntityToUniprotMap', () => {
             }
         };
         expect(buildEntityToUniprotMap(model).size).toBe(0);
+    });
+});
+
+describe('buildChainToUniprotMap', () => {
+    it('returns an empty map when struct_ref_seq is absent', () => {
+        const model = { sourceData: { data: { db: {} } } };
+        expect(buildChainToUniprotMap(model).size).toBe(0);
+    });
+
+    it('maps chain IDs from pdbx_strand_id to accession', () => {
+        const model = {
+            sourceData: {
+                data: {
+                    db: {
+                        struct_ref_seq: {
+                            _rowCount: 2,
+                            pdbx_strand_id: { value: (i: number) => ['AA', 'AB, AC'][i] },
+                            pdbx_db_accession: { value: (i: number) => ['P61247', 'P08865'][i] }
+                        }
+                    }
+                }
+            }
+        };
+        const map = buildChainToUniprotMap(model);
+        expect(map.get('AA')).toBe('P61247');
+        expect(map.get('AB')).toBe('P08865');
+        expect(map.get('AC')).toBe('P08865');
+    });
+
+    it('ignores blank and placeholder accessions', () => {
+        const model = {
+            sourceData: {
+                data: {
+                    db: {
+                        struct_ref_seq: {
+                            _rowCount: 3,
+                            pdbx_strand_id: { value: (i: number) => ['AA', 'AB', 'AC'][i] },
+                            pdbx_db_accession: { value: (i: number) => ['?', '.', ''][i] }
+                        }
+                    }
+                }
+            }
+        };
+        const map = buildChainToUniprotMap(model);
+        expect(map.size).toBe(0);
     });
 });

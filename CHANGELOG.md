@@ -1,3 +1,11 @@
+## [v0.8.4] - 2026-07-23
+- Updated default visibility behavior after loading datasets:
+	- `AlignedTo` is now hidden by default in `Viewer B` after loading via `Load AlignedTo`.
+	- `Aligned` is now hidden by default in `Viewer A` after loading via `Load Aligned`.
+- Added Playwright E2E coverage for the new default visibility behavior in `e2e/right-column-default-hidden.e2e.spec.ts`.
+- Updated `UserGuide.md` to document the expected default-hidden viewer behavior for `AlignedTo` and `Aligned`.
+- Added Node type definitions in `tsconfig.json` (`types: ["node"]`) to resolve TypeScript `process` name errors in editor diagnostics.
+
 ## [v0.8.3] - 2026-06-22
 - Added live UniProt lookup status reporting in `General Controls` (cached, pending, and in-flight counts).
 - Added explicit UniProt lookup progress logging and incremental per-batch chain label updates during background resolution.

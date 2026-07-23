@@ -41,6 +41,21 @@ export interface RpNameLookupBySpecies {
     yeast: Map<string, string>;
 }
 
+function normalizeAccession(value: unknown): string | undefined {
+    if (value == null) return undefined;
+    const accession = String(value).trim();
+    if (!accession || accession === '?' || accession === '.') return undefined;
+    return accession;
+}
+
+function splitChainIds(value: unknown): string[] {
+    if (value == null) return [];
+    return String(value)
+        .split(',')
+        .map(v => v.trim())
+        .filter(Boolean);
+}
+
 function normalizeSpeciesSelection(species?: RpSpeciesKey | RpSpeciesKey[]): RpSpeciesKey[] {
     if (!species) return ALL_SPECIES;
     return Array.isArray(species) ? species : [species];
@@ -146,13 +161,41 @@ export function buildEntityToUniprotMap(model: any): Map<string, string> {
         const rowCount: number = structRef._rowCount ?? 0;
         for (let r = 0; r < rowCount; r++) {
             const entityId = structRef.entity_id?.value?.(r);
-            const accession = structRef.pdbx_db_accession?.value?.(r);
+            const accession = normalizeAccession(structRef.pdbx_db_accession?.value?.(r));
             if (entityId != null && accession) {
-                entityToUniprot.set(String(entityId), String(accession).trim());
+                entityToUniprot.set(String(entityId), accession);
             }
         }
     } catch {
         // Gracefully degrade — no UniProt data available
     }
     return entityToUniprot;
+}
+
+/**
+ * Builds a map from chain/asym IDs to UniProt accession from a model's struct_ref_seq data.
+ *
+ * `_struct_ref_seq.pdbx_strand_id` usually stores author chain IDs, which are the IDs shown in
+ * chain selectors. This is used as a robust fallback when chain -> entity mapping is unavailable.
+ */
+export function buildChainToUniprotMap(model: any): Map<string, string> {
+    const chainToUniprot = new Map<string, string>();
+    try {
+        const structRefSeq = model?.sourceData?.data?.db?.struct_ref_seq;
+        if (!structRefSeq) return chainToUniprot;
+
+        const rowCount: number = structRefSeq._rowCount ?? 0;
+        for (let r = 0; r < rowCount; r++) {
+            const accession = normalizeAccession(structRefSeq.pdbx_db_accession?.value?.(r));
+            if (!accession) continue;
+
+            const chainIds = splitChainIds(structRefSeq.pdbx_strand_id?.value?.(r));
+            for (const chainId of chainIds) {
+                chainToUniprot.set(chainId, accession);
+            }
+        }
+    } catch {
+        // Gracefully degrade — no chain-level UniProt data available
+    }
+    return chainToUniprot;
 }

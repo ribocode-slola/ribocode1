@@ -9,7 +9,19 @@
  * @see https://github.com/ribocode-slola/ribocode1
  */
 import { Structure } from 'molstar/lib/mol-model/structure';
-import { buildEntityToUniprotMap, inferSpeciesKeyFromModel, RpNameLookupBySpecies } from './rpNameTable';
+import { buildChainToUniprotMap, buildEntityToUniprotMap, inferSpeciesKeyFromModel, RpNameLookupBySpecies } from './rpNameTable';
+
+function getEntityIdForChain(chains: any, row: number): string | undefined {
+    const labelEntityId = chains.label_entity_id?.value?.(row);
+    if (labelEntityId != null && String(labelEntityId).trim()) {
+        return String(labelEntityId).trim();
+    }
+    const entityId = chains.entity_id?.value?.(row);
+    if (entityId != null && String(entityId).trim()) {
+        return String(entityId).trim();
+    }
+    return undefined;
+}
 
 function buildChainLabel(
     labelId: string,
@@ -93,8 +105,10 @@ export function getChainInfo(
 
         // Build entity → UniProt map once per model (if lookup provided)
         let entityToUniprot: Map<string, string> | undefined;
+        let chainToUniprotMap: Map<string, string> | undefined;
         if (rpNameLookup) {
             entityToUniprot = buildEntityToUniprotMap(model);
+            chainToUniprotMap = buildChainToUniprotMap(model);
         }
 
         const speciesKey = isLookupBySpecies(rpNameLookup)
@@ -114,17 +128,21 @@ export function getChainInfo(
             let familyName: string | undefined;
             let uniprotAccession: string | undefined;
             if (rpNameLookup && entityToUniprot) {
-                const entityId = chains.label_entity_id?.value
-                    ? String(chains.label_entity_id.value(i))
-                    : undefined;
+                const entityId = getEntityIdForChain(chains, i);
                 const uniprot = entityId ? entityToUniprot.get(entityId) : undefined;
                 if (uniprot) {
                     uniprotAccession = uniprot;
-                    uniprotAccessions.add(uniprot);
-                    chainToUniprot.set(authId, uniprot);
-                    familyName = activeLookup?.get(uniprot);
+                } else {
+                    uniprotAccession = chainToUniprotMap?.get(authId)
+                        ?? (labelId ? chainToUniprotMap?.get(labelId) : undefined);
+                }
+
+                if (uniprotAccession) {
+                    uniprotAccessions.add(uniprotAccession);
+                    chainToUniprot.set(authId, uniprotAccession);
+                    familyName = activeLookup?.get(uniprotAccession);
                     if (!familyName && isLookupBySpecies(rpNameLookup)) {
-                        familyName = rpNameLookup.all.get(uniprot);
+                        familyName = rpNameLookup.all.get(uniprotAccession);
                     }
                 }
             }
