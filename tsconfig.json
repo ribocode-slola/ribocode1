@@ -26,6 +26,8 @@
     "jsx": "react-jsx" // Use the new JSX transform for React
   },
   "include": [
-    "src" // Include the source directory
+    "src", // Include application source files
+    "e2e", // Include Playwright E2E test files
+    "playwright.config.ts" // Include Playwright config
   ]
 }

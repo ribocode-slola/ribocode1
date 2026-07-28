@@ -173,6 +173,7 @@
 	box-sizing: border-box;
 }
 
+
 .molstar-advanced-controls-hidden .msp-layout-region:not(.msp-layout-main) {
 	display: none !important;
 }
@@ -182,6 +183,67 @@
 	margin-bottom: 8px;
 }
 
+.molstar-advanced-controls-panel {
+	width: 100%;
+	border: 1px solid #d9d9d9;
+	border-radius: 6px;
+	background: #fff;
+	padding: 8px;
+	box-sizing: border-box;
+	margin-top: 0;
+	margin-bottom: 8px;
+}
+
+.molstar-advanced-controls-empty {
+	font-size: 0.92em;
+	color: #555;
+}
+
+.molstar-advanced-controls-grid {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 10px;
+}
+
+.molstar-advanced-controls-section {
+	border: 1px solid #ececec;
+	border-radius: 4px;
+	padding: 8px;
+	background: #fafafa;
+	box-sizing: border-box;
+}
+
+.molstar-advanced-controls-title {
+	margin: 0 0 8px 0;
+	font-size: 0.95em;
+}
+
+.molstar-advanced-controls-panel .msp-scrollable-container,
+.molstar-advanced-controls-panel .msp-layout-static,
+.molstar-advanced-controls-panel .msp-layout-scrollable {
+	position: relative !important;
+	inset: auto !important;
+}
+
+.molstar-advanced-controls-panel .msp-scrollable-container {
+	max-height: 280px;
+	overflow-y: auto;
+}
+
+.molstar-advanced-controls-log-wrap {
+	position: relative;
+	min-height: 90px;
+}
+
+.molstar-advanced-controls-log-wrap .msp-log {
+	position: relative !important;
+	top: auto !important;
+	right: auto !important;
+	bottom: auto !important;
+	left: auto !important;
+	max-height: 160px;
+}
+
 .molstar-container {
 	/*
 	 * This class is used as a wrapper for the Mol* plugin in MolstarContainer.tsx.
@@ -189,6 +251,60 @@
 	 * layout or style overrides without changing the JSX structure. Do not remove
 	 * while the class is used in the component.
 	 */
+}
+
+.chain-selection-table-container {
+	margin-top: 10px;
+	border: 1px solid #d9d9d9;
+	border-radius: 6px;
+	background: #fff;
+	padding: 8px;
+}
+
+.chain-selection-table-header {
+	margin-bottom: 6px;
+}
+
+.chain-selection-table-search {
+	width: 100%;
+	box-sizing: border-box;
+	margin-bottom: 8px;
+	padding: 6px 8px;
+	border: 1px solid #c9c9c9;
+	border-radius: 4px;
+}
+
+.chain-selection-table-scroll {
+	max-height: 220px;
+	overflow: auto;
+	border: 1px solid #ececec;
+	border-radius: 4px;
+}
+
+.chain-selection-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 0.92em;
+}
+
+.chain-selection-table th,
+.chain-selection-table td {
+	text-align: left;
+	padding: 6px 8px;
+	border-bottom: 1px solid #f1f1f1;
+	vertical-align: top;
+}
+
+.chain-selection-table tbody tr {
+	cursor: pointer;
+}
+
+.chain-selection-table tbody tr:hover {
+	background: #f7fafc;
+}
+
+.chain-selection-table tbody tr.selected {
+	background: #e8f2ff;
 }
 
 /* =========================

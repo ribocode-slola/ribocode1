@@ -6,6 +6,7 @@ Welcome to the ribocode1 User Guide!
 
 - [Data and Mol* Acknowledgements](#data-and-mol-acknowledgements)
 - [User Interface](#user-interface)
+- [Chain Selection Enrichment](#chain-selection-enrichment)
 - [Sessions](#sessions)
 
 
@@ -27,6 +28,8 @@ The UI layout is as follows:
    - `Show UniProt accession in chain labels` toggle for chain selector labels
    - `Re-align to Chains` control
  - Column `A`
+   - `Mol* Viewer A`
+     - `3D Canvas`
    - `Load Molecule`
      - `Load AlignedTo` button for loading the dataset to align to (`AlignedTo`)
      - `Select Controls`
@@ -38,14 +41,12 @@ The UI layout is as follows:
    - `MoleculeUI` components including:
      - `AlignedTo`
      - `Aligned`
+   - `AlignedTo Chain Finder` table (searchable chain list shown below the viewer)
    - `Show Advanced Mol* Controls` button (toggles advanced Mol* interface for power users)
-   - `Mol* Viewer A`
-     - `3D Canvas`
-     - `Sequence Panel` (shown only when advanced controls are expanded)
-     - `Main Menu` (shown only when advanced controls are expanded)
-     - `Control Panel` (shown only when advanced controls are expanded)
-     - `Log Panel` (shown only when advanced controls are expanded)
+   - `Advanced Mol* Controls` panel (shown only when expanded; includes Sequence, Left Panel, Structure Tools, and Log sections)
  - Column `B`
+   - `Mol* Viewer B`
+     - `3D Canvas`
    - `Load Molecule` 
      - `Load Aligned` button for loading the dataset to be aligned (`Aligned`)
      - `Select Controls`
@@ -57,13 +58,9 @@ The UI layout is as follows:
    - `MoleculeUI` components including:
      - `AlignedTo`
      - `Aligned`
+   - `Aligned Chain Finder` table (searchable chain list shown below the viewer)
    - `Show Advanced Mol* Controls` button (toggles advanced Mol* interface for power users)
-   - `Mol* Viewer B`
-     - `3D Canvas`
-     - `Sequence Panel` (shown only when advanced controls are expanded)
-     - `Main Menu` (shown only when advanced controls are expanded)
-     - `Control Panel` (shown only when advanced controls are expanded)
-     - `Log Panel` (shown only when advanced controls are expanded)
+   - `Advanced Mol* Controls` panel (shown only when expanded; includes Sequence, Left Panel, Structure Tools, and Log sections)
 ```
 +-------------------------------------------------------------+
 |           RiboCode Mol* Viewer, Version, README             |
@@ -71,16 +68,6 @@ The UI layout is as follows:
 |     [General Controls: Residue Zoom | Sync | Re-align]      |
 +------------------------------+------------------------------+
 |          Column A            |           Column B           |
-+------------------------------+------------------------------+
-|         Load AlignedTo       |          Load Aligned        |
-| Select Subunit/Chain/Residue | Select Subunit/Chain/Residue |
-|          Load Colours        |          Load Colours        |
-+------------------------------+------------------------------+
-|     MoleculeUI AlignedTo     |     MoleculeUI AlignedTo     |
-|      MoleculeUI Aligned      |      MoleculeUI Aligned      |
-|     MoleculeUI Re-aligned    |     MoleculeUI Re-aligned    |
-|              ...             |             ...              |
-| Show Advanced Mol* Controls  | Show Advanced Mol* Controls  |
 +------------------------------+------------------------------+
 |         Mol* Viewer A        |         Mol* Viewer B        |
 |  +------------------------+  |  +------------------------+  |
@@ -90,16 +77,67 @@ The UI layout is as follows:
 |  |                        |  |  |                        |  |
 |  |                        |  |  |                        |  |
 |  +------------------------+  |  +------------------------+  |
-|  |     Sequence Panel     |  |  |     Sequence Panel     |  |
-|  +------------------------+  |  +------------------------+  |
-|  |       Main Menu        |  |  |        Main Menu       |  |
-|  +------------------------+  |  +------------------------+  |
-|  |      Control Panel     |  |  |      Control Panel     |  |
-|  +------------------------+  |  +------------------------+  |
-|  |        Log Panel       |  |  |        Log Panel       |  |
-|  +------------------------+  |  +------------------------+  |
++------------------------------+------------------------------+
+|         Load AlignedTo       |          Load Aligned        |
+| Select Subunit/Chain/Residue | Select Subunit/Chain/Residue |
+|          Load Colours        |          Load Colours        |
++------------------------------+------------------------------+
+|     MoleculeUI AlignedTo     |     MoleculeUI AlignedTo     |
+|      MoleculeUI Aligned      |      MoleculeUI Aligned      |
+|     MoleculeUI Re-aligned    |     MoleculeUI Re-aligned    |
+|              ...             |             ...              |
+|   AlignedTo Chain Finder     |      Aligned Chain Finder    |
+| Show Advanced Mol* Controls  | Show Advanced Mol* Controls  |
+|  Advanced Mol* Controls      |   Advanced Mol* Controls     |
+| (Sequence/Tools/Log panels)  | (Sequence/Tools/Log panels)  |
 +-------------------------------------------------------------+
 ```
+
+## Chain Selection Enrichment
+
+When structure data are loaded, Ribocode enriches chain labels used in both:
+- the `Select Chain` dropdown;
+- the chain-finder table below each viewer.
+
+### What users can do now
+
+- Use the chain-finder search box to quickly find chains by any part of the label, including:
+  - label chain ID (e.g., `ZB`),
+  - auth chain ID (e.g., `auth CU`),
+  - UniProt accession,
+  - RP family name,
+  - molecule description (e.g., `L22-like`).
+- Click a row in the chain-finder table to select that chain.
+- Continue using the existing `Select Chain` dropdown if preferred.
+
+### Where to find the chain finder
+
+- In each column, the chain-finder table is shown below the `MoleculeUI` rows and above `Show Advanced Mol* Controls` and the optional advanced-controls panel.
+- The `Mol* Viewer` canvas is shown at the top of each column.
+- Column `A` shows the `AlignedTo Chain Finder`.
+- Column `B` shows the `Aligned Chain Finder`.
+- Type in the search box to filter rows immediately.
+- Click a row to select that chain for the same column's chain-based controls.
+
+### How loaded data are enriched for chain selection
+
+Ribocode combines metadata from the loaded mmCIF file and lookup tables to build a richer chain label.
+
+Depending on available metadata, labels can include:
+- RP family name (from `RP_name_table_uniprot.csv` lookup),
+- UniProt accession and/or gene name,
+- original chain identity with auth preserved (`<label> [auth <auth>]`),
+- molecule description from mmCIF entity metadata.
+
+Example enriched label:
+
+`eL22 | P35268 | ZB [auth CU] | Ribosomal protein L22-like protein`
+
+### UniProt toggle behavior
+
+- `Show UniProt accession in chain labels` controls whether accession codes are shown in the chain label text.
+- This toggle affects both the dropdown and chain-finder labels.
+- The toggle state is saved and restored as part of session `uiState`.
 
 
 ## Sessions

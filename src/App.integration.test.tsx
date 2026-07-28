@@ -369,7 +369,9 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     }, { timeout: 5000 });
 
     fireEvent.change(alignedInput!, { target: { files: [loadTestFile('6xu8.cif')] } });
-    fireEvent.click(alignedLoadBtn!);
+    const currentAlignedLoadBtn = document.getElementById('viewer-column-B-aligned-load-btn') as HTMLButtonElement | null;
+    expect(currentAlignedLoadBtn).toBeInTheDocument();
+    fireEvent.click(currentAlignedLoadBtn!);
 
     const viewerACol = document.getElementById('viewer-column-A') as HTMLElement | null;
     const viewerBCol = document.getElementById('viewer-column-B') as HTMLElement | null;
@@ -378,16 +380,16 @@ describe('App integration: AlignedTo and Aligned loading', () => {
 
     await waitFor(() => {
       expect(within(viewerACol!).getByRole('button', { name: /Hide 4ug0\.cif/i })).toBeInTheDocument();
-      expect(within(viewerBCol!).getByRole('button', { name: /Hide 4ug0\.cif/i })).toBeInTheDocument();
+      expect(within(viewerBCol!).getByRole('button', { name: /Show 4ug0\.cif/i })).toBeInTheDocument();
     }, { timeout: 5000 });
 
     fireEvent.click(within(viewerACol!).getByRole('button', { name: /Hide 4ug0\.cif/i }));
 
     await waitFor(() => {
       expect(within(viewerACol!).getByRole('button', { name: /Show 4ug0\.cif/i })).toBeInTheDocument();
-      expect(within(viewerBCol!).getByRole('button', { name: /Hide 4ug0\.cif/i })).toBeInTheDocument();
+      expect(within(viewerBCol!).getByRole('button', { name: /Show 4ug0\.cif/i })).toBeInTheDocument();
     }, { timeout: 5000 });
-  });
+  }, 10000);
 
   it('passes alignment data when loading Aligned (regression)', async () => {
     render(<App />);

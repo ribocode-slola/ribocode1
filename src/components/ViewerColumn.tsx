@@ -13,6 +13,8 @@ import LoadDataRow from './LoadMolecule';
 import MoleculeUI from './Molecule';
 import RealignedMoleculeList from './RealignedMoleculeList';
 import MolstarContainer from './MolstarContainer';
+import ChainSelectionTable from './ChainSelectionTable';
+import MolstarAdvancedControls from './MolstarAdvancedControls';
 import { AllowedRepresentationType } from '../types/ribocode';
 import RepresentationSelectButton from './buttons/select/Representation';
 import type { ViewerKey } from '../types/ribocode';
@@ -575,8 +577,27 @@ const ViewerColumn: React.FC<ViewerColumnProps> = ({
 }) => {
 	const viewerIdPrefix = idPrefix ? `${idPrefix}-${idSuffix}-${viewerKey}` : `${idSuffix}-${viewerKey}`;
 	const [showAdvancedMolstarControls, setShowAdvancedMolstarControls] = React.useState(false);
+	const chainTableProps = viewerKey === 'A'
+		? {
+			chainLabels: loadDataRowPropsAlignedTo?.chainInfo?.chainLabels as Map<string, string>,
+			selectedChainId: loadDataRowPropsAlignedTo?.selectedChainId ?? '',
+			onSelectChainId: loadDataRowPropsAlignedTo?.onSelectChainId as (chainId: string) => void,
+			title: 'AlignedTo Chain Finder',
+		}
+		: {
+			chainLabels: loadDataRowPropsAligned?.chainInfo?.chainLabels as Map<string, string>,
+			selectedChainId: loadDataRowPropsAligned?.selectedChainId ?? '',
+			onSelectChainId: loadDataRowPropsAligned?.onSelectChainId as (chainId: string) => void,
+			title: 'Aligned Chain Finder',
+		};
 	       return (
 		       <div className="Column" id={viewerIdPrefix}>
+		       <MolstarContainer
+			   {...molstarContainerProps}
+			   idPrefix={viewerIdPrefix}
+			   viewerKey={viewerKey}
+			   showAdvancedControls={false}
+		       />
 					   {/* Only render the correct loader in each column as per requirements */}
 					   {viewerKey === 'A' && (
 						   <LoadDataRow {...loadDataRowPropsAlignedTo} testMode={testMode} idPrefix={`${viewerIdPrefix}-alignedto`} />
@@ -587,6 +608,13 @@ const ViewerColumn: React.FC<ViewerColumnProps> = ({
 			       <MoleculeUI key={moleculeUIAlignedToProps.key} {...(() => { const { key, ...rest } = moleculeUIAlignedToProps; return rest; })()} idPrefix={viewerIdPrefix} />
 			       <MoleculeUI key={moleculeUIAlignedProps.key} {...(() => { const { key, ...rest } = moleculeUIAlignedProps; return rest; })()} idPrefix={viewerIdPrefix} />
 			       <RealignedMoleculeList {...realignedMoleculeListProps} idPrefix={viewerIdPrefix} />
+			       <ChainSelectionTable
+				   chainLabels={chainTableProps.chainLabels || new Map<string, string>()}
+				   selectedChainId={chainTableProps.selectedChainId}
+				   onSelectChainId={chainTableProps.onSelectChainId || (() => {})}
+				   title={chainTableProps.title}
+				   idPrefix={viewerIdPrefix}
+			       />
 			       <button
 				   id={`${viewerIdPrefix}-advanced-molstar-controls-toggle-btn`}
 				   data-testid={`${viewerIdPrefix}-advanced-molstar-controls-toggle-btn`}
@@ -596,11 +624,10 @@ const ViewerColumn: React.FC<ViewerColumnProps> = ({
 			   >
 				   {showAdvancedMolstarControls ? 'Hide Advanced Mol* Controls' : 'Show Advanced Mol* Controls'}
 			       </button>
-			       <MolstarContainer
-				   {...molstarContainerProps}
+			       <MolstarAdvancedControls
+				   plugin={(molstarContainerProps?.ref?.current ?? null) as any}
+				   visible={showAdvancedMolstarControls}
 				   idPrefix={viewerIdPrefix}
-				   viewerKey={viewerKey}
-				   showAdvancedControls={showAdvancedMolstarControls}
 			       />
 		       </div>
 	       );
