@@ -173,6 +173,7 @@
 	box-sizing: border-box;
 }
 
+
 .molstar-advanced-controls-hidden .msp-layout-region:not(.msp-layout-main) {
 	display: none !important;
 }
@@ -180,6 +181,67 @@
 .molstar-advanced-controls-toggle {
 	margin-top: 8px;
 	margin-bottom: 8px;
+}
+
+.molstar-advanced-controls-panel {
+	width: 100%;
+	border: 1px solid #d9d9d9;
+	border-radius: 6px;
+	background: #fff;
+	padding: 8px;
+	box-sizing: border-box;
+	margin-top: 0;
+	margin-bottom: 8px;
+}
+
+.molstar-advanced-controls-empty {
+	font-size: 0.92em;
+	color: #555;
+}
+
+.molstar-advanced-controls-grid {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 10px;
+}
+
+.molstar-advanced-controls-section {
+	border: 1px solid #ececec;
+	border-radius: 4px;
+	padding: 8px;
+	background: #fafafa;
+	box-sizing: border-box;
+}
+
+.molstar-advanced-controls-title {
+	margin: 0 0 8px 0;
+	font-size: 0.95em;
+}
+
+.molstar-advanced-controls-panel .msp-scrollable-container,
+.molstar-advanced-controls-panel .msp-layout-static,
+.molstar-advanced-controls-panel .msp-layout-scrollable {
+	position: relative !important;
+	inset: auto !important;
+}
+
+.molstar-advanced-controls-panel .msp-scrollable-container {
+	max-height: 280px;
+	overflow-y: auto;
+}
+
+.molstar-advanced-controls-log-wrap {
+	position: relative;
+	min-height: 90px;
+}
+
+.molstar-advanced-controls-log-wrap .msp-log {
+	position: relative !important;
+	top: auto !important;
+	right: auto !important;
+	bottom: auto !important;
+	left: auto !important;
+	max-height: 160px;
 }
 
 .molstar-container {

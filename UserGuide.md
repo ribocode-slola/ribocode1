@@ -28,6 +28,8 @@ The UI layout is as follows:
    - `Show UniProt accession in chain labels` toggle for chain selector labels
    - `Re-align to Chains` control
  - Column `A`
+   - `Mol* Viewer A`
+     - `3D Canvas`
    - `Load Molecule`
      - `Load AlignedTo` button for loading the dataset to align to (`AlignedTo`)
      - `Select Controls`
@@ -39,15 +41,12 @@ The UI layout is as follows:
    - `MoleculeUI` components including:
      - `AlignedTo`
      - `Aligned`
-   - `Show Advanced Mol* Controls` button (toggles advanced Mol* interface for power users)
-   - `Mol* Viewer A`
-     - `3D Canvas`
-     - `Sequence Panel` (shown only when advanced controls are expanded)
-     - `Main Menu` (shown only when advanced controls are expanded)
-     - `Control Panel` (shown only when advanced controls are expanded)
-     - `Log Panel` (shown only when advanced controls are expanded)
    - `AlignedTo Chain Finder` table (searchable chain list shown below the viewer)
+   - `Show Advanced Mol* Controls` button (toggles advanced Mol* interface for power users)
+   - `Advanced Mol* Controls` panel (shown only when expanded; includes Sequence, Left Panel, Structure Tools, and Log sections)
  - Column `B`
+   - `Mol* Viewer B`
+     - `3D Canvas`
    - `Load Molecule` 
      - `Load Aligned` button for loading the dataset to be aligned (`Aligned`)
      - `Select Controls`
@@ -59,14 +58,9 @@ The UI layout is as follows:
    - `MoleculeUI` components including:
      - `AlignedTo`
      - `Aligned`
-   - `Show Advanced Mol* Controls` button (toggles advanced Mol* interface for power users)
-   - `Mol* Viewer B`
-     - `3D Canvas`
-     - `Sequence Panel` (shown only when advanced controls are expanded)
-     - `Main Menu` (shown only when advanced controls are expanded)
-     - `Control Panel` (shown only when advanced controls are expanded)
-     - `Log Panel` (shown only when advanced controls are expanded)
    - `Aligned Chain Finder` table (searchable chain list shown below the viewer)
+   - `Show Advanced Mol* Controls` button (toggles advanced Mol* interface for power users)
+   - `Advanced Mol* Controls` panel (shown only when expanded; includes Sequence, Left Panel, Structure Tools, and Log sections)
 ```
 +-------------------------------------------------------------+
 |           RiboCode Mol* Viewer, Version, README             |
@@ -74,16 +68,6 @@ The UI layout is as follows:
 |     [General Controls: Residue Zoom | Sync | Re-align]      |
 +------------------------------+------------------------------+
 |          Column A            |           Column B           |
-+------------------------------+------------------------------+
-|         Load AlignedTo       |          Load Aligned        |
-| Select Subunit/Chain/Residue | Select Subunit/Chain/Residue |
-|          Load Colours        |          Load Colours        |
-+------------------------------+------------------------------+
-|     MoleculeUI AlignedTo     |     MoleculeUI AlignedTo     |
-|      MoleculeUI Aligned      |      MoleculeUI Aligned      |
-|     MoleculeUI Re-aligned    |     MoleculeUI Re-aligned    |
-|              ...             |             ...              |
-| Show Advanced Mol* Controls  | Show Advanced Mol* Controls  |
 +------------------------------+------------------------------+
 |         Mol* Viewer A        |         Mol* Viewer B        |
 |  +------------------------+  |  +------------------------+  |
@@ -93,14 +77,19 @@ The UI layout is as follows:
 |  |                        |  |  |                        |  |
 |  |                        |  |  |                        |  |
 |  +------------------------+  |  +------------------------+  |
-|  |     Sequence Panel     |  |  |     Sequence Panel     |  |
-|  +------------------------+  |  +------------------------+  |
-|  |       Main Menu        |  |  |        Main Menu       |  |
-|  +------------------------+  |  +------------------------+  |
-|  |      Control Panel     |  |  |      Control Panel     |  |
-|  +------------------------+  |  +------------------------+  |
-|  |        Log Panel       |  |  |        Log Panel       |  |
-|  +------------------------+  |  +------------------------+  |
++------------------------------+------------------------------+
+|         Load AlignedTo       |          Load Aligned        |
+| Select Subunit/Chain/Residue | Select Subunit/Chain/Residue |
+|          Load Colours        |          Load Colours        |
++------------------------------+------------------------------+
+|     MoleculeUI AlignedTo     |     MoleculeUI AlignedTo     |
+|      MoleculeUI Aligned      |      MoleculeUI Aligned      |
+|     MoleculeUI Re-aligned    |     MoleculeUI Re-aligned    |
+|              ...             |             ...              |
+|   AlignedTo Chain Finder     |      Aligned Chain Finder    |
+| Show Advanced Mol* Controls  | Show Advanced Mol* Controls  |
+|  Advanced Mol* Controls      |   Advanced Mol* Controls     |
+| (Sequence/Tools/Log panels)  | (Sequence/Tools/Log panels)  |
 +-------------------------------------------------------------+
 ```
 
@@ -123,11 +112,8 @@ When structure data are loaded, Ribocode enriches chain labels used in both:
 
 ### Where to find the chain finder
 
-- In each column, the chain-finder table is shown below:
-  - `Load Molecule` controls,
-  - `MoleculeUI` rows,
-  - `Show Advanced Mol* Controls` button,
-  - `Mol* Viewer` canvas and optional advanced panels.
+- In each column, the chain-finder table is shown below the `MoleculeUI` rows and above `Show Advanced Mol* Controls` and the optional advanced-controls panel.
+- The `Mol* Viewer` canvas is shown at the top of each column.
 - Column `A` shows the `AlignedTo Chain Finder`.
 - Column `B` shows the `Aligned Chain Finder`.
 - Type in the search box to filter rows immediately.

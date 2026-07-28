@@ -160,16 +160,65 @@ describe('ViewerColumn', () => {
         expect(toggleButton).toBeInTheDocument();
         expect(toggleButton).toHaveTextContent('Show Advanced Mol* Controls');
 
-        const molstarContainer = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-molstar-container`);
-        expect(molstarContainer).toHaveClass('molstar-advanced-controls-hidden');
+        const closedPanel = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-advanced-molstar-controls-panel`);
+        expect(closedPanel).toBeNull();
 
         fireEvent.click(toggleButton as HTMLElement);
         expect(toggleButton).toHaveTextContent('Hide Advanced Mol* Controls');
-        expect(molstarContainer).toHaveClass('molstar-advanced-controls-visible');
+        const openedPanel = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-advanced-molstar-controls-panel`);
+        expect(openedPanel).toBeInTheDocument();
 
         fireEvent.click(toggleButton as HTMLElement);
         expect(toggleButton).toHaveTextContent('Show Advanced Mol* Controls');
-        expect(molstarContainer).toHaveClass('molstar-advanced-controls-hidden');
+        const reClosedPanel = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-advanced-molstar-controls-panel`);
+        expect(reClosedPanel).toBeNull();
+    });
+
+    it('renders Mol* viewer above controls so both columns stay top-aligned', () => {
+        const idPrefix = 'test-root';
+        const loadDataRowPropsWithChains = {
+            ...loadDataRowProps,
+            chainInfo: { chainLabels: new Map([['A', 'Chain A']]) },
+        };
+        render(
+            <ViewerColumn
+                viewerKey="A"
+                loadDataRowPropsAlignedTo={loadDataRowPropsWithChains}
+                loadDataRowPropsAligned={loadDataRowPropsWithChains}
+                moleculeUIAlignedToProps={moleculeUIAlignedToProps}
+                moleculeUIAlignedProps={moleculeUIAlignedProps}
+                realignedMoleculeListProps={realignedMoleculeListProps}
+                molstarContainerProps={molstarContainerProps}
+                idPrefix={idPrefix}
+            />
+        );
+
+        const root = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A`);
+        const molstarContainer = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-molstar-container`);
+        const chainFinder = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-chain-table-container`);
+        const toggleButton = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-advanced-molstar-controls-toggle-btn`);
+
+        expect(root).toBeInTheDocument();
+        expect(molstarContainer).toBeInTheDocument();
+        expect(chainFinder).toBeInTheDocument();
+        expect(toggleButton).toBeInTheDocument();
+
+        expect(root?.firstElementChild?.id).toBe(`${idPrefix}-${viewerColumnIdSuffix}-A-molstar-container`);
+
+        const children = Array.from(root?.children ?? []);
+        const chainFinderIndex = children.findIndex((child) => child.id === `${idPrefix}-${viewerColumnIdSuffix}-A-chain-table-container`);
+        const toggleIndex = children.findIndex((child) => child.id === `${idPrefix}-${viewerColumnIdSuffix}-A-advanced-molstar-controls-toggle-btn`);
+
+        expect(chainFinderIndex).toBeGreaterThan(-1);
+        expect(toggleIndex).toBeGreaterThan(chainFinderIndex);
+
+        fireEvent.click(toggleButton as HTMLElement);
+        const advancedPanel = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-advanced-molstar-controls-panel`);
+        expect(advancedPanel).toBeInTheDocument();
+
+        const updatedChildren = Array.from(root?.children ?? []);
+        const panelIndex = updatedChildren.findIndex((child) => child.id === `${idPrefix}-${viewerColumnIdSuffix}-A-advanced-molstar-controls-panel`);
+        expect(panelIndex).toBeGreaterThan(toggleIndex);
     });
 
     it('keeps representation visibility toggles local to one viewer even when sync is enabled', async () => {

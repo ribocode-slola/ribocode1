@@ -1,3 +1,11 @@
+## [v0.10.0] - 2026-07-28
+- Moved viewer rendering to the top of each column so the two Mol* canvases stay visually aligned even when control content differs between columns.
+- Added a dedicated advanced-controls panel below the Chain Finder in each column, with `Show Advanced Mol* Controls` / `Hide Advanced Mol* Controls` placed directly above the panel.
+- Reworked advanced-controls rendering to avoid unstable DOM reparenting of Mol* internal layout regions.
+- Fixed a React unmount race triggered while toggling advanced controls (`Attempted to synchronously unmount a root while React was already rendering`).
+- Added a standalone `MolstarAdvancedControls` component that renders advanced Mol* UI sections (sequence, structure tools, left panel, and log) using the active viewer plugin context.
+- Updated tests covering advanced-controls toggle behavior and column ordering.
+
 ## [v0.9.0] - 2026-07-23
 - Updated default post-load visibility behavior:
 	- `AlignedTo` loads hidden by default in `Viewer B`.

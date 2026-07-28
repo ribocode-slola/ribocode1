@@ -130,7 +130,7 @@ const MolstarContainer = React.forwardRef(({ viewerKey, setViewer, onMouseDown, 
                 rootRef.current = null;
             }
         };
-    }, [viewerKey, onReady, containerReady]);
+    }, [viewerKey, containerReady]);
     // Update setViewer when plugin changes.
     useEffect(() => {
         if (plugin && setViewer) {
@@ -143,6 +143,7 @@ const MolstarContainer = React.forwardRef(({ viewerKey, setViewer, onMouseDown, 
             setPlugin(p => p); // Triggers a re-render of the Molstar UI without breaking prototype
         }
     }), []);
+
     // Return the container with a dedicated plugin root for Mol*
     // Render RibocodeViewer and pass idPrefix
         return (
