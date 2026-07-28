@@ -137,7 +137,7 @@ describe('getChainInfo with rpNameLookup enrichment', () => {
             structRef: [{ entityId: '1', accession: 'P61247' }]
         });
         const result = getChainInfo(structure, rpNameLookup);
-        expect(result.chainLabels.get('A')).toBe('eS1 | P61247 [AA]');
+        expect(result.chainLabels.get('A')).toBe('eS1 | P61247 | AA [auth A]');
     });
 
     it('uses gene name when available for UniProt accession', () => {
@@ -149,7 +149,7 @@ describe('getChainInfo with rpNameLookup enrichment', () => {
             structRef: [{ entityId: '1', accession: 'P61247' }]
         });
         const result = getChainInfo(structure, rpNameLookup, { P61247: 'RPS3A' });
-        expect(result.chainLabels.get('A')).toBe('eS1 | RPS3A (P61247) [AA]');
+        expect(result.chainLabels.get('A')).toBe('eS1 | RPS3A (P61247) | AA [auth A]');
     });
 
     it('hides UniProt accession from label when configured', () => {
@@ -161,7 +161,7 @@ describe('getChainInfo with rpNameLookup enrichment', () => {
             structRef: [{ entityId: '1', accession: 'P61247' }]
         });
         const result = getChainInfo(structure, rpNameLookup, { P61247: 'RPS3A' }, false);
-        expect(result.chainLabels.get('A')).toBe('eS1 | RPS3A [AA]');
+        expect(result.chainLabels.get('A')).toBe('eS1 | RPS3A | AA [auth A]');
     });
 
     it('falls back to UniProt accession label when family mapping is unavailable', () => {
@@ -173,7 +173,7 @@ describe('getChainInfo with rpNameLookup enrichment', () => {
             structRef: [{ entityId: '1', accession: 'P61247' }]
         });
         const result = getChainInfo(structure, rpNameLookup);
-        expect(result.chainLabels.get('A')).toBe('P61247 [AA]');
+        expect(result.chainLabels.get('A')).toBe('P61247 | AA [auth A]');
     });
 
     it('falls back to default label when struct_ref is absent', () => {
@@ -218,7 +218,7 @@ describe('getChainInfo with rpNameLookup enrichment', () => {
         } as any;
 
         const result = getChainInfo(structure, rpNameLookup);
-        expect(result.chainLabels.get('AA')).toBe('eS1 | P61247 [AA]');
+        expect(result.chainLabels.get('AA')).toBe('eS1 | P61247 | AA [auth AA]');
         expect(result.uniprotAccessions.has('P61247')).toBe(true);
     });
 
@@ -238,7 +238,7 @@ describe('getChainInfo with rpNameLookup enrichment', () => {
             structRef: [{ entityId: '1', accession: 'P61247' }]
         });
         const result = getChainInfo(structure, rpNameLookup);
-        expect(result.chainLabels.get('A')).toBe('eS1 | P61247 [A]');
+        expect(result.chainLabels.get('A')).toBe('eS1 | P61247 | [auth A]');
     });
 
     it('uses species-specific lookup when available', () => {
@@ -283,7 +283,7 @@ describe('getChainInfo with rpNameLookup enrichment', () => {
         } as any;
 
         const result = getChainInfo(structure, rpNameLookupBySpecies);
-        expect(result.chainLabels.get('A')).toBe('HUMAN_FAMILY | P61247 [AA]');
+        expect(result.chainLabels.get('A')).toBe('HUMAN_FAMILY | P61247 | AA [auth A]');
     });
 
     it('falls back to all-species lookup when species is unknown', () => {
@@ -328,6 +328,21 @@ describe('getChainInfo with rpNameLookup enrichment', () => {
         } as any;
 
         const result = getChainInfo(structure, rpNameLookupBySpecies);
-        expect(result.chainLabels.get('A')).toBe('ALL_FAMILY | P61247 [AA]');
+        expect(result.chainLabels.get('A')).toBe('ALL_FAMILY | P61247 | AA [auth A]');
+    });
+
+    it('appends molecule description after preserved auth label', () => {
+        const rpNameLookup = new Map([['P35268', 'eL22']]);
+        const structure = makeStructure({
+            authId: 'CU',
+            labelId: 'ZB',
+            entityId: '78',
+            structRef: [{ entityId: '78', accession: 'P35268' }]
+        });
+        const chainToMoleculeOverride = new Map<string, string>([
+            ['CU', 'Ribosomal protein L22-like protein']
+        ]);
+        const result = getChainInfo(structure, rpNameLookup, undefined, true, undefined, chainToMoleculeOverride);
+        expect(result.chainLabels.get('CU')).toBe('eL22 | P35268 | ZB [auth CU] | Ribosomal protein L22-like protein');
     });
 });

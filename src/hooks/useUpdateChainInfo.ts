@@ -35,7 +35,8 @@ export function useUpdateChainInfo(
   geneNameLookup?: Record<string, string | null>,
   onUniprotAccessionsDiscovered?: (accessions: Iterable<string>) => void,
   showUniprotAccessionInChainLabels = true,
-  chainToUniprotOverride?: Map<string, string>
+  chainToUniprotOverride?: Map<string, string>,
+  chainToMoleculeNameOverride?: Map<string, string>
 ) {
   const lastLoggedSummaryRef = useRef<string>('');
   const lastDiscoveredAccessionsKeyRef = useRef<string>('');
@@ -57,7 +58,8 @@ export function useUpdateChainInfo(
         rpNameLookup,
         geneNameLookup,
         showUniprotAccessionInChainLabels,
-        chainToUniprotOverride
+        chainToUniprotOverride,
+        chainToMoleculeNameOverride
       );
 
       if (onUniprotAccessionsDiscovered && uniprotAccessions.size > 0) {
@@ -140,5 +142,5 @@ export function useUpdateChainInfo(
       console.warn(`[useUpdateChainInfo][${label}] failed:`, err);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pluginRef, structureRef, molstar, setChainInfo, setSubunitToChainIds, label, rpNameLookup, geneNameLookup, onUniprotAccessionsDiscovered, showUniprotAccessionInChainLabels, chainToUniprotOverride]);
+  }, [pluginRef, structureRef, molstar, setChainInfo, setSubunitToChainIds, label, rpNameLookup, geneNameLookup, onUniprotAccessionsDiscovered, showUniprotAccessionInChainLabels, chainToUniprotOverride, chainToMoleculeNameOverride]);
 }

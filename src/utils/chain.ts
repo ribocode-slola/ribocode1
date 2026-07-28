@@ -29,12 +29,12 @@ function buildChainLabel(
     familyName?: string,
     uniprotAccession?: string,
     geneName?: string,
-    showUniprotAccessionInLabel = true
+    showUniprotAccessionInLabel = true,
+    moleculeName?: string
 ): string {
-    const targetId = labelId || authId;
     const defaultLabel = labelId ? `${labelId} [auth ${authId}]` : `[auth ${authId}]`;
 
-    if (!familyName && !uniprotAccession && !geneName) {
+    if (!familyName && !uniprotAccession && !geneName && !moleculeName) {
         return defaultLabel;
     }
 
@@ -48,11 +48,30 @@ function buildChainLabel(
         prefixParts.push(uniprotAccession);
     }
 
-    if (prefixParts.length === 0) {
-        return defaultLabel;
-    }
+    const parts = [...prefixParts, defaultLabel];
+    if (moleculeName) parts.push(moleculeName);
+    return parts.join(' | ');
+}
 
-    return `${prefixParts.join(' | ')} [${targetId}]`;
+function buildEntityToMoleculeNameMap(model: any): Map<string, string> {
+    const entityToMolecule = new Map<string, string>();
+    try {
+        const entity = model?.sourceData?.data?.db?.entity;
+        if (!entity) return entityToMolecule;
+        const rowCount: number = entity._rowCount ?? 0;
+        for (let i = 0; i < rowCount; i++) {
+            const entityIdRaw = entity.id?.value?.(i);
+            const descriptionRaw = entity.pdbx_description?.value?.(i);
+            const entityId = entityIdRaw != null ? String(entityIdRaw).trim() : '';
+            const description = descriptionRaw != null ? String(descriptionRaw).trim() : '';
+            if (entityId && description && description !== '?' && description !== '.') {
+                entityToMolecule.set(entityId, description);
+            }
+        }
+    } catch {
+        // Ignore metadata extraction errors and keep chain label fallback behavior.
+    }
+    return entityToMolecule;
 }
 
 function isLookupBySpecies(
@@ -81,7 +100,8 @@ export function getChainInfo(
     rpNameLookup?: Map<string, string> | RpNameLookupBySpecies,
     geneNameLookup?: Record<string, string | null>,
     showUniprotAccessionInLabel = true,
-    chainToUniprotOverride?: Map<string, string>
+    chainToUniprotOverride?: Map<string, string>,
+    chainToMoleculeNameOverride?: Map<string, string>
 ): {
     chainLabels: Map<string, string>;
     chainToUniprot: Map<string, string>;
@@ -108,6 +128,7 @@ export function getChainInfo(
         // Build entity → UniProt map once per model (if lookup provided)
         let entityToUniprot: Map<string, string> | undefined;
         let chainToUniprotMap: Map<string, string> | undefined;
+        const entityToMoleculeName = buildEntityToMoleculeNameMap(model);
         if (rpNameLookup) {
             entityToUniprot = buildEntityToUniprotMap(model);
             chainToUniprotMap = buildChainToUniprotMap(model);
@@ -164,6 +185,13 @@ export function getChainInfo(
             if (chainLabels.has(authId)) continue; // deduplicate across units
 
             const labelId: string = label_asym_id?.value ? label_asym_id.value(i) : '';
+            const entityId = getEntityIdForChain(chains, i);
+            let moleculeName = chainToMoleculeNameOverride?.get(authId)
+                ?? (labelId ? chainToMoleculeNameOverride?.get(labelId) : undefined)
+                ?? (entityId ? entityToMoleculeName.get(entityId) : undefined);
+            if (moleculeName === '?' || moleculeName === '.') {
+                moleculeName = undefined;
+            }
 
             // Attempt to resolve gene family name via UniProt
             let familyName: string | undefined;
@@ -200,7 +228,8 @@ export function getChainInfo(
                 familyName,
                 uniprotAccession,
                 geneName ?? undefined,
-                showUniprotAccessionInLabel
+                showUniprotAccessionInLabel,
+                moleculeName
             );
             chainLabels.set(authId, label);
         }

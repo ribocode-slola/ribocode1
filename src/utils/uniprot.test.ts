@@ -1,4 +1,4 @@
-import { extractUniProtAccessionsFromText, fetchUniProtGeneNames, fetchUniProtGeneNamesBatched } from './uniprot';
+import { extractUniProtAccessionsFromText, fetchUniProtGeneNames, fetchUniProtGeneNamesBatched, parseChainToMoleculeNameFromCifText } from './uniprot';
 import { vi } from 'vitest';
 
 describe('extractUniProtAccessionsFromText', () => {
@@ -90,5 +90,31 @@ describe('fetchUniProtGeneNamesBatched', () => {
             P2: null,
             P3: 'G3',
         });
+    });
+});
+
+describe('parseChainToMoleculeNameFromCifText', () => {
+    it('maps both label and auth chain IDs to molecule descriptions', () => {
+        const cifText = [
+            'loop_',
+            '_entity.id',
+            '_entity.pdbx_description',
+            "78 'Ribosomal protein L22-like protein'",
+            '#',
+            'loop_',
+            '_struct_asym.id',
+            '_struct_asym.entity_id',
+            'ZB 78',
+            '#',
+            'loop_',
+            '_pdbx_poly_seq_scheme.asym_id',
+            '_pdbx_poly_seq_scheme.pdb_strand_id',
+            'ZB CU',
+            '#',
+        ].join('\n');
+
+        const map = parseChainToMoleculeNameFromCifText(cifText);
+        expect(map.get('ZB')).toBe('Ribosomal protein L22-like protein');
+        expect(map.get('CU')).toBe('Ribosomal protein L22-like protein');
     });
 });

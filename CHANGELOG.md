@@ -5,6 +5,9 @@
 - Added and updated Playwright E2E coverage for visibility defaults and toggle behavior, and stabilized session representation-restore assertions.
 - Added fallback chain-to-UniProt mapping from uploaded mmCIF text so chain labels can include accessions even when runtime Mol* model categories (`struct_ref` / `struct_ref_seq`) are unavailable.
 - Wired `Show UniProt accession in chain labels` so Select Chain labels now include/removes accessions based on toggle state with reduced console logging noise.
+- Preserved auth chain IDs in enriched labels (for example `ZB [auth CU]`) instead of collapsing to label-only forms.
+- Added molecule-description enrichment to chain labels (for example appending `Ribosomal protein L22-like protein`) from loaded mmCIF metadata.
+- Added per-column searchable chain-finder tables below viewers to make long chain lists easier to search and select.
 - Updated `UserGuide.md` to document the visibility and chain-label behavior.
 
 ## [v0.8.4] - 2026-07-23

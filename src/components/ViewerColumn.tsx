@@ -13,6 +13,7 @@ import LoadDataRow from './LoadMolecule';
 import MoleculeUI from './Molecule';
 import RealignedMoleculeList from './RealignedMoleculeList';
 import MolstarContainer from './MolstarContainer';
+import ChainSelectionTable from './ChainSelectionTable';
 import { AllowedRepresentationType } from '../types/ribocode';
 import RepresentationSelectButton from './buttons/select/Representation';
 import type { ViewerKey } from '../types/ribocode';
@@ -575,6 +576,19 @@ const ViewerColumn: React.FC<ViewerColumnProps> = ({
 }) => {
 	const viewerIdPrefix = idPrefix ? `${idPrefix}-${idSuffix}-${viewerKey}` : `${idSuffix}-${viewerKey}`;
 	const [showAdvancedMolstarControls, setShowAdvancedMolstarControls] = React.useState(false);
+	const chainTableProps = viewerKey === 'A'
+		? {
+			chainLabels: loadDataRowPropsAlignedTo?.chainInfo?.chainLabels as Map<string, string>,
+			selectedChainId: loadDataRowPropsAlignedTo?.selectedChainId ?? '',
+			onSelectChainId: loadDataRowPropsAlignedTo?.onSelectChainId as (chainId: string) => void,
+			title: 'AlignedTo Chain Finder',
+		}
+		: {
+			chainLabels: loadDataRowPropsAligned?.chainInfo?.chainLabels as Map<string, string>,
+			selectedChainId: loadDataRowPropsAligned?.selectedChainId ?? '',
+			onSelectChainId: loadDataRowPropsAligned?.onSelectChainId as (chainId: string) => void,
+			title: 'Aligned Chain Finder',
+		};
 	       return (
 		       <div className="Column" id={viewerIdPrefix}>
 					   {/* Only render the correct loader in each column as per requirements */}
@@ -601,6 +615,13 @@ const ViewerColumn: React.FC<ViewerColumnProps> = ({
 				   idPrefix={viewerIdPrefix}
 				   viewerKey={viewerKey}
 				   showAdvancedControls={showAdvancedMolstarControls}
+			       />
+			       <ChainSelectionTable
+				   chainLabels={chainTableProps.chainLabels || new Map<string, string>()}
+				   selectedChainId={chainTableProps.selectedChainId}
+				   onSelectChainId={chainTableProps.onSelectChainId || (() => {})}
+				   title={chainTableProps.title}
+				   idPrefix={viewerIdPrefix}
 			       />
 		       </div>
 	       );

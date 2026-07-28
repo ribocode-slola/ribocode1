@@ -191,6 +191,60 @@
 	 */
 }
 
+.chain-selection-table-container {
+	margin-top: 10px;
+	border: 1px solid #d9d9d9;
+	border-radius: 6px;
+	background: #fff;
+	padding: 8px;
+}
+
+.chain-selection-table-header {
+	margin-bottom: 6px;
+}
+
+.chain-selection-table-search {
+	width: 100%;
+	box-sizing: border-box;
+	margin-bottom: 8px;
+	padding: 6px 8px;
+	border: 1px solid #c9c9c9;
+	border-radius: 4px;
+}
+
+.chain-selection-table-scroll {
+	max-height: 220px;
+	overflow: auto;
+	border: 1px solid #ececec;
+	border-radius: 4px;
+}
+
+.chain-selection-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 0.92em;
+}
+
+.chain-selection-table th,
+.chain-selection-table td {
+	text-align: left;
+	padding: 6px 8px;
+	border-bottom: 1px solid #f1f1f1;
+	vertical-align: top;
+}
+
+.chain-selection-table tbody tr {
+	cursor: pointer;
+}
+
+.chain-selection-table tbody tr:hover {
+	background: #f7fafc;
+}
+
+.chain-selection-table tbody tr.selected {
+	background: #e8f2ff;
+}
+
 /* =========================
  * 4. Custom controls and button styles
  * ========================= */

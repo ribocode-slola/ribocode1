@@ -179,6 +179,74 @@ export function parseChainToUniProtFromCifText(cifText: string): Map<string, str
 }
 
 /**
+ * Parse chain -> molecule name mappings directly from mmCIF text.
+ *
+ * Uses `_entity` + `_struct_asym` and (optionally) `_pdbx_poly_seq_scheme` to
+ * map both label chain IDs and auth chain IDs to molecule descriptions.
+ */
+export function parseChainToMoleculeNameFromCifText(cifText: string): Map<string, string> {
+    const chainToMolecule = new Map<string, string>();
+
+    const entityLoop = parseLoopRows(cifText, '_entity');
+    const entityIdToDescription = new Map<string, string>();
+    if (entityLoop) {
+        const entityIdIdx = entityLoop.tags.indexOf('_entity.id');
+        const descriptionIdx = entityLoop.tags.indexOf('_entity.pdbx_description');
+        if (entityIdIdx >= 0 && descriptionIdx >= 0) {
+            for (const row of entityLoop.rows) {
+                const entityId = normalizeCifToken(row[entityIdIdx]);
+                const description = normalizeCifToken(row[descriptionIdx]);
+                if (entityId && description) {
+                    entityIdToDescription.set(entityId, description);
+                }
+            }
+        }
+    }
+
+    const structAsymLoop = parseLoopRows(cifText, '_struct_asym');
+    const labelChainToEntityId = new Map<string, string>();
+    if (structAsymLoop) {
+        const asymIdIdx = structAsymLoop.tags.indexOf('_struct_asym.id');
+        const entityIdIdx = structAsymLoop.tags.indexOf('_struct_asym.entity_id');
+        if (asymIdIdx >= 0 && entityIdIdx >= 0) {
+            for (const row of structAsymLoop.rows) {
+                const labelChainId = normalizeCifToken(row[asymIdIdx]);
+                const entityId = normalizeCifToken(row[entityIdIdx]);
+                if (labelChainId && entityId) {
+                    labelChainToEntityId.set(labelChainId, entityId);
+                }
+            }
+        }
+    }
+
+    for (const [labelChainId, entityId] of labelChainToEntityId.entries()) {
+        const description = entityIdToDescription.get(entityId);
+        if (description) {
+            chainToMolecule.set(labelChainId, description);
+        }
+    }
+
+    const polySeqSchemeLoop = parseLoopRows(cifText, '_pdbx_poly_seq_scheme');
+    if (polySeqSchemeLoop) {
+        const asymIdIdx = polySeqSchemeLoop.tags.indexOf('_pdbx_poly_seq_scheme.asym_id');
+        const authChainIdx = polySeqSchemeLoop.tags.indexOf('_pdbx_poly_seq_scheme.pdb_strand_id');
+        if (asymIdIdx >= 0 && authChainIdx >= 0) {
+            for (const row of polySeqSchemeLoop.rows) {
+                const labelChainId = normalizeCifToken(row[asymIdIdx]);
+                const authChainId = normalizeCifToken(row[authChainIdx]);
+                if (!labelChainId || !authChainId) continue;
+                const description = chainToMolecule.get(labelChainId);
+                if (description && !chainToMolecule.has(authChainId)) {
+                    chainToMolecule.set(authChainId, description);
+                }
+            }
+        }
+    }
+
+    return chainToMolecule;
+}
+
+/**
  * Sleep for a specified number of milliseconds.
  * @param ms - The number of milliseconds to sleep.
  * @returns A promise that resolves after the specified time.
