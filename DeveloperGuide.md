@@ -1,4 +1,3 @@
-
 # Developer Guide
 
 Welcome to the Ribocode Developer Guide!
@@ -19,11 +18,13 @@ Welcome to the Ribocode Developer Guide!
   - [Examples](#examples)
   - [Updating Existing Components](#updating-existing-components)
 - [Mol* Advanced Controls Toggle](#mol-advanced-controls-toggle)
+- [Re-alignment Implementation Notes](#re-alignment-implementation-notes)
 - [Mol*](#mol*)
 - [Documentation](#documentation)
   - [How to Generate Documentation](#how-to-generate-documentation)
   - [Configuration](#configuration)
   - [Deployment Recommendation](#deployment-recommendation)
+  - [Docs-only Deployment](#docs-only-deployment)
 - [Deployment](#deployment)
 - [Versioning](#versioning)
 - [Tests](#tests)
@@ -156,6 +157,36 @@ To reduce UI clutter for common workflows, each viewer column includes a dedicat
 
 This keeps default user workflows focused on Ribocode controls while preserving full Mol* UI access for advanced users.
 
+## Re-alignment Implementation Notes
+
+Chain-based re-alignment now uses a staged approach in `src/App.tsx`.
+
+- Preferred path (in-place):
+  - Fit is computed using `alignDatasetUsingChains` from the customized Mol* ribocode geometry utilities.
+  - A rigid transform matrix is built from the fitted rotation and derived translation.
+  - The transform is applied to existing aligned structures using `StateTransforms.Model.TransformStructureConformation`.
+  - Applied in-place chain pairs are tracked and deduplicated so the same `(from, to)` pair is not transformed repeatedly.
+- Fallback path (reload-based):
+  - If in-place transform cannot be applied, the app falls back to the existing `ReAligned` loading flow using alignment data.
+- Alignment-data transform behavior:
+  - Mol* trajectory alignment application now uses full `rotation + translation` when `rotMat`, `centroid`, and `centroidReference` are available.
+  - Equal-count fit mapping is normalized so `centroid` is the moving-set centroid and `centroidReference` is the reference-set centroid, matching the transform convention `R * (p - centroid) + centroidReference`.
+- Diagnostics:
+  - Re-alignment logs include chain atom summaries, atom selector mode, selected atom counts, pair count, and RMSD.
+- Feature flag:
+  - In-place path can be controlled via `ENABLE_IN_PLACE_CHAIN_REALIGN` in `src/App.tsx`.
+- Sync behavior note:
+  - Camera sync propagation is source-directed from the current `activeViewer` only.
+  - Sync applies source camera deltas (pan/rotation/zoom) to the target viewer, preserving the target viewer's local frame instead of replacing it with the source camera frame.
+  - Zoom propagation combines radius scaling and source camera-distance scaling (`|position-target|`) so wheel/dolly zoom is propagated even when radius does not change.
+  - `activeViewer` switches based on pointer presence/interactions in a viewer (`pointerenter`, `pointermove`, `wheel`, `pointerdown`), so a click is not required to change sync source.
+  - Viewer activation listeners are attached natively on the Mol* container in capture mode (`MolstarContainer`) for reliable detection across nested Mol* UI roots.
+  - Unchanged source snapshots are ignored to avoid no-op camera churn.
+  - A lightweight animation-frame poll loop keeps sync responsive during pan/zoom/rotation interactions where camera events may be sparse.
+  - Poll frequency is configurable via `VITE_SYNC_POLL_INTERVAL_MS` (default `20`, clamped to `5..100`) in `.env`/`.env.production`.
+- Utility helpers:
+  - Re-align pair-key and dedupe helpers are implemented in `src/utils/realignment.ts` (`makeRealignPairKey`, `hasRealignPair`, `addRealignPair`).
+
 ## UI Element IDs and `data-testid` Conventions
 
 To ensure robust, maintainable, and testable UI code, Ribocode uses the following conventions for element IDs and `data-testid` attributes:
@@ -207,21 +238,57 @@ There is a [CHANGELOG](./CHANGELOG.md) which summarises changes, particularly ch
 - Documentation is generated into the `docs/` directory.
 - To generate or update the documentation, run:
 	```sh
-	npm run docs -- --entryPointStrategy expand
+  npm run docs
 	```
 - The documentation will be available as static HTML files in the `docs/` folder.
+- `npm run docs` generates docs locally only; it does not deploy them.
 
 
 ### Configuration
 
 - The TypeDoc configuration is in `typedoc.json` at the project root.
+- TypeDoc uses `tsconfig.typedoc.json` (via `typedoc.json`) so docs generation excludes test files and focuses on production API surface.
 - The entry point is the `src/` directory.
 - You can customize the output and included files by editing `typedoc.json`.
 
 
 ### Deployment Recommendation
 
-- If you are using GitHub Pages for your PWA, you can serve the documentation alongside your app by ensuring the `docs/` directory is included in your deployment. For example, you can link to `https://<username>.github.io/<repo>/docs/index.html` from your site or README. This allows users to access both the app and the documentation from the same domain.
+- GitHub Pages deployment (`npm run deploy`) publishes docs together with the app because the build step copies `docs/` into `dist/docs` (`postbuild`) before publishing `dist`.
+- For this repository, deployed docs are available at `https://ribocode-slola.github.io/ribocode1/docs/index.html`.
+- For forks, use `https://<username>.github.io/ribocode1/docs/index.html`.
+
+### Docs-only Deployment
+
+- Use `npm run docs:deploy` to publish only API docs to the `gh-pages` branch under the `docs/` folder.
+- Use `npm run docs:deploy:dryrun` to validate the same process without pushing.
+- These scripts run TypeDoc first (`npm run docs`) and then publish the generated `docs/` output using `gh-pages`.
+- Use `npm run docs:deploy:target` to publish docs to an explicit repository URL from env config.
+- Use `npm run docs:deploy:target:dryrun` to validate targeted publishing without pushing.
+
+Targeted deployment configuration:
+
+- Set `DOCS_GH_PAGES_REPO` in `.env` or `.env.production` (production values override `.env`).
+- Example value: `DOCS_GH_PAGES_REPO=https://github.com/<your-github-username>/ribocode1.git`
+- This keeps shared scripts stable while allowing each developer to publish docs to their own fork.
+
+Destination URL rules:
+
+- The final URL is determined by the repository that receives the `gh-pages` push.
+- If push target is your fork (typical `origin`), docs will be at `https://<your-github-username>.github.io/ribocode1/docs/index.html`.
+- If push target is the upstream repository, docs will be at `https://ribocode-slola.github.io/ribocode1/docs/index.html`.
+
+How to confirm where deployment will go:
+
+- Run `git remote -v` and verify which repository URL is configured for `origin`.
+- `npm run docs:deploy` uses your configured git remote unless you override it with gh-pages options.
+
+Optional explicit target example:
+
+```sh
+gh-pages -d docs -e docs -a -m "Docs: update API documentation" \
+  --repo https://github.com/<your-github-username>/ribocode1.git
+```
 
 ### Useful Links
 
@@ -507,7 +574,7 @@ If you add a new modal, file input, or dynamic UI element, ensure it has a `data
 
 If you contribute changes, please submit a Pull Request that includes documentation updates and, if appropriate, includes tests.
 
-**Please add your name to the CONTRIBUTORS file in the repository when you make a contribution.**
+**Please add your name to the CONTRIBUTORS file in the repository when you make a first contribution.**
 Also, add your details to the list of authors in the header of any source files you modify.
 
 For contribution ideas, bug reports, or feature requests, please visit the [GitHub Issues page](https://github.com/ribocode-slola/ribocode1/issues).
