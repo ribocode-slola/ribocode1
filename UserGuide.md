@@ -162,6 +162,7 @@ Next, the user can do several things:
 * If a residue is selected, the `Zoom to Residue` control becomes actionable to zoom to the selected residue within the chain. The selected residue will be in the viewer centre. How much is displayed around that depends on the `Residue Zoom` settings.
 * If chains are selected for both `AlignedTo` and `Aligned` molecules, the `Re-align` button can be actioned to apply chain-based re-alignment.
 * Re-aligning both different and repeated chain pairs is supported; repeated same-pair actions use an idempotent baseline transform to avoid cumulative transform/rotation drift.
+* After chain re-alignment, the `Aligned` viewer camera is matched to the `AlignedTo` viewer camera (zoom, pan target, and orientation) so both viewers show the same viewpoint.
 
 ### Re-align implementation note
 

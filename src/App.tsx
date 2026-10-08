@@ -554,6 +554,39 @@ export function readClippingFromViewer(plugin: any): { minNear: number; clipRadi
     };
 }
 
+export function copyCameraZoomRadiusBetweenViewers(
+    sourceViewerRef: React.RefObject<PluginUIContext | null>,
+    targetViewerRef: React.RefObject<PluginUIContext | null>
+) {
+    const sourceSnapshot = sourceViewerRef.current?.canvas3d?.camera?.getSnapshot?.();
+    const targetCamera = targetViewerRef.current?.canvas3d?.camera;
+    if (!sourceSnapshot || !targetCamera || typeof targetCamera.setState !== 'function') return;
+
+    const toTuple3 = (value: any): [number, number, number] | null => {
+        if (!value || value.length < 3) return null;
+        const x = Number(value[0]);
+        const y = Number(value[1]);
+        const z = Number(value[2]);
+        if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) return null;
+        return [x, y, z];
+    };
+
+    const position = toTuple3(sourceSnapshot.position);
+    const target = toTuple3(sourceSnapshot.target);
+    const up = toTuple3(sourceSnapshot.up);
+    const radius = Number(sourceSnapshot.radius);
+    if (!position || !target || !up || !Number.isFinite(radius)) return;
+
+    targetCamera.setState({
+        ...targetCamera.state,
+        position,
+        target,
+        up,
+        radius,
+    });
+    targetViewerRef.current?.canvas3d?.requestDraw?.();
+}
+
 function getSelectedSubunitChainIds(
     subunitToChainIds: Map<string, Set<string>>,
     selectedSubunit: string
@@ -1061,6 +1094,13 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             radius: snapshot.radius,
         });
         viewerRef.current?.canvas3d?.requestDraw?.();
+    }, []);
+
+    const copyCameraZoomRadius = useCallback((
+        sourceViewerRef: React.RefObject<PluginUIContext | null>,
+        targetViewerRef: React.RefObject<PluginUIContext | null>
+    ) => {
+        copyCameraZoomRadiusBetweenViewers(sourceViewerRef, targetViewerRef);
     }, []);
 
     useEffect(() => {
@@ -3123,8 +3163,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 try {
                     const appliedInPlace = await applyInPlaceRealign();
                     if (appliedInPlace) {
-                        // Keep the transformed structure in frame automatically.
-                        await chainZoomBAligned.handleButtonClick();
+                        // Match right-viewer zoom to left-viewer zoom without forcing pan/rotation yet.
+                        copyCameraZoomRadius(viewerA.ref, viewerB.ref);
                         if (ENABLE_REALIGN_DIAGNOSTICS) console.info('[Re-align] Applied in-place transform to existing aligned structures.');
                         return;
                     }
@@ -3141,6 +3181,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                     return;
                 }
                 pluginB.canvas3d?.requestDraw?.();
+                // Keep zoom parity in fallback mode as well.
+                copyCameraZoomRadius(viewerA.ref, viewerB.ref);
                 if (ENABLE_REALIGN_DIAGNOSTICS) console.info('[Re-align] Applied reload-based fallback realign.');
             })();
             if (ENABLE_REALIGN_DIAGNOSTICS) console.info('Realignment applied to Viewer A and B models.');
