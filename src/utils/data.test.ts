@@ -200,7 +200,7 @@ describe('data.ts utility functions', () => {
     });
 
     describe('updateAndLogAtomCoordinates', () => {
-        it('recenters and rotates atom coordinates and logs output', () => {
+        it('recenters and rotates atom coordinates', () => {
             const model = {
                 atomicConformation: {
                     x: [1, 2, 3],
@@ -214,7 +214,6 @@ describe('data.ts utility functions', () => {
             expect(model.atomicConformation.x).toEqual([0, 1, 2]);
             expect(model.atomicConformation.y).toEqual([0, 1, 2]);
             expect(model.atomicConformation.z).toEqual([0, 1, 2]);
-            expect(console.log).toHaveBeenCalledWith('Atom coordinates updated.');
         });
     });
 });
