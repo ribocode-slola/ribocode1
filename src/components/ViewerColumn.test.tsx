@@ -10,9 +10,10 @@
  * @see https://github.com/ribocode-slola/ribocode1
  */
 import { vi } from 'vitest';
-import { fireEvent, render } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import ViewerColumn, { getMoleculeUIAlignedProps, idSuffix as viewerColumnIdSuffix } from './ViewerColumn';
 import { idSuffix as moleculeIdSuffix } from './Molecule';
+import { getLoadDataRowProps } from './ViewerColumn';
 
 // Mock props for ViewerColumn
 const loadDataRowProps = {
@@ -24,14 +25,32 @@ const loadDataRowProps = {
     selectedSubunit: 'All',
     onSelectSubunit: vi.fn(),
     subunitSelectDisabled: false,
+    onSubunitHighlight: vi.fn(),
+    subunitHighlightOn: false,
+    subunitHighlightDisabled: false,
+    onSubunitInspect: vi.fn(),
+    subunitInspectOn: false,
+    subunitInspectDisabled: false,
     chainInfo: { chainLabels: new Map() },
     selectedChainId: '',
     onSelectChainId: vi.fn(),
     chainSelectDisabled: false,
+    onChainHighlight: vi.fn(),
+    chainHighlightOn: false,
+    chainHighlightDisabled: true,
+    onChainInspect: vi.fn(),
+    chainInspectOn: false,
+    chainInspectDisabled: true,
     residueInfo: { residueLabels: new Map(), residueToAtomIds: {} },
-    selectedResidueId: '',
-    onSelectResidueId: vi.fn(),
+    selectedResidueIds: [],
+    onSelectResidueIds: vi.fn(),
     residueSelectDisabled: false,
+    onResidueHighlight: vi.fn(),
+    residueHighlightOn: false,
+    residueHighlightDisabled: true,
+    onResidueInspect: vi.fn(),
+    residueInspectOn: false,
+    residueInspectDisabled: true,
     onAddRepresentationClick: vi.fn(),
     addRepresentationDisabled: false,
     fogEnabled: false,
@@ -40,10 +59,10 @@ const loadDataRowProps = {
     onFogEnabledChange: vi.fn(),
     onFogNearChange: vi.fn(),
     onFogFarChange: vi.fn(),
-    cameraNear: 0.1,
-    cameraFar: 100,
-    onCameraNearChange: vi.fn(),
-    onCameraFarChange: vi.fn(),
+    clippingMinNear: 0.1,
+    clippingRadius: 100,
+    onClippingMinNearChange: vi.fn(),
+    onClippingRadiusChange: vi.fn(),
 };
 // Minimal valid props for MoleculeUI
 const minimalMoleculeUIProps = {
@@ -174,6 +193,82 @@ describe('ViewerColumn', () => {
         expect(reClosedPanel).toBeNull();
     });
 
+    it('toggles Select and Zoom controls and chain finder visibility', () => {
+        const idPrefix = 'test-root';
+        const loadDataRowPropsWithChains = {
+            ...loadDataRowProps,
+            chainInfo: { chainLabels: new Map([['A', 'Chain A']]) },
+        };
+        render(
+            <ViewerColumn
+                viewerKey="A"
+                loadDataRowPropsAlignedTo={loadDataRowPropsWithChains}
+                loadDataRowPropsAligned={loadDataRowPropsWithChains}
+                moleculeUIAlignedToProps={moleculeUIAlignedToProps}
+                moleculeUIAlignedProps={moleculeUIAlignedProps}
+                realignedMoleculeListProps={realignedMoleculeListProps}
+                molstarContainerProps={molstarContainerProps}
+                idPrefix={idPrefix}
+            />
+        );
+
+        const toggleButton = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-select-zoom-controls-toggle-btn`);
+        expect(toggleButton).toBeInTheDocument();
+        expect(toggleButton).toHaveTextContent('Show Select and Zoom Controls');
+        expect(document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-chain-table-container`)).toBeNull();
+
+        fireEvent.click(toggleButton as HTMLElement);
+        expect(toggleButton).toHaveTextContent('Hide Select and Zoom Controls');
+        expect(document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-chain-table-container`)).toBeInTheDocument();
+
+        fireEvent.click(toggleButton as HTMLElement);
+        expect(toggleButton).toHaveTextContent('Show Select and Zoom Controls');
+        expect(document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-chain-table-container`)).toBeNull();
+    });
+
+    it('forwards inspect handlers to SelectZoomControls in active panel', () => {
+        const idPrefix = 'test-root';
+        const onSubunitInspect = vi.fn();
+        const onChainInspect = vi.fn();
+        const onResidueInspect = vi.fn();
+        const loadDataRowPropsWithInspect = {
+            ...loadDataRowProps,
+            chainInfo: { chainLabels: new Map([['A', 'Chain A']]) },
+            selectedChainId: 'A',
+            selectedResidueIds: ['1'],
+            residueInfo: { residueLabels: new Map([['1', { id: '1', name: 'Residue 1', compId: 'ALA', seqNumber: 1, insCode: '' }]]), residueToAtomIds: { '1': ['a1'] } },
+            onSubunitInspect,
+            onChainInspect,
+            onResidueInspect,
+            subunitInspectDisabled: false,
+            chainInspectDisabled: false,
+            residueInspectDisabled: false,
+        };
+
+        render(
+            <ViewerColumn
+                viewerKey="A"
+                loadDataRowPropsAlignedTo={loadDataRowPropsWithInspect}
+                loadDataRowPropsAligned={loadDataRowPropsWithInspect}
+                moleculeUIAlignedToProps={moleculeUIAlignedToProps}
+                moleculeUIAlignedProps={moleculeUIAlignedProps}
+                realignedMoleculeListProps={realignedMoleculeListProps}
+                molstarContainerProps={molstarContainerProps}
+                idPrefix={idPrefix}
+            />
+        );
+
+        fireEvent.click(document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-select-zoom-controls-toggle-btn`) as HTMLElement);
+
+        fireEvent.click(screen.getByText('Inspect Subunit: Off'));
+        fireEvent.click(screen.getByText('Inspect Chain: Off'));
+        fireEvent.click(screen.getByText('Inspect Residues: Off'));
+
+        expect(onSubunitInspect).toHaveBeenCalled();
+        expect(onChainInspect).toHaveBeenCalled();
+        expect(onResidueInspect).toHaveBeenCalled();
+    });
+
     it('renders Mol* viewer above controls so both columns stay top-aligned', () => {
         const idPrefix = 'test-root';
         const loadDataRowPropsWithChains = {
@@ -195,22 +290,29 @@ describe('ViewerColumn', () => {
 
         const root = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A`);
         const molstarContainer = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-molstar-container`);
-        const chainFinder = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-chain-table-container`);
+        const selectZoomToggle = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-select-zoom-controls-toggle-btn`);
         const toggleButton = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-advanced-molstar-controls-toggle-btn`);
 
         expect(root).toBeInTheDocument();
         expect(molstarContainer).toBeInTheDocument();
-        expect(chainFinder).toBeInTheDocument();
+        expect(selectZoomToggle).toBeInTheDocument();
         expect(toggleButton).toBeInTheDocument();
 
         expect(root?.firstElementChild?.id).toBe(`${idPrefix}-${viewerColumnIdSuffix}-A-molstar-container`);
 
+        const rootChildren = Array.from(root?.children ?? []);
+        expect(rootChildren[1]?.classList.contains('molecule-row')).toBe(true);
+        expect(rootChildren[2]?.classList.contains('molecule-row')).toBe(true);
+
+        const clippingControls = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-alignedto-clipping-controls`);
+        expect(clippingControls).toBeInTheDocument();
+
         const children = Array.from(root?.children ?? []);
-        const chainFinderIndex = children.findIndex((child) => child.id === `${idPrefix}-${viewerColumnIdSuffix}-A-chain-table-container`);
+        const selectZoomToggleIndex = children.findIndex((child) => child.id === `${idPrefix}-${viewerColumnIdSuffix}-A-select-zoom-controls-toggle-btn`);
         const toggleIndex = children.findIndex((child) => child.id === `${idPrefix}-${viewerColumnIdSuffix}-A-advanced-molstar-controls-toggle-btn`);
 
-        expect(chainFinderIndex).toBeGreaterThan(-1);
-        expect(toggleIndex).toBeGreaterThan(chainFinderIndex);
+        expect(selectZoomToggleIndex).toBeGreaterThan(-1);
+        expect(toggleIndex).toBeGreaterThan(selectZoomToggleIndex);
 
         fireEvent.click(toggleButton as HTMLElement);
         const advancedPanel = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-advanced-molstar-controls-panel`);
@@ -219,6 +321,59 @@ describe('ViewerColumn', () => {
         const updatedChildren = Array.from(root?.children ?? []);
         const panelIndex = updatedChildren.findIndex((child) => child.id === `${idPrefix}-${viewerColumnIdSuffix}-A-advanced-molstar-controls-panel`);
         expect(panelIndex).toBeGreaterThan(toggleIndex);
+    });
+
+    it('renders clipping controls above select/zoom toggle and wires minNear/clipRadius callbacks', () => {
+        const idPrefix = 'test-root';
+        const onClippingMinNearChange = vi.fn();
+        const onClippingRadiusChange = vi.fn();
+        const onResetClipping = vi.fn();
+        const loadDataRowPropsWithCamera = {
+            ...loadDataRowProps,
+            clippingMinNear: 1,
+            clippingRadius: 100,
+            onClippingMinNearChange,
+            onClippingRadiusChange,
+            onResetClipping,
+        };
+
+        render(
+            <ViewerColumn
+                viewerKey="A"
+                loadDataRowPropsAlignedTo={loadDataRowPropsWithCamera}
+                loadDataRowPropsAligned={loadDataRowPropsWithCamera}
+                moleculeUIAlignedToProps={moleculeUIAlignedToProps}
+                moleculeUIAlignedProps={moleculeUIAlignedProps}
+                realignedMoleculeListProps={realignedMoleculeListProps}
+                molstarContainerProps={molstarContainerProps}
+                idPrefix={idPrefix}
+            />
+        );
+
+        const root = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A`);
+        const children = Array.from(root?.children ?? []);
+        const clippingIndex = children.findIndex((child) => child.id === `${idPrefix}-${viewerColumnIdSuffix}-A-alignedto-clipping-controls`);
+        const selectZoomToggleIndex = children.findIndex((child) => child.id === `${idPrefix}-${viewerColumnIdSuffix}-A-select-zoom-controls-toggle-btn`);
+        expect(clippingIndex).toBeGreaterThan(-1);
+        expect(selectZoomToggleIndex).toBeGreaterThan(clippingIndex);
+
+        const nearRange = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-alignedto-clip-near-range`) as HTMLInputElement;
+        const farRange = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-alignedto-clip-far-range`) as HTMLInputElement;
+        const resetBtn = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-alignedto-clip-reset-btn`) as HTMLButtonElement;
+
+        expect(nearRange).toBeInTheDocument();
+        expect(farRange).toBeInTheDocument();
+        expect(resetBtn).toBeInTheDocument();
+        expect(document.body.textContent).toContain('Matches Mol* clipping settings');
+
+        fireEvent.change(nearRange, { target: { value: '0.5' } });
+        expect(onClippingMinNearChange).toHaveBeenCalledWith(0.5);
+
+        fireEvent.change(farRange, { target: { value: '80' } });
+        expect(onClippingRadiusChange).toHaveBeenCalledWith(80);
+
+        fireEvent.click(resetBtn);
+        expect(onResetClipping).toHaveBeenCalled();
     });
 
     it('keeps representation visibility toggles local to one viewer even when sync is enabled', async () => {
@@ -249,8 +404,13 @@ describe('ViewerColumn', () => {
             isVisible: true,
             onToggleVisibility: vi.fn(),
             chainZoomLabel: '',
+            onChainHighlight: vi.fn(),
+            chainHighlightDisabled: true,
             onChainZoom: vi.fn(),
             chainZoomDisabled: false,
+            subunitZoomLabel: '',
+            onSubunitZoom: vi.fn(),
+            subunitZoomDisabled: false,
             residueZoomLabel: '',
             onResidueZoom: vi.fn(),
             residueZoomDisabled: false,
@@ -271,5 +431,224 @@ describe('ViewerColumn', () => {
 
         expect(getCellA).toHaveBeenCalledWith('rep-a');
         expect(getCellB).not.toHaveBeenCalled();
+    });
+
+    it('passes per-viewer visibility flags when adding representations', () => {
+        const addRepresentationA = vi.fn();
+        const addRepresentationB = vi.fn();
+        const viewer = {
+            key: 'A',
+            moleculeAligned: { filename: '6xu8.cif' },
+            moleculeAlignedTo: null,
+            isMoleculeAlignedVisible: false,
+            isMoleculeAlignedToVisible: true,
+            handleFileInputButtonClick: vi.fn(),
+            fileInputRef: { current: null },
+            ref: { current: null },
+        } as any;
+        const otherViewer = {
+            key: 'B',
+            moleculeAligned: { filename: '6xu8.cif' },
+            moleculeAlignedTo: null,
+            isMoleculeAlignedVisible: true,
+            isMoleculeAlignedToVisible: true,
+            handleFileInputButtonClick: vi.fn(),
+            fileInputRef: { current: null },
+            ref: { current: null },
+        } as any;
+
+        const props = getLoadDataRowProps({
+            viewer,
+            otherViewer,
+            molstar: {
+                addRepresentation: addRepresentationA,
+                representationRefs: {},
+                repIdMap: {},
+                pluginRef: { current: null },
+            },
+            otherMolstar: {
+                addRepresentation: addRepresentationB,
+                representationRefs: {},
+                repIdMap: {},
+                pluginRef: { current: null },
+            },
+            realignedStructRefs: {},
+            otherRealignedStructRefs: {},
+            isMoleculeAlignedLoaded: true,
+            isMoleculeAlignedToLoaded: true,
+            viewerReady: true,
+            otherViewerReady: true,
+            representationType: 'spacefill',
+            setRepresentationType: vi.fn(),
+            colorsFile: { handleButtonClick: vi.fn(), inputRef: { current: null }, handleFileChange: vi.fn() },
+            isMoleculeColoursLoaded: false,
+            structureRef: 'ref-a',
+            otherStructureRef: 'ref-b',
+            selectedSubunit: 'All',
+            setSelectedSubunit: vi.fn(),
+            subunitZoomLabel: 'All',
+            onSubunitHighlight: vi.fn(),
+            subunitHighlightOn: false,
+            subunitHighlightDisabled: false,
+            onSubunitInspect: vi.fn(),
+            subunitInspectOn: false,
+            subunitInspectDisabled: false,
+            onSubunitZoom: vi.fn(),
+            subunitZoomDisabled: false,
+            subunitToChainIds: new Map(),
+            chainInfo: { chainLabels: new Map([['A', 'Chain A']]) },
+            selectedChainId: 'A',
+            setSelectedChainId: vi.fn(),
+            chainZoomLabel: 'Chain A',
+            onChainHighlight: vi.fn(),
+            chainHighlightOn: false,
+            chainHighlightDisabled: false,
+            onChainInspect: vi.fn(),
+            chainInspectOn: false,
+            chainInspectDisabled: false,
+            onChainZoom: vi.fn(),
+            chainZoomDisabled: false,
+            residueInfo: { residueLabels: new Map(), residueToAtomIds: {} },
+            selectedResidueIds: [],
+            setSelectedResidueIds: vi.fn(),
+            residueZoomLabel: '',
+            onResidueHighlight: vi.fn(),
+            residueHighlightOn: false,
+            residueHighlightDisabled: true,
+            onResidueInspect: vi.fn(),
+            residueInspectOn: false,
+            residueInspectDisabled: true,
+            onResidueZoom: vi.fn(),
+            residueZoomDisabled: true,
+            fog: { enabled: false, near: 0, far: 100 },
+            setFog: { setEnabled: vi.fn(), setNear: vi.fn(), setFar: vi.fn() },
+            clipping: { minNear: 1, clipRadius: 100 },
+            setClipping: { setMinNear: vi.fn(), setClipRadius: vi.fn() },
+            updateFog: vi.fn(),
+            handleFileChange: vi.fn(),
+            Aligned: 'Aligned',
+            allowedRepresentationTypes: ['spacefill'] as any,
+            syncEnabled: false,
+            realignedRepRefs: {},
+            setRealignedRepRefs: vi.fn(),
+            setRealignedStructRefs: vi.fn(),
+        });
+
+        props.onAddRepresentationClick();
+
+        expect(addRepresentationA).toHaveBeenCalledWith(
+            'Aligned',
+            'ref-a',
+            'spacefill',
+            expect.any(Object),
+            expect.any(String),
+            false
+        );
+        expect(addRepresentationB).toHaveBeenCalledWith(
+            'Aligned',
+            'ref-b',
+            'spacefill',
+            expect.any(Object),
+            expect.any(String),
+            true
+        );
+    });
+
+    it('resets clipping to per-viewer defaults from getLoadDataRowProps', () => {
+        const setMinNear = vi.fn();
+        const setClipRadius = vi.fn();
+        const updateFog = vi.fn();
+
+        const props = getLoadDataRowProps({
+            viewer: {
+                key: 'A',
+                moleculeAligned: { filename: '6xu8.cif' },
+                moleculeAlignedTo: null,
+                isMoleculeAlignedVisible: true,
+                isMoleculeAlignedToVisible: true,
+                handleFileInputButtonClick: vi.fn(),
+                fileInputRef: { current: null },
+                ref: { current: null },
+            } as any,
+            otherViewer: {
+                key: 'B',
+                moleculeAligned: { filename: '6xu8.cif' },
+                moleculeAlignedTo: null,
+                isMoleculeAlignedVisible: true,
+                isMoleculeAlignedToVisible: true,
+                handleFileInputButtonClick: vi.fn(),
+                fileInputRef: { current: null },
+                ref: { current: null },
+            } as any,
+            molstar: { addRepresentation: vi.fn(), representationRefs: {}, repIdMap: {}, pluginRef: { current: null } },
+            otherMolstar: { addRepresentation: vi.fn(), representationRefs: {}, repIdMap: {}, pluginRef: { current: null } },
+            realignedStructRefs: {},
+            otherRealignedStructRefs: {},
+            isMoleculeAlignedLoaded: true,
+            isMoleculeAlignedToLoaded: true,
+            viewerReady: true,
+            otherViewerReady: true,
+            representationType: 'spacefill',
+            setRepresentationType: vi.fn(),
+            colorsFile: { handleButtonClick: vi.fn(), inputRef: { current: null }, handleFileChange: vi.fn() },
+            isMoleculeColoursLoaded: false,
+            structureRef: 'ref-a',
+            otherStructureRef: 'ref-b',
+            selectedSubunit: 'All',
+            setSelectedSubunit: vi.fn(),
+            subunitZoomLabel: 'All',
+            onSubunitHighlight: vi.fn(),
+            subunitHighlightOn: false,
+            subunitHighlightDisabled: false,
+            onSubunitInspect: vi.fn(),
+            subunitInspectOn: false,
+            subunitInspectDisabled: false,
+            onSubunitZoom: vi.fn(),
+            subunitZoomDisabled: false,
+            subunitToChainIds: new Map(),
+            chainInfo: { chainLabels: new Map([['A', 'Chain A']]) },
+            selectedChainId: 'A',
+            setSelectedChainId: vi.fn(),
+            chainZoomLabel: 'Chain A',
+            onChainHighlight: vi.fn(),
+            chainHighlightOn: false,
+            chainHighlightDisabled: false,
+            onChainInspect: vi.fn(),
+            chainInspectOn: false,
+            chainInspectDisabled: false,
+            onChainZoom: vi.fn(),
+            chainZoomDisabled: false,
+            residueInfo: { residueLabels: new Map(), residueToAtomIds: {} },
+            selectedResidueIds: [],
+            setSelectedResidueIds: vi.fn(),
+            residueZoomLabel: '',
+            onResidueHighlight: vi.fn(),
+            residueHighlightOn: false,
+            residueHighlightDisabled: true,
+            onResidueInspect: vi.fn(),
+            residueInspectOn: false,
+            residueInspectDisabled: true,
+            onResidueZoom: vi.fn(),
+            residueZoomDisabled: true,
+            fog: { enabled: false, near: 0, far: 100 },
+            setFog: { setEnabled: vi.fn(), setNear: vi.fn(), setFar: vi.fn() },
+            clipping: { minNear: 2, clipRadius: 33 },
+            clippingDefaults: { minNear: 0.6, clipRadius: 88 },
+            setClipping: { setMinNear, setClipRadius },
+            updateFog,
+            handleFileChange: vi.fn(),
+            Aligned: 'Aligned',
+            allowedRepresentationTypes: ['spacefill'] as any,
+            syncEnabled: false,
+            realignedRepRefs: {},
+            setRealignedRepRefs: vi.fn(),
+            setRealignedStructRefs: vi.fn(),
+        });
+
+        props.onResetClipping();
+
+        expect(setMinNear).toHaveBeenCalledWith(0.6);
+        expect(setClipRadius).toHaveBeenCalledWith(88);
+        expect(updateFog).toHaveBeenCalledWith(null, null, false, 0, 100, 0.6, 88);
     });
 });

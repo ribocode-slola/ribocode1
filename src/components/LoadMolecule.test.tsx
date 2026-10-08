@@ -38,14 +38,41 @@ describe('LoadDataRow', () => {
         selectedSubunit: 'All' as import('../utils/subunit').RibosomeSubunitType,
         onSelectSubunit: vi.fn(),
         subunitSelectDisabled: false,
+        subunitZoomLabel: 'All',
+        onSubunitHighlight: vi.fn(),
+        subunitHighlightOn: false,
+        subunitHighlightDisabled: false,
+        onSubunitInspect: vi.fn(),
+        subunitInspectOn: false,
+        subunitInspectDisabled: false,
+        onSubunitZoom: vi.fn(),
+        subunitZoomDisabled: false,
         chainInfo: { chainLabels: new Map([['A', 'Chain A'], ['B', 'Chain B']]) },
         selectedChainId: 'A',
         onSelectChainId: vi.fn(),
         chainSelectDisabled: false,
+        chainZoomLabel: 'Chain A',
+        onChainHighlight: vi.fn(),
+        chainHighlightOn: false,
+        chainHighlightDisabled: false,
+        onChainInspect: vi.fn(),
+        chainInspectOn: false,
+        chainInspectDisabled: false,
+        onChainZoom: vi.fn(),
+        chainZoomDisabled: false,
         residueInfo: { residueLabels: new Map([['1', { id: '1', name: 'Residue 1', compId: 'ALA', seqNumber: 1, insCode: '' }]]), residueToAtomIds: { '1': ['a1'] } },
-        selectedResidueId: '1',
-        onSelectResidueId: vi.fn(),
+        selectedResidueIds: ['1'],
+        onSelectResidueIds: vi.fn(),
         residueSelectDisabled: false,
+        residueZoomLabel: 'Residue 1',
+        onResidueHighlight: vi.fn(),
+        residueHighlightOn: false,
+        residueHighlightDisabled: false,
+        onResidueInspect: vi.fn(),
+        residueInspectOn: false,
+        residueInspectDisabled: false,
+        onResidueZoom: vi.fn(),
+        residueZoomDisabled: false,
         onAddRepresentationClick: vi.fn(),
         addRepresentationDisabled: false,
         fogEnabled: false,
@@ -54,10 +81,10 @@ describe('LoadDataRow', () => {
         onFogEnabledChange: vi.fn(),
         onFogNearChange: vi.fn(),
         onFogFarChange: vi.fn(),
-        cameraNear: 0.1,
-        cameraFar: 1000,
-        onCameraNearChange: vi.fn(),
-        onCameraFarChange: vi.fn(),
+        clippingMinNear: 0.1,
+        clippingRadius: 100,
+        onClippingMinNearChange: vi.fn(),
+        onClippingRadiusChange: vi.fn(),
         idPrefix: 'test-viewer-a',
     };
 
@@ -94,6 +121,76 @@ describe('LoadDataRow', () => {
         expect(baseProps.onAddRepresentationClick).toHaveBeenCalled();
     });
 
+    it('renders select and zoom controls in selector-then-zoom order', () => {
+        const { container } = render(<LoadDataRow {...baseProps} isLoaded={true} />);
+        const controls = container.querySelector('.load-data-controls');
+        expect(controls).toBeInTheDocument();
+
+        const rowText = Array.from(controls!.children).map(el => (el.textContent || '').trim());
+        const findRowIndex = (needle: string) => rowText.findIndex(text => text.includes(needle));
+
+        const zoomParamsIndex = findRowIndex('Zoom extraRadius:');
+        const subunitSelectIndex = findRowIndex('Select Subunit');
+        const subunitZoomIndex = findRowIndex('Zoom to Subunit:');
+        const chainSelectIndex = findRowIndex('Select Chain');
+        const chainZoomIndex = findRowIndex('Zoom to Chain:');
+        const residueSelectIndex = findRowIndex('Select Residues');
+        const residueZoomIndex = findRowIndex('Zoom to Residue:');
+        const loadColoursIndex = findRowIndex('Load Colours');
+        const representationIndex = findRowIndex('Representation:');
+
+        expect(representationIndex).toBeGreaterThanOrEqual(0);
+        expect(loadColoursIndex).toBeGreaterThan(representationIndex);
+        expect(zoomParamsIndex).toBeGreaterThan(representationIndex);
+        expect(subunitSelectIndex).toBeGreaterThan(zoomParamsIndex);
+        expect(subunitSelectIndex).toBeGreaterThanOrEqual(0);
+        expect(subunitZoomIndex).toBeGreaterThan(subunitSelectIndex);
+        expect(chainSelectIndex).toBeGreaterThan(subunitZoomIndex);
+        expect(chainZoomIndex).toBeGreaterThan(chainSelectIndex);
+        expect(residueSelectIndex).toBeGreaterThan(chainZoomIndex);
+        expect(residueZoomIndex).toBeGreaterThan(residueSelectIndex);
+    });
+
+    it('hides select and zoom controls when showSelectZoomControls is false', () => {
+        const { queryByText } = render(
+            <LoadDataRow
+                {...baseProps}
+                isLoaded={true}
+                showSelectZoomControls={false}
+            />
+        );
+        expect(queryByText('Select Subunit')).not.toBeInTheDocument();
+        expect(queryByText('Zoom to Subunit: All')).not.toBeInTheDocument();
+        expect(queryByText('Select Chain')).not.toBeInTheDocument();
+        expect(queryByText('Zoom to Chain: Chain A')).not.toBeInTheDocument();
+        expect(queryByText('Select Residues')).not.toBeInTheDocument();
+        expect(queryByText('Zoom to Residue: Residue 1')).not.toBeInTheDocument();
+        expect(queryByText('Load Colours')).toBeInTheDocument();
+        expect(queryByText(/Representation:/)).toBeInTheDocument();
+    });
+
+    it('calls subunit/chain/residue basic highlight, inspect, and zoom handlers when buttons are clicked', () => {
+        render(<LoadDataRow {...baseProps} isLoaded={true} />);
+        fireEvent.click(screen.getByText('Highlight Subunit (Basic): Off'));
+        fireEvent.click(screen.getByText('Inspect Subunit: Off'));
+        fireEvent.click(screen.getByText('Zoom to Subunit: All'));
+        fireEvent.click(screen.getByText('Highlight Chain: Off'));
+        fireEvent.click(screen.getByText('Inspect Chain: Off'));
+        fireEvent.click(screen.getByText('Zoom to Chain: Chain A'));
+        fireEvent.click(screen.getByText('Highlight Residues: Off'));
+        fireEvent.click(screen.getByText('Inspect Residues: Off'));
+        fireEvent.click(screen.getByText('Zoom to Residue: Residue 1'));
+        expect(baseProps.onSubunitHighlight).toHaveBeenCalled();
+        expect(baseProps.onSubunitInspect).toHaveBeenCalled();
+        expect(baseProps.onSubunitZoom).toHaveBeenCalled();
+        expect(baseProps.onChainHighlight).toHaveBeenCalled();
+        expect(baseProps.onChainInspect).toHaveBeenCalled();
+        expect(baseProps.onChainZoom).toHaveBeenCalled();
+        expect(baseProps.onResidueHighlight).toHaveBeenCalled();
+        expect(baseProps.onResidueInspect).toHaveBeenCalled();
+        expect(baseProps.onResidueZoom).toHaveBeenCalled();
+    });
+
     it('renders long loaded filenames in the wrapping label element', () => {
         const veryLongFilename = 'very_long_dataset_name_that_should_wrap_across_multiple_lines_in_the_column_layout_for_stability_and_readability_1234567890.cif';
         const { container } = render(
@@ -107,5 +204,21 @@ describe('LoadDataRow', () => {
         expect(label).toBeInTheDocument();
         expect(label).toHaveTextContent(veryLongFilename);
         expect(label).toHaveClass('loaded-filename');
+    });
+
+    it('renders inspect toggles as On when corresponding props are true', () => {
+        render(
+            <LoadDataRow
+                {...baseProps}
+                isLoaded={true}
+                chainInspectOn={true}
+                residueInspectOn={true}
+                subunitInspectOn={true}
+            />
+        );
+
+        expect(screen.getByText('Inspect Subunit: On')).toBeInTheDocument();
+        expect(screen.getByText('Inspect Chain: On')).toBeInTheDocument();
+        expect(screen.getByText('Inspect Residues: On')).toBeInTheDocument();
     });
 });

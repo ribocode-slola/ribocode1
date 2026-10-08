@@ -49,6 +49,19 @@ vi.mock('./utils/structure', () => ({
     const byRef = (globalThis as any).__mockStructureRepsByRef || {};
     return byRef[structureRef] || [];
   }),
+  focusLociOnChain: vi.fn(),
+  focusLociOnResidue: vi.fn(),
+  focusLociOnResidues: vi.fn(),
+  focusLociOnSubunit: vi.fn(),
+  highlightLociOnChain: vi.fn(),
+  highlightLociOnResidues: vi.fn(),
+  highlightLociOnSubunit: vi.fn(),
+  unhighlightLociOnChain: vi.fn(),
+  unhighlightLociOnResidues: vi.fn(),
+  unhighlightLociOnSubunit: vi.fn(),
+  inspectLociOnChain: vi.fn(),
+  inspectLociOnResidues: vi.fn(),
+  inspectLociOnSubunit: vi.fn(),
 }));
 
 vi.mock('./utils/data', () => ({
@@ -155,7 +168,7 @@ vi.mock('./hooks/useUpdateChainInfo', () => ({
   useUpdateChainInfo: vi.fn((pluginRef: any, structureRef: string | null, _molstar: any, setChainInfo: any, setSubunitToChainIds: any) => {
     const { useEffect } = require('react');
     useEffect(() => {
-      if (!pluginRef?.current || !structureRef) return;
+      if (!pluginRef?.current) return;
       setChainInfo({ chainLabels: new Map([['A', 'Chain A'], ['B', 'Chain B']]) });
       setSubunitToChainIds(new Map([
         ['All', new Set(['A', 'B'])],
@@ -164,6 +177,22 @@ vi.mock('./hooks/useUpdateChainInfo', () => ({
         ['Other', new Set()],
       ]));
     }, [pluginRef?.current, structureRef]);
+  }),
+}));
+
+vi.mock('./hooks/useUpdateResidueInfo', () => ({
+  useUpdateResidueInfo: vi.fn((pluginRef: any, structureRef: string | null, _molstar: any, selectedChainId: string, setResidueInfo: any) => {
+    const { useEffect } = require('react');
+    useEffect(() => {
+      if (!pluginRef?.current || !selectedChainId) return;
+      setResidueInfo({
+        residueLabels: new Map([
+          ['10', { id: '10', name: 'GLY 10', compId: 'GLY', seqNumber: 10, insCode: '' }],
+          ['20', { id: '20', name: 'ALA 20', compId: 'ALA', seqNumber: 20, insCode: '' }],
+        ]),
+        residueToAtomIds: { '10': ['1'], '20': ['2'] },
+      });
+    }, [pluginRef?.current, structureRef, selectedChainId]);
   }),
 }));
 
@@ -268,6 +297,13 @@ vi.mock('./components/MolstarContainer', () => {
     state: { data: buildStateData() },
     runTask: vi.fn().mockResolvedValue(undefined),
     canvas3d: {
+      props: {
+        camera: {},
+        cameraClipping: { minNear: 0.5, radius: 77, far: true },
+      },
+      setProps: vi.fn(function (nextProps: any) {
+        this.props = { ...this.props, ...nextProps };
+      }),
       requestDraw: vi.fn(),
       camera: createMockCamera(),
     },
@@ -378,7 +414,7 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     }, { timeout: 5000 });
   });
 
-  it('enables Select Sync after Aligned data are loaded', async () => {
+  it('enables Sync after Aligned data are loaded', async () => {
     render(<App />);
 
     const syncSelect = document.getElementById('generalcontrols-sync-select') as HTMLSelectElement | null;
@@ -404,6 +440,36 @@ describe('App integration: AlignedTo and Aligned loading', () => {
 
     await waitFor(() => {
       expect(document.getElementById('generalcontrols-sync-select')).not.toBeDisabled();
+    }, { timeout: 5000 });
+  });
+
+  it('keeps viewer zoom unchanged when adding a representation', async () => {
+    render(<App />);
+
+    const alignedToInput = document.getElementById('viewer-column-A-alignedto-file-input') as HTMLInputElement | null;
+    expect(alignedToInput).toBeInTheDocument();
+
+    fireEvent.change(alignedToInput!, { target: { files: [loadTestFile('4ug0.cif')] } });
+
+    await waitFor(() => {
+      expect(document.getElementById('viewer-column-A-alignedto-add-representation-btn')).not.toBeDisabled();
+    }, { timeout: 5000 });
+
+    const pluginA = (globalThis as any).__mockPluginA;
+    pluginA.canvas3d.camera.setState({
+      position: [10, 11, 12],
+      target: [1, 2, 3],
+      up: [0, 1, 0],
+      radius: 47,
+    });
+
+    const radiusBefore = pluginA.canvas3d.camera.state.radius;
+    fireEvent.click(document.getElementById('viewer-column-A-alignedto-add-representation-btn') as HTMLButtonElement);
+
+    await waitFor(() => {
+      expect(pluginA.canvas3d.camera.state.radius).toBe(radiusBefore);
+      expect(pluginA.canvas3d.camera.state.position).toEqual([10, 11, 12]);
+      expect(pluginA.canvas3d.camera.state.target).toEqual([1, 2, 3]);
     }, { timeout: 5000 });
   });
 
@@ -572,9 +638,13 @@ describe('App integration: AlignedTo and Aligned loading', () => {
   it('renders chain zoom controls disabled before chain selection', async () => {
     render(<App />);
 
+    const toggle = document.getElementById('viewer-column-A-select-zoom-controls-toggle-btn') as HTMLButtonElement | null;
+    expect(toggle).toBeInTheDocument();
+    fireEvent.click(toggle!);
+
     await waitFor(() => {
       const zoomChainButtons = Array.from(
-        document.querySelectorAll('#viewer-column-A button#viewer-column-A-zoom-chain-btn')
+        document.querySelectorAll('#viewer-column-A button#viewer-column-A-alignedto-zoom-chain-btn')
       ) as HTMLButtonElement[];
       expect(zoomChainButtons.length).toBeGreaterThan(0);
       expect(zoomChainButtons.every(button => button.disabled)).toBe(true);
@@ -663,14 +733,23 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     fireEvent.change(alignedInput!, { target: { files: [loadTestFile('6xu8.cif')] } });
     fireEvent.click(alignedLoadBtn!);
 
+    fireEvent.click(document.getElementById('viewer-column-A-select-zoom-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-B-select-zoom-controls-toggle-btn') as HTMLButtonElement);
+
     await waitFor(() => {
       expect(document.getElementById('viewer-column-A-alignedto-subunit-select')).toBeInTheDocument();
       expect(document.getElementById('viewer-column-B-aligned-subunit-select')).toBeInTheDocument();
       expect(document.getElementById('generalcontrols-sync-select')).toBeInTheDocument();
     }, { timeout: 5000 });
 
-    fireEvent.change(document.getElementById('generalcontrols-zoom-extra-radius') as HTMLInputElement, { target: { value: '24' } });
-    fireEvent.change(document.getElementById('generalcontrols-zoom-min-radius') as HTMLInputElement, { target: { value: '12' } });
+    fireEvent.change(document.getElementById('viewer-column-A-alignedto-zoom-extra-radius') as HTMLInputElement, { target: { value: '24' } });
+    fireEvent.change(document.getElementById('viewer-column-A-alignedto-zoom-min-radius') as HTMLInputElement, { target: { value: '12' } });
+    fireEvent.change(document.getElementById('viewer-column-B-aligned-zoom-extra-radius') as HTMLInputElement, { target: { value: '32' } });
+    fireEvent.change(document.getElementById('viewer-column-B-aligned-zoom-min-radius') as HTMLInputElement, { target: { value: '15' } });
+    fireEvent.change(document.getElementById('viewer-column-A-alignedto-clip-near-number') as HTMLInputElement, { target: { value: '0.8' } });
+    fireEvent.change(document.getElementById('viewer-column-A-alignedto-clip-far-number') as HTMLInputElement, { target: { value: '66' } });
+    fireEvent.change(document.getElementById('viewer-column-B-aligned-clip-near-number') as HTMLInputElement, { target: { value: '0.9' } });
+    fireEvent.change(document.getElementById('viewer-column-B-aligned-clip-far-number') as HTMLInputElement, { target: { value: '67' } });
     fireEvent.change(document.getElementById('generalcontrols-sync-select') as HTMLSelectElement, { target: { value: 'On' } });
     fireEvent.click(document.getElementById('generalcontrols-show-uniprot-accession') as HTMLInputElement);
     fireEvent.change(document.getElementById('viewer-column-A-alignedto-subunit-select') as HTMLSelectElement, { target: { value: 'Large' } });
@@ -681,6 +760,14 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     const session = getSessionState!();
 
     expect(session.uiState.zoom).toEqual({ extraRadius: 24, minRadius: 12 });
+    expect(session.uiState.zoomByViewer).toEqual({
+      viewerA: { extraRadius: 24, minRadius: 12 },
+      viewerB: { extraRadius: 32, minRadius: 15 },
+    });
+    expect(session.uiState.clippingByViewer).toEqual({
+      viewerA: { minNear: 0.8, clipRadius: 66 },
+      viewerB: { minNear: 0.9, clipRadius: 67 },
+    });
     expect(session.uiState.syncEnabled).toBe(true);
     expect(session.uiState.showUniprotAccessionInChainLabels).toBe(false);
     expect(session.uiState.selections.alignedTo).toEqual(expect.objectContaining({
@@ -705,7 +792,14 @@ describe('App integration: AlignedTo and Aligned loading', () => {
       viewerA: { moleculeAlignedTo: { filename: '4ug0.cif' } },
       viewerB: { moleculeAligned: { filename: '6xu8.cif' } },
       uiState: {
-        zoom: { extraRadius: 31, minRadius: 14 },
+        zoomByViewer: {
+          viewerA: { extraRadius: 31, minRadius: 14 },
+          viewerB: { extraRadius: 41, minRadius: 17 },
+        },
+        clippingByViewer: {
+          viewerA: { minNear: 0.75, clipRadius: 60 },
+          viewerB: { minNear: 0.85, clipRadius: 70 },
+        },
         syncEnabled: true,
         showUniprotAccessionInChainLabels: false,
         chainFinderQueries: {
@@ -734,9 +828,18 @@ describe('App integration: AlignedTo and Aligned loading', () => {
 
     await onSessionLoaded!(session, files);
 
+    fireEvent.click(document.getElementById('viewer-column-A-select-zoom-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-B-select-zoom-controls-toggle-btn') as HTMLButtonElement);
+
     await waitFor(() => {
-      expect((document.getElementById('generalcontrols-zoom-extra-radius') as HTMLInputElement).value).toBe('31');
-      expect((document.getElementById('generalcontrols-zoom-min-radius') as HTMLInputElement).value).toBe('14');
+      expect((document.getElementById('viewer-column-A-alignedto-zoom-extra-radius') as HTMLInputElement).value).toBe('31');
+      expect((document.getElementById('viewer-column-A-alignedto-zoom-min-radius') as HTMLInputElement).value).toBe('14');
+      expect((document.getElementById('viewer-column-B-aligned-zoom-extra-radius') as HTMLInputElement).value).toBe('41');
+      expect((document.getElementById('viewer-column-B-aligned-zoom-min-radius') as HTMLInputElement).value).toBe('17');
+      expect((document.getElementById('viewer-column-A-alignedto-clip-near-number') as HTMLInputElement).value).toBe('0.75');
+      expect((document.getElementById('viewer-column-A-alignedto-clip-far-number') as HTMLInputElement).value).toBe('60');
+      expect((document.getElementById('viewer-column-B-aligned-clip-near-number') as HTMLInputElement).value).toBe('0.85');
+      expect((document.getElementById('viewer-column-B-aligned-clip-far-number') as HTMLInputElement).value).toBe('70');
       expect((document.getElementById('generalcontrols-sync-select') as HTMLSelectElement).value).toBe('On');
       expect((document.getElementById('generalcontrols-show-uniprot-accession') as HTMLInputElement).checked).toBe(false);
     }, { timeout: 5000 });
@@ -774,6 +877,204 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     expect(pluginB.canvas3d.camera.state.up).toEqual([0, 1, 0]);
     expect(pluginB.canvas3d.camera.state.radius).toBe(84);
   });
+
+  it('round-trips multiple selected residues in session uiState', async () => {
+    render(<App />);
+    await waitFor(() => expect(screen.getByRole('banner')).toBeInTheDocument());
+
+    const onSessionLoaded = (globalThis as any).__onSessionLoaded as ((session: any, files: Record<string, File>) => Promise<void>) | undefined;
+    expect(onSessionLoaded).toBeDefined();
+
+    const session = {
+      viewerA: { moleculeAlignedTo: { filename: '4ug0.cif' } },
+      viewerB: { moleculeAligned: { filename: '6xu8.cif' } },
+      uiState: {
+        selections: {
+          alignedTo: { subunit: 'Large', chainId: 'A', residueIds: ['10', '20'], residueId: '10' },
+          aligned: { subunit: 'Small', chainId: 'B', residueIds: ['20'], residueId: '20' },
+        },
+      },
+    };
+    const files = {
+      '4ug0.cif': loadTestFile('4ug0.cif'),
+      '6xu8.cif': loadTestFile('6xu8.cif'),
+    };
+
+    await onSessionLoaded!(session, files);
+
+    const getSessionState = (globalThis as any).__getSessionState as (() => any) | undefined;
+    expect(getSessionState).toBeDefined();
+
+    await waitFor(() => {
+      const restored = getSessionState!();
+      expect(restored.uiState.selections.alignedTo.residueIds).toEqual(['10', '20']);
+      expect(restored.uiState.selections.alignedTo.residueId).toBe('10');
+      expect(restored.uiState.selections.aligned.residueIds).toEqual(['20']);
+      expect(restored.uiState.selections.aligned.residueId).toBe('20');
+    }, { timeout: 5000 });
+  });
+
+  it('updates Realign to Residues button disabled state from residue selections', async () => {
+    render(<App />);
+    await waitFor(() => expect(screen.getByRole('banner')).toBeInTheDocument());
+
+    const onSessionLoaded = (globalThis as any).__onSessionLoaded as ((session: any, files: Record<string, File>) => Promise<void>) | undefined;
+    expect(onSessionLoaded).toBeDefined();
+
+    const files = {
+      '4ug0.cif': loadTestFile('4ug0.cif'),
+      '6xu8.cif': loadTestFile('6xu8.cif'),
+    };
+
+    const onlyOneSideSelected = {
+      viewerA: { moleculeAlignedTo: { filename: '4ug0.cif' } },
+      viewerB: { moleculeAligned: { filename: '6xu8.cif' } },
+      uiState: {
+        selections: {
+          alignedTo: { subunit: 'Large', chainId: 'A', residueIds: ['10'], residueId: '10' },
+          aligned: { subunit: 'Small', chainId: 'B', residueIds: [], residueId: '' },
+        },
+      },
+    };
+
+    await onSessionLoaded!(onlyOneSideSelected, files);
+
+    await waitFor(() => {
+      const residueRealignButton = document.getElementById('generalcontrols-realign-residue-btn') as HTMLButtonElement | null;
+      expect(residueRealignButton).toBeInTheDocument();
+      expect(residueRealignButton).toBeDisabled();
+      expect(residueRealignButton?.textContent).toContain('Realign to Residues');
+    }, { timeout: 5000 });
+
+    const bothSidesSelected = {
+      viewerA: { moleculeAlignedTo: { filename: '4ug0.cif' } },
+      viewerB: { moleculeAligned: { filename: '6xu8.cif' } },
+      uiState: {
+        selections: {
+          alignedTo: { subunit: 'Large', chainId: 'A', residueIds: ['10', '20'], residueId: '10' },
+          aligned: { subunit: 'Small', chainId: 'B', residueIds: ['20'], residueId: '20' },
+        },
+      },
+    };
+
+    await onSessionLoaded!(bothSidesSelected, files);
+
+    await waitFor(() => {
+      const residueRealignButton = document.getElementById('generalcontrols-realign-residue-btn') as HTMLButtonElement | null;
+      expect(residueRealignButton).toBeInTheDocument();
+      expect(residueRealignButton).not.toBeDisabled();
+      expect(residueRealignButton?.textContent).toContain('Realign to Residues: 2 to 1');
+    }, { timeout: 5000 });
+  });
+
+  it('keeps chain realign available after first chain realignment', async () => {
+    render(<App />);
+    await waitFor(() => expect(screen.getByRole('banner')).toBeInTheDocument());
+
+    const alignedToInput = document.getElementById('viewer-column-A-alignedto-file-input') as HTMLInputElement;
+    const alignedInput = document.getElementById('viewer-column-B-aligned-file-input') as HTMLInputElement;
+    const alignedLoadBtn = document.getElementById('viewer-column-B-aligned-load-btn') as HTMLButtonElement;
+
+    fireEvent.change(alignedToInput, { target: { files: [loadTestFile('4ug0.cif')] } });
+    await waitFor(() => {
+      expect(document.getElementById('viewer-column-B-aligned-load-btn')).not.toBeDisabled();
+    }, { timeout: 5000 });
+    fireEvent.change(alignedInput, { target: { files: [loadTestFile('6xu8.cif')] } });
+    fireEvent.click(alignedLoadBtn);
+
+    fireEvent.click(document.getElementById('viewer-column-A-select-zoom-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-B-select-zoom-controls-toggle-btn') as HTMLButtonElement);
+
+    const chainSelectAlignedTo = document.getElementById('viewer-column-A-alignedto-chain-select') as HTMLSelectElement;
+    const chainSelectAligned = document.getElementById('viewer-column-B-aligned-chain-select') as HTMLSelectElement;
+
+    await waitFor(() => {
+      expect(chainSelectAlignedTo.options.length).toBeGreaterThan(1);
+      expect(chainSelectAligned.options.length).toBeGreaterThan(1);
+    }, { timeout: 5000 });
+
+    fireEvent.change(chainSelectAlignedTo, { target: { value: 'A' } });
+    fireEvent.change(chainSelectAligned, { target: { value: 'B' } });
+
+    const realignButton = document.getElementById('generalcontrols-realign-btn') as HTMLButtonElement;
+    await waitFor(() => {
+      expect(realignButton).not.toBeDisabled();
+    }, { timeout: 5000 });
+
+    fireEvent.click(realignButton);
+
+    await waitFor(() => {
+      expect(realignButton).not.toBeDisabled();
+    }, { timeout: 5000 });
+  });
+
+  it('keeps repeated chain realign stable and idempotent when in-place transforms are used', async () => {
+    render(<App />);
+    await waitFor(() => expect(screen.getByRole('banner')).toBeInTheDocument());
+
+    const alignedToInput = document.getElementById('viewer-column-A-alignedto-file-input') as HTMLInputElement;
+    const alignedInput = document.getElementById('viewer-column-B-aligned-file-input') as HTMLInputElement;
+    const alignedLoadBtn = document.getElementById('viewer-column-B-aligned-load-btn') as HTMLButtonElement;
+
+    fireEvent.change(alignedToInput, { target: { files: [loadTestFile('4ug0.cif')] } });
+    await waitFor(() => {
+      expect(document.getElementById('viewer-column-B-aligned-load-btn')).not.toBeDisabled();
+    }, { timeout: 5000 });
+    fireEvent.change(alignedInput, { target: { files: [loadTestFile('6xu8.cif')] } });
+    fireEvent.click(alignedLoadBtn);
+
+    fireEvent.click(document.getElementById('viewer-column-A-select-zoom-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-B-select-zoom-controls-toggle-btn') as HTMLButtonElement);
+
+    const chainSelectAlignedTo = document.getElementById('viewer-column-A-alignedto-chain-select') as HTMLSelectElement;
+    const chainSelectAligned = document.getElementById('viewer-column-B-aligned-chain-select') as HTMLSelectElement;
+    await waitFor(() => {
+      expect(chainSelectAlignedTo.options.length).toBeGreaterThan(1);
+      expect(chainSelectAligned.options.length).toBeGreaterThan(1);
+    }, { timeout: 5000 });
+
+    fireEvent.change(chainSelectAlignedTo, { target: { value: 'A' } });
+    fireEvent.change(chainSelectAligned, { target: { value: 'B' } });
+
+    const pluginA = (globalThis as any).__mockPluginA;
+    const capturedMatrices: number[][] = [];
+    const originalBuild = pluginA.state.data.build;
+    pluginA.state.data.build = vi.fn(() => {
+      const builder = {
+        to: vi.fn(() => builder),
+        update: vi.fn(() => builder),
+        insert: vi.fn((_transformer: any, params: any) => {
+          const matrix = params?.transform?.params?.data;
+          if (matrix && typeof matrix.length === 'number' && matrix.length >= 16) {
+            capturedMatrices.push(Array.from({ length: 16 }, (_v, i) => Number(matrix[i])));
+          }
+          return builder;
+        }),
+      };
+      return builder;
+    });
+
+    const realignButton = document.getElementById('generalcontrols-realign-btn') as HTMLButtonElement;
+    await waitFor(() => expect(realignButton).not.toBeDisabled(), { timeout: 5000 });
+
+    fireEvent.click(realignButton);
+    await waitFor(() => expect(realignButton).not.toBeDisabled(), { timeout: 5000 });
+
+    fireEvent.click(realignButton);
+    await waitFor(() => expect(realignButton).not.toBeDisabled(), { timeout: 5000 });
+
+    pluginA.state.data.build = originalBuild;
+
+    if (capturedMatrices.length >= 2) {
+      const first = capturedMatrices[0];
+      const second = capturedMatrices[1];
+      expect(first.length).toBe(16);
+      expect(second.length).toBe(16);
+      for (let i = 0; i < 16; i++) {
+        expect(Math.abs(first[i] - second[i])).toBeLessThan(1e-10);
+      }
+    }
+  }, 15000);
 
   it('restores saved additional representations on session load (regression)', async () => {
     render(<App />);

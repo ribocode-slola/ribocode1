@@ -9,7 +9,7 @@
  * @see https://github.com/ribocode-slola/ribocode1
  */
 import React from 'react';
-import LoadDataRow from './LoadMolecule';
+import LoadDataRow, { SelectZoomControls } from './LoadMolecule';
 import MoleculeUI from './Molecule';
 import RealignedMoleculeList from './RealignedMoleculeList';
 import MolstarContainer from './MolstarContainer';
@@ -44,23 +44,55 @@ export interface LoadDataRowPropsInput {
 	otherStructureRef: any;
 	selectedSubunit: any;
 	setSelectedSubunit: (val: any) => void;
+	subunitZoomLabel: string;
+	onSubunitHighlight: () => void;
+	subunitHighlightOn?: boolean;
+	subunitHighlightDisabled: boolean;
+	onSubunitInspect: () => void;
+	subunitInspectOn?: boolean;
+	subunitInspectDisabled: boolean;
+	onSubunitZoom: () => void;
+	subunitZoomDisabled: boolean;
 	subunitToChainIds: any;
 	chainInfo: any;
 	selectedChainId: any;
 	setSelectedChainId: (val: any) => void;
+	chainZoomLabel: string;
+	onChainHighlight: () => void;
+	chainHighlightOn?: boolean;
+	chainHighlightDisabled: boolean;
+	onChainInspect: () => void;
+	chainInspectOn?: boolean;
+	chainInspectDisabled: boolean;
+	onChainZoom: () => void;
+	chainZoomDisabled: boolean;
 	residueInfo: any;
-	selectedResidueId: any;
-	setSelectedResidueId: (val: any) => void;
+	selectedResidueIds: string[];
+	setSelectedResidueIds: (val: string[]) => void;
+	residueZoomLabel: string;
+	onResidueHighlight: () => void;
+	residueHighlightOn?: boolean;
+	residueHighlightDisabled: boolean;
+	onResidueInspect: () => void;
+	residueInspectOn?: boolean;
+	residueInspectDisabled: boolean;
+	onResidueZoom: () => void;
+	residueZoomDisabled: boolean;
+	zoomExtraRadius: number;
+	setZoomExtraRadius: (val: number) => void;
+	zoomMinRadius: number;
+	setZoomMinRadius: (val: number) => void;
 	fog: { enabled: boolean; near: number; far: number };
 	setFog: {
 		setEnabled: (val: boolean) => void;
 		setNear: (val: number) => void;
 		setFar: (val: number) => void;
 	};
-	camera: { near: number; far: number };
-	setCamera: {
-		setNear: (val: number) => void;
-		setFar: (val: number) => void;
+	clipping: { minNear: number; clipRadius: number };
+	clippingDefaults?: { minNear: number; clipRadius: number };
+	setClipping: {
+		setMinNear: (val: number) => void;
+		setClipRadius: (val: number) => void;
 	};
 	updateFog: (...args: any[]) => void;
 	handleFileChange: (...args: any[]) => void;
@@ -100,17 +132,49 @@ export function getLoadDataRowProps({
 	otherStructureRef,
 	selectedSubunit,
 	setSelectedSubunit,
+	subunitZoomLabel,
+	onSubunitHighlight,
+	subunitHighlightOn,
+	subunitHighlightDisabled,
+	onSubunitInspect,
+	subunitInspectOn,
+	subunitInspectDisabled,
+	onSubunitZoom,
+	subunitZoomDisabled,
 	subunitToChainIds,
 	chainInfo,
 	selectedChainId,
 	setSelectedChainId,
+	chainZoomLabel,
+	onChainHighlight,
+	chainHighlightOn,
+	chainHighlightDisabled,
+	onChainInspect,
+	chainInspectOn,
+	chainInspectDisabled,
+	onChainZoom,
+	chainZoomDisabled,
 	residueInfo,
-	selectedResidueId,
-	setSelectedResidueId,
+	selectedResidueIds,
+	setSelectedResidueIds,
+	residueZoomLabel,
+	onResidueHighlight,
+	residueHighlightOn,
+	residueHighlightDisabled,
+	onResidueInspect,
+	residueInspectOn,
+	residueInspectDisabled,
+	onResidueZoom,
+	residueZoomDisabled,
+	zoomExtraRadius,
+	setZoomExtraRadius,
+	zoomMinRadius,
+	setZoomMinRadius,
 	fog,
 	setFog,
-	camera,
-	setCamera,
+	clipping,
+	clippingDefaults,
+	setClipping,
 	updateFog,
 	handleFileChange,
 	Aligned,
@@ -144,7 +208,7 @@ export function getLoadDataRowProps({
 		representationTypeDisabled: Aligned === 'AlignedTo' ? !isMoleculeAlignedToLoaded : !isMoleculeAlignedLoaded,
 		representationTypeSelector: (
 			<RepresentationSelectButton
-				label="Select Representation"
+				label="Add Representation"
 				options={allowedRepresentationTypes as AllowedRepresentationType[]}
 				selected={representationType}
 				onSelect={option => setRepresentationType(option as AllowedRepresentationType)}
@@ -161,13 +225,20 @@ export function getLoadDataRowProps({
 				colorTheme = { name: 'default', params: {} };
 			}
 			const repId = (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
+			const thisViewerVisible = Aligned === 'AlignedTo'
+				? viewer.isMoleculeAlignedToVisible
+				: viewer.isMoleculeAlignedVisible;
+			const otherViewerVisible = Aligned === 'AlignedTo'
+				? otherViewer.isMoleculeAlignedToVisible
+				: otherViewer.isMoleculeAlignedVisible;
 			if ((Aligned === 'AlignedTo' ? viewer.moleculeAlignedTo : viewer.moleculeAligned) && structureRef) {
 				molstar.addRepresentation(
 					Aligned,
 					structureRef,
 					representationType,
 					colorTheme,
-					repId
+					repId,
+					thisViewerVisible
 				);
 			}
 			if ((Aligned === 'AlignedTo' ? otherViewer.moleculeAlignedTo : otherViewer.moleculeAligned) && otherStructureRef) {
@@ -176,7 +247,8 @@ export function getLoadDataRowProps({
 					otherStructureRef,
 					representationType,
 					colorTheme,
-					repId
+					repId,
+					otherViewerVisible
 				);
 			}
 			Object.entries(realignedStructRefs).forEach(([id, structRef]) => {
@@ -207,39 +279,77 @@ export function getLoadDataRowProps({
 		onColorsFileChange: colorsFile.handleFileChange,
 		selectedSubunit,
 		onSelectSubunit: setSelectedSubunit,
+		subunitZoomLabel,
+		onSubunitHighlight,
+		subunitHighlightOn,
+		subunitHighlightDisabled,
+		onSubunitInspect,
+		subunitInspectOn,
+		subunitInspectDisabled,
+		onSubunitZoom,
+		subunitZoomDisabled,
 		subunitSelectDisabled: !isMoleculeAlignedToLoaded,
 		chainInfo,
 		selectedChainId,
 		onSelectChainId: setSelectedChainId,
+		chainZoomLabel,
+		onChainHighlight,
+		chainHighlightOn,
+		chainHighlightDisabled,
+		onChainInspect,
+		chainInspectOn,
+		chainInspectDisabled,
+		onChainZoom,
+		chainZoomDisabled,
 		chainSelectDisabled: !isMoleculeAlignedToLoaded,
 		residueInfo,
-		selectedResidueId,
-		onSelectResidueId: setSelectedResidueId,
+		selectedResidueIds,
+		onSelectResidueIds: setSelectedResidueIds,
+		residueZoomLabel,
+		onResidueHighlight,
+		residueHighlightOn,
+		residueHighlightDisabled,
+		onResidueInspect,
+		residueInspectOn,
+		residueInspectDisabled,
+		onResidueZoom,
+		residueZoomDisabled,
+		zoomExtraRadius,
+		onZoomExtraRadiusChange: setZoomExtraRadius,
+		zoomMinRadius,
+		onZoomMinRadiusChange: setZoomMinRadius,
 		residueSelectDisabled: !isMoleculeAlignedToLoaded,
 		fogEnabled: fog.enabled,
 		fogNear: fog.near,
 		fogFar: fog.far,
 		onFogEnabledChange: (val: boolean) => {
 			setFog.setEnabled(val);
-			updateFog(viewer.ref.current, otherViewer.ref.current, val, fog.near, fog.far, camera.near, camera.far);
+			updateFog(viewer.ref.current, null, val, fog.near, fog.far, clipping.minNear, clipping.clipRadius);
 		},
 		onFogNearChange: (val: number) => {
 			setFog.setNear(val);
-			updateFog(viewer.ref.current, otherViewer.ref.current, fog.enabled, val, fog.far, camera.near, camera.far);
+			updateFog(viewer.ref.current, null, fog.enabled, val, fog.far, clipping.minNear, clipping.clipRadius);
 		},
 		onFogFarChange: (val: number) => {
 			setFog.setFar(val);
-			updateFog(viewer.ref.current, otherViewer.ref.current, fog.enabled, fog.near, val, camera.near, camera.far);
+			updateFog(viewer.ref.current, null, fog.enabled, fog.near, val, clipping.minNear, clipping.clipRadius);
 		},
-		cameraNear: camera.near,
-		cameraFar: camera.far,
-		onCameraNearChange: (val: number) => {
-			setCamera.setNear(val);
-			updateFog(viewer.ref.current, otherViewer.ref.current, fog.enabled, fog.near, fog.far, val, camera.far);
+		clippingMinNear: clipping.minNear,
+		clippingRadius: clipping.clipRadius,
+		onClippingMinNearChange: (val: number) => {
+			setClipping.setMinNear(val);
+			updateFog(viewer.ref.current, null, fog.enabled, fog.near, fog.far, val, clipping.clipRadius);
 		},
-		onCameraFarChange: (val: number) => {
-			setCamera.setFar(val);
-			updateFog(viewer.ref.current, otherViewer.ref.current, fog.enabled, fog.near, fog.far, camera.near, val);
+		onClippingRadiusChange: (val: number) => {
+			setClipping.setClipRadius(val);
+			updateFog(viewer.ref.current, null, fog.enabled, fog.near, fog.far, clipping.minNear, val);
+		},
+		onResetClipping: () => {
+			const resetMinNear = Number(clippingDefaults?.minNear ?? clipping.minNear ?? 1);
+			const resetClipRadius = Number(clippingDefaults?.clipRadius ?? clipping.clipRadius ?? 0);
+			setClipping.setMinNear(resetMinNear);
+			setClipping.setClipRadius(resetClipRadius);
+			updateFog(viewer.ref.current, null, fog.enabled, fog.near, fog.far, resetMinNear, resetClipRadius);
 		},
 		subunitToChainIds,
 		idPrefix: viewer && viewer.key ? `viewer-${viewer.key}` : (viewer && viewer.moleculeAligned ? `viewer-${viewer.moleculeAligned.name?.replace(/\s+/g, '-').toLowerCase()}` : 'viewer-unknown'),
@@ -260,6 +370,9 @@ export function getMoleculeUIAlignedToProps({
 	chainZoomLabel,
 	onChainZoom,
 	chainZoomDisabled,
+	subunitZoomLabel,
+	onSubunitZoom,
+	subunitZoomDisabled,
 	residueZoomLabel,
 	onResidueZoom,
 	residueZoomDisabled,
@@ -279,6 +392,9 @@ export function getMoleculeUIAlignedToProps({
 	chainZoomLabel: string,
 	onChainZoom: () => void,
 	chainZoomDisabled: boolean,
+	subunitZoomLabel: string,
+	onSubunitZoom: () => void,
+	subunitZoomDisabled: boolean,
 	residueZoomLabel: string,
 	onResidueZoom: () => void,
 	residueZoomDisabled: boolean,
@@ -299,6 +415,9 @@ export function getMoleculeUIAlignedToProps({
 		chainZoomLabel,
 		onChainZoom,
 		chainZoomDisabled,
+		subunitZoomLabel,
+		onSubunitZoom,
+		subunitZoomDisabled,
 		residueZoomLabel,
 		onResidueZoom,
 		residueZoomDisabled,
@@ -357,6 +476,9 @@ export function getMoleculeUIAlignedProps({
 	chainZoomLabel,
 	onChainZoom,
 	chainZoomDisabled,
+	subunitZoomLabel,
+	onSubunitZoom,
+	subunitZoomDisabled,
 	residueZoomLabel,
 	onResidueZoom,
 	residueZoomDisabled,
@@ -380,6 +502,9 @@ export function getMoleculeUIAlignedProps({
 	chainZoomLabel: string,
 	onChainZoom: () => void,
 	chainZoomDisabled: boolean,
+	subunitZoomLabel: string,
+	onSubunitZoom: () => void,
+	subunitZoomDisabled: boolean,
 	residueZoomLabel: string,
 	onResidueZoom: () => void,
 	residueZoomDisabled: boolean,
@@ -404,6 +529,9 @@ export function getMoleculeUIAlignedProps({
 		chainZoomLabel,
 		onChainZoom,
 		chainZoomDisabled,
+		subunitZoomLabel,
+		onSubunitZoom,
+		subunitZoomDisabled,
 		residueZoomLabel,
 		onResidueZoom,
 		residueZoomDisabled,
@@ -587,6 +715,7 @@ const ViewerColumn: React.FC<ViewerColumnProps> = ({
 }) => {
 	const viewerIdPrefix = idPrefix ? `${idPrefix}-${idSuffix}-${viewerKey}` : `${idSuffix}-${viewerKey}`;
 	const [showAdvancedMolstarControls, setShowAdvancedMolstarControls] = React.useState(false);
+	const [showSelectZoomControls, setShowSelectZoomControls] = React.useState(false);
 	const chainTableProps = viewerKey === 'A'
 		? {
 			chainLabels: loadDataRowPropsAlignedTo?.chainInfo?.chainLabels as Map<string, string>,
@@ -604,6 +733,11 @@ const ViewerColumn: React.FC<ViewerColumnProps> = ({
 			query: alignedChainFinderQuery,
 			onQueryChange: onAlignedChainFinderQueryChange,
 		};
+	const activeLoadProps = viewerKey === 'A' ? loadDataRowPropsAlignedTo : loadDataRowPropsAligned;
+	const activeSelectZoomIdPrefix = viewerKey === 'A' ? `${viewerIdPrefix}-alignedto` : `${viewerIdPrefix}-aligned`;
+	const clippingNear = Number(activeLoadProps?.clippingMinNear ?? 1);
+	const clippingFar = Number(activeLoadProps?.clippingRadius ?? 0);
+
 	       return (
 		       <div className="Column" id={viewerIdPrefix}>
 		       <MolstarContainer
@@ -612,25 +746,145 @@ const ViewerColumn: React.FC<ViewerColumnProps> = ({
 			   viewerKey={viewerKey}
 			   showAdvancedControls={false}
 		       />
+		       <MoleculeUI key={moleculeUIAlignedToProps.key} {...(() => { const { key, ...rest } = moleculeUIAlignedToProps; return rest; })()} idPrefix={viewerIdPrefix} />
+		       <MoleculeUI key={moleculeUIAlignedProps.key} {...(() => { const { key, ...rest } = moleculeUIAlignedProps; return rest; })()} idPrefix={viewerIdPrefix} />
+		       <RealignedMoleculeList {...realignedMoleculeListProps} idPrefix={viewerIdPrefix} />
 					   {/* Only render the correct loader in each column as per requirements */}
 					   {viewerKey === 'A' && (
-						   <LoadDataRow {...loadDataRowPropsAlignedTo} testMode={testMode} idPrefix={`${viewerIdPrefix}-alignedto`} />
+					   <LoadDataRow {...loadDataRowPropsAlignedTo} showSelectZoomControls={false} testMode={testMode} idPrefix={`${viewerIdPrefix}-alignedto`} />
 					   )}
 					   {viewerKey === 'B' && (
-						   <LoadDataRow {...loadDataRowPropsAligned} testMode={testMode} idPrefix={`${viewerIdPrefix}-aligned`} />
+					   <LoadDataRow {...loadDataRowPropsAligned} showSelectZoomControls={false} testMode={testMode} idPrefix={`${viewerIdPrefix}-aligned`} />
 					   )}
-			       <MoleculeUI key={moleculeUIAlignedToProps.key} {...(() => { const { key, ...rest } = moleculeUIAlignedToProps; return rest; })()} idPrefix={viewerIdPrefix} />
-			       <MoleculeUI key={moleculeUIAlignedProps.key} {...(() => { const { key, ...rest } = moleculeUIAlignedProps; return rest; })()} idPrefix={viewerIdPrefix} />
-			       <RealignedMoleculeList {...realignedMoleculeListProps} idPrefix={viewerIdPrefix} />
-			       <ChainSelectionTable
-				   chainLabels={chainTableProps.chainLabels || new Map<string, string>()}
-				   selectedChainId={chainTableProps.selectedChainId}
-				   onSelectChainId={chainTableProps.onSelectChainId || (() => {})}
-				   title={chainTableProps.title}
-				   query={chainTableProps.query}
-				   onQueryChange={chainTableProps.onQueryChange}
-				   idPrefix={viewerIdPrefix}
-			       />
+		       <div className="load-data-controls" id={`${activeSelectZoomIdPrefix}-clipping-controls`}>
+				   <div className="load-data-control-row" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+					   <strong>Clipping</strong>
+					   <span
+						   style={{ fontSize: 12, opacity: 0.8 }}
+						   title="Matches Mol* clipping settings: Min Near controls minimum near plane distance, Clip Radius controls how much of the scene is shown."
+					   >
+						   Matches Mol* clipping settings
+					   </span>
+					   <label htmlFor={`${activeSelectZoomIdPrefix}-clip-near-range`}>Min Near:</label>
+					   <input
+						   id={`${activeSelectZoomIdPrefix}-clip-near-range`}
+						   type="range"
+						   min={0.1}
+						   max={100}
+						   step={0.1}
+						   value={clippingNear}
+						   onChange={(e) => activeLoadProps?.onClippingMinNearChange?.(Number(e.target.value))}
+					   />
+					   <input
+						   id={`${activeSelectZoomIdPrefix}-clip-near-number`}
+						   type="number"
+						   min={0.1}
+						   max={100}
+						   step={0.1}
+						   value={clippingNear}
+						   onChange={(e) => activeLoadProps?.onClippingMinNearChange?.(Number(e.target.value))}
+						   style={{ width: 80 }}
+					   />
+					   <label htmlFor={`${activeSelectZoomIdPrefix}-clip-far-range`}>Clip Radius:</label>
+					   <input
+						   id={`${activeSelectZoomIdPrefix}-clip-far-range`}
+						   type="range"
+						   min={0}
+						   max={99}
+						   step={1}
+						   value={clippingFar}
+						   onChange={(e) => activeLoadProps?.onClippingRadiusChange?.(Number(e.target.value))}
+					   />
+					   <input
+						   id={`${activeSelectZoomIdPrefix}-clip-far-number`}
+						   type="number"
+						   min={0}
+						   max={99}
+						   step={1}
+						   value={clippingFar}
+						   onChange={(e) => activeLoadProps?.onClippingRadiusChange?.(Number(e.target.value))}
+						   style={{ width: 90 }}
+					   />
+					   <button
+						   type="button"
+						   className="msp-btn msp-form-control"
+						   id={`${activeSelectZoomIdPrefix}-clip-reset-btn`}
+						   onClick={() => activeLoadProps?.onResetClipping?.()}
+					   >
+						   Reset Clipping
+					   </button>
+				   </div>
+		       </div>
+		       <button
+			   id={`${viewerIdPrefix}-select-zoom-controls-toggle-btn`}
+			   data-testid={`${viewerIdPrefix}-select-zoom-controls-toggle-btn`}
+			   className="molstar-file-btn molstar-advanced-controls-toggle"
+			   type="button"
+			   onClick={() => setShowSelectZoomControls((current) => !current)}
+		       >
+			   {showSelectZoomControls ? 'Hide Select and Zoom Controls' : 'Show Select and Zoom Controls'}
+		       </button>
+			       {showSelectZoomControls && (
+			   <>
+				   <div className="load-data-controls" id={`${activeSelectZoomIdPrefix}-select-zoom-controls`}>
+					   <SelectZoomControls
+						   subunitToChainIds={activeLoadProps.subunitToChainIds}
+						   selectedSubunit={activeLoadProps.selectedSubunit}
+						   onSelectSubunit={activeLoadProps.onSelectSubunit}
+						   subunitSelectDisabled={activeLoadProps.subunitSelectDisabled}
+						   subunitZoomLabel={activeLoadProps.subunitZoomLabel}
+						   onSubunitHighlight={activeLoadProps.onSubunitHighlight}
+						   subunitHighlightOn={activeLoadProps.subunitHighlightOn}
+						   subunitHighlightDisabled={activeLoadProps.subunitHighlightDisabled}
+						   onSubunitInspect={activeLoadProps.onSubunitInspect}
+						   subunitInspectOn={activeLoadProps.subunitInspectOn}
+						   subunitInspectDisabled={activeLoadProps.subunitInspectDisabled}
+						   onSubunitZoom={activeLoadProps.onSubunitZoom}
+						   subunitZoomDisabled={activeLoadProps.subunitZoomDisabled}
+						   chainInfo={activeLoadProps.chainInfo}
+						   selectedChainId={activeLoadProps.selectedChainId}
+						   onSelectChainId={activeLoadProps.onSelectChainId}
+						   chainSelectDisabled={activeLoadProps.chainSelectDisabled}
+						   chainZoomLabel={activeLoadProps.chainZoomLabel}
+						   onChainHighlight={activeLoadProps.onChainHighlight}
+						   chainHighlightOn={activeLoadProps.chainHighlightOn}
+						   chainHighlightDisabled={activeLoadProps.chainHighlightDisabled}
+						   onChainInspect={activeLoadProps.onChainInspect}
+						   chainInspectOn={activeLoadProps.chainInspectOn}
+						   chainInspectDisabled={activeLoadProps.chainInspectDisabled}
+						   onChainZoom={activeLoadProps.onChainZoom}
+						   chainZoomDisabled={activeLoadProps.chainZoomDisabled}
+						   residueInfo={activeLoadProps.residueInfo}
+						   selectedResidueIds={activeLoadProps.selectedResidueIds}
+						   onSelectResidueIds={activeLoadProps.onSelectResidueIds}
+						   residueSelectDisabled={activeLoadProps.residueSelectDisabled}
+						   residueZoomLabel={activeLoadProps.residueZoomLabel}
+						   onResidueHighlight={activeLoadProps.onResidueHighlight}
+						   residueHighlightOn={activeLoadProps.residueHighlightOn}
+						   residueHighlightDisabled={activeLoadProps.residueHighlightDisabled}
+						   onResidueInspect={activeLoadProps.onResidueInspect}
+						   residueInspectOn={activeLoadProps.residueInspectOn}
+						   residueInspectDisabled={activeLoadProps.residueInspectDisabled}
+						   onResidueZoom={activeLoadProps.onResidueZoom}
+						   residueZoomDisabled={activeLoadProps.residueZoomDisabled}
+						   zoomExtraRadius={activeLoadProps.zoomExtraRadius}
+						   onZoomExtraRadiusChange={activeLoadProps.onZoomExtraRadiusChange}
+						   zoomMinRadius={activeLoadProps.zoomMinRadius}
+						   onZoomMinRadiusChange={activeLoadProps.onZoomMinRadiusChange}
+						   idPrefix={activeSelectZoomIdPrefix}
+					   />
+				   </div>
+				   <ChainSelectionTable
+					   chainLabels={chainTableProps.chainLabels || new Map<string, string>()}
+					   selectedChainId={chainTableProps.selectedChainId}
+					   onSelectChainId={chainTableProps.onSelectChainId || (() => {})}
+					   title={chainTableProps.title}
+					   query={chainTableProps.query}
+					   onQueryChange={chainTableProps.onQueryChange}
+					   idPrefix={viewerIdPrefix}
+				   />
+			   </>
+			       )}
 			       <button
 				   id={`${viewerIdPrefix}-advanced-molstar-controls-toggle-btn`}
 				   data-testid={`${viewerIdPrefix}-advanced-molstar-controls-toggle-btn`}
