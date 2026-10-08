@@ -1,3 +1,7 @@
+## [v0.12.2] - 2026-10-08
+Release summary: this patch release aligns chain re-alignment camera behavior across viewers for a consistent side-by-side viewpoint.
+- Updated chain re-alignment camera behavior so after `Re-align` to chains, the `Aligned` viewer camera matches the `AlignedTo` viewer viewpoint (zoom, pan target, and orientation).
+
 ## [v0.12.1] - 2026-09-04
 Release summary: this patch release stabilizes repeated chain re-alignment, clarifies highlight vs inspect behavior, and reduces default diagnostic console noise.
 - Split `Highlight` and `Inspect` behavior for subunit/chain/residue controls so simple highlighting no longer triggers focus/details inspect side effects.

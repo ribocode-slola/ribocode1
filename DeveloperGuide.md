@@ -168,6 +168,8 @@ Chain-based re-alignment now uses a staged approach in `src/App.tsx`.
   - Applied in-place chain pairs are tracked and deduplicated so the same `(from, to)` pair is not transformed repeatedly.
 - Fallback path (reload-based):
   - If in-place transform cannot be applied, the app falls back to the existing `ReAligned` loading flow using alignment data.
+- Post-realign camera behavior:
+  - After chain re-alignment is applied, the `Aligned` viewer camera is matched to the `AlignedTo` viewer camera (zoom, pan target, and orientation) to keep both viewers in the same viewpoint.
 - Alignment-data transform behavior:
   - Mol* trajectory alignment application now uses full `rotation + translation` when `rotMat`, `centroid`, and `centroidReference` are available.
   - Equal-count fit mapping is normalized so `centroid` is the moving-set centroid and `centroidReference` is the reference-set centroid, matching the transform convention `R * (p - centroid) + centroidReference`.

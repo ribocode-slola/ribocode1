@@ -11,7 +11,7 @@
  */
 import { vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import App, { readClippingFromViewer } from './App';
+import App, { copyCameraZoomRadiusBetweenViewers, readClippingFromViewer } from './App';
 
 const makeZoomHandlerMock = vi.fn(() => ({ handleButtonClick: vi.fn() }));
 
@@ -93,6 +93,55 @@ describe('App clipping defaults', () => {
   it('falls back to app defaults when Mol* clipping props are missing', () => {
     const clipping = readClippingFromViewer({ canvas3d: { props: {} } });
     expect(clipping).toEqual({ minNear: 1, clipRadius: 0 });
+  });
+});
+
+describe('App chain realign zoom helper', () => {
+  it('copies source viewer camera snapshot (pan, orientation, zoom) to target viewer', () => {
+    const sourceCamera = {
+      getSnapshot: vi.fn(() => ({
+        position: [10, 20, 30],
+        target: [4, 5, 6],
+        up: [0, 0, 1],
+        radius: 37,
+      })),
+    };
+    const targetCamera = {
+      state: {
+        mode: 'perspective',
+        position: [1, 2, 3],
+        target: [7, 8, 9],
+        up: [0, 1, 0],
+        radius: 11,
+      },
+      setState: vi.fn(),
+    };
+    const requestDraw = vi.fn();
+
+    const sourceRef = {
+      current: {
+        canvas3d: { camera: sourceCamera }
+      }
+    } as any;
+    const targetRef = {
+      current: {
+        canvas3d: {
+          camera: targetCamera,
+          requestDraw,
+        }
+      }
+    } as any;
+
+    copyCameraZoomRadiusBetweenViewers(sourceRef, targetRef);
+
+    expect(targetCamera.setState).toHaveBeenCalledWith(expect.objectContaining({
+      mode: 'perspective',
+      position: [10, 20, 30],
+      target: [4, 5, 6],
+      up: [0, 0, 1],
+      radius: 37,
+    }));
+    expect(requestDraw).toHaveBeenCalled();
   });
 });
 
