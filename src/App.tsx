@@ -53,7 +53,7 @@ import { Color } from 'molstar/lib/mol-util/color';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 import { AlignmentData } from 'molstar/lib/extensions/ribocode/types';
 import { StateTransforms } from 'molstar/lib/mol-plugin-state/transforms';
-import { Mat4 } from 'molstar/lib/mol-math/linear-algebra';
+import { Mat4, Vec3 } from 'molstar/lib/mol-math/linear-algebra';
 import { StructureElement, StructureProperties } from 'molstar/lib/mol-model/structure';
 import type { LoadedMolecule, ViewerKey, MoleculeMode } from './types/ribocode';
 import { A, B } from './constants/ribocode';
@@ -562,18 +562,18 @@ export function copyCameraZoomRadiusBetweenViewers(
     const targetCamera = targetViewerRef.current?.canvas3d?.camera;
     if (!sourceSnapshot || !targetCamera || typeof targetCamera.setState !== 'function') return;
 
-    const toTuple3 = (value: any): [number, number, number] | null => {
+    const toVec3 = (value: any): Vec3 | null => {
         if (!value || value.length < 3) return null;
         const x = Number(value[0]);
         const y = Number(value[1]);
         const z = Number(value[2]);
         if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) return null;
-        return [x, y, z];
+        return Vec3.create(x, y, z);
     };
 
-    const position = toTuple3(sourceSnapshot.position);
-    const target = toTuple3(sourceSnapshot.target);
-    const up = toTuple3(sourceSnapshot.up);
+    const position = toVec3(sourceSnapshot.position);
+    const target = toVec3(sourceSnapshot.target);
+    const up = toVec3(sourceSnapshot.up);
     const radius = Number(sourceSnapshot.radius);
     if (!position || !target || !up || !Number.isFinite(radius)) return;
 

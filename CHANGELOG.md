@@ -1,6 +1,9 @@
 ## [v0.12.2] - 2026-10-08
 Release summary: this patch release aligns chain re-alignment camera behavior across viewers for a consistent side-by-side viewpoint.
 - Updated chain re-alignment camera behavior so after `Re-align` to chains, the `Aligned` viewer camera matches the `AlignedTo` viewer viewpoint (zoom, pan target, and orientation).
+- Fixed camera snapshot type compatibility in `App.tsx` by using Mol* `Vec3` values when applying copied camera state (`position`, `target`, `up`).
+- Updated tests to match diagnostics-gated logging behavior in `src/utils/data.ts` (removed stale always-log assertion in `data.test.ts`).
+- Tightened `App.test.tsx` mock typing for `makeZoomHandler` to avoid TypeScript spread/tuple inference errors.
 
 ## [v0.12.1] - 2026-09-04
 Release summary: this patch release stabilizes repeated chain re-alignment, clarifies highlight vs inspect behavior, and reduces default diagnostic console noise.

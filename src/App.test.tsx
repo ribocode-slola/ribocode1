@@ -13,7 +13,7 @@ import { vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import App, { copyCameraZoomRadiusBetweenViewers, readClippingFromViewer } from './App';
 
-const makeZoomHandlerMock = vi.fn(() => ({ handleButtonClick: vi.fn() }));
+const makeZoomHandlerMock = vi.fn((config: any) => ({ handleButtonClick: vi.fn(), config }));
 
 // Mock hooks and dependencies as needed
 vi.mock('./hooks/useSessionSave', () => ({
@@ -31,7 +31,7 @@ vi.mock('./utils/viewerHelpers', async () => {
   const actual = await vi.importActual<typeof import('./utils/viewerHelpers')>('./utils/viewerHelpers');
   return {
     ...actual,
-    makeZoomHandler: (...args: any[]) => makeZoomHandlerMock(...args),
+    makeZoomHandler: (config: any) => makeZoomHandlerMock(config),
   };
 });
 
