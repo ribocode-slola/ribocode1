@@ -1,3 +1,12 @@
+## [v0.15.0] - 2026-10-12
+Release summary: this minor release improves highlight readability and reliability by introducing ordered multi-style highlighting, custom default highlight colours, and session persistence for highlight toggle state.
+- Added per-representation opacity sliders in molecule controls so each representation can be faded in or out independently.
+- Updated dataset highlight behavior to use shared mirrored state across viewers, so toggling highlight for a dataset applies consistently to both viewers.
+- Fixed highlight desynchronization across chain/subunit/residue interactions by replacing incremental clear/apply logic with deterministic full reconciliation from current state.
+- Updated default highlight visual style with distinct colours for each highlight type and explicit render ordering so subunit highlights apply first, then chain, then residues.
+- Added session save/load support for highlight toggle state (`chain`, `residue`, `subunit`) for both `AlignedTo` and `Aligned` datasets.
+- Added regression coverage across unit/integration/E2E tests, including highlight interaction stability and session highlight-state persistence/round-tripping.
+
 ## [v0.14.0] - 2026-10-09
 Release summary: this minor release introduces a per-mode colour theme manager so users can keep multiple loaded themes available, choose the active theme for new representations, and safely manage theme lifecycle.
 - Added a new `Colour Theme` selector for each load panel, with options for the default theme plus all loaded themes for that mode (`AlignedTo`/`Aligned`).
