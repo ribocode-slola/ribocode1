@@ -535,6 +535,51 @@ describe('viewerHelpers', () => {
     expect(setIsHighlighted).toHaveBeenCalledWith(false);
   });
 
+  it('enabling subunit highlight does not clear an existing chain highlight', async () => {
+    vi.mocked(highlightLociOnChain).mockClear();
+    vi.mocked(unhighlightLociOnChain).mockClear();
+    vi.mocked(highlightLociOnSubunit).mockClear();
+
+    const pluginRef = {
+      current: {
+        id: 'plugin-a',
+        managers: {
+          interactivity: { lociSelects: { deselectAll: vi.fn() }, lociHighlights: { clearHighlights: vi.fn() } },
+          structure: { focus: { clear: vi.fn() } }
+        },
+      },
+    };
+
+    const setChainHighlighted = vi.fn();
+    const chainHandler = createChainHighlightToggleHandler(
+      pluginRef as any,
+      'struct-a',
+      'A',
+      false,
+      setChainHighlighted,
+      false
+    );
+
+    const setSubunitHighlighted = vi.fn();
+    const subunitHandler = createSubunitHighlightToggleHandler(
+      pluginRef as any,
+      'struct-a',
+      ['A', 'B'],
+      false,
+      setSubunitHighlighted,
+      false
+    );
+
+    await chainHandler.handleButtonClick();
+    await subunitHandler.handleButtonClick();
+
+    expect(highlightLociOnChain).toHaveBeenCalledTimes(1);
+    expect(unhighlightLociOnChain).not.toHaveBeenCalled();
+    expect(setChainHighlighted).toHaveBeenCalledWith(true);
+    expect(highlightLociOnSubunit).toHaveBeenCalledTimes(1);
+    expect(setSubunitHighlighted).toHaveBeenCalledWith(true);
+  });
+
   it('toggles chain inspect on and uses focus manager path', async () => {
     vi.mocked(inspectLociOnChain).mockClear();
     const pluginRef = { current: { id: 'plugin-a', managers: { structure: { focus: { clear: vi.fn() } } } } };

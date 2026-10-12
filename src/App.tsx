@@ -36,7 +36,7 @@ import { parseColorFileContent, registerThemeIfNeeded } from './utils/colors';
 import { useFileInput } from './hooks/useFileInput';
 import { useChainState } from './hooks/useChainState';
 import { getAtomDataFromStructureUnits, summarizeAtomCloud } from './utils/data';
-import { getStructureRepresentations, highlightLociOnChain, highlightLociOnResidues, highlightLociOnSubunit, unhighlightLociOnChain, unhighlightLociOnResidues, unhighlightLociOnSubunit } from './utils/structure';
+import { clearStructureHighlightOverpaint, getStructureRepresentations, highlightLociOnChain, highlightLociOnResidues, highlightLociOnSubunit } from './utils/structure';
 import { parseDictionaryFileContent } from './utils/dictionary';
 import { useResidueState } from './hooks/useResidueState';
 import { useSubunitState } from './hooks/useSubunitState';
@@ -120,6 +120,18 @@ interface SessionUiState {
             chainId?: string;
             residueId?: string;
             residueIds?: string[];
+        };
+    };
+    highlights?: {
+        alignedTo?: {
+            chain?: boolean;
+            residue?: boolean;
+            subunit?: boolean;
+        };
+        aligned?: {
+            chain?: boolean;
+            residue?: boolean;
+            subunit?: boolean;
         };
     };
     syncEnabled?: boolean;
@@ -1674,26 +1686,20 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
     const [zoomMinRadiusA, setZoomMinRadiusA] = useState(0);
     const [zoomExtraRadiusB, setZoomExtraRadiusB] = useState(0);
     const [zoomMinRadiusB, setZoomMinRadiusB] = useState(0);
-    const [chainHighlightOnAAlignedTo, setChainHighlightOnAAlignedTo] = useState(false);
-    const [chainHighlightOnAAligned, setChainHighlightOnAAligned] = useState(false);
-    const [chainHighlightOnBAlignedTo, setChainHighlightOnBAlignedTo] = useState(false);
-    const [chainHighlightOnBAligned, setChainHighlightOnBAligned] = useState(false);
+    const [chainHighlightOnAlignedTo, setChainHighlightOnAlignedTo] = useState(false);
+    const [chainHighlightOnAligned, setChainHighlightOnAligned] = useState(false);
     const [chainInspectOnAAlignedTo, setChainInspectOnAAlignedTo] = useState(false);
     const [chainInspectOnAAligned, setChainInspectOnAAligned] = useState(false);
     const [chainInspectOnBAlignedTo, setChainInspectOnBAlignedTo] = useState(false);
     const [chainInspectOnBAligned, setChainInspectOnBAligned] = useState(false);
-    const [residueHighlightOnAAlignedTo, setResidueHighlightOnAAlignedTo] = useState(false);
-    const [residueHighlightOnAAligned, setResidueHighlightOnAAligned] = useState(false);
-    const [residueHighlightOnBAlignedTo, setResidueHighlightOnBAlignedTo] = useState(false);
-    const [residueHighlightOnBAligned, setResidueHighlightOnBAligned] = useState(false);
+    const [residueHighlightOnAlignedTo, setResidueHighlightOnAlignedTo] = useState(false);
+    const [residueHighlightOnAligned, setResidueHighlightOnAligned] = useState(false);
     const [residueInspectOnAAlignedTo, setResidueInspectOnAAlignedTo] = useState(false);
     const [residueInspectOnAAligned, setResidueInspectOnAAligned] = useState(false);
     const [residueInspectOnBAlignedTo, setResidueInspectOnBAlignedTo] = useState(false);
     const [residueInspectOnBAligned, setResidueInspectOnBAligned] = useState(false);
-    const [subunitHighlightOnAAlignedTo, setSubunitHighlightOnAAlignedTo] = useState(false);
-    const [subunitHighlightOnAAligned, setSubunitHighlightOnAAligned] = useState(false);
-    const [subunitHighlightOnBAlignedTo, setSubunitHighlightOnBAlignedTo] = useState(false);
-    const [subunitHighlightOnBAligned, setSubunitHighlightOnBAligned] = useState(false);
+    const [subunitHighlightOnAlignedTo, setSubunitHighlightOnAlignedTo] = useState(false);
+    const [subunitHighlightOnAligned, setSubunitHighlightOnAligned] = useState(false);
     const [subunitInspectOnAAlignedTo, setSubunitInspectOnAAlignedTo] = useState(false);
     const [subunitInspectOnAAligned, setSubunitInspectOnAAligned] = useState(false);
     const [subunitInspectOnBAlignedTo, setSubunitInspectOnBAlignedTo] = useState(false);
@@ -2019,8 +2025,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         pluginRef: viewerA.ref,
         structureRef: structureRefAAlignedTo,
         chainId: selectedChainIdAlignedTo,
-        isHighlighted: chainHighlightOnAAlignedTo,
-        setIsHighlighted: setChainHighlightOnAAlignedTo,
+        isHighlighted: chainHighlightOnAlignedTo,
+        setIsHighlighted: setChainHighlightOnAlignedTo,
         sync: syncEnabled,
         syncPluginRef: viewerB.ref,
         syncStructureRef: structureRefBAlignedTo,
@@ -2030,8 +2036,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         pluginRef: viewerA.ref,
         structureRef: structureRefAAligned,
         chainId: selectedChainIdAligned,
-        isHighlighted: chainHighlightOnAAligned,
-        setIsHighlighted: setChainHighlightOnAAligned,
+        isHighlighted: chainHighlightOnAligned,
+        setIsHighlighted: setChainHighlightOnAligned,
         sync: syncEnabled,
         syncPluginRef: viewerB.ref,
         syncStructureRef: structureRefBAligned,
@@ -2041,8 +2047,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         pluginRef: viewerB.ref,
         structureRef: structureRefBAlignedTo,
         chainId: selectedChainIdAlignedTo,
-        isHighlighted: chainHighlightOnBAlignedTo,
-        setIsHighlighted: setChainHighlightOnBAlignedTo,
+        isHighlighted: chainHighlightOnAlignedTo,
+        setIsHighlighted: setChainHighlightOnAlignedTo,
         sync: syncEnabled,
         syncPluginRef: viewerA.ref,
         syncStructureRef: structureRefAAlignedTo,
@@ -2052,8 +2058,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         pluginRef: viewerB.ref,
         structureRef: structureRefBAligned,
         chainId: selectedChainIdAligned,
-        isHighlighted: chainHighlightOnBAligned,
-        setIsHighlighted: setChainHighlightOnBAligned,
+        isHighlighted: chainHighlightOnAligned,
+        setIsHighlighted: setChainHighlightOnAligned,
         sync: syncEnabled,
         syncPluginRef: viewerA.ref,
         syncStructureRef: structureRefAAligned,
@@ -2218,8 +2224,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         chainId: selectedChainIdAlignedTo,
         residueIds: selectedResidueIdsAlignedTo,
         residueInsCodes: selectedResidueInsCodesAlignedTo,
-        isHighlighted: residueHighlightOnAAlignedTo,
-        setIsHighlighted: setResidueHighlightOnAAlignedTo,
+        isHighlighted: residueHighlightOnAlignedTo,
+        setIsHighlighted: setResidueHighlightOnAlignedTo,
         sync: syncEnabled,
         syncPluginRef: viewerB.ref,
         syncStructureRef: structureRefBAlignedTo,
@@ -2233,8 +2239,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         chainId: selectedChainIdAligned,
         residueIds: selectedResidueIdsAligned,
         residueInsCodes: selectedResidueInsCodesAligned,
-        isHighlighted: residueHighlightOnAAligned,
-        setIsHighlighted: setResidueHighlightOnAAligned,
+        isHighlighted: residueHighlightOnAligned,
+        setIsHighlighted: setResidueHighlightOnAligned,
         sync: syncEnabled,
         syncPluginRef: viewerB.ref,
         syncStructureRef: structureRefBAligned,
@@ -2248,8 +2254,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         chainId: selectedChainIdAlignedTo,
         residueIds: selectedResidueIdsAlignedTo,
         residueInsCodes: selectedResidueInsCodesAlignedTo,
-        isHighlighted: residueHighlightOnBAlignedTo,
-        setIsHighlighted: setResidueHighlightOnBAlignedTo,
+        isHighlighted: residueHighlightOnAlignedTo,
+        setIsHighlighted: setResidueHighlightOnAlignedTo,
         sync: syncEnabled,
         syncPluginRef: viewerA.ref,
         syncStructureRef: structureRefAAlignedTo,
@@ -2263,8 +2269,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         chainId: selectedChainIdAligned,
         residueIds: selectedResidueIdsAligned,
         residueInsCodes: selectedResidueInsCodesAligned,
-        isHighlighted: residueHighlightOnBAligned,
-        setIsHighlighted: setResidueHighlightOnBAligned,
+        isHighlighted: residueHighlightOnAligned,
+        setIsHighlighted: setResidueHighlightOnAligned,
         sync: syncEnabled,
         syncPluginRef: viewerA.ref,
         syncStructureRef: structureRefAAligned,
@@ -2404,8 +2410,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         pluginRef: viewerA.ref,
         structureRef: structureRefAAlignedTo,
         chainIds: selectedSubunitChainIdsAlignedTo,
-        isHighlighted: subunitHighlightOnAAlignedTo,
-        setIsHighlighted: setSubunitHighlightOnAAlignedTo,
+        isHighlighted: subunitHighlightOnAlignedTo,
+        setIsHighlighted: setSubunitHighlightOnAlignedTo,
         sync: syncEnabled,
         syncPluginRef: viewerB.ref,
         syncStructureRef: structureRefBAlignedTo,
@@ -2415,8 +2421,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         pluginRef: viewerA.ref,
         structureRef: structureRefAAligned,
         chainIds: selectedSubunitChainIdsAligned,
-        isHighlighted: subunitHighlightOnAAligned,
-        setIsHighlighted: setSubunitHighlightOnAAligned,
+        isHighlighted: subunitHighlightOnAligned,
+        setIsHighlighted: setSubunitHighlightOnAligned,
         sync: syncEnabled,
         syncPluginRef: viewerB.ref,
         syncStructureRef: structureRefBAligned,
@@ -2426,8 +2432,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         pluginRef: viewerB.ref,
         structureRef: structureRefBAlignedTo,
         chainIds: selectedSubunitChainIdsAlignedTo,
-        isHighlighted: subunitHighlightOnBAlignedTo,
-        setIsHighlighted: setSubunitHighlightOnBAlignedTo,
+        isHighlighted: subunitHighlightOnAlignedTo,
+        setIsHighlighted: setSubunitHighlightOnAlignedTo,
         sync: syncEnabled,
         syncPluginRef: viewerA.ref,
         syncStructureRef: structureRefAAlignedTo,
@@ -2437,380 +2443,115 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         pluginRef: viewerB.ref,
         structureRef: structureRefBAligned,
         chainIds: selectedSubunitChainIdsAligned,
-        isHighlighted: subunitHighlightOnBAligned,
-        setIsHighlighted: setSubunitHighlightOnBAligned,
+        isHighlighted: subunitHighlightOnAligned,
+        setIsHighlighted: setSubunitHighlightOnAligned,
         sync: syncEnabled,
         syncPluginRef: viewerA.ref,
         syncStructureRef: structureRefAAligned,
         syncChainIds: selectedSubunitChainIdsAligned,
     });
 
-    const previousChainHighlightRef = useRef<Record<string, { structureRef: string; chainId: string } | undefined>>({});
     useEffect(() => {
-        const configs = [
-            {
-                key: 'a-alignedto',
-                pluginRef: viewerA.ref,
-                structureRef: structureRefAAlignedTo,
-                chainId: selectedChainIdAlignedTo,
-                isOn: chainHighlightOnAAlignedTo,
-                syncPluginRef: viewerB.ref,
-                syncStructureRef: structureRefBAlignedTo,
-            },
-            {
-                key: 'a-aligned',
-                pluginRef: viewerA.ref,
-                structureRef: structureRefAAligned,
-                chainId: selectedChainIdAligned,
-                isOn: chainHighlightOnAAligned,
-                syncPluginRef: viewerB.ref,
-                syncStructureRef: structureRefBAligned,
-            },
-            {
-                key: 'b-alignedto',
-                pluginRef: viewerB.ref,
-                structureRef: structureRefBAlignedTo,
-                chainId: selectedChainIdAlignedTo,
-                isOn: chainHighlightOnBAlignedTo,
-                syncPluginRef: viewerA.ref,
-                syncStructureRef: structureRefAAlignedTo,
-            },
-            {
-                key: 'b-aligned',
-                pluginRef: viewerB.ref,
-                structureRef: structureRefBAligned,
-                chainId: selectedChainIdAligned,
-                isOn: chainHighlightOnBAligned,
-                syncPluginRef: viewerA.ref,
-                syncStructureRef: structureRefAAligned,
-            },
-        ];
+        type HighlightDatasetConfig = {
+            structureRef: string | null;
+            chainId: string;
+            residueIds: string[];
+            residueInsCodes?: Record<string, string | undefined>;
+            subunitChainIds: string[];
+            chainOn: boolean;
+            residueOn: boolean;
+            subunitOn: boolean;
+        };
 
-        for (const config of configs) {
-            const prev = previousChainHighlightRef.current[config.key];
-            if (!config.isOn) {
-                previousChainHighlightRef.current[config.key] = undefined;
-                continue;
+        const applyHighlightsForPlugin = (
+            plugin: PluginUIContext | null,
+            datasetConfigs: HighlightDatasetConfig[]
+        ) => {
+            if (!plugin) return;
+
+            plugin.managers.interactivity?.lociSelects?.deselectAll?.();
+            for (const config of datasetConfigs) {
+                if (!config.structureRef) continue;
+                clearStructureHighlightOverpaint(plugin, config.structureRef);
             }
 
-            const plugin = config.pluginRef.current;
-            if (!plugin || !config.structureRef) continue;
+            for (const config of datasetConfigs) {
+                if (!config.structureRef) continue;
 
-            if (!config.chainId) {
-                if (prev?.chainId) {
-                    unhighlightLociOnChain(
+                const uniqueSubunitChainIds = Array.from(new Set(config.subunitChainIds.filter(Boolean)));
+                if (config.subunitOn && uniqueSubunitChainIds.length > 0) {
+                    highlightLociOnSubunit(plugin, config.structureRef, uniqueSubunitChainIds);
+                }
+
+                if (config.chainOn && config.chainId) {
+                    highlightLociOnChain(plugin, config.structureRef, config.chainId);
+                }
+
+                if (config.residueOn && config.chainId && config.residueIds.length > 0) {
+                    highlightLociOnResidues(
                         plugin,
-                        prev.structureRef,
-                        prev.chainId,
-                        syncEnabled ? config.syncPluginRef.current ?? undefined : undefined,
-                        undefined,
-                        syncEnabled ? config.syncStructureRef ?? undefined : undefined,
-                        prev.chainId
+                        config.structureRef,
+                        config.chainId,
+                        config.residueIds,
+                        config.residueInsCodes
                     );
                 }
-                previousChainHighlightRef.current[config.key] = undefined;
-                continue;
             }
+        };
 
-            if (prev && prev.chainId === config.chainId && prev.structureRef === config.structureRef) {
-                continue;
-            }
-
-            if (prev?.chainId) {
-                unhighlightLociOnChain(
-                    plugin,
-                    prev.structureRef,
-                    prev.chainId,
-                    syncEnabled ? config.syncPluginRef.current ?? undefined : undefined,
-                    undefined,
-                    syncEnabled ? config.syncStructureRef ?? undefined : undefined,
-                    prev.chainId
-                );
-            }
-
-            highlightLociOnChain(
-                plugin,
-                config.structureRef,
-                config.chainId,
-                syncEnabled ? config.syncPluginRef.current ?? undefined : undefined,
-                undefined,
-                syncEnabled ? config.syncStructureRef ?? undefined : undefined,
-                config.chainId
-            );
-            previousChainHighlightRef.current[config.key] = {
-                structureRef: config.structureRef,
-                chainId: config.chainId,
-            };
-        }
-    }, [
-        chainHighlightOnAAlignedTo,
-        chainHighlightOnAAligned,
-        chainHighlightOnBAlignedTo,
-        chainHighlightOnBAligned,
-        selectedChainIdAlignedTo,
-        selectedChainIdAligned,
-        structureRefAAlignedTo,
-        structureRefAAligned,
-        structureRefBAlignedTo,
-        structureRefBAligned,
-        syncEnabled,
-        viewerA.ref,
-        viewerB.ref,
-    ]);
-
-    const previousResidueHighlightRef = useRef<Record<string, {
-        structureRef: string;
-        chainId: string;
-        residueIds: string[];
-        residueInsCodes?: Record<string, string | undefined>;
-        key: string;
-    } | undefined>>({});
-    useEffect(() => {
-        const configs = [
+        const datasetConfigs: HighlightDatasetConfig[] = [
             {
-                key: 'a-alignedto',
-                pluginRef: viewerA.ref,
                 structureRef: structureRefAAlignedTo,
                 chainId: selectedChainIdAlignedTo,
                 residueIds: selectedResidueIdsAlignedTo,
                 residueInsCodes: selectedResidueInsCodesAlignedTo,
-                isOn: residueHighlightOnAAlignedTo,
-                syncPluginRef: viewerB.ref,
-                syncStructureRef: structureRefBAlignedTo,
+                subunitChainIds: selectedSubunitChainIdsAlignedTo,
+                chainOn: chainHighlightOnAlignedTo,
+                residueOn: residueHighlightOnAlignedTo,
+                subunitOn: subunitHighlightOnAlignedTo,
             },
             {
-                key: 'a-aligned',
-                pluginRef: viewerA.ref,
                 structureRef: structureRefAAligned,
                 chainId: selectedChainIdAligned,
                 residueIds: selectedResidueIdsAligned,
                 residueInsCodes: selectedResidueInsCodesAligned,
-                isOn: residueHighlightOnAAligned,
-                syncPluginRef: viewerB.ref,
-                syncStructureRef: structureRefBAligned,
-            },
-            {
-                key: 'b-alignedto',
-                pluginRef: viewerB.ref,
-                structureRef: structureRefBAlignedTo,
-                chainId: selectedChainIdAlignedTo,
-                residueIds: selectedResidueIdsAlignedTo,
-                residueInsCodes: selectedResidueInsCodesAlignedTo,
-                isOn: residueHighlightOnBAlignedTo,
-                syncPluginRef: viewerA.ref,
-                syncStructureRef: structureRefAAlignedTo,
-            },
-            {
-                key: 'b-aligned',
-                pluginRef: viewerB.ref,
-                structureRef: structureRefBAligned,
-                chainId: selectedChainIdAligned,
-                residueIds: selectedResidueIdsAligned,
-                residueInsCodes: selectedResidueInsCodesAligned,
-                isOn: residueHighlightOnBAligned,
-                syncPluginRef: viewerA.ref,
-                syncStructureRef: structureRefAAligned,
+                subunitChainIds: selectedSubunitChainIdsAligned,
+                chainOn: chainHighlightOnAligned,
+                residueOn: residueHighlightOnAligned,
+                subunitOn: subunitHighlightOnAligned,
             },
         ];
 
-        for (const config of configs) {
-            const selectionKey = getResidueSelectionKey(config.chainId, config.residueIds, config.residueInsCodes);
-            const prev = previousResidueHighlightRef.current[config.key];
-            if (!config.isOn) {
-                previousResidueHighlightRef.current[config.key] = undefined;
-                continue;
-            }
-
-            const plugin = config.pluginRef.current;
-            if (!plugin || !config.structureRef) continue;
-
-            if (!selectionKey) {
-                if (prev) {
-                    unhighlightLociOnResidues(
-                        plugin,
-                        prev.structureRef,
-                        prev.chainId,
-                        prev.residueIds,
-                        prev.residueInsCodes,
-                        syncEnabled ? config.syncPluginRef.current ?? undefined : undefined,
-                        syncEnabled ? config.syncStructureRef ?? undefined : undefined,
-                        prev.chainId,
-                        prev.residueIds,
-                        prev.residueInsCodes
-                    );
-                }
-                previousResidueHighlightRef.current[config.key] = undefined;
-                continue;
-            }
-
-            if (prev && prev.key === selectionKey && prev.structureRef === config.structureRef) {
-                continue;
-            }
-
-            if (prev) {
-                unhighlightLociOnResidues(
-                    plugin,
-                    prev.structureRef,
-                    prev.chainId,
-                    prev.residueIds,
-                    prev.residueInsCodes,
-                    syncEnabled ? config.syncPluginRef.current ?? undefined : undefined,
-                    syncEnabled ? config.syncStructureRef ?? undefined : undefined,
-                    prev.chainId,
-                    prev.residueIds,
-                    prev.residueInsCodes
-                );
-            }
-
-            highlightLociOnResidues(
-                plugin,
-                config.structureRef,
-                config.chainId,
-                config.residueIds,
-                config.residueInsCodes,
-                syncEnabled ? config.syncPluginRef.current ?? undefined : undefined,
-                syncEnabled ? config.syncStructureRef ?? undefined : undefined,
-                config.chainId,
-                config.residueIds,
-                config.residueInsCodes
-            );
-            previousResidueHighlightRef.current[config.key] = {
-                structureRef: config.structureRef,
-                chainId: config.chainId,
-                residueIds: [...config.residueIds],
-                residueInsCodes: config.residueInsCodes,
-                key: selectionKey,
-            };
-        }
+        applyHighlightsForPlugin(viewerA.ref.current, datasetConfigs);
+        applyHighlightsForPlugin(viewerB.ref.current, [
+            {
+                ...datasetConfigs[0],
+                structureRef: structureRefBAlignedTo,
+            },
+            {
+                ...datasetConfigs[1],
+                structureRef: structureRefBAligned,
+            },
+        ]);
     }, [
-        residueHighlightOnAAlignedTo,
-        residueHighlightOnAAligned,
-        residueHighlightOnBAlignedTo,
-        residueHighlightOnBAligned,
+        chainHighlightOnAlignedTo,
+        chainHighlightOnAligned,
+        residueHighlightOnAlignedTo,
+        residueHighlightOnAligned,
+        subunitHighlightOnAlignedTo,
+        subunitHighlightOnAligned,
         selectedChainIdAlignedTo,
         selectedChainIdAligned,
         selectedResidueIdsAlignedTo,
         selectedResidueIdsAligned,
         selectedResidueInsCodesAlignedTo,
         selectedResidueInsCodesAligned,
-        structureRefAAlignedTo,
-        structureRefAAligned,
-        structureRefBAlignedTo,
-        structureRefBAligned,
-        syncEnabled,
-        viewerA.ref,
-        viewerB.ref,
-    ]);
-
-    const previousSubunitHighlightRef = useRef<Record<string, { structureRef: string; chainIds: string[]; key: string } | undefined>>({});
-    useEffect(() => {
-        const configs = [
-            {
-                key: 'a-alignedto',
-                pluginRef: viewerA.ref,
-                structureRef: structureRefAAlignedTo,
-                chainIds: selectedSubunitChainIdsAlignedTo,
-                isOn: subunitHighlightOnAAlignedTo,
-                syncPluginRef: viewerB.ref,
-                syncStructureRef: structureRefBAlignedTo,
-            },
-            {
-                key: 'a-aligned',
-                pluginRef: viewerA.ref,
-                structureRef: structureRefAAligned,
-                chainIds: selectedSubunitChainIdsAligned,
-                isOn: subunitHighlightOnAAligned,
-                syncPluginRef: viewerB.ref,
-                syncStructureRef: structureRefBAligned,
-            },
-            {
-                key: 'b-alignedto',
-                pluginRef: viewerB.ref,
-                structureRef: structureRefBAlignedTo,
-                chainIds: selectedSubunitChainIdsAlignedTo,
-                isOn: subunitHighlightOnBAlignedTo,
-                syncPluginRef: viewerA.ref,
-                syncStructureRef: structureRefAAlignedTo,
-            },
-            {
-                key: 'b-aligned',
-                pluginRef: viewerB.ref,
-                structureRef: structureRefBAligned,
-                chainIds: selectedSubunitChainIdsAligned,
-                isOn: subunitHighlightOnBAligned,
-                syncPluginRef: viewerA.ref,
-                syncStructureRef: structureRefAAligned,
-            },
-        ];
-
-        for (const config of configs) {
-            const chainIds = Array.from(new Set(config.chainIds.filter(Boolean))).sort();
-            const selectionKey = chainIds.join(',');
-            const prev = previousSubunitHighlightRef.current[config.key];
-            if (!config.isOn) {
-                previousSubunitHighlightRef.current[config.key] = undefined;
-                continue;
-            }
-
-            const plugin = config.pluginRef.current;
-            if (!plugin || !config.structureRef) continue;
-
-            if (!selectionKey) {
-                if (prev) {
-                    unhighlightLociOnSubunit(
-                        plugin,
-                        prev.structureRef,
-                        prev.chainIds,
-                        syncEnabled ? config.syncPluginRef.current ?? undefined : undefined,
-                        syncEnabled ? config.syncStructureRef ?? undefined : undefined,
-                        prev.chainIds
-                    );
-                }
-                previousSubunitHighlightRef.current[config.key] = undefined;
-                continue;
-            }
-
-            if (prev && prev.key === selectionKey && prev.structureRef === config.structureRef) {
-                continue;
-            }
-
-            if (prev) {
-                unhighlightLociOnSubunit(
-                    plugin,
-                    prev.structureRef,
-                    prev.chainIds,
-                    syncEnabled ? config.syncPluginRef.current ?? undefined : undefined,
-                    syncEnabled ? config.syncStructureRef ?? undefined : undefined,
-                    prev.chainIds
-                );
-            }
-
-            highlightLociOnSubunit(
-                plugin,
-                config.structureRef,
-                chainIds,
-                syncEnabled ? config.syncPluginRef.current ?? undefined : undefined,
-                syncEnabled ? config.syncStructureRef ?? undefined : undefined,
-                chainIds
-            );
-            previousSubunitHighlightRef.current[config.key] = {
-                structureRef: config.structureRef,
-                chainIds,
-                key: selectionKey,
-            };
-        }
-    }, [
-        subunitHighlightOnAAlignedTo,
-        subunitHighlightOnAAligned,
-        subunitHighlightOnBAlignedTo,
-        subunitHighlightOnBAligned,
         selectedSubunitChainIdsAlignedTo,
         selectedSubunitChainIdsAligned,
         structureRefAAlignedTo,
         structureRefAAligned,
         structureRefBAlignedTo,
         structureRefBAligned,
-        syncEnabled,
         viewerA.ref,
         viewerB.ref,
     ]);
@@ -3935,6 +3676,18 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                     residueIds: selectedResidueIdsAligned,
                 },
             },
+            highlights: {
+                alignedTo: {
+                    chain: chainHighlightOnAlignedTo,
+                    residue: residueHighlightOnAlignedTo,
+                    subunit: subunitHighlightOnAlignedTo,
+                },
+                aligned: {
+                    chain: chainHighlightOnAligned,
+                    residue: residueHighlightOnAligned,
+                    subunit: subunitHighlightOnAligned,
+                },
+            },
             syncEnabled,
             activeViewer,
             cameraSnapshots: {
@@ -4022,6 +3775,18 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                         chainId: selectedChainIdAligned,
                         residueId: selectedResidueIdAligned,
                         residueIds: selectedResidueIdsAligned,
+                    },
+                },
+                highlights: {
+                    alignedTo: {
+                        chain: chainHighlightOnAlignedTo,
+                        residue: residueHighlightOnAlignedTo,
+                        subunit: subunitHighlightOnAlignedTo,
+                    },
+                    aligned: {
+                        chain: chainHighlightOnAligned,
+                        residue: residueHighlightOnAligned,
+                        subunit: subunitHighlightOnAligned,
                     },
                 },
                 syncEnabled,
@@ -4240,6 +4005,28 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                     setSelectedResidueIdAligned(uiState.selections.aligned.residueId);
                 }
             }
+            if (uiState?.highlights?.alignedTo) {
+                if (typeof uiState.highlights.alignedTo.chain === 'boolean') {
+                    setChainHighlightOnAlignedTo(uiState.highlights.alignedTo.chain);
+                }
+                if (typeof uiState.highlights.alignedTo.residue === 'boolean') {
+                    setResidueHighlightOnAlignedTo(uiState.highlights.alignedTo.residue);
+                }
+                if (typeof uiState.highlights.alignedTo.subunit === 'boolean') {
+                    setSubunitHighlightOnAlignedTo(uiState.highlights.alignedTo.subunit);
+                }
+            }
+            if (uiState?.highlights?.aligned) {
+                if (typeof uiState.highlights.aligned.chain === 'boolean') {
+                    setChainHighlightOnAligned(uiState.highlights.aligned.chain);
+                }
+                if (typeof uiState.highlights.aligned.residue === 'boolean') {
+                    setResidueHighlightOnAligned(uiState.highlights.aligned.residue);
+                }
+                if (typeof uiState.highlights.aligned.subunit === 'boolean') {
+                    setSubunitHighlightOnAligned(uiState.highlights.aligned.subunit);
+                }
+            }
 
             // Restore per-viewer camera snapshots with sync temporarily disabled so
             // one viewer snapshot does not immediately overwrite the other.
@@ -4296,6 +4083,12 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         setSelectedResidueIdsAligned,
         setSelectedResidueIdAlignedTo,
         setSelectedResidueIdAligned,
+        setChainHighlightOnAlignedTo,
+        setChainHighlightOnAligned,
+        setResidueHighlightOnAlignedTo,
+        setResidueHighlightOnAligned,
+        setSubunitHighlightOnAlignedTo,
+        setSubunitHighlightOnAligned,
         setClippingA,
         setClippingB,
         setChainFinderQueryAlignedTo,
@@ -4534,8 +4327,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     setSelectedSubunit: setSelectedSubunitAlignedTo,
                                     subunitZoomLabel: selectedSubunitAlignedTo,
                                     onSubunitHighlight: subunitHighlightAAlignedTo.handleButtonClick,
-                                    subunitHighlightOn: subunitHighlightOnAAlignedTo,
-                                    subunitHighlightDisabled: selectedSubunitChainIdsAlignedTo.length === 0 && !subunitHighlightOnAAlignedTo,
+                                    subunitHighlightOn: subunitHighlightOnAlignedTo,
+                                    subunitHighlightDisabled: selectedSubunitChainIdsAlignedTo.length === 0 && !subunitHighlightOnAlignedTo,
                                     onSubunitInspect: subunitInspectAAlignedTo.handleButtonClick,
                                     subunitInspectOn: subunitInspectOnAAlignedTo,
                                     subunitInspectDisabled: selectedSubunitChainIdsAlignedTo.length === 0 && !subunitInspectOnAAlignedTo,
@@ -4549,8 +4342,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                         ? chainInfoAlignedTo.chainLabels.get(selectedChainIdAlignedTo) ?? ''
                                         : '',
                                     onChainHighlight: chainHighlightAAlignedTo.handleButtonClick,
-                                    chainHighlightOn: chainHighlightOnAAlignedTo,
-                                    chainHighlightDisabled: !selectedChainIdAlignedTo && !chainHighlightOnAAlignedTo,
+                                    chainHighlightOn: chainHighlightOnAlignedTo,
+                                    chainHighlightDisabled: !selectedChainIdAlignedTo && !chainHighlightOnAlignedTo,
                                     onChainInspect: chainInspectAAlignedTo.handleButtonClick,
                                     chainInspectOn: chainInspectOnAAlignedTo,
                                     chainInspectDisabled: !selectedChainIdAlignedTo && !chainInspectOnAAlignedTo,
@@ -4568,8 +4361,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     setSelectedResidueIds: setSelectedResidueIdsAlignedTo,
                                     residueZoomLabel: residueZoomLabelAlignedTo,
                                     onResidueHighlight: residueHighlightAAlignedTo.handleButtonClick,
-                                    residueHighlightOn: residueHighlightOnAAlignedTo,
-                                    residueHighlightDisabled: selectedResidueIdsAlignedTo.length === 0 && !residueHighlightOnAAlignedTo,
+                                    residueHighlightOn: residueHighlightOnAlignedTo,
+                                    residueHighlightDisabled: selectedResidueIdsAlignedTo.length === 0 && !residueHighlightOnAlignedTo,
                                     onResidueInspect: residueInspectAAlignedTo.handleButtonClick,
                                     residueInspectOn: residueInspectOnAAlignedTo,
                                     residueInspectDisabled: selectedResidueIdsAlignedTo.length === 0 && !residueInspectOnAAlignedTo,
@@ -4622,8 +4415,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     setSelectedSubunit: setSelectedSubunitAligned,
                                     subunitZoomLabel: selectedSubunitAligned,
                                     onSubunitHighlight: subunitHighlightAAligned.handleButtonClick,
-                                    subunitHighlightOn: subunitHighlightOnAAligned,
-                                    subunitHighlightDisabled: selectedSubunitChainIdsAligned.length === 0 && !subunitHighlightOnAAligned,
+                                    subunitHighlightOn: subunitHighlightOnAligned,
+                                    subunitHighlightDisabled: selectedSubunitChainIdsAligned.length === 0 && !subunitHighlightOnAligned,
                                     onSubunitInspect: subunitInspectAAligned.handleButtonClick,
                                     subunitInspectOn: subunitInspectOnAAligned,
                                     subunitInspectDisabled: selectedSubunitChainIdsAligned.length === 0 && !subunitInspectOnAAligned,
@@ -4637,8 +4430,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                         ? chainInfoAligned.chainLabels.get(selectedChainIdAligned) ?? ''
                                         : '',
                                     onChainHighlight: chainHighlightAAligned.handleButtonClick,
-                                    chainHighlightOn: chainHighlightOnAAligned,
-                                    chainHighlightDisabled: !selectedChainIdAligned && !chainHighlightOnAAligned,
+                                    chainHighlightOn: chainHighlightOnAligned,
+                                    chainHighlightDisabled: !selectedChainIdAligned && !chainHighlightOnAligned,
                                     onChainInspect: chainInspectAAligned.handleButtonClick,
                                     chainInspectOn: chainInspectOnAAligned,
                                     chainInspectDisabled: !selectedChainIdAligned && !chainInspectOnAAligned,
@@ -4656,8 +4449,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     setSelectedResidueIds: setSelectedResidueIdsAligned,
                                     residueZoomLabel: residueZoomLabelAligned,
                                     onResidueHighlight: residueHighlightAAligned.handleButtonClick,
-                                    residueHighlightOn: residueHighlightOnAAligned,
-                                    residueHighlightDisabled: selectedResidueIdsAligned.length === 0 && !residueHighlightOnAAligned,
+                                    residueHighlightOn: residueHighlightOnAligned,
+                                    residueHighlightDisabled: selectedResidueIdsAligned.length === 0 && !residueHighlightOnAligned,
                                     onResidueInspect: residueInspectAAligned.handleButtonClick,
                                     residueInspectOn: residueInspectOnAAligned,
                                     residueInspectDisabled: selectedResidueIdsAligned.length === 0 && !residueInspectOnAAligned,
@@ -4798,8 +4591,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     setSelectedSubunit: setSelectedSubunitAlignedTo,
                                     subunitZoomLabel: selectedSubunitAlignedTo,
                                     onSubunitHighlight: subunitHighlightBAlignedTo.handleButtonClick,
-                                    subunitHighlightOn: subunitHighlightOnBAlignedTo,
-                                    subunitHighlightDisabled: selectedSubunitChainIdsAlignedTo.length === 0 && !subunitHighlightOnBAlignedTo,
+                                    subunitHighlightOn: subunitHighlightOnAlignedTo,
+                                    subunitHighlightDisabled: selectedSubunitChainIdsAlignedTo.length === 0 && !subunitHighlightOnAlignedTo,
                                     onSubunitInspect: subunitInspectBAlignedTo.handleButtonClick,
                                     subunitInspectOn: subunitInspectOnBAlignedTo,
                                     subunitInspectDisabled: selectedSubunitChainIdsAlignedTo.length === 0 && !subunitInspectOnBAlignedTo,
@@ -4813,8 +4606,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                         ? chainInfoAlignedTo.chainLabels.get(selectedChainIdAlignedTo) ?? ''
                                         : '',
                                     onChainHighlight: chainHighlightBAlignedTo.handleButtonClick,
-                                    chainHighlightOn: chainHighlightOnBAlignedTo,
-                                    chainHighlightDisabled: !selectedChainIdAlignedTo && !chainHighlightOnBAlignedTo,
+                                    chainHighlightOn: chainHighlightOnAlignedTo,
+                                    chainHighlightDisabled: !selectedChainIdAlignedTo && !chainHighlightOnAlignedTo,
                                     onChainInspect: chainInspectBAlignedTo.handleButtonClick,
                                     chainInspectOn: chainInspectOnBAlignedTo,
                                     chainInspectDisabled: !selectedChainIdAlignedTo && !chainInspectOnBAlignedTo,
@@ -4832,8 +4625,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     setSelectedResidueIds: setSelectedResidueIdsAlignedTo,
                                     residueZoomLabel: residueZoomLabelAlignedTo,
                                     onResidueHighlight: residueHighlightBAlignedTo.handleButtonClick,
-                                    residueHighlightOn: residueHighlightOnBAlignedTo,
-                                    residueHighlightDisabled: selectedResidueIdsAlignedTo.length === 0 && !residueHighlightOnBAlignedTo,
+                                    residueHighlightOn: residueHighlightOnAlignedTo,
+                                    residueHighlightDisabled: selectedResidueIdsAlignedTo.length === 0 && !residueHighlightOnAlignedTo,
                                     onResidueInspect: residueInspectBAlignedTo.handleButtonClick,
                                     residueInspectOn: residueInspectOnBAlignedTo,
                                     residueInspectDisabled: selectedResidueIdsAlignedTo.length === 0 && !residueInspectOnBAlignedTo,
@@ -4886,8 +4679,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     setSelectedSubunit: setSelectedSubunitAligned,
                                     subunitZoomLabel: selectedSubunitAligned,
                                     onSubunitHighlight: subunitHighlightBAligned.handleButtonClick,
-                                    subunitHighlightOn: subunitHighlightOnBAligned,
-                                    subunitHighlightDisabled: selectedSubunitChainIdsAligned.length === 0 && !subunitHighlightOnBAligned,
+                                    subunitHighlightOn: subunitHighlightOnAligned,
+                                    subunitHighlightDisabled: selectedSubunitChainIdsAligned.length === 0 && !subunitHighlightOnAligned,
                                     onSubunitInspect: subunitInspectBAligned.handleButtonClick,
                                     subunitInspectOn: subunitInspectOnBAligned,
                                     subunitInspectDisabled: selectedSubunitChainIdsAligned.length === 0 && !subunitInspectOnBAligned,
@@ -4901,8 +4694,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                         ? chainInfoAligned.chainLabels.get(selectedChainIdAligned) ?? ''
                                         : '',
                                     onChainHighlight: chainHighlightBAligned.handleButtonClick,
-                                    chainHighlightOn: chainHighlightOnBAligned,
-                                    chainHighlightDisabled: !selectedChainIdAligned && !chainHighlightOnBAligned,
+                                    chainHighlightOn: chainHighlightOnAligned,
+                                    chainHighlightDisabled: !selectedChainIdAligned && !chainHighlightOnAligned,
                                     onChainInspect: chainInspectBAligned.handleButtonClick,
                                     chainInspectOn: chainInspectOnBAligned,
                                     chainInspectDisabled: !selectedChainIdAligned && !chainInspectOnBAligned,
@@ -4920,8 +4713,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     setSelectedResidueIds: setSelectedResidueIdsAligned,
                                     residueZoomLabel: residueZoomLabelAligned,
                                     onResidueHighlight: residueHighlightBAligned.handleButtonClick,
-                                    residueHighlightOn: residueHighlightOnBAligned,
-                                    residueHighlightDisabled: selectedResidueIdsAligned.length === 0 && !residueHighlightOnBAligned,
+                                    residueHighlightOn: residueHighlightOnAligned,
+                                    residueHighlightDisabled: selectedResidueIdsAligned.length === 0 && !residueHighlightOnAligned,
                                     onResidueInspect: residueInspectBAligned.handleButtonClick,
                                     residueInspectOn: residueInspectOnBAligned,
                                     residueInspectDisabled: selectedResidueIdsAligned.length === 0 && !residueInspectOnBAligned,

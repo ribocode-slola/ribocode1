@@ -417,6 +417,13 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     fireEvent.change(alignedInput!, { target: { files: [loadTestFile('6xu8.cif')] } });
     fireEvent.click(alignedLoadBtn!);
 
+    const molstarInstances = (globalThis as any).__molstarViewerInstances as any[];
+    expect(Array.isArray(molstarInstances)).toBe(true);
+    for (const instance of molstarInstances) {
+      instance?.setStructureRef?.('AlignedTo', 'mock-ref-0');
+      instance?.setStructureRef?.('Aligned', 'mock-ref-1');
+    }
+
     await waitFor(() => {
       expect(document.getElementById('viewer-column-B-aligned-load-colours-btn')).not.toBeDisabled();
     }, { timeout: 5000 });
@@ -835,6 +842,18 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     expect(session.uiState.selections.aligned).toEqual(expect.objectContaining({
       subunit: 'Small',
     }));
+    expect(session.uiState.highlights).toEqual({
+      alignedTo: {
+        chain: false,
+        residue: false,
+        subunit: false,
+      },
+      aligned: {
+        chain: false,
+        residue: false,
+        subunit: false,
+      },
+    });
     expect(session.uiState.chainFinderQueries).toEqual({ alignedTo: '', aligned: '' });
     expect(session.uiState.colorThemesByMode).toEqual({
       alignedTo: {
@@ -898,6 +917,10 @@ describe('App integration: AlignedTo and Aligned loading', () => {
           alignedTo: { subunit: 'Large', chainId: 'A', residueId: '10' },
           aligned: { subunit: 'Small', chainId: 'B', residueId: '20' },
         },
+        highlights: {
+          alignedTo: { subunit: true, chain: true, residue: true },
+          aligned: { subunit: true, chain: true, residue: false },
+        },
         cameraSnapshots: {
           viewerA: { position: [10, 11, 12], target: [1, 2, 3], up: [0, 1, 0], radius: 42 },
           viewerB: { position: [20, 21, 22], target: [4, 5, 6], up: [0, 1, 0], radius: 84 },
@@ -943,6 +966,12 @@ describe('App integration: AlignedTo and Aligned loading', () => {
       expect(document.getElementById('generalcontrols-sync-select')).toHaveTextContent('Sync: On');
       expect(document.getElementById('viewer-column-A-alignedto-show-uniprot-accession')).toHaveAttribute('aria-pressed', 'false');
       expect(document.getElementById('viewer-column-B-aligned-show-uniprot-accession')).toHaveAttribute('aria-pressed', 'false');
+      expect(document.getElementById('viewer-column-A-alignedto-highlight-subunit-btn')).toHaveAttribute('aria-pressed', 'true');
+      expect(document.getElementById('viewer-column-A-alignedto-highlight-chain-btn')).toHaveAttribute('aria-pressed', 'true');
+      expect(document.getElementById('viewer-column-A-alignedto-highlight-residue-btn')).toHaveAttribute('aria-pressed', 'true');
+      expect(document.getElementById('viewer-column-B-aligned-highlight-subunit-btn')).toHaveAttribute('aria-pressed', 'true');
+      expect(document.getElementById('viewer-column-B-aligned-highlight-chain-btn')).toHaveAttribute('aria-pressed', 'true');
+      expect(document.getElementById('viewer-column-B-aligned-highlight-residue-btn')).toHaveAttribute('aria-pressed', 'false');
       expect((document.getElementById('viewer-column-A-alignedto-colour-theme-select') as HTMLSelectElement).value).toBe('AlignedTo-custom-theme-test');
       expect(document.querySelector('#viewer-column-A-alignedto-colour-theme-select option[value="AlignedTo-custom-theme-test"]')).toBeInTheDocument();
       expect(document.querySelector('#viewer-column-B-aligned-colour-theme-select option[value="AlignedTo-custom-theme-test"]')).toBeInTheDocument();
@@ -954,6 +983,10 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     expect(restoredSession.uiState.chainFinderQueries).toEqual({
       alignedTo: 'auth CU',
       aligned: 'L22-like',
+    });
+    expect(restoredSession.uiState.highlights).toEqual({
+      alignedTo: { subunit: true, chain: true, residue: true },
+      aligned: { subunit: true, chain: true, residue: false },
     });
     expect(restoredSession.uiState.colorThemesByMode.alignedTo.selectedThemeName).toBe('AlignedTo-custom-theme-test');
     expect(restoredSession.uiState.colorThemesByMode.alignedTo.themes).toEqual([
