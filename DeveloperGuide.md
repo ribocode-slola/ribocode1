@@ -248,6 +248,8 @@ There is a [CHANGELOG](./CHANGELOG.md) which summarises changes, particularly ch
 	```
 - The documentation will be available as static HTML files in the `docs/` folder.
 - `npm run docs` generates docs locally only; it does not deploy them.
+- The `docs/` directory is generated output. For normal feature/bugfix commits, do not include `docs/` changes unless the pull request is explicitly about documentation publication or docs content refresh.
+- If `npm run build` or `npm run docs` updates generated files during development, leave those changes unstaged for code-focused commits.
 
 
 ### Configuration
