@@ -40,6 +40,7 @@ The UI layout is as follows:
       - Components (representation toggles) for:
         - `AlignedTo`
         - `Aligned`
+      - Per-representation controls (visibility, opacity, remove) are shown on compact rows below the main molecule visibility control.
     - `Load AlignedTo`
       - Button for loading the dataset to align to. Once loaded this is replaced with the name of the AlignedTo data.
     - `Representation Controls`
@@ -60,6 +61,10 @@ The UI layout is as follows:
     - `Select and Zoom Controls`
       - Hidden by default.
       - Allows users to select parts of the AlignedTo data, zoom to it, highlight it and show details of it.
+      - `Highlight display`
+        - Allows users to choose selection visual style: `Highlight (halo)`, `Colour overlay`, or `Hybrid`.
+      - `Dim unselected`
+        - Optional contrast mode with adjustable `Strength`.
       - `Subunit Controls`
         - Hidden by default.
         - For subunit selection, zoom, highlight and inspection via:
@@ -67,6 +72,8 @@ The UI layout is as follows:
           - `Zoom` `Highlight` `Inspect`
       - `Chain Controls`
         - Hidden by default.
+        - `Selected`
+          - Shows the currently selected chain label.
         - For chain selection, zoom, highlight and inspection via:
         - `Zoom` `Highlight` `Inspect`
         - `Select Controls`
@@ -78,7 +85,7 @@ The UI layout is as follows:
       - `Residue Controls`
         - Hidden by default.
         - Disabled until a chain is selected.
-        - For chain selection, zoom, highlight and inspection via:
+        - For residue selection, zoom, highlight and inspection via:
           - `Select`
           - `Zoom` `Highlight` `Inspect`
     - `Show Advanced Mol* Controls` button (collapsed by default)
@@ -91,6 +98,7 @@ The UI layout is as follows:
       - Components (representation toggles) for:
         - `Aligned`
         - `AlignedTo`
+      - Per-representation controls (visibility, opacity, remove) are shown on compact rows below the main molecule visibility control.
     - `Load Aligned`
       - Button for loading the dataset to align. Once loaded this is replaced with the name of the Aligned data.
       - Button disabled until AlignedTo data load.
@@ -112,6 +120,10 @@ The UI layout is as follows:
     - `Select and Zoom Controls`
       - Hidden by default.
       - Allows users to select parts of the Aligned data, zoom to it, highlight it and show details of it.
+      - `Highlight display`
+        - Allows users to choose selection visual style: `Highlight (halo)`, `Colour overlay`, or `Hybrid`.
+      - `Dim unselected`
+        - Optional contrast mode with adjustable `Strength`.
       - `Subunit Controls`
         - Hidden by default.
         - For subunit selection, zoom, highlight and inspection via:
@@ -119,6 +131,8 @@ The UI layout is as follows:
           - `Zoom` `Highlight` `Inspect`
       - `Chain Controls`
         - Hidden by default.
+        - `Selected`
+          - Shows the currently selected chain label.
         - For chain selection, zoom, highlight and inspection via:
         - `Zoom` `Highlight` `Inspect`
         - `Select Controls`
@@ -130,7 +144,7 @@ The UI layout is as follows:
       - `Residue Controls`
         - Hidden by default.
         - Disabled until a chain is selected.
-        - For chain selection, zoom, highlight and inspection via:
+        - For residue selection, zoom, highlight and inspection via:
           - `Select`
           - `Zoom` `Highlight` `Inspect`
     - `Show Advanced Mol* Controls` button (collapsed by default)
@@ -172,13 +186,15 @@ The UI layout is as follows:
 | Select and Zoom Controls     | Select and Zoom Controls     |
 |  Zoom extra | Zoom min       |  Zoom extra | Zoom min       |
 |    Radius   |  Radius        |    Radius   |  Radius        |
+|  Highlight display           |  Highlight display           |
+|  Dim unselected              |  Dim unselected              |
 |  Subunit Controls            |  Subunit Controls            |
 |   Select                     |   Select                     |
 |   Zoom Highlight Inspect     |   Zoom Highlight Inspect     |
 |  Chain Controls              |  Chain Controls              |
-|   Selected Chain Label       |   Selected Chain Label       |
+|   Selected                   |   Selected                   |
 |   Zoom Highlight Inspect     |   Zoom Highlight Inspect     |
-|   Selected Chain Control     |   Selected Chain Control     |
+|   Select Chain Control       |   Select Chain Control       |
 |    Include UniProt | Uniprot |    Include UniProt | Uniprot |
 |    accession in    | cache   |    accession in    | cache   |
 |    labels          |         |    labels          |         |
@@ -264,7 +280,7 @@ Please refer to the [Mol* viewer Documentation](https://molstar.org/viewer-docs/
 
 Users can save and load a session via the `Session` menu. A `Load` rather than a `Load all` does not load the data. For security reasons data loading is a manual process, but once the `AlignedTo` and `Aligned` data are selected, the representations are recreated and the loaded session should be in the same state as when the session was saved.
 
-Session `uiState` persists `Residue Zoom` settings and per-dataset `Include UniProt accession in labels` settings, so chain label formatting and residue zoom behavior are restored consistently when a session is loaded.
+Session `uiState` persists `Residue Zoom` settings, per-dataset `Include UniProt accession in labels` settings, highlight toggle states, and selection display preferences (`Highlight display`, `Dim unselected`, and `Strength`), so visual behavior is restored consistently when a session is loaded.
 
 The `Session` > `Save All` saves all the data and all the UI state into a single file so that this can be shared and reloaded using `Session` > `Load All`.
 ---
