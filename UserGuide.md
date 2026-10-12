@@ -63,23 +63,23 @@ The UI layout is as follows:
       - `Subunit Controls`
         - Hidden by default.
         - For subunit selection, zoom, highlight and inspection via:
-          - `Select Subunit`
+          - `Select`
           - `Zoom` `Highlight` `Inspect`
       - `Chain Controls`
         - Hidden by default.
         - For chain selection, zoom, highlight and inspection via:
         - `Zoom` `Highlight` `Inspect`
-        - `Select Chain Control`
+        - `Select Controls`
           - Hidden by default.
-          - `Include Uniprot accession in chain labels`
-            - Allows users to choose whether or not to include Uniprot accession in chain labels.
+          - `Include Uniprot accession in labels`
+            - Allows users to choose whether or not to include Uniprot accession in labels.
           - Uniprot cache summary
             - A summary of Uniprot data caching.
       - `Residue Controls`
         - Hidden by default.
         - Disabled until a chain is selected.
         - For chain selection, zoom, highlight and inspection via:
-          - `Select Residues`
+          - `Select`
           - `Zoom` `Highlight` `Inspect`
     - `Show Advanced Mol* Controls` button (collapsed by default)
       - Includes Sequence, Left Panel, Structure Tools, and Log sections.
@@ -115,23 +115,23 @@ The UI layout is as follows:
       - `Subunit Controls`
         - Hidden by default.
         - For subunit selection, zoom, highlight and inspection via:
-          - `Select Subunit`
+          - `Select`
           - `Zoom` `Highlight` `Inspect`
       - `Chain Controls`
         - Hidden by default.
         - For chain selection, zoom, highlight and inspection via:
         - `Zoom` `Highlight` `Inspect`
-        - `Select Chain Control`
+        - `Select Controls`
           - Hidden by default.
-          - `Include Uniprot accession in chain labels`
-            - Allows users to choose whether or not to include Uniprot accession in chain labels.
+          - `Include Uniprot accession in labels`
+            - Allows users to choose whether or not to include Uniprot accession in labels.
           - Uniprot cache summary
             - A summary of Uniprot data caching.
       - `Residue Controls`
         - Hidden by default.
         - Disabled until a chain is selected.
         - For chain selection, zoom, highlight and inspection via:
-          - `Select Residues`
+          - `Select`
           - `Zoom` `Highlight` `Inspect`
     - `Show Advanced Mol* Controls` button (collapsed by default)
       - Includes Sequence, Left Panel, Structure Tools, and Log sections.
@@ -193,7 +193,7 @@ The UI layout is as follows:
 
 ## Chain Selection
 
-When data are loaded, Ribocode enriches chain labels used in the `Select Chain` tables for each dataset (`AlignedTo` or `Aligned`). Users can use the search box to quickly find chains by any part of the label, including:
+When data are loaded, Ribocode enriches chain labels used in the `Select` tables for each dataset (`AlignedTo` or `Aligned`). Users can use the search box to quickly find chains by any part of the label, including:
   - label chain ID (e.g., `ZB`),
   - auth chain ID (e.g., `auth CU`),
   - UniProt accession,
@@ -216,7 +216,7 @@ Example enriched label:
 
 ### UniProt toggle behavior
 
-- `Include UniProt accession in chain labels` controls whether accession codes are shown in chain label text.
+- `Include UniProt accession in labels` controls whether accession codes are shown in chain label text.
 - There is a control for each of `AlignedTo` and `Aligned` which can be configured independently.
 - Each chain section also displays UniProt cache progress (`cached`, `pending`, `in-flight`).
 - The per-dataset toggle state is saved and restored as part of session `uiState`.
@@ -247,7 +247,7 @@ Next, the user can do several things:
 * As an `Aligned` dataset is loaded, it's atom positions are centralized and aligned with the centralized `AlignedTo` atom positions using an algorithm.
 * In `Viewer A`, the loaded `Aligned` dataset is hidden by default. Use the `Aligned` visibility (eye) button in `MoleculeUI` to show it.
 * If a chain is selected, residue selection from that chain is supported and the `Zoom`, `Highlight` and `Inspect` controls become actionable for the chain.
-* Residue labels in `Select Residues` follow Mol* style: `code number [auth n]` (for example `GLY 70 [auth 70]`, `A 12 [auth 12]`).
+* Residue labels in `Select` follow Mol* style: `code number [auth n]` (for example `GLY 70 [auth 70]`, `A 12 [auth 12]`).
 * If a residue is selected then residue `Zoom`, `Highlight` and `Inspect` controls become actionable.
 * If chains are selected for both `AlignedTo` and `Aligned` molecules, the `Align Chains` button can be actioned to apply chain-based re-alignment. If actioned, the `Aligned` viewer camera is set to match with the `AlignedTo` viewer camera (zoom, pan target, and orientation) so both viewers show the same viewpoint respectively.
 

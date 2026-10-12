@@ -24,7 +24,7 @@ describe('SubunitSelectButton', () => {
                     id="test-subunit-select"
                 />
         );
-        expect(getByLabelText('Select Subunit')).toBeInTheDocument();
+        expect(getByLabelText('Select')).toBeInTheDocument();
         RibosomeSubunitTypes.forEach(opt => {
             expect(getByText(opt)).toBeInTheDocument();
         });
@@ -52,7 +52,7 @@ describe('SubunitSelectButton', () => {
                 id="select-subunit-test"
             />
         );
-        expect((getByLabelText('Select Subunit') as HTMLSelectElement).value).toBe('Large');
+        expect((getByLabelText('Select') as HTMLSelectElement).value).toBe('Large');
     });
 
     it('calls onSelect with subunit when option is chosen', () => {
@@ -65,7 +65,7 @@ describe('SubunitSelectButton', () => {
                     id="test-subunit-select-onselect"
                 />
         );
-        fireEvent.change(getByLabelText('Select Subunit'), { target: { value: 'Small' } });
+        fireEvent.change(getByLabelText('Select'), { target: { value: 'Small' } });
         expect(onSelect).toHaveBeenCalledWith('Small');
     });
 
@@ -78,6 +78,6 @@ describe('SubunitSelectButton', () => {
                 id="test-subunit-select-disabled"
             />
         );
-        expect(getByLabelText('Select Subunit')).toBeDisabled();
+        expect(getByLabelText('Select')).toBeDisabled();
     });
 });

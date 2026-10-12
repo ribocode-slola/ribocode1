@@ -55,7 +55,7 @@ const ChainSelectButton: React.FC<ChainSelectButtonProps> = ({
 	});
 	return (
 		<label>
-			{label || 'Select Chain'}
+			{label || 'Select'}
 			<select
 				className="msp-select msp-form-control"
 				value={selectedChainId ?? ''}

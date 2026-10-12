@@ -111,23 +111,23 @@ describe('LoadDataRow', () => {
         render(<LoadDataRow {...baseProps} isLoaded={true} />);
         fireEvent.click(screen.getByText('Show Subunit Controls'));
         fireEvent.click(screen.getByText('Show Chain Controls'));
-        fireEvent.click(screen.getByText('Show Select Chain Control'));
+        fireEvent.click(screen.getByText('Show Select Controls'));
         fireEvent.click(screen.getByText('Show Residue Controls'));
         expect(screen.getByText('Chain A')).toBeInTheDocument();
         expect(screen.getByText('Residue 1')).toBeInTheDocument();
     });
 
-    it('keeps selected chain actions outside Select Chain subsection', () => {
+    it('keeps selected chain actions outside Select subsection', () => {
         render(<LoadDataRow {...baseProps} isLoaded={true} />);
 
         fireEvent.click(screen.getByText('Show Chain Controls'));
         expect(document.getElementById('test-viewer-a-selected-chain-label')).toBeInTheDocument();
         expect(document.getElementById('test-viewer-a-chain-table-container')).toBeNull();
 
-        fireEvent.click(screen.getByText('Show Select Chain Control'));
+        fireEvent.click(screen.getByText('Show Select Controls'));
         expect(document.getElementById('test-viewer-a-chain-table-container')).toBeInTheDocument();
 
-        fireEvent.click(screen.getByText('Hide Select Chain Control'));
+        fireEvent.click(screen.getByText('Hide Select Controls'));
         expect(document.getElementById('test-viewer-a-selected-chain-label')).toBeInTheDocument();
         expect(document.getElementById('test-viewer-a-chain-table-container')).toBeNull();
         expect(document.getElementById('test-viewer-a-show-uniprot-accession')).toBeNull();
@@ -242,11 +242,11 @@ describe('LoadDataRow', () => {
                 showSelectZoomControls={false}
             />
         );
-        expect(queryByText('Select Subunit')).not.toBeInTheDocument();
+        expect(queryByText('Select')).not.toBeInTheDocument();
         expect(queryByText('Zoom')).not.toBeInTheDocument();
-        expect(queryByText('Selected Chain: Chain A')).not.toBeInTheDocument();
+        expect(queryByText('Selected: Chain A')).not.toBeInTheDocument();
         expect(queryByText('Zoom')).not.toBeInTheDocument();
-        expect(queryByText('Select Residues')).not.toBeInTheDocument();
+        expect(queryByText('Select')).not.toBeInTheDocument();
         expect(document.getElementById('test-viewer-a-zoom-residue-btn')).toBeNull();
         expect(queryByText('Show Representation Controls')).toBeInTheDocument();
         expect(queryByText('Load Colours')).not.toBeInTheDocument();
@@ -257,7 +257,7 @@ describe('LoadDataRow', () => {
         render(<LoadDataRow {...baseProps} isLoaded={true} />);
         fireEvent.click(screen.getByText('Show Subunit Controls'));
         fireEvent.click(screen.getByText('Show Chain Controls'));
-        fireEvent.click(screen.getByText('Show Select Chain Control'));
+        fireEvent.click(screen.getByText('Show Select Controls'));
         fireEvent.click(screen.getByText('Show Residue Controls'));
         fireEvent.click(document.getElementById('test-viewer-a-zoom-subunit-btn') as HTMLButtonElement);
         fireEvent.click(document.getElementById('test-viewer-a-highlight-subunit-btn') as HTMLButtonElement);
@@ -307,7 +307,7 @@ describe('LoadDataRow', () => {
 
         fireEvent.click(screen.getByText('Show Subunit Controls'));
         fireEvent.click(screen.getByText('Show Chain Controls'));
-        fireEvent.click(screen.getByText('Show Select Chain Control'));
+        fireEvent.click(screen.getByText('Show Select Controls'));
         fireEvent.click(screen.getByText('Show Residue Controls'));
 
         expect(document.getElementById('test-viewer-a-inspect-subunit-btn')).toHaveTextContent('Inspect: On');

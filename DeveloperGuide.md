@@ -20,6 +20,7 @@ Welcome to the Ribocode Developer Guide!
 - [Mol* Advanced Controls Toggle](#mol-advanced-controls-toggle)
 - [Re-alignment Implementation Notes](#re-alignment-implementation-notes)
 - [Mol*](#mol*)
+- [Highlighting and Selection Colouring](#highlighting-and-selection-colouring)
 - [Documentation](#documentation)
   - [How to Generate Documentation](#how-to-generate-documentation)
   - [Configuration](#configuration)
@@ -27,6 +28,7 @@ Welcome to the Ribocode Developer Guide!
   - [Docs-only Deployment](#docs-only-deployment)
 - [Deployment](#deployment)
 - [Versioning](#versioning)
+- [Roadmap](#roadmap)
 - [Tests](#tests)
   - [Test File Structure](#test-file-structure)
   - [Creating Tests](#creating-tests)
@@ -231,6 +233,41 @@ If you add a new modal, file input, or dynamic UI element, ensure it has a `data
 
 Ribocode depends upon a customised version of [Mol*](https://github.com/molstar/molstar) - [Ribocode Mol*](https://github.com/ribocode-slola/molstar). This is currently Mol* Version 5.4.2 with some files added for Ribocode that might be generally useful for Mol*. These are being contributed via [Mol* Pull Request #1726](https://github.com/molstar/molstar/pull/1726), but if this does not happen, they will be folded back into Ribocode to make it easier to build on later versions of Mol*.
 
+## Highlighting and Selection Colouring
+
+Ribocode currently supports two distinct visual mechanisms for selected features:
+
+- Halo-style marker highlighting (Mol* marker channels). This is the bright visual emphasis users typically interpret as "highlight".
+- Surface recolouring (overpaint). This changes rendered colours of selected regions and is useful for categorical/layered selection colouring.
+
+Current implementation intent:
+
+- Keep deterministic selection ordering (subunit, then chain, then residues) for predictable overlap behavior.
+- Preserve halo-style highlighting for immediate focus cues.
+- Support per-level colour overlays where useful for structural context.
+
+Important Mol* constraint:
+
+- Marker highlight/select colours and strengths are renderer-global per viewer (`highlightColor`, `selectColor`, `highlightStrength`, `selectStrength`).
+- This means multiple simultaneous marker halo colours per level are not available through default marker channels alone.
+
+Practical strategy:
+
+- Use halo markers as the primary "highlight" cue.
+- Use overpaint to encode level-specific colouring when needed.
+- Optionally dim unselected regions to a common neutral colour to increase contrast for selected features.
+
+Potential "dim unselected" directions:
+
+- Renderer-level dimming (`dimColor`, `dimStrength`) when compatible with interaction state.
+- State-level overpaint for selected regions plus a neutral base style for non-selected regions.
+
+When modifying highlight/colour behavior:
+
+- Prefer robust IDs and `data-testid` selectors for new controls.
+- Add both integration and E2E coverage, because highlight behavior can differ under mocked vs real browser rendering.
+- Keep generated `docs/` output out of code-focused commits unless the change is explicitly documentation publication/refresh.
+
 
 ## Documentation
 
@@ -335,6 +372,15 @@ The app header version text is read directly from `package.json` in `src/compone
 5. Deploy the PWA build with `npm run deploy`.
 6. Create and push a release tag (e.g., `vX.Y.Z`).
 7. Publish the GitHub release notes for the tag.
+
+## Roadmap
+
+Planned future work is tracked in [ROADMAP.md](./ROADMAP.md).
+
+Developers looking for contributions should consult both:
+
+- [ROADMAP.md](./ROADMAP.md) for planned direction and upcoming themes.
+- [GitHub Issues](https://github.com/ribocode-slola/ribocode1/issues) for concrete tasks, bugs, feature requests, and places to respond with fixes.
 
 
 ## Tests
@@ -593,3 +639,5 @@ If you contribute changes, please submit a Pull Request that includes documentat
 Also, add your details to the list of authors in the header of any source files you modify.
 
 For contribution ideas, bug reports, or feature requests, please visit the [GitHub Issues page](https://github.com/ribocode-slola/ribocode1/issues).
+
+For planned future direction and potential contribution areas, also review [ROADMAP.md](./ROADMAP.md).

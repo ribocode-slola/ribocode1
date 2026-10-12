@@ -45,7 +45,7 @@ const SubunitSelectButton: React.FC<SubunitSelectButtonProps> = ({
     id
 }) => (
         <GenericSelectButton
-            label={label || 'Select Subunit'}
+            label={label || 'Select'}
             options={RibosomeSubunitTypes}
             selected={selectedSubunit || ''}
             onSelect={(value: string) => onSelect(value as RibosomeSubunitType)}

@@ -395,7 +395,7 @@ interface LoadDataRowProps {
                 {showChainControls && (
                     <>
                         <div className="load-data-control-row" id={`${idPrefix}-selected-chain-label`} style={{ marginLeft: 12 }}>
-                            <span>Selected Chain: {selectedChainLabel}</span>
+                            <span>Selected: {selectedChainLabel}</span>
                         </div>
                         <div className="load-data-control-row" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginLeft: 12 }}>
                             <button
@@ -433,13 +433,13 @@ interface LoadDataRowProps {
                                 id={`${idPrefix}-select-chain-controls-toggle-btn`}
                                 onClick={() => setShowSelectChainControls((current) => !current)}
                             >
-                                {showSelectChainControls ? 'Hide Select Chain Control' : 'Show Select Chain Control'}
+                                {showSelectChainControls ? 'Hide Select Controls' : 'Show Select Controls'}
                             </button>
                         </div>
                         {showSelectChainControls && (
                             <>
                                 {onShowUniprotAccessionInChainLabelsChange && (
-                                    <div className="load-data-control-row" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginLeft: 12 }}>
+                                    <div className="load-data-control-row" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginLeft: 24 }}>
                                         <button
                                             type="button"
                                             className="msp-btn msp-form-control"
@@ -447,7 +447,7 @@ interface LoadDataRowProps {
                                             aria-pressed={showUniprotAccessionInChainLabels}
                                             onClick={() => onShowUniprotAccessionInChainLabelsChange(!showUniprotAccessionInChainLabels)}
                                         >
-                                            Include UniProt accession in chain labels: {showUniprotAccessionInChainLabels ? 'On' : 'Off'}
+                                            Include UniProt accession in labels: {showUniprotAccessionInChainLabels ? 'On' : 'Off'}
                                         </button>
                                         <span
                                             id={`${idPrefix}-uniprot-status`}
@@ -457,7 +457,7 @@ interface LoadDataRowProps {
                                         </span>
                                     </div>
                                 )}
-                                <div style={{ marginLeft: 12 }}>
+                                <div style={{ marginLeft: 24 }}>
                                     {!!effectiveChainLabels && effectiveChainLabels.size > 0 && (
                                         <ChainSelectionTable
                                             chainLabels={effectiveChainLabels}

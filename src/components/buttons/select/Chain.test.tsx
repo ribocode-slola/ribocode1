@@ -31,12 +31,12 @@ describe('ChainSelectButton', () => {
                 id="test-chain-select"
             />
         );
-        expect(getByLabelText('Select Chain')).toBeInTheDocument();
+        expect(getByLabelText('Select')).toBeInTheDocument();
         expect(getByText('Chain A')).toBeInTheDocument();
         expect(getByText('Chain B')).toBeInTheDocument();
         expect(getByText('Chain C')).toBeInTheDocument();
         // Check id is present
-        expect(getByRole('combobox', { name: 'Select Chain' }).id).toBe('test-chain-select');
+        expect(getByRole('combobox', { name: 'Select' }).id).toBe('test-chain-select');
     });
 
     it('renders with custom label', () => {
@@ -65,9 +65,9 @@ describe('ChainSelectButton', () => {
                 id="select-chain-test"
             />
         );
-        expect((getByLabelText('Select Chain') as HTMLSelectElement).value).toBe('B');
+        expect((getByLabelText('Select') as HTMLSelectElement).value).toBe('B');
         // Check id is present
-        expect((getByLabelText('Select Chain') as HTMLSelectElement).id).toBe('select-chain-test');
+        expect((getByLabelText('Select') as HTMLSelectElement).id).toBe('select-chain-test');
     });
 
     it('calls onSelect with chainId when option is chosen', () => {
@@ -81,7 +81,7 @@ describe('ChainSelectButton', () => {
                 id="test-chain-select-onselect"
             />
         );
-        fireEvent.change(getByLabelText('Select Chain'), { target: { value: 'C' } });
+        fireEvent.change(getByLabelText('Select'), { target: { value: 'C' } });
         expect(onSelect).toHaveBeenCalledWith('C');
     });
 
@@ -95,7 +95,7 @@ describe('ChainSelectButton', () => {
                 id="test-chain-select-disabled"
             />
         );
-        expect(getByLabelText('Select Chain')).toBeDisabled();
+        expect(getByLabelText('Select')).toBeDisabled();
     });
 
     it('renders chain codes instead of numbers when provided', () => {
@@ -153,7 +153,7 @@ describe('ChainSelectButton', () => {
                 id="chain-order-test"
             />
         );
-        const select = getByRole('combobox', { name: 'Select Chain' }) as HTMLSelectElement;
+        const select = getByRole('combobox', { name: 'Select' }) as HTMLSelectElement;
         const optionValues = Array.from(select.options).map(o => o.textContent);
         expect(optionValues).toEqual(['...', 'eS1 [A]', 'uL2 [B]', 'uS3 [C]']);
     });

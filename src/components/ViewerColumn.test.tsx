@@ -717,6 +717,171 @@ describe('ViewerColumn', () => {
         );
     });
 
+    it('restores both viewer cameras after adding a representation when sync is enabled', async () => {
+        const addRepresentationA = vi.fn().mockResolvedValue('rep-a');
+        const addRepresentationB = vi.fn().mockResolvedValue('rep-b');
+
+        const snapshotA = {
+            position: [10, 11, 12],
+            target: [1, 2, 3],
+            up: [0, 1, 0],
+            radius: 7,
+        };
+        const snapshotB = {
+            position: [20, 21, 22],
+            target: [4, 5, 6],
+            up: [0, 1, 0],
+            radius: 9,
+        };
+
+        const setStateA = vi.fn();
+        const setStateB = vi.fn();
+        const requestDrawA = vi.fn();
+        const requestDrawB = vi.fn();
+
+        const pluginA = {
+            canvas3d: {
+                camera: {
+                    getSnapshot: vi.fn(() => snapshotA),
+                    setState: setStateA,
+                    state: { marker: 'a' },
+                },
+                requestDraw: requestDrawA,
+            },
+        };
+
+        const pluginB = {
+            canvas3d: {
+                camera: {
+                    getSnapshot: vi.fn(() => snapshotB),
+                    setState: setStateB,
+                    state: { marker: 'b' },
+                },
+                requestDraw: requestDrawB,
+            },
+        };
+
+        const viewer = {
+            key: 'A',
+            moleculeAligned: { filename: '6xu8.cif' },
+            moleculeAlignedTo: null,
+            isMoleculeAlignedVisible: true,
+            isMoleculeAlignedToVisible: true,
+            handleFileInputButtonClick: vi.fn(),
+            fileInputRef: { current: null },
+            ref: { current: pluginA },
+        } as any;
+
+        const otherViewer = {
+            key: 'B',
+            moleculeAligned: { filename: '6xu8.cif' },
+            moleculeAlignedTo: null,
+            isMoleculeAlignedVisible: true,
+            isMoleculeAlignedToVisible: true,
+            handleFileInputButtonClick: vi.fn(),
+            fileInputRef: { current: null },
+            ref: { current: pluginB },
+        } as any;
+
+        const props = getLoadDataRowProps({
+            viewer,
+            otherViewer,
+            molstar: {
+                addRepresentation: addRepresentationA,
+                representationRefs: {},
+                repIdMap: {},
+                pluginRef: { current: pluginA },
+            },
+            otherMolstar: {
+                addRepresentation: addRepresentationB,
+                representationRefs: {},
+                repIdMap: {},
+                pluginRef: { current: pluginB },
+            },
+            realignedStructRefs: {},
+            otherRealignedStructRefs: {},
+            isMoleculeAlignedLoaded: true,
+            isMoleculeAlignedToLoaded: true,
+            viewerReady: true,
+            otherViewerReady: true,
+            representationType: 'spacefill',
+            setRepresentationType: vi.fn(),
+            colorsFile: { handleButtonClick: vi.fn(), inputRef: { current: null }, handleFileChange: vi.fn() },
+            isMoleculeColoursLoaded: false,
+            structureRef: 'ref-a',
+            otherStructureRef: 'ref-b',
+            selectedSubunit: 'All',
+            setSelectedSubunit: vi.fn(),
+            subunitZoomLabel: 'All',
+            onSubunitHighlight: vi.fn(),
+            subunitHighlightOn: false,
+            subunitHighlightDisabled: false,
+            onSubunitInspect: vi.fn(),
+            subunitInspectOn: false,
+            subunitInspectDisabled: false,
+            onSubunitZoom: vi.fn(),
+            subunitZoomDisabled: false,
+            subunitToChainIds: new Map(),
+            chainInfo: { chainLabels: new Map([['A', 'Chain A']]) },
+            selectedChainId: 'A',
+            setSelectedChainId: vi.fn(),
+            chainZoomLabel: 'Chain A',
+            onChainHighlight: vi.fn(),
+            chainHighlightOn: false,
+            chainHighlightDisabled: false,
+            onChainInspect: vi.fn(),
+            chainInspectOn: false,
+            chainInspectDisabled: false,
+            onChainZoom: vi.fn(),
+            chainZoomDisabled: false,
+            residueInfo: { residueLabels: new Map(), residueToAtomIds: {} },
+            selectedResidueIds: [],
+            setSelectedResidueIds: vi.fn(),
+            residueZoomLabel: '',
+            onResidueHighlight: vi.fn(),
+            residueHighlightOn: false,
+            residueHighlightDisabled: true,
+            onResidueInspect: vi.fn(),
+            residueInspectOn: false,
+            residueInspectDisabled: true,
+            onResidueZoom: vi.fn(),
+            residueZoomDisabled: true,
+            zoomExtraRadius: 0,
+            setZoomExtraRadius: vi.fn(),
+            zoomMinRadius: 0,
+            setZoomMinRadius: vi.fn(),
+            fog: { enabled: false, near: 0, far: 100 },
+            setFog: { setEnabled: vi.fn(), setNear: vi.fn(), setFar: vi.fn() },
+            clipping: { minNear: 1, clipRadius: 100 },
+            setClipping: { setMinNear: vi.fn(), setClipRadius: vi.fn() },
+            updateFog: vi.fn(),
+            handleFileChange: vi.fn(),
+            Aligned: 'Aligned',
+            allowedRepresentationTypes: ['spacefill'] as any,
+            syncEnabled: true,
+            realignedRepRefs: {},
+            setRealignedRepRefs: vi.fn(),
+            setRealignedStructRefs: vi.fn(),
+        });
+
+        await props.onAddRepresentationClick();
+
+        expect(setStateA).toHaveBeenCalledWith(expect.objectContaining({
+            position: snapshotA.position,
+            target: snapshotA.target,
+            up: snapshotA.up,
+            radius: snapshotA.radius,
+        }));
+        expect(setStateB).toHaveBeenCalledWith(expect.objectContaining({
+            position: snapshotB.position,
+            target: snapshotB.target,
+            up: snapshotB.up,
+            radius: snapshotB.radius,
+        }));
+        expect(requestDrawA).toHaveBeenCalled();
+        expect(requestDrawB).toHaveBeenCalled();
+    });
+
     it('resets clipping to per-viewer defaults from getLoadDataRowProps', () => {
         const setMinNear = vi.fn();
         const setClipRadius = vi.fn();

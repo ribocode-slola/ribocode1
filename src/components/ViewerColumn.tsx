@@ -204,6 +204,31 @@ export function getLoadDataRowProps({
 	setRealignedStructRefs,
 	loadedFilename,
 }: LoadDataRowPropsInput) {
+	const captureCameraSnapshot = (molstarInstance: any) => {
+		const camera = molstarInstance?.pluginRef?.current?.canvas3d?.camera;
+		const snapshot = camera?.getSnapshot?.();
+		if (!camera || !snapshot) return null;
+		return {
+			camera,
+			snapshot,
+			requestDraw: molstarInstance?.pluginRef?.current?.canvas3d?.requestDraw,
+		};
+	};
+
+	const restoreCameraSnapshot = (captured: any) => {
+		if (!captured?.camera || !captured?.snapshot || typeof captured.camera.setState !== 'function') return;
+		captured.camera.setState({
+			...captured.camera.state,
+			position: captured.snapshot.position,
+			target: captured.snapshot.target,
+			up: captured.snapshot.up,
+			radius: captured.snapshot.radius,
+		});
+		if (typeof captured.requestDraw === 'function') {
+			captured.requestDraw();
+		}
+	};
+
 	   return {
 			  // Use the correct molecule and loaded state for each row
 			  viewerTitle:
@@ -244,58 +269,67 @@ export function getLoadDataRowProps({
 		onSelectedColorThemeNameChange: setSelectedColorThemeName,
 		onRemoveColorTheme,
 		removeColorThemeDisabled,
-		onAddRepresentationClick: () => {
+		onAddRepresentationClick: async () => {
 			const colorThemeName = selectedColorThemeName || (isMoleculeColoursLoaded ? Aligned + '-custom-chain-colors' : 'default');
 			const colorTheme = { name: colorThemeName, params: {} };
 			const repId = (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
+			const thisCameraBefore = captureCameraSnapshot(molstar);
+			const otherCameraBefore = captureCameraSnapshot(otherMolstar);
 			const thisViewerVisible = Aligned === 'AlignedTo'
 				? viewer.isMoleculeAlignedToVisible
 				: viewer.isMoleculeAlignedVisible;
 			const otherViewerVisible = Aligned === 'AlignedTo'
 				? otherViewer.isMoleculeAlignedToVisible
 				: otherViewer.isMoleculeAlignedVisible;
+			const addPromises: Promise<unknown>[] = [];
 			if ((Aligned === 'AlignedTo' ? viewer.moleculeAlignedTo : viewer.moleculeAligned) && structureRef) {
-				molstar.addRepresentation(
+				addPromises.push(molstar.addRepresentation(
 					Aligned,
 					structureRef,
 					representationType,
 					colorTheme,
 					repId,
 					thisViewerVisible
-				);
+				));
 			}
 			if ((Aligned === 'AlignedTo' ? otherViewer.moleculeAlignedTo : otherViewer.moleculeAligned) && otherStructureRef) {
-				otherMolstar.addRepresentation(
+				addPromises.push(otherMolstar.addRepresentation(
 					Aligned,
 					otherStructureRef,
 					representationType,
 					colorTheme,
 					repId,
 					otherViewerVisible
-				);
+				));
 			}
 			Object.entries(realignedStructRefs).forEach(([id, structRef]) => {
 				if (structRef) {
-					molstar.addRepresentation(
+					addPromises.push(molstar.addRepresentation(
 						id,
 						structRef,
 						representationType,
 						colorTheme,
 						repId
-					);
+					));
 				}
 			});
 			Object.entries(otherRealignedStructRefs).forEach(([id, structRef]) => {
 				if (structRef) {
-					otherMolstar.addRepresentation(
+					addPromises.push(otherMolstar.addRepresentation(
 						id,
 						structRef,
 						representationType,
 						colorTheme,
 						repId
-					);
+					));
 				}
 			});
+
+			await Promise.all(addPromises);
+
+			// Representation creation can transiently perturb camera states; restore both viewers.
+			restoreCameraSnapshot(thisCameraBefore);
+			restoreCameraSnapshot(otherCameraBefore);
 		},
 		addRepresentationDisabled: Aligned === 'AlignedTo' ? (!isMoleculeAlignedToLoaded || !representationType) : (!isMoleculeAlignedLoaded || !representationType),
 		colorsInputRef: colorsFile.inputRef,
@@ -750,7 +784,7 @@ const ViewerColumn: React.FC<ViewerColumnProps> = ({
 			chainLabels: loadDataRowPropsAlignedTo?.chainInfo?.chainLabels as Map<string, string>,
 			selectedChainId: loadDataRowPropsAlignedTo?.selectedChainId ?? '',
 			onSelectChainId: loadDataRowPropsAlignedTo?.onSelectChainId as (chainId: string) => void,
-			title: 'Select Chain',
+			title: 'Select',
 			query: alignedToChainFinderQuery,
 			onQueryChange: onAlignedToChainFinderQueryChange,
 		}
@@ -758,7 +792,7 @@ const ViewerColumn: React.FC<ViewerColumnProps> = ({
 			chainLabels: loadDataRowPropsAligned?.chainInfo?.chainLabels as Map<string, string>,
 			selectedChainId: loadDataRowPropsAligned?.selectedChainId ?? '',
 			onSelectChainId: loadDataRowPropsAligned?.onSelectChainId as (chainId: string) => void,
-			title: 'Select Chain',
+			title: 'Select',
 			query: alignedChainFinderQuery,
 			onQueryChange: onAlignedChainFinderQueryChange,
 		};
