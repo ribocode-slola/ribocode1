@@ -19,6 +19,25 @@ import { setStructureOverpaint, clearStructureOverpaint } from 'molstar/lib/mol-
 const SUBUNIT_HIGHLIGHT_COLOR = Color(0x4C78A8);
 const CHAIN_HIGHLIGHT_COLOR = Color(0xF58518);
 const RESIDUE_HIGHLIGHT_COLOR = Color(0xE45756);
+const overpaintQueuesByPlugin = new WeakMap<PluginUIContext, Map<string, Promise<void>>>();
+
+function enqueueOverpaintUpdate(
+    plugin: PluginUIContext,
+    structureRef: string,
+    task: () => Promise<void>
+) {
+    let queues = overpaintQueuesByPlugin.get(plugin);
+    if (!queues) {
+        queues = new Map<string, Promise<void>>();
+        overpaintQueuesByPlugin.set(plugin, queues);
+    }
+    const previous = queues.get(structureRef) ?? Promise.resolve();
+    const next = previous
+        .catch(() => undefined)
+        .then(task)
+        .catch(() => undefined);
+    queues.set(structureRef, next);
+}
 
 function getStructureComponentsByRef(plugin: PluginUIContext, structureRef: string) {
     return plugin.managers.structure.hierarchy.current.structures.find(
@@ -33,8 +52,11 @@ function addColorLayerForLoci(
     color: ReturnType<typeof Color>
 ) {
     const components = getStructureComponentsByRef(plugin, structureRef);
-    if (!components || components.length === 0 || !loci) return;
-    void setStructureOverpaint(plugin as any, components as any, color, async () => loci).catch(() => undefined);
+    if (!components || components.length === 0 || !loci) return false;
+    enqueueOverpaintUpdate(plugin, structureRef, () =>
+        setStructureOverpaint(plugin as any, components as any, color, async () => loci)
+    );
+    return true;
 }
 
 function clearColorLayerForLoci(
@@ -43,8 +65,11 @@ function clearColorLayerForLoci(
     loci: any
 ) {
     const components = getStructureComponentsByRef(plugin, structureRef);
-    if (!components || components.length === 0 || !loci) return;
-    void setStructureOverpaint(plugin as any, components as any, -1, async () => loci).catch(() => undefined);
+    if (!components || components.length === 0 || !loci) return false;
+    enqueueOverpaintUpdate(plugin, structureRef, () =>
+        setStructureOverpaint(plugin as any, components as any, -1, async () => loci)
+    );
+    return true;
 }
 
 export function clearStructureHighlightOverpaint(
@@ -53,7 +78,9 @@ export function clearStructureHighlightOverpaint(
 ) {
     const components = getStructureComponentsByRef(plugin, structureRef);
     if (!components || components.length === 0) return;
-    void clearStructureOverpaint(plugin as any, components as any).catch(() => undefined);
+    enqueueOverpaintUpdate(plugin, structureRef, () =>
+        clearStructureOverpaint(plugin as any, components as any)
+    );
 }
 
 /**
@@ -134,7 +161,7 @@ export function highlightLociOnChain(
     const applyHighlight = (targetPlugin: PluginUIContext, targetStructureRef: string, targetChainId: string) => {
         const loci = getChainLociFn(targetPlugin, targetStructureRef, targetChainId);
         if (!loci) return;
-        addColorLayerForLoci(targetPlugin, targetStructureRef, loci, CHAIN_HIGHLIGHT_COLOR);
+        if (addColorLayerForLoci(targetPlugin, targetStructureRef, loci, CHAIN_HIGHLIGHT_COLOR)) return;
         const lociSelects = targetPlugin.managers.interactivity?.lociSelects;
         if (lociSelects?.select) {
             lociSelects.select({ loci }, false);
@@ -168,7 +195,7 @@ export function unhighlightLociOnChain(
     const removeHighlight = (targetPlugin: PluginUIContext, targetStructureRef: string, targetChainId: string) => {
         const loci = getChainLociFn(targetPlugin, targetStructureRef, targetChainId);
         if (!loci) return;
-        clearColorLayerForLoci(targetPlugin, targetStructureRef, loci);
+        if (clearColorLayerForLoci(targetPlugin, targetStructureRef, loci)) return;
         const lociSelects = targetPlugin.managers.interactivity?.lociSelects;
         if (lociSelects?.deselect) {
             lociSelects.deselect({ loci }, false);
@@ -316,7 +343,7 @@ export function highlightLociOnSubunit(
     ) => {
         const loci = getSubunitLoci(targetPlugin, targetStructureRef, targetChainIds);
         if (!loci) return;
-        addColorLayerForLoci(targetPlugin, targetStructureRef, loci, SUBUNIT_HIGHLIGHT_COLOR);
+        if (addColorLayerForLoci(targetPlugin, targetStructureRef, loci, SUBUNIT_HIGHLIGHT_COLOR)) return;
         const lociSelects = targetPlugin.managers.interactivity?.lociSelects;
         if (lociSelects?.select) {
             lociSelects.select({ loci }, false);
@@ -353,7 +380,7 @@ export function unhighlightLociOnSubunit(
     ) => {
         const loci = getSubunitLoci(targetPlugin, targetStructureRef, targetChainIds);
         if (!loci) return;
-        clearColorLayerForLoci(targetPlugin, targetStructureRef, loci);
+        if (clearColorLayerForLoci(targetPlugin, targetStructureRef, loci)) return;
         const lociSelects = targetPlugin.managers.interactivity?.lociSelects;
         if (lociSelects?.deselect) {
             lociSelects.deselect({ loci }, false);
@@ -534,7 +561,7 @@ export function highlightLociOnResidues(
     ) => {
         const loci = getResiduesLoci(targetPlugin, targetStructureRef, targetChainId, targetResidueIds, targetResidueInsCodes);
         if (!loci) return;
-        addColorLayerForLoci(targetPlugin, targetStructureRef, loci, RESIDUE_HIGHLIGHT_COLOR);
+        if (addColorLayerForLoci(targetPlugin, targetStructureRef, loci, RESIDUE_HIGHLIGHT_COLOR)) return;
         const lociSelects = targetPlugin.managers.interactivity?.lociSelects;
         if (lociSelects?.select) {
             lociSelects.select({ loci }, false);
@@ -583,7 +610,7 @@ export function unhighlightLociOnResidues(
     ) => {
         const loci = getResiduesLoci(targetPlugin, targetStructureRef, targetChainId, targetResidueIds, targetResidueInsCodes);
         if (!loci) return;
-        clearColorLayerForLoci(targetPlugin, targetStructureRef, loci);
+        if (clearColorLayerForLoci(targetPlugin, targetStructureRef, loci)) return;
         const lociSelects = targetPlugin.managers.interactivity?.lociSelects;
         if (lociSelects?.deselect) {
             lociSelects.deselect({ loci }, false);
