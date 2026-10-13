@@ -1,3 +1,7 @@
+## [v0.16.1] - 2026-10-13
+Release summary: this patch release restores expected chain realignment behavior for 6XU6/6XU8-style workflows.
+- Fixed a chain realignment regression by reverting rigid-transform translation behavior in `packages/molstar/src/extensions/ribocode/utils/geometry.ts` to the prior stable coordinate path.
+
 ## [v0.16.0] - 2026-10-13
 Release summary: this minor release improves chain-label correctness for mmCIF files where auth and label chain IDs collide, and adds focused regression coverage to keep chain search behavior reliable.
 - Fixed chain label molecule-name mapping precedence so auth-chain mappings from `_pdbx_poly_seq_scheme` override colliding label-chain keys when needed.
