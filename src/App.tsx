@@ -36,7 +36,7 @@ import { parseColorFileContent, registerThemeIfNeeded } from './utils/colors';
 import { useFileInput } from './hooks/useFileInput';
 import { useChainState } from './hooks/useChainState';
 import { getAtomDataFromStructureUnits, summarizeAtomCloud } from './utils/data';
-import { clearStructureHighlightOverpaint, getStructureRepresentations, highlightLociOnChain, highlightLociOnResidues, highlightLociOnSubunit } from './utils/structure';
+import { applyStructureDimOverlay, clearStructureHighlightOverpaint, getStructureRepresentations, highlightLociOnChain, highlightLociOnResidues, highlightLociOnSubunit, type HighlightDisplayMode } from './utils/structure';
 import { parseDictionaryFileContent } from './utils/dictionary';
 import { useResidueState } from './hooks/useResidueState';
 import { useSubunitState } from './hooks/useSubunitState';
@@ -159,6 +159,11 @@ interface SessionUiState {
             selectedThemeName?: string;
             themes?: Array<{ value: string; label: string; rows: Array<Record<string, string>> }>;
         };
+    };
+    selectionDisplay?: {
+        mode?: HighlightDisplayMode;
+        dimUnselected?: boolean;
+        dimStrength?: number;
     };
 }
 
@@ -811,6 +816,9 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
     const [syncEnabled, setSyncEnabled] = useState(false);
     const [showUniprotAccessionInChainLabelsA, setShowUniprotAccessionInChainLabelsA] = useState(true);
     const [showUniprotAccessionInChainLabelsB, setShowUniprotAccessionInChainLabelsB] = useState(true);
+    const [selectionDisplayMode, setSelectionDisplayMode] = useState<HighlightDisplayMode>('hybrid');
+    const [dimUnselected, setDimUnselected] = useState(false);
+    const [dimUnselectedStrength, setDimUnselectedStrength] = useState(0.45);
     const rpNameLookupBySpecies = useMemo(
         () => parseRpNameTableBySpecies(rpNameTableCsv),
         []
@@ -2478,13 +2486,18 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             for (const config of datasetConfigs) {
                 if (!config.structureRef) continue;
 
+                const hasActiveHighlight = config.subunitOn || config.chainOn || config.residueOn;
+                if (dimUnselected && hasActiveHighlight) {
+                    applyStructureDimOverlay(plugin, config.structureRef, dimUnselectedStrength);
+                }
+
                 const uniqueSubunitChainIds = Array.from(new Set(config.subunitChainIds.filter(Boolean)));
                 if (config.subunitOn && uniqueSubunitChainIds.length > 0) {
-                    highlightLociOnSubunit(plugin, config.structureRef, uniqueSubunitChainIds);
+                    highlightLociOnSubunit(plugin, config.structureRef, uniqueSubunitChainIds, selectionDisplayMode);
                 }
 
                 if (config.chainOn && config.chainId) {
-                    highlightLociOnChain(plugin, config.structureRef, config.chainId);
+                    highlightLociOnChain(plugin, config.structureRef, config.chainId, selectionDisplayMode);
                 }
 
                 if (config.residueOn && config.chainId && config.residueIds.length > 0) {
@@ -2493,7 +2506,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                         config.structureRef,
                         config.chainId,
                         config.residueIds,
-                        config.residueInsCodes
+                        config.residueInsCodes,
+                        selectionDisplayMode
                     );
                 }
             }
@@ -2540,6 +2554,9 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         residueHighlightOnAligned,
         subunitHighlightOnAlignedTo,
         subunitHighlightOnAligned,
+        selectionDisplayMode,
+        dimUnselected,
+        dimUnselectedStrength,
         selectedChainIdAlignedTo,
         selectedChainIdAligned,
         selectedResidueIdsAlignedTo,
@@ -3080,35 +3097,15 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 Mat4.setValue(m, 2, 1, rot[7]);
                 Mat4.setValue(m, 2, 2, rot[8]);
 
-                let tx = 0;
-                let ty = 0;
-                let tz = 0;
-                let n = 0;
-                for (let i = 0; i < fitMoving.xs.length && i < result.alignedX.length; i++) {
-                    const x = fitMoving.xs[i];
-                    const y = fitMoving.ys[i];
-                    const z = fitMoving.zs[i];
-                    const xAligned = result.alignedX[i];
-                    const yAligned = result.alignedY[i];
-                    const zAligned = result.alignedZ[i];
-                    if (!isFiniteCoord(x, y, z) || !isFiniteCoord(xAligned, yAligned, zAligned)) continue;
+                const movingCentroid = result.centroid;
+                const referenceCentroid = result.centroidReference;
+                const tx = referenceCentroid[0] - (rot[0] * movingCentroid[0] + rot[1] * movingCentroid[1] + rot[2] * movingCentroid[2]);
+                const ty = referenceCentroid[1] - (rot[3] * movingCentroid[0] + rot[4] * movingCentroid[1] + rot[5] * movingCentroid[2]);
+                const tz = referenceCentroid[2] - (rot[6] * movingCentroid[0] + rot[7] * movingCentroid[1] + rot[8] * movingCentroid[2]);
 
-                    const xRot = rot[0] * x + rot[1] * y + rot[2] * z;
-                    const yRot = rot[3] * x + rot[4] * y + rot[5] * z;
-                    const zRot = rot[6] * x + rot[7] * y + rot[8] * z;
-                    tx += (xAligned - xRot);
-                    ty += (yAligned - yRot);
-                    tz += (zAligned - zRot);
-                    n++;
-                }
-
-                if (n === 0) {
-                    throw new Error('No finite atom pairs were available to derive rigid translation from fit result.');
-                }
-
-                Mat4.setValue(m, 0, 3, tx / n);
-                Mat4.setValue(m, 1, 3, ty / n);
-                Mat4.setValue(m, 2, 3, tz / n);
+                Mat4.setValue(m, 0, 3, tx);
+                Mat4.setValue(m, 1, 3, ty);
+                Mat4.setValue(m, 2, 3, tz);
                 return m;
             };
 
@@ -3713,8 +3710,14 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                     themes: buildPersistedColorThemes(),
                 },
             },
+            selectionDisplay: {
+                mode: selectionDisplayMode,
+                dimUnselected,
+                dimStrength: dimUnselectedStrength,
+            },
         } as SessionUiState,
     }));
+
 
     const handleSaveSessionAll = useSessionSaveAll(
         () => ({
@@ -3813,6 +3816,11 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                         selectedThemeName: selectedColorThemeByMode.Aligned,
                         themes: buildPersistedColorThemes(),
                     },
+                },
+                selectionDisplay: {
+                    mode: selectionDisplayMode,
+                    dimUnselected,
+                    dimStrength: dimUnselectedStrength,
                 },
             } as SessionUiState,
         }),
@@ -4063,6 +4071,19 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             }
             if (typeof uiState?.chainFinderQueries?.aligned === 'string') {
                 setChainFinderQueryAligned(uiState.chainFinderQueries.aligned);
+            }
+            if (uiState?.selectionDisplay) {
+                const mode = uiState.selectionDisplay.mode;
+                if (mode === 'halo' || mode === 'overlay' || mode === 'hybrid') {
+                    setSelectionDisplayMode(mode);
+                }
+                if (typeof uiState.selectionDisplay.dimUnselected === 'boolean') {
+                    setDimUnselected(uiState.selectionDisplay.dimUnselected);
+                }
+                if (Number.isFinite(uiState.selectionDisplay.dimStrength)) {
+                    const clamped = Math.max(0, Math.min(1, Number(uiState.selectionDisplay.dimStrength)));
+                    setDimUnselectedStrength(clamped);
+                }
             }
 
             if (!loadedAny) {
@@ -4372,6 +4393,12 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     setZoomExtraRadius: setZoomExtraRadiusA,
                                     zoomMinRadius: zoomMinRadiusA,
                                     setZoomMinRadius: setZoomMinRadiusA,
+                                    selectionDisplayMode,
+                                    setSelectionDisplayMode,
+                                    dimUnselected,
+                                    setDimUnselected,
+                                    dimUnselectedStrength,
+                                    setDimUnselectedStrength,
                                     fog: fogA,
                                     setFog: makeFogSetters(setFogA),
                                     clipping: clippingA,
@@ -4460,6 +4487,12 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     setZoomExtraRadius: setZoomExtraRadiusA,
                                     zoomMinRadius: zoomMinRadiusA,
                                     setZoomMinRadius: setZoomMinRadiusA,
+                                    selectionDisplayMode,
+                                    setSelectionDisplayMode,
+                                    dimUnselected,
+                                    setDimUnselected,
+                                    dimUnselectedStrength,
+                                    setDimUnselectedStrength,
                                     fog: fogA,
                                     setFog: makeFogSetters(setFogA),
                                     clipping: clippingA,
@@ -4636,6 +4669,12 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     setZoomExtraRadius: setZoomExtraRadiusB,
                                     zoomMinRadius: zoomMinRadiusB,
                                     setZoomMinRadius: setZoomMinRadiusB,
+                                    selectionDisplayMode,
+                                    setSelectionDisplayMode,
+                                    dimUnselected,
+                                    setDimUnselected,
+                                    dimUnselectedStrength,
+                                    setDimUnselectedStrength,
                                     fog: fogB,
                                     setFog: makeFogSetters(setFogB),
                                     clipping: clippingB,
@@ -4724,6 +4763,12 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     setZoomExtraRadius: setZoomExtraRadiusB,
                                     zoomMinRadius: zoomMinRadiusB,
                                     setZoomMinRadius: setZoomMinRadiusB,
+                                    selectionDisplayMode,
+                                    setSelectionDisplayMode,
+                                    dimUnselected,
+                                    setDimUnselected,
+                                    dimUnselectedStrength,
+                                    setDimUnselectedStrength,
                                     fog: fogB,
                                     setFog: makeFogSetters(setFogB),
                                     clipping: clippingB,
