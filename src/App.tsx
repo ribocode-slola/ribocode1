@@ -83,6 +83,17 @@ interface SerializableCameraSnapshot {
     radius: number;
 }
 
+interface ChainRealignMetrics {
+    timestamp: number;
+    alignedToChainId: string;
+    alignedChainId: string;
+    atomPairCount: number;
+    rmsd: number;
+    meanPairDistanceBefore: number;
+    meanPairDistanceAfter: number;
+    improvementRatio: number;
+}
+
 interface SessionUiState {
     zoom?: {
         extraRadius: number;
@@ -1309,6 +1320,9 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             getSyncState: () => ({
                 syncEnabled,
                 activeViewer,
+            }),
+            getLastRealignMetrics: () => ({
+                chain: lastChainRealignMetricsRef.current,
             }),
         };
 
@@ -2773,11 +2787,13 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
     const realignTransformCacheRef = useRef<Record<string, Mat4>>({});
     const realignBaseTransformCacheRef = useRef<Record<string, Mat4>>({});
     const realignDiagnosticsCounterRef = useRef<Record<string, number>>({});
+    const lastChainRealignMetricsRef = useRef<ChainRealignMetrics | null>(null);
 
     useEffect(() => {
         realignTransformCacheRef.current = {};
         realignBaseTransformCacheRef.current = {};
         realignDiagnosticsCounterRef.current = {};
+        lastChainRealignMetricsRef.current = null;
     }, [structureRefAAligned, structureRefBAligned]);
 
     const getStructureCoordinateSystemMatrix = useCallback((
@@ -3057,18 +3073,42 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
 
             const atomPairCount = Math.min(movingPairIndexes.length, referencePairIndexes.length);
             let pairwiseRmsd = NaN;
+            let meanPairDistanceBefore = NaN;
+            let meanPairDistanceAfter = NaN;
+            let improvementRatio = NaN;
             if (atomPairCount > 0) {
-                let sumSq = 0;
+                let sumSqBefore = 0;
+                let sumSqAfter = 0;
                 for (let i = 0; i < atomPairCount; i++) {
                     const movingIdx = movingPairIndexes[i];
                     const referenceIdx = referencePairIndexes[i];
+                    const dxBefore = fitMoving.xs[movingIdx] - fitReference.xs[referenceIdx];
+                    const dyBefore = fitMoving.ys[movingIdx] - fitReference.ys[referenceIdx];
+                    const dzBefore = fitMoving.zs[movingIdx] - fitReference.zs[referenceIdx];
                     const dx = result.alignedX[movingIdx] - fitReference.xs[referenceIdx];
                     const dy = result.alignedY[movingIdx] - fitReference.ys[referenceIdx];
                     const dz = result.alignedZ[movingIdx] - fitReference.zs[referenceIdx];
-                    sumSq += dx * dx + dy * dy + dz * dz;
+                    sumSqBefore += dxBefore * dxBefore + dyBefore * dyBefore + dzBefore * dzBefore;
+                    sumSqAfter += dx * dx + dy * dy + dz * dz;
                 }
-                pairwiseRmsd = Math.sqrt(sumSq / atomPairCount);
+                meanPairDistanceBefore = Math.sqrt(sumSqBefore / atomPairCount);
+                pairwiseRmsd = Math.sqrt(sumSqAfter / atomPairCount);
+                meanPairDistanceAfter = pairwiseRmsd;
+                if (Number.isFinite(meanPairDistanceBefore) && Number.isFinite(meanPairDistanceAfter) && meanPairDistanceAfter > 0) {
+                    improvementRatio = meanPairDistanceBefore / meanPairDistanceAfter;
+                }
             }
+
+            lastChainRealignMetricsRef.current = {
+                timestamp: Date.now(),
+                alignedToChainId: selectedChainIdAlignedTo,
+                alignedChainId: selectedChainIdAligned,
+                atomPairCount,
+                rmsd: pairwiseRmsd,
+                meanPairDistanceBefore,
+                meanPairDistanceAfter,
+                improvementRatio,
+            };
 
             if (ENABLE_REALIGN_DIAGNOSTICS) {
                 console.info('[Re-align][Fit quality]', {

@@ -33,6 +33,7 @@ Welcome to the Ribocode Developer Guide!
   - [Test File Structure](#test-file-structure)
   - [Creating Tests](#creating-tests)
   - [Running Tests](#running-tests)
+  - [Alignment Regression Testing](#alignment-regression-testing)
   - [End-to-End (E2E) Testing with Playwright](#end-to-end-e2e-testing-with-playwright)
     - [E2E Test Structure](#e2e-test-structure)
     - [System Dependencies for Playwright (Linux)](#system-dependencies-for-playwright-linux)
@@ -427,6 +428,33 @@ test('renders the component', () => {
   ```sh
   npm test -- src/components/MyComponent.test.tsx
   ```
+
+### Alignment Regression Testing
+
+Alignment changes should be validated with both automated and manual checks before release.
+
+Recommended focused automated checks:
+
+```sh
+npm test -- src/utils/alignmentGeometry.test.ts src/utils/realignment.test.ts src/App.test.tsx
+npm test -- src/utils/alignmentPerformance.test.ts
+npx playwright test e2e/sync-and-realign-camera.e2e.spec.ts
+npx playwright test e2e/alignment-performance-cu-6xu6-6xu8.e2e.spec.ts
+```
+
+Recommended manual benchmark workflow:
+
+1. Load `AlignedTo` using `6XU6.cif`.
+2. Load `Aligned` using `6XU8.cif`.
+3. Select known chain pairs used in day-to-day analysis and run `Align Chains`.
+4. Repeat alignment for the same pair and for several different pairs.
+5. Confirm alignment quality does not degrade and that camera/viewpoint behavior remains consistent.
+
+When alignment internals are changed:
+
+- If the change is in `packages/molstar`, treat it as package-level geometry behavior and validate against the benchmark workflow above.
+- If the change is in `src/App.tsx`, verify both in-place transform behavior and reload-based fallback behavior.
+- Record any expected behavior changes in `CHANGELOG.md` so regressions are easier to trace.
 
 ### Additional Resources
 
