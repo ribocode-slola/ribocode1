@@ -20,6 +20,7 @@ Welcome to the Ribocode Developer Guide!
 - [Mol* Advanced Controls Toggle](#mol-advanced-controls-toggle)
 - [Re-alignment Implementation Notes](#re-alignment-implementation-notes)
 - [Mol*](#mol*)
+- [Highlighting and Selection Colouring](#highlighting-and-selection-colouring)
 - [Documentation](#documentation)
   - [How to Generate Documentation](#how-to-generate-documentation)
   - [Configuration](#configuration)
@@ -27,6 +28,7 @@ Welcome to the Ribocode Developer Guide!
   - [Docs-only Deployment](#docs-only-deployment)
 - [Deployment](#deployment)
 - [Versioning](#versioning)
+- [Roadmap](#roadmap)
 - [Tests](#tests)
   - [Test File Structure](#test-file-structure)
   - [Creating Tests](#creating-tests)
@@ -97,6 +99,7 @@ From the Ribocode root directory:
 
 * `npm run build`
   - Builds the app for production using settings from `.env.production` (base path is `/ribocode1/`).
+  - Regenerates TypeDoc output first (`npm run docs`) to ensure deployed docs stay in sync with source.
   - Output is placed in the `dist/` directory.
 * `npm run preview`
   - Serves the production build locally for testing (simulates deployment).
@@ -107,11 +110,14 @@ From the Ribocode root directory:
 - `.env` is used for local development (base path `/`).
 - `.env.production` is used for production builds (base path `/ribocode1/`).
 - The correct environment file is automatically picked up by the npm scripts.
+- Runtime browser code must use Vite environment access (`import.meta.env.*`) rather than CRA-style `process.env.*`.
+- Service worker registration paths should be derived from `import.meta.env.BASE_URL` to avoid incorrect URLs on GitHub Pages subpaths.
 
 #### Deployment
 
 * `npm run deploy`
   - Builds and deploys the app to the `gh-pages` branch for GitHub Pages.
+  - Includes the current docs by copying `docs/` to `dist/docs` during build.
   - The app will be available at `https://<username>.github.io/ribocode1/`.
 
 
@@ -168,6 +174,8 @@ Chain-based re-alignment now uses a staged approach in `src/App.tsx`.
   - Applied in-place chain pairs are tracked and deduplicated so the same `(from, to)` pair is not transformed repeatedly.
 - Fallback path (reload-based):
   - If in-place transform cannot be applied, the app falls back to the existing `ReAligned` loading flow using alignment data.
+- Post-realign camera behavior:
+  - After chain re-alignment is applied, the `Aligned` viewer camera is matched to the `AlignedTo` viewer camera (zoom, pan target, and orientation) to keep both viewers in the same viewpoint.
 - Alignment-data transform behavior:
   - Mol* trajectory alignment application now uses full `rotation + translation` when `rotMat`, `centroid`, and `centroidReference` are available.
   - Equal-count fit mapping is normalized so `centroid` is the moving-set centroid and `centroidReference` is the reference-set centroid, matching the transform convention `R * (p - centroid) + centroidReference`.
@@ -225,6 +233,41 @@ If you add a new modal, file input, or dynamic UI element, ensure it has a `data
 
 Ribocode depends upon a customised version of [Mol*](https://github.com/molstar/molstar) - [Ribocode Mol*](https://github.com/ribocode-slola/molstar). This is currently Mol* Version 5.4.2 with some files added for Ribocode that might be generally useful for Mol*. These are being contributed via [Mol* Pull Request #1726](https://github.com/molstar/molstar/pull/1726), but if this does not happen, they will be folded back into Ribocode to make it easier to build on later versions of Mol*.
 
+## Highlighting and Selection Colouring
+
+Ribocode currently supports two distinct visual mechanisms for selected features:
+
+- Halo-style marker highlighting (Mol* marker channels). This is the bright visual emphasis users typically interpret as "highlight".
+- Surface recolouring (overpaint). This changes rendered colours of selected regions and is useful for categorical/layered selection colouring.
+
+Current implementation intent:
+
+- Keep deterministic selection ordering (subunit, then chain, then residues) for predictable overlap behavior.
+- Preserve halo-style highlighting for immediate focus cues.
+- Support per-level colour overlays where useful for structural context.
+
+Important Mol* constraint:
+
+- Marker highlight/select colours and strengths are renderer-global per viewer (`highlightColor`, `selectColor`, `highlightStrength`, `selectStrength`).
+- This means multiple simultaneous marker halo colours per level are not available through default marker channels alone.
+
+Practical strategy:
+
+- Use halo markers as the primary "highlight" cue.
+- Use overpaint to encode level-specific colouring when needed.
+- Optionally dim unselected regions to a common neutral colour to increase contrast for selected features.
+
+Potential "dim unselected" directions:
+
+- Renderer-level dimming (`dimColor`, `dimStrength`) when compatible with interaction state.
+- State-level overpaint for selected regions plus a neutral base style for non-selected regions.
+
+When modifying highlight/colour behavior:
+
+- Prefer robust IDs and `data-testid` selectors for new controls.
+- Add both integration and E2E coverage, because highlight behavior can differ under mocked vs real browser rendering.
+- Keep generated `docs/` output out of code-focused commits unless the change is explicitly documentation publication/refresh.
+
 
 ## Documentation
 
@@ -242,6 +285,8 @@ There is a [CHANGELOG](./CHANGELOG.md) which summarises changes, particularly ch
 	```
 - The documentation will be available as static HTML files in the `docs/` folder.
 - `npm run docs` generates docs locally only; it does not deploy them.
+- The `docs/` directory is generated output. For normal feature/bugfix commits, do not include `docs/` changes unless the pull request is explicitly about documentation publication or docs content refresh.
+- If `npm run build` or `npm run docs` updates generated files during development, leave those changes unstaged for code-focused commits.
 
 
 ### Configuration
@@ -327,6 +372,15 @@ The app header version text is read directly from `package.json` in `src/compone
 5. Deploy the PWA build with `npm run deploy`.
 6. Create and push a release tag (e.g., `vX.Y.Z`).
 7. Publish the GitHub release notes for the tag.
+
+## Roadmap
+
+Planned future work is tracked in [ROADMAP.md](./ROADMAP.md).
+
+Developers looking for contributions should consult both:
+
+- [ROADMAP.md](./ROADMAP.md) for planned direction and upcoming themes.
+- [GitHub Issues](https://github.com/ribocode-slola/ribocode1/issues) for concrete tasks, bugs, feature requests, and places to respond with fixes.
 
 
 ## Tests
@@ -491,6 +545,13 @@ The following scripts are available in `package.json`:
 - Document any new E2E tests and datasets added.
 - Prefer realistic user flows: test file selection dialogs, downloads, and UI prompts as a user would experience them.
 
+#### Session and Selector Stability Notes
+
+- Prefer stable ID/testid selectors for repeated controls (`Zoom`, `Highlight`, `Inspect`) because label text is intentionally duplicated across Subunit, Chain, and Residue sections.
+- For session load/save/reload flows, wait for key controls (for example `#session-menu-btn`) before interacting after navigation or reload.
+- Long session workflows can exceed the default 30s test timeout under parallel workers; set a per-test timeout (for example `test.setTimeout(60000)`) for save/reload/load scenarios.
+- For load completion assertions, prefer checking filename labels (for example `#viewer-column-B-aligned-filename-label`) rather than assuming the absence/presence of a specific load button.
+
 ### Resources
 
 - [Playwright documentation](https://playwright.dev/docs/intro)
@@ -578,3 +639,5 @@ If you contribute changes, please submit a Pull Request that includes documentat
 Also, add your details to the list of authors in the header of any source files you modify.
 
 For contribution ideas, bug reports, or feature requests, please visit the [GitHub Issues page](https://github.com/ribocode-slola/ribocode1/issues).
+
+For planned future direction and potential contribution areas, also review [ROADMAP.md](./ROADMAP.md).
