@@ -433,6 +433,15 @@ test('renders the component', () => {
 
 Alignment changes should be validated with both automated and manual checks before release.
 
+Reference decision record: [ADR-0001 Alignment Quality Gates](decisions/ADR-0001-alignment-quality-gates.md).
+
+Recent findings from benchmark datasets:
+
+- 6XU6.cif -> 6XU8.cif, chain CU -> CU is currently stable with strong improvement.
+- 7WTT.cif -> 7WTZ.cif, chain e -> e currently improves only modestly and remains a known weak case.
+- The current fit already includes both rotation and translation, so adding a second translation pass is not expected to fix weak fits by itself.
+- A robust outlier-trim re-fit experiment was evaluated and did not improve the 7WTT/7WTZ e-case.
+
 Recommended focused automated checks:
 
 ```sh
@@ -440,6 +449,7 @@ npm test -- src/utils/alignmentGeometry.test.ts src/utils/realignment.test.ts sr
 npm test -- src/utils/alignmentPerformance.test.ts
 npx playwright test e2e/sync-and-realign-camera.e2e.spec.ts
 npx playwright test e2e/alignment-performance-cu-6xu6-6xu8.e2e.spec.ts
+npx playwright test e2e/alignment-diagnostic-e-7wtt-7wtz.e2e.spec.ts
 ```
 
 Recommended manual benchmark workflow:
@@ -456,10 +466,19 @@ When alignment internals are changed:
 - If the change is in `src/App.tsx`, verify both in-place transform behavior and reload-based fallback behavior.
 - Record any expected behavior changes in `CHANGELOG.md` so regressions are easier to trace.
 
+Next alignment investigation focus:
+
+- Improve correspondence quality for difficult chain pairs (for example, long-chain e -> e cases) rather than adding extra translation-only corrections.
+- Investigate residue-correspondence-aware pairing coverage in chain alignment tests, including gaps in automated checks for residue-key alignment behavior.
+- Keep both benchmark families active during changes:
+  - Strong-case guardrail: 6XU6/6XU8 CU -> CU should remain stable.
+  - Weak-case guardrail: 7WTT/7WTZ e -> e should materially improve without regressions elsewhere.
+
 ### Additional Resources
 
 - [Vitest documentation](https://vitest.dev/guide/)
 - [Testing Library docs](https://testing-library.com/docs/)
+- [ADR-0001 Alignment Quality Gates](decisions/ADR-0001-alignment-quality-gates.md)
 
 
 
