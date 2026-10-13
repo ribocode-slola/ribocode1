@@ -61,7 +61,7 @@ const ResidueSelectButton: React.FC<ResidueSelectButtonProps> = ({
 	);
 	return (
 		<label>
-			{label || 'Select Residues'}
+			{label || 'Select'}
 			<select
 				className="msp-select msp-form-control"
 				multiple

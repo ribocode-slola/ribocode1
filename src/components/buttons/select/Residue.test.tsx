@@ -31,7 +31,7 @@ describe('ResidueSelectButton', () => {
                 id="test-residue-select"
             />
         );
-        expect(getByLabelText('Select Residues')).toBeInTheDocument();
+        expect(getByLabelText('Select')).toBeInTheDocument();
         expect(getByText('GLY 10')).toBeInTheDocument();
         expect(getByText('ALA 20')).toBeInTheDocument();
         expect(getByText('SER 30')).toBeInTheDocument();
@@ -61,7 +61,7 @@ describe('ResidueSelectButton', () => {
                 id="select-residue-test"
             />
         );
-        const select = getByLabelText('Select Residues') as HTMLSelectElement;
+        const select = getByLabelText('Select') as HTMLSelectElement;
         const selected = Array.from(select.selectedOptions).map(o => o.value);
         expect(selected).toEqual(['20', '30']);
     });
@@ -77,7 +77,7 @@ describe('ResidueSelectButton', () => {
                 id="test-residue-select-onselect"
             />
         );
-        const select = getByLabelText('Select Residues') as HTMLSelectElement;
+        const select = getByLabelText('Select') as HTMLSelectElement;
         Array.from(select.options).forEach(option => {
             option.selected = option.value === '20' || option.value === '30';
         });
@@ -95,7 +95,7 @@ describe('ResidueSelectButton', () => {
                 id="test-residue-select-disabled"
             />
         );
-        expect(getByLabelText('Select Residues')).toBeDisabled();
+        expect(getByLabelText('Select')).toBeDisabled();
     });
 
     it('renders options in ascending sequence-number order', () => {
@@ -147,7 +147,7 @@ describe('ResidueSelectButton', () => {
                 id="my-residue-id"
             />
         );
-        expect((getByLabelText('Select Residues') as HTMLSelectElement).id).toBe('my-residue-id');
+        expect((getByLabelText('Select') as HTMLSelectElement).id).toBe('my-residue-id');
     });
 });
 

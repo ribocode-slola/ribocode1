@@ -95,6 +95,10 @@ describe('LoadDataRow', () => {
         expect(root).toBeInTheDocument();
         expect(screen.getByText('Viewer A')).toBeInTheDocument();
         expect(screen.getByText('Load AlignedTo')).toBeInTheDocument();
+        const representationToggle = document.getElementById('test-viewer-a-representation-controls-toggle-btn');
+        expect(representationToggle).toBeInTheDocument();
+        expect(representationToggle).toHaveClass('molstar-file-btn');
+        expect(representationToggle).toHaveClass('molstar-advanced-controls-toggle');
     });
 
     it('calls onFileInputClick when file input button is clicked', () => {
@@ -105,50 +109,129 @@ describe('LoadDataRow', () => {
 
     it('renders subunit, chain, and residue select controls', () => {
         render(<LoadDataRow {...baseProps} isLoaded={true} />);
+        fireEvent.click(screen.getByText('Show Subunit Controls'));
+        fireEvent.click(screen.getByText('Show Chain Controls'));
+        fireEvent.click(screen.getByText('Show Select Controls'));
+        fireEvent.click(screen.getByText('Show Residue Controls'));
         expect(screen.getByText('Chain A')).toBeInTheDocument();
         expect(screen.getByText('Residue 1')).toBeInTheDocument();
     });
 
+    it('keeps selected chain actions outside Select subsection', () => {
+        render(<LoadDataRow {...baseProps} isLoaded={true} />);
+
+        fireEvent.click(screen.getByText('Show Chain Controls'));
+        expect(document.getElementById('test-viewer-a-selected-chain-label')).toBeInTheDocument();
+        expect(document.getElementById('test-viewer-a-chain-table-container')).toBeNull();
+
+        fireEvent.click(screen.getByText('Show Select Controls'));
+        expect(document.getElementById('test-viewer-a-chain-table-container')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByText('Hide Select Controls'));
+        expect(document.getElementById('test-viewer-a-selected-chain-label')).toBeInTheDocument();
+        expect(document.getElementById('test-viewer-a-chain-table-container')).toBeNull();
+        expect(document.getElementById('test-viewer-a-show-uniprot-accession')).toBeNull();
+    });
+
     it('calls onAddColorsClick when Load Colours is clicked', () => {
         render(<LoadDataRow {...baseProps} isLoaded={true} />);
+        fireEvent.click(screen.getByText('Show Representation Controls'));
         fireEvent.click(screen.getByText('Load Colours'));
         expect(baseProps.onAddColorsClick).toHaveBeenCalled();
     });
 
+    it('renders colour theme selector and notifies selection changes', () => {
+        const onSelectedColorThemeNameChange = vi.fn();
+        render(
+            <LoadDataRow
+                {...baseProps}
+                isLoaded={true}
+                colorThemeOptions={[
+                    { value: 'default', label: 'Default' },
+                    { value: 'aligned-custom-1', label: 'Custom 1' },
+                ]}
+                selectedColorThemeName="default"
+                onSelectedColorThemeNameChange={onSelectedColorThemeNameChange}
+                removeColorThemeDisabled={true}
+            />
+        );
+
+        fireEvent.click(screen.getByText('Show Representation Controls'));
+
+        const select = document.getElementById('test-viewer-a-colour-theme-select') as HTMLSelectElement;
+        expect(select).toBeInTheDocument();
+        expect(select.value).toBe('default');
+
+        fireEvent.change(select, { target: { value: 'aligned-custom-1' } });
+        expect(onSelectedColorThemeNameChange).toHaveBeenCalledWith('aligned-custom-1');
+    });
+
+    it('calls onRemoveColorTheme when remove theme button is clicked', () => {
+        const onRemoveColorTheme = vi.fn();
+        render(
+            <LoadDataRow
+                {...baseProps}
+                isLoaded={true}
+                colorThemeOptions={[
+                    { value: 'default', label: 'Default' },
+                    { value: 'aligned-custom-1', label: 'Custom 1' },
+                ]}
+                selectedColorThemeName="aligned-custom-1"
+                onSelectedColorThemeNameChange={vi.fn()}
+                onRemoveColorTheme={onRemoveColorTheme}
+                removeColorThemeDisabled={false}
+            />
+        );
+
+        fireEvent.click(screen.getByText('Show Representation Controls'));
+
+        const removeButton = document.getElementById('test-viewer-a-remove-colour-theme-btn') as HTMLButtonElement;
+        expect(removeButton).toBeInTheDocument();
+        expect(removeButton.disabled).toBe(false);
+        fireEvent.click(removeButton);
+        expect(onRemoveColorTheme).toHaveBeenCalled();
+    });
+
     it('calls onAddRepresentationClick when + is clicked', () => {
         render(<LoadDataRow {...baseProps} isLoaded={true} />);
+        fireEvent.click(screen.getByText('Show Representation Controls'));
         fireEvent.click(screen.getByLabelText('Add Representation'));
         expect(baseProps.onAddRepresentationClick).toHaveBeenCalled();
     });
 
-    it('renders select and zoom controls in selector-then-zoom order', () => {
-        const { container } = render(<LoadDataRow {...baseProps} isLoaded={true} />);
+    it('renders grouped select and zoom toggles and keeps residue disabled without chain', () => {
+        const { container, unmount } = render(<LoadDataRow {...baseProps} isLoaded={true} />);
         const controls = container.querySelector('.load-data-controls');
         expect(controls).toBeInTheDocument();
 
         const rowText = Array.from(controls!.children).map(el => (el.textContent || '').trim());
         const findRowIndex = (needle: string) => rowText.findIndex(text => text.includes(needle));
 
-        const zoomParamsIndex = findRowIndex('Zoom extraRadius:');
-        const subunitSelectIndex = findRowIndex('Select Subunit');
-        const subunitZoomIndex = findRowIndex('Zoom to Subunit:');
-        const chainSelectIndex = findRowIndex('Select Chain');
-        const chainZoomIndex = findRowIndex('Zoom to Chain:');
-        const residueSelectIndex = findRowIndex('Select Residues');
-        const residueZoomIndex = findRowIndex('Zoom to Residue:');
-        const loadColoursIndex = findRowIndex('Load Colours');
-        const representationIndex = findRowIndex('Representation:');
+        const subunitToggleIndex = findRowIndex('Show Subunit Controls');
+        const chainToggleIndex = findRowIndex('Show Chain Controls');
+        const residueToggleIndex = findRowIndex('Show Residue Controls');
+        const repControlsToggleIndex = findRowIndex('Show Representation Controls');
 
-        expect(representationIndex).toBeGreaterThanOrEqual(0);
-        expect(loadColoursIndex).toBeGreaterThan(representationIndex);
-        expect(zoomParamsIndex).toBeGreaterThan(representationIndex);
-        expect(subunitSelectIndex).toBeGreaterThan(zoomParamsIndex);
-        expect(subunitSelectIndex).toBeGreaterThanOrEqual(0);
-        expect(subunitZoomIndex).toBeGreaterThan(subunitSelectIndex);
-        expect(chainSelectIndex).toBeGreaterThan(subunitZoomIndex);
-        expect(chainZoomIndex).toBeGreaterThan(chainSelectIndex);
-        expect(residueSelectIndex).toBeGreaterThan(chainZoomIndex);
-        expect(residueZoomIndex).toBeGreaterThan(residueSelectIndex);
+        expect(repControlsToggleIndex).toBeGreaterThanOrEqual(0);
+        expect(subunitToggleIndex).toBeGreaterThan(repControlsToggleIndex);
+        expect(chainToggleIndex).toBeGreaterThan(subunitToggleIndex);
+        expect(residueToggleIndex).toBeGreaterThan(chainToggleIndex);
+
+        fireEvent.click(screen.getByText('Show Representation Controls'));
+        expect(screen.getByText('Hide Representation Controls')).toBeInTheDocument();
+        expect(screen.getByText('Load Colours')).toBeInTheDocument();
+        expect(screen.getByLabelText('Add Representation')).toBeInTheDocument();
+
+        unmount();
+
+        const { getByText } = render(
+            <LoadDataRow
+                {...baseProps}
+                isLoaded={true}
+                selectedChainId=""
+            />
+        );
+        expect((getByText('Show Residue Controls') as HTMLButtonElement).disabled).toBe(true);
     });
 
     it('hides select and zoom controls when showSelectZoomControls is false', () => {
@@ -159,27 +242,32 @@ describe('LoadDataRow', () => {
                 showSelectZoomControls={false}
             />
         );
-        expect(queryByText('Select Subunit')).not.toBeInTheDocument();
-        expect(queryByText('Zoom to Subunit: All')).not.toBeInTheDocument();
-        expect(queryByText('Select Chain')).not.toBeInTheDocument();
-        expect(queryByText('Zoom to Chain: Chain A')).not.toBeInTheDocument();
-        expect(queryByText('Select Residues')).not.toBeInTheDocument();
-        expect(queryByText('Zoom to Residue: Residue 1')).not.toBeInTheDocument();
-        expect(queryByText('Load Colours')).toBeInTheDocument();
-        expect(queryByText(/Representation:/)).toBeInTheDocument();
+        expect(queryByText('Select')).not.toBeInTheDocument();
+        expect(queryByText('Zoom')).not.toBeInTheDocument();
+        expect(queryByText('Selected: Chain A')).not.toBeInTheDocument();
+        expect(queryByText('Zoom')).not.toBeInTheDocument();
+        expect(queryByText('Select')).not.toBeInTheDocument();
+        expect(document.getElementById('test-viewer-a-zoom-residue-btn')).toBeNull();
+        expect(queryByText('Show Representation Controls')).toBeInTheDocument();
+        expect(queryByText('Load Colours')).not.toBeInTheDocument();
+        expect(queryByText(/Representation:/)).not.toBeInTheDocument();
     });
 
     it('calls subunit/chain/residue basic highlight, inspect, and zoom handlers when buttons are clicked', () => {
         render(<LoadDataRow {...baseProps} isLoaded={true} />);
-        fireEvent.click(screen.getByText('Highlight Subunit (Basic): Off'));
-        fireEvent.click(screen.getByText('Inspect Subunit: Off'));
-        fireEvent.click(screen.getByText('Zoom to Subunit: All'));
-        fireEvent.click(screen.getByText('Highlight Chain: Off'));
-        fireEvent.click(screen.getByText('Inspect Chain: Off'));
-        fireEvent.click(screen.getByText('Zoom to Chain: Chain A'));
-        fireEvent.click(screen.getByText('Highlight Residues: Off'));
-        fireEvent.click(screen.getByText('Inspect Residues: Off'));
-        fireEvent.click(screen.getByText('Zoom to Residue: Residue 1'));
+        fireEvent.click(screen.getByText('Show Subunit Controls'));
+        fireEvent.click(screen.getByText('Show Chain Controls'));
+        fireEvent.click(screen.getByText('Show Select Controls'));
+        fireEvent.click(screen.getByText('Show Residue Controls'));
+        fireEvent.click(document.getElementById('test-viewer-a-zoom-subunit-btn') as HTMLButtonElement);
+        fireEvent.click(document.getElementById('test-viewer-a-highlight-subunit-btn') as HTMLButtonElement);
+        fireEvent.click(document.getElementById('test-viewer-a-inspect-subunit-btn') as HTMLButtonElement);
+        fireEvent.click(document.getElementById('test-viewer-a-zoom-chain-btn') as HTMLButtonElement);
+        fireEvent.click(document.getElementById('test-viewer-a-highlight-chain-btn') as HTMLButtonElement);
+        fireEvent.click(document.getElementById('test-viewer-a-inspect-chain-btn') as HTMLButtonElement);
+        fireEvent.click(document.getElementById('test-viewer-a-zoom-residue-btn') as HTMLButtonElement);
+        fireEvent.click(document.getElementById('test-viewer-a-highlight-residue-btn') as HTMLButtonElement);
+        fireEvent.click(document.getElementById('test-viewer-a-inspect-residue-btn') as HTMLButtonElement);
         expect(baseProps.onSubunitHighlight).toHaveBeenCalled();
         expect(baseProps.onSubunitInspect).toHaveBeenCalled();
         expect(baseProps.onSubunitZoom).toHaveBeenCalled();
@@ -217,8 +305,13 @@ describe('LoadDataRow', () => {
             />
         );
 
-        expect(screen.getByText('Inspect Subunit: On')).toBeInTheDocument();
-        expect(screen.getByText('Inspect Chain: On')).toBeInTheDocument();
-        expect(screen.getByText('Inspect Residues: On')).toBeInTheDocument();
+        fireEvent.click(screen.getByText('Show Subunit Controls'));
+        fireEvent.click(screen.getByText('Show Chain Controls'));
+        fireEvent.click(screen.getByText('Show Select Controls'));
+        fireEvent.click(screen.getByText('Show Residue Controls'));
+
+        expect(document.getElementById('test-viewer-a-inspect-subunit-btn')).toHaveTextContent('Inspect: On');
+        expect(document.getElementById('test-viewer-a-inspect-chain-btn')).toHaveTextContent('Inspect: On');
+        expect(document.getElementById('test-viewer-a-inspect-residue-btn')).toHaveTextContent('Inspect: On');
     });
 });

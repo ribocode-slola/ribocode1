@@ -17,17 +17,17 @@ function dataPath(filename: string) {
 async function loadAlignedToAndAligned(page: import('@playwright/test').Page) {
   await page.click('#viewer-column-A-alignedto-load-btn');
   await page.setInputFiles('#viewer-column-A-alignedto-file-input', dataPath('4ug0.cif'));
-  await expect(page.locator('#viewer-column-A-alignedto-filename-label')).toHaveText(/4ug0\.cif/i);
+  await expect(page.getByRole('button', { name: /Hide 4UG0/i })).toBeVisible({ timeout: 30000 });
 
   await page.click('#viewer-column-B-aligned-load-btn');
   await page.setInputFiles('#viewer-column-B-aligned-file-input', dataPath('6xu8.cif'));
-  await expect(page.locator('#viewer-column-B-aligned-load-btn')).toHaveCount(0, { timeout: 20000 });
+  await expect(page.getByRole('button', { name: /Hide 6XU8/i })).toBeVisible({ timeout: 30000 });
 }
 
 async function selectSubunitWithChains(
   page: import('@playwright/test').Page,
   subunitSelect: string,
-  chainSelect: string
+  chainRowPrefix: string
 ): Promise<string> {
   const values = await page.evaluate((selector) => {
     return Array.from(document.querySelectorAll(`${selector} option`))
@@ -38,12 +38,10 @@ async function selectSubunitWithChains(
   for (const value of values) {
     await page.selectOption(subunitSelect, value);
     await page.waitForTimeout(50);
-    const chainValues = await page.evaluate((selector) => {
-      return Array.from(document.querySelectorAll(`${selector} option`))
-        .map(opt => (opt as HTMLOptionElement).value)
-        .filter(v => v && v !== '');
-    }, chainSelect);
-    if (chainValues.length > 0) return value;
+    const chainCount = await page.evaluate((prefix) => {
+      return document.querySelectorAll(`[data-testid^="${prefix}"]`).length;
+    }, chainRowPrefix);
+    if (chainCount > 0) return value;
   }
 
   throw new Error(`No non-All subunit with chain options found for ${subunitSelect}`);
@@ -55,30 +53,41 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('Realign to Subunits button enables and then locks for applied pair', async ({ page }) => {
+test('Align Subunits button enables and remains available for repeated pairs', async ({ page }) => {
+  test.setTimeout(60000);
+
   await page.goto('http://localhost:5173/');
   await loadAlignedToAndAligned(page);
 
+  await page.click('#viewer-column-A-select-zoom-controls-toggle-btn');
+  await page.click('#viewer-column-B-select-zoom-controls-toggle-btn');
+  await page.click('#viewer-column-A-alignedto-subunit-controls-toggle-btn');
+  await page.click('#viewer-column-B-aligned-subunit-controls-toggle-btn');
+  await page.click('#viewer-column-A-alignedto-chain-controls-toggle-btn');
+  await page.click('#viewer-column-B-aligned-chain-controls-toggle-btn');
+  await page.click('#viewer-column-A-alignedto-select-chain-controls-toggle-btn');
+  await page.click('#viewer-column-B-aligned-select-chain-controls-toggle-btn');
+
   const realignSubunitBtn = page.locator('#generalcontrols-realign-subunit-btn');
   await expect(realignSubunitBtn).toBeDisabled();
-  await expect(realignSubunitBtn).toHaveText('Realign to Subunits');
+  await expect(realignSubunitBtn).toHaveText('Align Subunits');
 
   const alignedToSubunit = await selectSubunitWithChains(
     page,
     '#viewer-column-A-alignedto-subunit-select',
-    '#viewer-column-A-alignedto-chain-select'
+    'viewer-column-A-chain-table-row-'
   );
   const alignedSubunit = await selectSubunitWithChains(
     page,
     '#viewer-column-B-aligned-subunit-select',
-    '#viewer-column-B-aligned-chain-select'
+    'viewer-column-B-chain-table-row-'
   );
 
   await expect(realignSubunitBtn).toBeEnabled();
-  await expect(realignSubunitBtn).toHaveText(`Realign to Subunits: ${alignedToSubunit} -> ${alignedSubunit}`);
+  await expect(realignSubunitBtn).toHaveText(`Align Subunits: ${alignedToSubunit} -> ${alignedSubunit}`);
 
   await realignSubunitBtn.click();
 
-  await expect(realignSubunitBtn).toBeDisabled({ timeout: 10000 });
-  await expect(realignSubunitBtn).toHaveText(`Already realigned subunits: ${alignedToSubunit} -> ${alignedSubunit}`);
+  await expect(realignSubunitBtn).toBeEnabled({ timeout: 20000 });
+  await expect(realignSubunitBtn).toHaveText(`Align Subunits: ${alignedToSubunit} -> ${alignedSubunit}`);
 });

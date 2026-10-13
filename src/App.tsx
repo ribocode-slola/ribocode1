@@ -21,7 +21,6 @@ import { useSessionSaveAll } from './hooks/useSessionSaveAll';
 import { useSessionLoadModal } from './hooks/useSessionLoadModal';
 import { useUpdateChainInfo } from './hooks/useUpdateChainInfo';
 import { useUpdateResidueInfo } from './hooks/useUpdateResidueInfo';
-import { useUpdateColors } from './hooks/useUpdateColors';
 import { PluginCommands as MolPluginCommands } from 'molstar/lib/mol-plugin/commands';
 import ViewerColumn , {
     getLoadDataRowProps,
@@ -33,11 +32,11 @@ import ViewerColumn , {
 import TwoColumnsContainer from './components/TwoColumnsContainer';
 import AppHeader from './components/AppHeader';
 import { AlignedTo, Aligned, ReAligned } from './constants/ribocode';
-import { parseColorFileContent } from './utils/colors';
+import { parseColorFileContent, registerThemeIfNeeded } from './utils/colors';
 import { useFileInput } from './hooks/useFileInput';
 import { useChainState } from './hooks/useChainState';
 import { getAtomDataFromStructureUnits, summarizeAtomCloud } from './utils/data';
-import { getStructureRepresentations, highlightLociOnChain, highlightLociOnResidues, highlightLociOnSubunit, unhighlightLociOnChain, unhighlightLociOnResidues, unhighlightLociOnSubunit } from './utils/structure';
+import { clearStructureHighlightOverpaint, getStructureRepresentations, highlightLociOnChain, highlightLociOnResidues, highlightLociOnSubunit } from './utils/structure';
 import { parseDictionaryFileContent } from './utils/dictionary';
 import { useResidueState } from './hooks/useResidueState';
 import { useSubunitState } from './hooks/useSubunitState';
@@ -123,6 +122,18 @@ interface SessionUiState {
             residueIds?: string[];
         };
     };
+    highlights?: {
+        alignedTo?: {
+            chain?: boolean;
+            residue?: boolean;
+            subunit?: boolean;
+        };
+        aligned?: {
+            chain?: boolean;
+            residue?: boolean;
+            subunit?: boolean;
+        };
+    };
     syncEnabled?: boolean;
     activeViewer?: ViewerKey;
     cameraSnapshots?: {
@@ -139,7 +150,31 @@ interface SessionUiState {
         alignedTo?: string;
         aligned?: string;
     };
+    colorThemesByMode?: {
+        alignedTo?: {
+            selectedThemeName?: string;
+            themes?: Array<{ value: string; label: string; rows: Array<Record<string, string>> }>;
+        };
+        aligned?: {
+            selectedThemeName?: string;
+            themes?: Array<{ value: string; label: string; rows: Array<Record<string, string>> }>;
+        };
+    };
 }
+
+type ColorThemeMode = 'AlignedTo' | 'Aligned';
+
+interface LoadedColorThemeOption {
+    value: string;
+    label: string;
+}
+
+interface PersistedColorTheme extends LoadedColorThemeOption {
+    rows: Array<Record<string, string>>;
+}
+
+const DEFAULT_COLOR_THEME_NAME = 'default';
+const DEFAULT_COLOR_THEME_LABEL = 'Default';
 
 const UNIPROT_CACHE_STORAGE_KEY = 'ribocode-uniprot-gene-cache-v1';
 const ENABLE_IN_PLACE_CHAIN_REALIGN = true;
@@ -587,6 +622,23 @@ export function copyCameraZoomRadiusBetweenViewers(
     targetViewerRef.current?.canvas3d?.requestDraw?.();
 }
 
+export async function runWithTemporarySyncDisabled<T>(
+    isSyncEnabled: boolean,
+    setSyncEnabled: (value: boolean) => void,
+    action: () => Promise<T> | T
+): Promise<T> {
+    if (!isSyncEnabled) {
+        return await action();
+    }
+
+    setSyncEnabled(false);
+    try {
+        return await action();
+    } finally {
+        setSyncEnabled(true);
+    }
+}
+
 function getSelectedSubunitChainIds(
     subunitToChainIds: Map<string, Set<string>>,
     selectedSubunit: string
@@ -757,7 +809,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
     const [viewerAReady, setViewerAReady] = useState(false);
     const [viewerBReady, setViewerBReady] = useState(false);
     const [syncEnabled, setSyncEnabled] = useState(false);
-    const [showUniprotAccessionInChainLabels, setShowUniprotAccessionInChainLabels] = useState(true);
+    const [showUniprotAccessionInChainLabelsA, setShowUniprotAccessionInChainLabelsA] = useState(true);
+    const [showUniprotAccessionInChainLabelsB, setShowUniprotAccessionInChainLabelsB] = useState(true);
     const rpNameLookupBySpecies = useMemo(
         () => parseRpNameTableBySpecies(rpNameTableCsv),
         []
@@ -949,10 +1002,131 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
     const alignmentFile = useFileInput<Array<Record<string, string>>>(parseDictionaryFileContent, []);
     const [isMoleculeAlignedToColoursLoaded, setIsMoleculeAlignedToColoursLoaded] = useState(false);
     const [isMoleculeAlignedColoursLoaded, setIsMoleculeAlignedColoursLoaded] = useState(false);
-    const colorsAlignedToFile = useFileInput<Array<Record<string, string>>>(parseColorFileContent, []);
-    const colorsAlignedFile = useFileInput<Array<Record<string, string>>>(parseColorFileContent, []);
+    const colorsAlignedToInputRef = useRef<HTMLInputElement>(null);
+    const colorsAlignedInputRef = useRef<HTMLInputElement>(null);
+    const [loadedColorThemes, setLoadedColorThemes] = useState<LoadedColorThemeOption[]>([
+        { value: DEFAULT_COLOR_THEME_NAME, label: DEFAULT_COLOR_THEME_LABEL },
+    ]);
+    const [selectedColorThemeByMode, setSelectedColorThemeByMode] = useState<Record<ColorThemeMode, string>>({
+        AlignedTo: DEFAULT_COLOR_THEME_NAME,
+        Aligned: DEFAULT_COLOR_THEME_NAME,
+    });
+    const [loadedColorThemeRowsByName, setLoadedColorThemeRowsByName] = useState<Record<string, Array<Record<string, string>>>>({});
     // Chain color map state.
     const [chainColorMaps] = useState<Map<string, Map<string, Color>>>(new Map());
+    const registerLoadedColorTheme = useCallback((themeName: string, rows: Array<Record<string, string>>) => {
+        const themeChainColorMap = new Map<string, Color>();
+        rows.forEach(row => {
+            if (row.pdb_chain && row.color) {
+                try {
+                    themeChainColorMap.set(row.pdb_chain, Color.fromHexStyle(row.color));
+                } catch {
+                    // Ignore invalid rows and keep valid entries.
+                }
+            }
+        });
+        chainColorMaps.set(themeName, themeChainColorMap);
+        const safeRegisterTheme = (plugin: PluginUIContext | null) => {
+            const registry = (plugin as any)?.representation?.structure?.themes?.colorThemeRegistry;
+            if (!plugin || !registry) return;
+            registerThemeIfNeeded(plugin, themeName, chainColorMaps);
+        };
+        safeRegisterTheme(viewerA.ref.current);
+        safeRegisterTheme(viewerB.ref.current);
+    }, [chainColorMaps, viewerA.ref, viewerB.ref]);
+
+    const handleLoadColorThemeClick = useCallback((mode: ColorThemeMode) => {
+        if (mode === AlignedTo) {
+            colorsAlignedToInputRef.current?.click();
+        } else {
+            colorsAlignedInputRef.current?.click();
+        }
+    }, [colorsAlignedInputRef, colorsAlignedToInputRef]);
+
+    const handleColorThemeFileChange = useCallback(async (mode: ColorThemeMode, e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        try {
+            const parsedRows = await parseColorFileContent('', file);
+            const uniqueThemeName = `custom-chain-colors-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+            const label = file.name.replace(/\.[^.]+$/, '');
+            registerLoadedColorTheme(uniqueThemeName, parsedRows);
+            setLoadedColorThemeRowsByName(prev => ({
+                ...prev,
+                [uniqueThemeName]: parsedRows,
+            }));
+            setLoadedColorThemes(prev => [...prev, { value: uniqueThemeName, label }]);
+            setSelectedColorThemeByMode(prev => ({ ...prev, [mode]: uniqueThemeName }));
+            setIsMoleculeAlignedToColoursLoaded(true);
+            setIsMoleculeAlignedColoursLoaded(true);
+        } catch (err) {
+            console.warn(`[ColorTheme] Failed to parse colour theme file for ${mode}.`, err);
+        } finally {
+            // Allow selecting the same file again.
+            e.target.value = '';
+        }
+    }, [registerLoadedColorTheme]);
+
+    const isThemeInUse = useCallback((themeName: string): boolean => {
+        if (themeName === DEFAULT_COLOR_THEME_NAME) return false;
+        const structureRefs: Array<{ plugin: PluginUIContext | null; structureRef?: string | null }> = [
+            { plugin: viewerA.ref.current, structureRef: molstarA.structureRefs[AlignedTo] },
+            { plugin: viewerA.ref.current, structureRef: molstarA.structureRefs[Aligned] },
+            { plugin: viewerB.ref.current, structureRef: molstarB.structureRefs[AlignedTo] },
+            { plugin: viewerB.ref.current, structureRef: molstarB.structureRefs[Aligned] },
+        ];
+        const getThemeName = (theme: any): string => {
+            if (typeof theme === 'string') return theme;
+            return typeof theme?.name === 'string' ? theme.name : '';
+        };
+        return structureRefs.some(({ plugin, structureRef }) => {
+            if (!plugin || !structureRef) return false;
+            const reps = getStructureRepresentations(plugin, structureRef);
+            return reps.some(rep => getThemeName(rep.colorTheme) === themeName);
+        });
+    }, [molstarA.structureRefs, molstarB.structureRefs, viewerA.ref, viewerB.ref]);
+
+    const handleRemoveSelectedColorTheme = useCallback((mode: ColorThemeMode) => {
+        const selectedName = selectedColorThemeByMode[mode];
+        if (selectedName === DEFAULT_COLOR_THEME_NAME) return;
+        if (isThemeInUse(selectedName)) {
+            alert('This colour theme is currently used by one or more representations across the viewers. Switch those representations to another theme before removing it.');
+            return;
+        }
+        const remainingLoadedThemeCount = loadedColorThemes.filter(option => option.value !== DEFAULT_COLOR_THEME_NAME && option.value !== selectedName).length;
+        setLoadedColorThemes(prev => prev.filter(option => option.value !== selectedName));
+        setSelectedColorThemeByMode(prev => {
+            return {
+                ...prev,
+                AlignedTo: prev.AlignedTo === selectedName ? DEFAULT_COLOR_THEME_NAME : prev.AlignedTo,
+                Aligned: prev.Aligned === selectedName ? DEFAULT_COLOR_THEME_NAME : prev.Aligned,
+            };
+        });
+        setIsMoleculeAlignedToColoursLoaded(remainingLoadedThemeCount > 0);
+        setIsMoleculeAlignedColoursLoaded(remainingLoadedThemeCount > 0);
+        setLoadedColorThemeRowsByName(prev => {
+            const next = { ...prev };
+            delete next[selectedName];
+            return next;
+        });
+        chainColorMaps.delete(selectedName);
+    }, [chainColorMaps, isThemeInUse, loadedColorThemes, selectedColorThemeByMode]);
+
+    const colorsAlignedToFile = useMemo(() => ({
+        inputRef: colorsAlignedToInputRef,
+        handleButtonClick: () => handleLoadColorThemeClick('AlignedTo'),
+        handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+            void handleColorThemeFileChange('AlignedTo', e);
+        },
+    }), [handleColorThemeFileChange, handleLoadColorThemeClick]);
+
+    const colorsAlignedFile = useMemo(() => ({
+        inputRef: colorsAlignedInputRef,
+        handleButtonClick: () => handleLoadColorThemeClick('Aligned'),
+        handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+            void handleColorThemeFileChange('Aligned', e);
+        },
+    }), [handleColorThemeFileChange, handleLoadColorThemeClick]);
     // Realigned molecule structure/representation refs
     const [realignedStructRefsA, setRealignedStructRefsA] = useState<{ [id: string]: string }>({});
     const [realignedStructRefsB, setRealignedStructRefsB] = useState<{ [id: string]: string }>({});
@@ -1504,32 +1678,28 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
     const [clippingDefaultsB, setClippingDefaultsB] = useState(DEFAULT_CLIPPING);
     const clippingAInitializedRef = useRef(false);
     const clippingBInitializedRef = useRef(false);
+    const clippingSyncTimerARef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const clippingSyncTimerBRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     
     // Per-viewer residue zoom options
     const [zoomExtraRadiusA, setZoomExtraRadiusA] = useState(0);
     const [zoomMinRadiusA, setZoomMinRadiusA] = useState(0);
     const [zoomExtraRadiusB, setZoomExtraRadiusB] = useState(0);
     const [zoomMinRadiusB, setZoomMinRadiusB] = useState(0);
-    const [chainHighlightOnAAlignedTo, setChainHighlightOnAAlignedTo] = useState(false);
-    const [chainHighlightOnAAligned, setChainHighlightOnAAligned] = useState(false);
-    const [chainHighlightOnBAlignedTo, setChainHighlightOnBAlignedTo] = useState(false);
-    const [chainHighlightOnBAligned, setChainHighlightOnBAligned] = useState(false);
+    const [chainHighlightOnAlignedTo, setChainHighlightOnAlignedTo] = useState(false);
+    const [chainHighlightOnAligned, setChainHighlightOnAligned] = useState(false);
     const [chainInspectOnAAlignedTo, setChainInspectOnAAlignedTo] = useState(false);
     const [chainInspectOnAAligned, setChainInspectOnAAligned] = useState(false);
     const [chainInspectOnBAlignedTo, setChainInspectOnBAlignedTo] = useState(false);
     const [chainInspectOnBAligned, setChainInspectOnBAligned] = useState(false);
-    const [residueHighlightOnAAlignedTo, setResidueHighlightOnAAlignedTo] = useState(false);
-    const [residueHighlightOnAAligned, setResidueHighlightOnAAligned] = useState(false);
-    const [residueHighlightOnBAlignedTo, setResidueHighlightOnBAlignedTo] = useState(false);
-    const [residueHighlightOnBAligned, setResidueHighlightOnBAligned] = useState(false);
+    const [residueHighlightOnAlignedTo, setResidueHighlightOnAlignedTo] = useState(false);
+    const [residueHighlightOnAligned, setResidueHighlightOnAligned] = useState(false);
     const [residueInspectOnAAlignedTo, setResidueInspectOnAAlignedTo] = useState(false);
     const [residueInspectOnAAligned, setResidueInspectOnAAligned] = useState(false);
     const [residueInspectOnBAlignedTo, setResidueInspectOnBAlignedTo] = useState(false);
     const [residueInspectOnBAligned, setResidueInspectOnBAligned] = useState(false);
-    const [subunitHighlightOnAAlignedTo, setSubunitHighlightOnAAlignedTo] = useState(false);
-    const [subunitHighlightOnAAligned, setSubunitHighlightOnAAligned] = useState(false);
-    const [subunitHighlightOnBAlignedTo, setSubunitHighlightOnBAlignedTo] = useState(false);
-    const [subunitHighlightOnBAligned, setSubunitHighlightOnBAligned] = useState(false);
+    const [subunitHighlightOnAlignedTo, setSubunitHighlightOnAlignedTo] = useState(false);
+    const [subunitHighlightOnAligned, setSubunitHighlightOnAligned] = useState(false);
     const [subunitInspectOnAAlignedTo, setSubunitInspectOnAAlignedTo] = useState(false);
     const [subunitInspectOnAAligned, setSubunitInspectOnAAligned] = useState(false);
     const [subunitInspectOnBAlignedTo, setSubunitInspectOnBAlignedTo] = useState(false);
@@ -1590,6 +1760,114 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         updateFog(viewerB.ref.current, null, fogB.enabled, fogB.near, fogB.far, clippingB.minNear, clippingB.clipRadius);
     }, [viewerBReady, fogB, clippingB, updateFog]);
 
+    const syncClippingFromMolstarAfterZoom = useCallback((sourceViewer: ViewerKey, includeSyncedViewer: boolean) => {
+        const applyFromViewer = (
+            plugin: PluginUIContext | null,
+            setClipping: React.Dispatch<React.SetStateAction<{ minNear: number; clipRadius: number }>>,
+            setClippingDefaults: React.Dispatch<React.SetStateAction<{ minNear: number; clipRadius: number }>>
+        ) => {
+            if (!plugin?.canvas3d) return;
+            const clippingFromMolstar = readClippingFromViewer(plugin);
+            setClipping(clippingFromMolstar);
+            setClippingDefaults(clippingFromMolstar);
+        };
+
+        const capture = () => {
+            if (sourceViewer === A) {
+                applyFromViewer(viewerA.ref.current, setClippingA, setClippingDefaultsA);
+                if (includeSyncedViewer) {
+                    applyFromViewer(viewerB.ref.current, setClippingB, setClippingDefaultsB);
+                }
+            } else {
+                applyFromViewer(viewerB.ref.current, setClippingB, setClippingDefaultsB);
+                if (includeSyncedViewer) {
+                    applyFromViewer(viewerA.ref.current, setClippingA, setClippingDefaultsA);
+                }
+            }
+        };
+
+        // Mol* camera clipping can settle asynchronously after loci focus.
+        // Sample a few times so visible clipping controls stay in sync without requiring a toggle.
+        capture();
+        setTimeout(capture, 0);
+        setTimeout(capture, 32);
+        setTimeout(capture, 96);
+    }, [viewerA.ref, viewerB.ref, setClippingA, setClippingB, setClippingDefaultsA, setClippingDefaultsB]);
+
+    const syncClippingFromMolstarCameraEvent = useCallback((viewerKey: ViewerKey) => {
+        const applyIfChanged = (
+            next: { minNear: number; clipRadius: number },
+            setClipping: React.Dispatch<React.SetStateAction<{ minNear: number; clipRadius: number }>>,
+            setClippingDefaults: React.Dispatch<React.SetStateAction<{ minNear: number; clipRadius: number }>>
+        ) => {
+            const hasChanged = (prev: { minNear: number; clipRadius: number }) =>
+                Math.abs(prev.minNear - next.minNear) > 1e-6 || Math.abs(prev.clipRadius - next.clipRadius) > 1e-6;
+
+            setClipping(prev => (hasChanged(prev) ? next : prev));
+            setClippingDefaults(prev => (hasChanged(prev) ? next : prev));
+        };
+
+        const plugin = viewerKey === A ? viewerA.ref.current : viewerB.ref.current;
+        if (!plugin?.canvas3d) return;
+
+        const clippingFromMolstar = readClippingFromViewer(plugin);
+        if (viewerKey === A) {
+            applyIfChanged(clippingFromMolstar, setClippingA, setClippingDefaultsA);
+        } else {
+            applyIfChanged(clippingFromMolstar, setClippingB, setClippingDefaultsB);
+        }
+    }, [viewerA.ref, viewerB.ref]);
+
+    useEffect(() => {
+        if (!viewerAReady) return;
+        const plugin = viewerA.ref.current;
+        const stateChanged = plugin?.canvas3d?.camera?.stateChanged;
+        if (!stateChanged || typeof stateChanged.subscribe !== 'function') return;
+
+        const subscription = stateChanged.subscribe(() => {
+            if (clippingSyncTimerARef.current) {
+                clearTimeout(clippingSyncTimerARef.current);
+            }
+            clippingSyncTimerARef.current = setTimeout(() => {
+                clippingSyncTimerARef.current = null;
+                syncClippingFromMolstarCameraEvent(A);
+            }, 0);
+        });
+
+        return () => {
+            if (clippingSyncTimerARef.current) {
+                clearTimeout(clippingSyncTimerARef.current);
+                clippingSyncTimerARef.current = null;
+            }
+            subscription?.unsubscribe?.();
+        };
+    }, [viewerAReady, syncClippingFromMolstarCameraEvent, viewerA.ref]);
+
+    useEffect(() => {
+        if (!viewerBReady) return;
+        const plugin = viewerB.ref.current;
+        const stateChanged = plugin?.canvas3d?.camera?.stateChanged;
+        if (!stateChanged || typeof stateChanged.subscribe !== 'function') return;
+
+        const subscription = stateChanged.subscribe(() => {
+            if (clippingSyncTimerBRef.current) {
+                clearTimeout(clippingSyncTimerBRef.current);
+            }
+            clippingSyncTimerBRef.current = setTimeout(() => {
+                clippingSyncTimerBRef.current = null;
+                syncClippingFromMolstarCameraEvent(B);
+            }, 0);
+        });
+
+        return () => {
+            if (clippingSyncTimerBRef.current) {
+                clearTimeout(clippingSyncTimerBRef.current);
+                clippingSyncTimerBRef.current = null;
+            }
+            subscription?.unsubscribe?.();
+        };
+    }, [viewerBReady, syncClippingFromMolstarCameraEvent, viewerB.ref]);
+
     // Toggle visibility for moleculeAlignedTo in viewer A.
     const toggleViewerAAlignedTo = {
         handleButtonClick: () =>
@@ -1644,49 +1922,24 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
     const structureRefBAlignedTo: string | null = molstarB.structureRefs[AlignedTo];
     const structureRefBAligned: string | null = molstarB.structureRefs[Aligned];
     
-    // Theme names for custom chain color themes.
-    const themeNameAlignedTo = AlignedTo + '-custom-chain-colors';
-    const themeNameAligned = Aligned + '-custom-chain-colors';
-
     // Representation type state.
     const [representationTypeAlignedTo, setRepresentationTypeAlignedTo] = useState<AllowedRepresentationType>('spacefill');
     const [representationTypeAligned, setRepresentationTypeAligned] = useState<AllowedRepresentationType>('spacefill');
 
-    // Use the custom hook for both color sets (AlignedTo)
-    useUpdateColors(
-        viewerA.ref.current,
-        colorsAlignedToFile.data,
-        setIsMoleculeAlignedToColoursLoaded,
-        themeNameAlignedTo,
-        chainColorMaps,
-        [viewerA.moleculeAlignedTo, viewerB.moleculeAlignedTo, representationTypeAlignedTo, structureRefAAlignedTo, structureRefBAlignedTo]
-    );
-    useUpdateColors(
-        viewerB.ref.current,
-        colorsAlignedToFile.data,
-        setIsMoleculeAlignedToColoursLoaded,
-        themeNameAlignedTo,
-        chainColorMaps,
-        [viewerA.moleculeAlignedTo, viewerB.moleculeAlignedTo, representationTypeAlignedTo, structureRefAAlignedTo, structureRefBAlignedTo]
-    );
-
-    // Use the custom hook for both color sets (Aligned)
-    useUpdateColors(
-        viewerA.ref.current,
-        colorsAlignedFile.data,
-        setIsMoleculeAlignedColoursLoaded,
-        themeNameAligned,
-        chainColorMaps,
-        [viewerA.moleculeAligned, viewerB.moleculeAligned, representationTypeAligned, structureRefAAligned, structureRefBAligned]
-    );
-    useUpdateColors(
-        viewerB.ref.current,
-        colorsAlignedFile.data,
-        setIsMoleculeAlignedColoursLoaded,
-        themeNameAligned,
-        chainColorMaps,
-        [viewerA.moleculeAligned, viewerB.moleculeAligned, representationTypeAligned, structureRefAAligned, structureRefBAligned]
-    );
+    useEffect(() => {
+        const safeRegisterTheme = (plugin: PluginUIContext | null, themeName: string) => {
+            const registry = (plugin as any)?.representation?.structure?.themes?.colorThemeRegistry;
+            if (!plugin || !registry) return;
+            registerThemeIfNeeded(plugin, themeName, chainColorMaps);
+        };
+        const allLoadedThemeNames = loadedColorThemes
+            .map((option: LoadedColorThemeOption) => option.value)
+            .filter(themeName => themeName !== DEFAULT_COLOR_THEME_NAME);
+        allLoadedThemeNames.forEach(themeName => {
+            safeRegisterTheme(viewerA.ref.current, themeName);
+            safeRegisterTheme(viewerB.ref.current, themeName);
+        });
+    }, [loadedColorThemes, chainColorMaps, viewerA.ref, viewerB.ref, viewerAReady, viewerBReady]);
 
     // Custom hooks for updating chain info and subunit-to-chain mapping for both viewers.
     useUpdateChainInfo(
@@ -1699,7 +1952,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         rpNameLookupBySpecies,
         uniprotGeneNames,
         onUniprotAccessionsDiscovered,
-        showUniprotAccessionInChainLabels,
+        showUniprotAccessionInChainLabelsA,
         alignedToChainToUniProtOverride,
         alignedToChainToMoleculeOverride
     );
@@ -1713,7 +1966,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         rpNameLookupBySpecies,
         uniprotGeneNames,
         onUniprotAccessionsDiscovered,
-        showUniprotAccessionInChainLabels,
+        showUniprotAccessionInChainLabelsB,
         alignedChainToUniProtOverride,
         alignedChainToMoleculeOverride
     );
@@ -1732,6 +1985,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         syncPluginRef: viewerB.ref,
         syncStructureRef: structureRefBAlignedTo,
         syncChainId: selectedChainIdAlignedTo,
+        onAfterZoom: () => syncClippingFromMolstarAfterZoom(A, syncEnabled),
     });
     const chainZoomAAligned = makeZoomHandler({
         pluginRef: viewerA.ref,
@@ -1742,6 +1996,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         syncPluginRef: viewerB.ref,
         syncStructureRef: structureRefBAligned,
         syncChainId: selectedChainIdAligned,
+        onAfterZoom: () => syncClippingFromMolstarAfterZoom(A, syncEnabled),
     });
     const chainZoomBAlignedTo = makeZoomHandler({
         pluginRef: viewerB.ref,
@@ -1752,6 +2007,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         syncPluginRef: viewerA.ref,
         syncStructureRef: structureRefAAlignedTo,
         syncChainId: selectedChainIdAlignedTo,
+        onAfterZoom: () => syncClippingFromMolstarAfterZoom(B, syncEnabled),
     });
     const chainZoomBAligned = makeZoomHandler({
         pluginRef: viewerB.ref,
@@ -1762,14 +2018,15 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         syncPluginRef: viewerA.ref,
         syncStructureRef: structureRefAAligned,
         syncChainId: selectedChainIdAligned,
+        onAfterZoom: () => syncClippingFromMolstarAfterZoom(B, syncEnabled),
     });
 
     const chainHighlightAAlignedTo = makeChainHighlightToggleHandler({
         pluginRef: viewerA.ref,
         structureRef: structureRefAAlignedTo,
         chainId: selectedChainIdAlignedTo,
-        isHighlighted: chainHighlightOnAAlignedTo,
-        setIsHighlighted: setChainHighlightOnAAlignedTo,
+        isHighlighted: chainHighlightOnAlignedTo,
+        setIsHighlighted: setChainHighlightOnAlignedTo,
         sync: syncEnabled,
         syncPluginRef: viewerB.ref,
         syncStructureRef: structureRefBAlignedTo,
@@ -1779,8 +2036,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         pluginRef: viewerA.ref,
         structureRef: structureRefAAligned,
         chainId: selectedChainIdAligned,
-        isHighlighted: chainHighlightOnAAligned,
-        setIsHighlighted: setChainHighlightOnAAligned,
+        isHighlighted: chainHighlightOnAligned,
+        setIsHighlighted: setChainHighlightOnAligned,
         sync: syncEnabled,
         syncPluginRef: viewerB.ref,
         syncStructureRef: structureRefBAligned,
@@ -1790,8 +2047,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         pluginRef: viewerB.ref,
         structureRef: structureRefBAlignedTo,
         chainId: selectedChainIdAlignedTo,
-        isHighlighted: chainHighlightOnBAlignedTo,
-        setIsHighlighted: setChainHighlightOnBAlignedTo,
+        isHighlighted: chainHighlightOnAlignedTo,
+        setIsHighlighted: setChainHighlightOnAlignedTo,
         sync: syncEnabled,
         syncPluginRef: viewerA.ref,
         syncStructureRef: structureRefAAlignedTo,
@@ -1801,8 +2058,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         pluginRef: viewerB.ref,
         structureRef: structureRefBAligned,
         chainId: selectedChainIdAligned,
-        isHighlighted: chainHighlightOnBAligned,
-        setIsHighlighted: setChainHighlightOnBAligned,
+        isHighlighted: chainHighlightOnAligned,
+        setIsHighlighted: setChainHighlightOnAligned,
         sync: syncEnabled,
         syncPluginRef: viewerA.ref,
         syncStructureRef: structureRefAAligned,
@@ -1894,7 +2151,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         residueInsCodes: selectedResidueInsCodesAlignedTo,
         syncResidueInsCodes: selectedResidueInsCodesAlignedTo,
         zoomExtraRadius: zoomExtraRadiusA,
-        zoomMinRadius: zoomMinRadiusA
+        zoomMinRadius: zoomMinRadiusA,
+        onAfterZoom: () => syncClippingFromMolstarAfterZoom(A, syncEnabled),
     });
     const residueZoomAAligned = makeZoomHandler({
         pluginRef: viewerA.ref,
@@ -1914,7 +2172,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         residueInsCodes: selectedResidueInsCodesAligned,
         syncResidueInsCodes: selectedResidueInsCodesAligned,
         zoomExtraRadius: zoomExtraRadiusA,
-        zoomMinRadius: zoomMinRadiusA
+        zoomMinRadius: zoomMinRadiusA,
+        onAfterZoom: () => syncClippingFromMolstarAfterZoom(A, syncEnabled),
     });
     const residueZoomBAlignedTo = makeZoomHandler({
         pluginRef: viewerB.ref,
@@ -1934,7 +2193,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         residueInsCodes: selectedResidueInsCodesAlignedTo,
         syncResidueInsCodes: selectedResidueInsCodesAlignedTo,
         zoomExtraRadius: zoomExtraRadiusB,
-        zoomMinRadius: zoomMinRadiusB
+        zoomMinRadius: zoomMinRadiusB,
+        onAfterZoom: () => syncClippingFromMolstarAfterZoom(B, syncEnabled),
     });
     const residueZoomBAligned = makeZoomHandler({
         pluginRef: viewerB.ref,
@@ -1954,7 +2214,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         residueInsCodes: selectedResidueInsCodesAligned,
         syncResidueInsCodes: selectedResidueInsCodesAligned,
         zoomExtraRadius: zoomExtraRadiusB,
-        zoomMinRadius: zoomMinRadiusB
+        zoomMinRadius: zoomMinRadiusB,
+        onAfterZoom: () => syncClippingFromMolstarAfterZoom(B, syncEnabled),
     });
 
     const residueHighlightAAlignedTo = makeResidueHighlightToggleHandler({
@@ -1963,8 +2224,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         chainId: selectedChainIdAlignedTo,
         residueIds: selectedResidueIdsAlignedTo,
         residueInsCodes: selectedResidueInsCodesAlignedTo,
-        isHighlighted: residueHighlightOnAAlignedTo,
-        setIsHighlighted: setResidueHighlightOnAAlignedTo,
+        isHighlighted: residueHighlightOnAlignedTo,
+        setIsHighlighted: setResidueHighlightOnAlignedTo,
         sync: syncEnabled,
         syncPluginRef: viewerB.ref,
         syncStructureRef: structureRefBAlignedTo,
@@ -1978,8 +2239,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         chainId: selectedChainIdAligned,
         residueIds: selectedResidueIdsAligned,
         residueInsCodes: selectedResidueInsCodesAligned,
-        isHighlighted: residueHighlightOnAAligned,
-        setIsHighlighted: setResidueHighlightOnAAligned,
+        isHighlighted: residueHighlightOnAligned,
+        setIsHighlighted: setResidueHighlightOnAligned,
         sync: syncEnabled,
         syncPluginRef: viewerB.ref,
         syncStructureRef: structureRefBAligned,
@@ -1993,8 +2254,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         chainId: selectedChainIdAlignedTo,
         residueIds: selectedResidueIdsAlignedTo,
         residueInsCodes: selectedResidueInsCodesAlignedTo,
-        isHighlighted: residueHighlightOnBAlignedTo,
-        setIsHighlighted: setResidueHighlightOnBAlignedTo,
+        isHighlighted: residueHighlightOnAlignedTo,
+        setIsHighlighted: setResidueHighlightOnAlignedTo,
         sync: syncEnabled,
         syncPluginRef: viewerA.ref,
         syncStructureRef: structureRefAAlignedTo,
@@ -2008,8 +2269,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         chainId: selectedChainIdAligned,
         residueIds: selectedResidueIdsAligned,
         residueInsCodes: selectedResidueInsCodesAligned,
-        isHighlighted: residueHighlightOnBAligned,
-        setIsHighlighted: setResidueHighlightOnBAligned,
+        isHighlighted: residueHighlightOnAligned,
+        setIsHighlighted: setResidueHighlightOnAligned,
         sync: syncEnabled,
         syncPluginRef: viewerA.ref,
         syncStructureRef: structureRefAAligned,
@@ -2099,7 +2360,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         syncPluginRef: viewerB.ref,
         syncStructureRef: structureRefBAlignedTo,
         zoomExtraRadius: zoomExtraRadiusA,
-        zoomMinRadius: zoomMinRadiusA
+        zoomMinRadius: zoomMinRadiusA,
+        onAfterZoom: () => syncClippingFromMolstarAfterZoom(A, syncEnabled),
     });
     const subunitZoomAAligned = makeZoomHandler({
         pluginRef: viewerA.ref,
@@ -2112,7 +2374,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         syncPluginRef: viewerB.ref,
         syncStructureRef: structureRefBAligned,
         zoomExtraRadius: zoomExtraRadiusA,
-        zoomMinRadius: zoomMinRadiusA
+        zoomMinRadius: zoomMinRadiusA,
+        onAfterZoom: () => syncClippingFromMolstarAfterZoom(A, syncEnabled),
     });
     const subunitZoomBAlignedTo = makeZoomHandler({
         pluginRef: viewerB.ref,
@@ -2125,7 +2388,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         syncPluginRef: viewerA.ref,
         syncStructureRef: structureRefAAlignedTo,
         zoomExtraRadius: zoomExtraRadiusB,
-        zoomMinRadius: zoomMinRadiusB
+        zoomMinRadius: zoomMinRadiusB,
+        onAfterZoom: () => syncClippingFromMolstarAfterZoom(B, syncEnabled),
     });
     const subunitZoomBAligned = makeZoomHandler({
         pluginRef: viewerB.ref,
@@ -2138,15 +2402,16 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         syncPluginRef: viewerA.ref,
         syncStructureRef: structureRefAAligned,
         zoomExtraRadius: zoomExtraRadiusB,
-        zoomMinRadius: zoomMinRadiusB
+        zoomMinRadius: zoomMinRadiusB,
+        onAfterZoom: () => syncClippingFromMolstarAfterZoom(B, syncEnabled),
     });
 
     const subunitHighlightAAlignedTo = makeSubunitHighlightToggleHandler({
         pluginRef: viewerA.ref,
         structureRef: structureRefAAlignedTo,
         chainIds: selectedSubunitChainIdsAlignedTo,
-        isHighlighted: subunitHighlightOnAAlignedTo,
-        setIsHighlighted: setSubunitHighlightOnAAlignedTo,
+        isHighlighted: subunitHighlightOnAlignedTo,
+        setIsHighlighted: setSubunitHighlightOnAlignedTo,
         sync: syncEnabled,
         syncPluginRef: viewerB.ref,
         syncStructureRef: structureRefBAlignedTo,
@@ -2156,8 +2421,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         pluginRef: viewerA.ref,
         structureRef: structureRefAAligned,
         chainIds: selectedSubunitChainIdsAligned,
-        isHighlighted: subunitHighlightOnAAligned,
-        setIsHighlighted: setSubunitHighlightOnAAligned,
+        isHighlighted: subunitHighlightOnAligned,
+        setIsHighlighted: setSubunitHighlightOnAligned,
         sync: syncEnabled,
         syncPluginRef: viewerB.ref,
         syncStructureRef: structureRefBAligned,
@@ -2167,8 +2432,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         pluginRef: viewerB.ref,
         structureRef: structureRefBAlignedTo,
         chainIds: selectedSubunitChainIdsAlignedTo,
-        isHighlighted: subunitHighlightOnBAlignedTo,
-        setIsHighlighted: setSubunitHighlightOnBAlignedTo,
+        isHighlighted: subunitHighlightOnAlignedTo,
+        setIsHighlighted: setSubunitHighlightOnAlignedTo,
         sync: syncEnabled,
         syncPluginRef: viewerA.ref,
         syncStructureRef: structureRefAAlignedTo,
@@ -2178,380 +2443,115 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         pluginRef: viewerB.ref,
         structureRef: structureRefBAligned,
         chainIds: selectedSubunitChainIdsAligned,
-        isHighlighted: subunitHighlightOnBAligned,
-        setIsHighlighted: setSubunitHighlightOnBAligned,
+        isHighlighted: subunitHighlightOnAligned,
+        setIsHighlighted: setSubunitHighlightOnAligned,
         sync: syncEnabled,
         syncPluginRef: viewerA.ref,
         syncStructureRef: structureRefAAligned,
         syncChainIds: selectedSubunitChainIdsAligned,
     });
 
-    const previousChainHighlightRef = useRef<Record<string, { structureRef: string; chainId: string } | undefined>>({});
     useEffect(() => {
-        const configs = [
-            {
-                key: 'a-alignedto',
-                pluginRef: viewerA.ref,
-                structureRef: structureRefAAlignedTo,
-                chainId: selectedChainIdAlignedTo,
-                isOn: chainHighlightOnAAlignedTo,
-                syncPluginRef: viewerB.ref,
-                syncStructureRef: structureRefBAlignedTo,
-            },
-            {
-                key: 'a-aligned',
-                pluginRef: viewerA.ref,
-                structureRef: structureRefAAligned,
-                chainId: selectedChainIdAligned,
-                isOn: chainHighlightOnAAligned,
-                syncPluginRef: viewerB.ref,
-                syncStructureRef: structureRefBAligned,
-            },
-            {
-                key: 'b-alignedto',
-                pluginRef: viewerB.ref,
-                structureRef: structureRefBAlignedTo,
-                chainId: selectedChainIdAlignedTo,
-                isOn: chainHighlightOnBAlignedTo,
-                syncPluginRef: viewerA.ref,
-                syncStructureRef: structureRefAAlignedTo,
-            },
-            {
-                key: 'b-aligned',
-                pluginRef: viewerB.ref,
-                structureRef: structureRefBAligned,
-                chainId: selectedChainIdAligned,
-                isOn: chainHighlightOnBAligned,
-                syncPluginRef: viewerA.ref,
-                syncStructureRef: structureRefAAligned,
-            },
-        ];
+        type HighlightDatasetConfig = {
+            structureRef: string | null;
+            chainId: string;
+            residueIds: string[];
+            residueInsCodes?: Record<string, string | undefined>;
+            subunitChainIds: string[];
+            chainOn: boolean;
+            residueOn: boolean;
+            subunitOn: boolean;
+        };
 
-        for (const config of configs) {
-            const prev = previousChainHighlightRef.current[config.key];
-            if (!config.isOn) {
-                previousChainHighlightRef.current[config.key] = undefined;
-                continue;
+        const applyHighlightsForPlugin = (
+            plugin: PluginUIContext | null,
+            datasetConfigs: HighlightDatasetConfig[]
+        ) => {
+            if (!plugin) return;
+
+            plugin.managers.interactivity?.lociSelects?.deselectAll?.();
+            for (const config of datasetConfigs) {
+                if (!config.structureRef) continue;
+                clearStructureHighlightOverpaint(plugin, config.structureRef);
             }
 
-            const plugin = config.pluginRef.current;
-            if (!plugin || !config.structureRef) continue;
+            for (const config of datasetConfigs) {
+                if (!config.structureRef) continue;
 
-            if (!config.chainId) {
-                if (prev?.chainId) {
-                    unhighlightLociOnChain(
+                const uniqueSubunitChainIds = Array.from(new Set(config.subunitChainIds.filter(Boolean)));
+                if (config.subunitOn && uniqueSubunitChainIds.length > 0) {
+                    highlightLociOnSubunit(plugin, config.structureRef, uniqueSubunitChainIds);
+                }
+
+                if (config.chainOn && config.chainId) {
+                    highlightLociOnChain(plugin, config.structureRef, config.chainId);
+                }
+
+                if (config.residueOn && config.chainId && config.residueIds.length > 0) {
+                    highlightLociOnResidues(
                         plugin,
-                        prev.structureRef,
-                        prev.chainId,
-                        syncEnabled ? config.syncPluginRef.current ?? undefined : undefined,
-                        undefined,
-                        syncEnabled ? config.syncStructureRef ?? undefined : undefined,
-                        prev.chainId
+                        config.structureRef,
+                        config.chainId,
+                        config.residueIds,
+                        config.residueInsCodes
                     );
                 }
-                previousChainHighlightRef.current[config.key] = undefined;
-                continue;
             }
+        };
 
-            if (prev && prev.chainId === config.chainId && prev.structureRef === config.structureRef) {
-                continue;
-            }
-
-            if (prev?.chainId) {
-                unhighlightLociOnChain(
-                    plugin,
-                    prev.structureRef,
-                    prev.chainId,
-                    syncEnabled ? config.syncPluginRef.current ?? undefined : undefined,
-                    undefined,
-                    syncEnabled ? config.syncStructureRef ?? undefined : undefined,
-                    prev.chainId
-                );
-            }
-
-            highlightLociOnChain(
-                plugin,
-                config.structureRef,
-                config.chainId,
-                syncEnabled ? config.syncPluginRef.current ?? undefined : undefined,
-                undefined,
-                syncEnabled ? config.syncStructureRef ?? undefined : undefined,
-                config.chainId
-            );
-            previousChainHighlightRef.current[config.key] = {
-                structureRef: config.structureRef,
-                chainId: config.chainId,
-            };
-        }
-    }, [
-        chainHighlightOnAAlignedTo,
-        chainHighlightOnAAligned,
-        chainHighlightOnBAlignedTo,
-        chainHighlightOnBAligned,
-        selectedChainIdAlignedTo,
-        selectedChainIdAligned,
-        structureRefAAlignedTo,
-        structureRefAAligned,
-        structureRefBAlignedTo,
-        structureRefBAligned,
-        syncEnabled,
-        viewerA.ref,
-        viewerB.ref,
-    ]);
-
-    const previousResidueHighlightRef = useRef<Record<string, {
-        structureRef: string;
-        chainId: string;
-        residueIds: string[];
-        residueInsCodes?: Record<string, string | undefined>;
-        key: string;
-    } | undefined>>({});
-    useEffect(() => {
-        const configs = [
+        const datasetConfigs: HighlightDatasetConfig[] = [
             {
-                key: 'a-alignedto',
-                pluginRef: viewerA.ref,
                 structureRef: structureRefAAlignedTo,
                 chainId: selectedChainIdAlignedTo,
                 residueIds: selectedResidueIdsAlignedTo,
                 residueInsCodes: selectedResidueInsCodesAlignedTo,
-                isOn: residueHighlightOnAAlignedTo,
-                syncPluginRef: viewerB.ref,
-                syncStructureRef: structureRefBAlignedTo,
+                subunitChainIds: selectedSubunitChainIdsAlignedTo,
+                chainOn: chainHighlightOnAlignedTo,
+                residueOn: residueHighlightOnAlignedTo,
+                subunitOn: subunitHighlightOnAlignedTo,
             },
             {
-                key: 'a-aligned',
-                pluginRef: viewerA.ref,
                 structureRef: structureRefAAligned,
                 chainId: selectedChainIdAligned,
                 residueIds: selectedResidueIdsAligned,
                 residueInsCodes: selectedResidueInsCodesAligned,
-                isOn: residueHighlightOnAAligned,
-                syncPluginRef: viewerB.ref,
-                syncStructureRef: structureRefBAligned,
-            },
-            {
-                key: 'b-alignedto',
-                pluginRef: viewerB.ref,
-                structureRef: structureRefBAlignedTo,
-                chainId: selectedChainIdAlignedTo,
-                residueIds: selectedResidueIdsAlignedTo,
-                residueInsCodes: selectedResidueInsCodesAlignedTo,
-                isOn: residueHighlightOnBAlignedTo,
-                syncPluginRef: viewerA.ref,
-                syncStructureRef: structureRefAAlignedTo,
-            },
-            {
-                key: 'b-aligned',
-                pluginRef: viewerB.ref,
-                structureRef: structureRefBAligned,
-                chainId: selectedChainIdAligned,
-                residueIds: selectedResidueIdsAligned,
-                residueInsCodes: selectedResidueInsCodesAligned,
-                isOn: residueHighlightOnBAligned,
-                syncPluginRef: viewerA.ref,
-                syncStructureRef: structureRefAAligned,
+                subunitChainIds: selectedSubunitChainIdsAligned,
+                chainOn: chainHighlightOnAligned,
+                residueOn: residueHighlightOnAligned,
+                subunitOn: subunitHighlightOnAligned,
             },
         ];
 
-        for (const config of configs) {
-            const selectionKey = getResidueSelectionKey(config.chainId, config.residueIds, config.residueInsCodes);
-            const prev = previousResidueHighlightRef.current[config.key];
-            if (!config.isOn) {
-                previousResidueHighlightRef.current[config.key] = undefined;
-                continue;
-            }
-
-            const plugin = config.pluginRef.current;
-            if (!plugin || !config.structureRef) continue;
-
-            if (!selectionKey) {
-                if (prev) {
-                    unhighlightLociOnResidues(
-                        plugin,
-                        prev.structureRef,
-                        prev.chainId,
-                        prev.residueIds,
-                        prev.residueInsCodes,
-                        syncEnabled ? config.syncPluginRef.current ?? undefined : undefined,
-                        syncEnabled ? config.syncStructureRef ?? undefined : undefined,
-                        prev.chainId,
-                        prev.residueIds,
-                        prev.residueInsCodes
-                    );
-                }
-                previousResidueHighlightRef.current[config.key] = undefined;
-                continue;
-            }
-
-            if (prev && prev.key === selectionKey && prev.structureRef === config.structureRef) {
-                continue;
-            }
-
-            if (prev) {
-                unhighlightLociOnResidues(
-                    plugin,
-                    prev.structureRef,
-                    prev.chainId,
-                    prev.residueIds,
-                    prev.residueInsCodes,
-                    syncEnabled ? config.syncPluginRef.current ?? undefined : undefined,
-                    syncEnabled ? config.syncStructureRef ?? undefined : undefined,
-                    prev.chainId,
-                    prev.residueIds,
-                    prev.residueInsCodes
-                );
-            }
-
-            highlightLociOnResidues(
-                plugin,
-                config.structureRef,
-                config.chainId,
-                config.residueIds,
-                config.residueInsCodes,
-                syncEnabled ? config.syncPluginRef.current ?? undefined : undefined,
-                syncEnabled ? config.syncStructureRef ?? undefined : undefined,
-                config.chainId,
-                config.residueIds,
-                config.residueInsCodes
-            );
-            previousResidueHighlightRef.current[config.key] = {
-                structureRef: config.structureRef,
-                chainId: config.chainId,
-                residueIds: [...config.residueIds],
-                residueInsCodes: config.residueInsCodes,
-                key: selectionKey,
-            };
-        }
+        applyHighlightsForPlugin(viewerA.ref.current, datasetConfigs);
+        applyHighlightsForPlugin(viewerB.ref.current, [
+            {
+                ...datasetConfigs[0],
+                structureRef: structureRefBAlignedTo,
+            },
+            {
+                ...datasetConfigs[1],
+                structureRef: structureRefBAligned,
+            },
+        ]);
     }, [
-        residueHighlightOnAAlignedTo,
-        residueHighlightOnAAligned,
-        residueHighlightOnBAlignedTo,
-        residueHighlightOnBAligned,
+        chainHighlightOnAlignedTo,
+        chainHighlightOnAligned,
+        residueHighlightOnAlignedTo,
+        residueHighlightOnAligned,
+        subunitHighlightOnAlignedTo,
+        subunitHighlightOnAligned,
         selectedChainIdAlignedTo,
         selectedChainIdAligned,
         selectedResidueIdsAlignedTo,
         selectedResidueIdsAligned,
         selectedResidueInsCodesAlignedTo,
         selectedResidueInsCodesAligned,
-        structureRefAAlignedTo,
-        structureRefAAligned,
-        structureRefBAlignedTo,
-        structureRefBAligned,
-        syncEnabled,
-        viewerA.ref,
-        viewerB.ref,
-    ]);
-
-    const previousSubunitHighlightRef = useRef<Record<string, { structureRef: string; chainIds: string[]; key: string } | undefined>>({});
-    useEffect(() => {
-        const configs = [
-            {
-                key: 'a-alignedto',
-                pluginRef: viewerA.ref,
-                structureRef: structureRefAAlignedTo,
-                chainIds: selectedSubunitChainIdsAlignedTo,
-                isOn: subunitHighlightOnAAlignedTo,
-                syncPluginRef: viewerB.ref,
-                syncStructureRef: structureRefBAlignedTo,
-            },
-            {
-                key: 'a-aligned',
-                pluginRef: viewerA.ref,
-                structureRef: structureRefAAligned,
-                chainIds: selectedSubunitChainIdsAligned,
-                isOn: subunitHighlightOnAAligned,
-                syncPluginRef: viewerB.ref,
-                syncStructureRef: structureRefBAligned,
-            },
-            {
-                key: 'b-alignedto',
-                pluginRef: viewerB.ref,
-                structureRef: structureRefBAlignedTo,
-                chainIds: selectedSubunitChainIdsAlignedTo,
-                isOn: subunitHighlightOnBAlignedTo,
-                syncPluginRef: viewerA.ref,
-                syncStructureRef: structureRefAAlignedTo,
-            },
-            {
-                key: 'b-aligned',
-                pluginRef: viewerB.ref,
-                structureRef: structureRefBAligned,
-                chainIds: selectedSubunitChainIdsAligned,
-                isOn: subunitHighlightOnBAligned,
-                syncPluginRef: viewerA.ref,
-                syncStructureRef: structureRefAAligned,
-            },
-        ];
-
-        for (const config of configs) {
-            const chainIds = Array.from(new Set(config.chainIds.filter(Boolean))).sort();
-            const selectionKey = chainIds.join(',');
-            const prev = previousSubunitHighlightRef.current[config.key];
-            if (!config.isOn) {
-                previousSubunitHighlightRef.current[config.key] = undefined;
-                continue;
-            }
-
-            const plugin = config.pluginRef.current;
-            if (!plugin || !config.structureRef) continue;
-
-            if (!selectionKey) {
-                if (prev) {
-                    unhighlightLociOnSubunit(
-                        plugin,
-                        prev.structureRef,
-                        prev.chainIds,
-                        syncEnabled ? config.syncPluginRef.current ?? undefined : undefined,
-                        syncEnabled ? config.syncStructureRef ?? undefined : undefined,
-                        prev.chainIds
-                    );
-                }
-                previousSubunitHighlightRef.current[config.key] = undefined;
-                continue;
-            }
-
-            if (prev && prev.key === selectionKey && prev.structureRef === config.structureRef) {
-                continue;
-            }
-
-            if (prev) {
-                unhighlightLociOnSubunit(
-                    plugin,
-                    prev.structureRef,
-                    prev.chainIds,
-                    syncEnabled ? config.syncPluginRef.current ?? undefined : undefined,
-                    syncEnabled ? config.syncStructureRef ?? undefined : undefined,
-                    prev.chainIds
-                );
-            }
-
-            highlightLociOnSubunit(
-                plugin,
-                config.structureRef,
-                chainIds,
-                syncEnabled ? config.syncPluginRef.current ?? undefined : undefined,
-                syncEnabled ? config.syncStructureRef ?? undefined : undefined,
-                chainIds
-            );
-            previousSubunitHighlightRef.current[config.key] = {
-                structureRef: config.structureRef,
-                chainIds,
-                key: selectionKey,
-            };
-        }
-    }, [
-        subunitHighlightOnAAlignedTo,
-        subunitHighlightOnAAligned,
-        subunitHighlightOnBAlignedTo,
-        subunitHighlightOnBAligned,
         selectedSubunitChainIdsAlignedTo,
         selectedSubunitChainIdsAligned,
         structureRefAAlignedTo,
         structureRefAAligned,
         structureRefBAlignedTo,
         structureRefBAligned,
-        syncEnabled,
         viewerA.ref,
         viewerB.ref,
     ]);
@@ -3160,30 +3160,32 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                     return;
                 }
 
-                try {
-                    const appliedInPlace = await applyInPlaceRealign();
-                    if (appliedInPlace) {
-                        // Match right-viewer zoom to left-viewer zoom without forcing pan/rotation yet.
-                        copyCameraZoomRadius(viewerA.ref, viewerB.ref);
-                        if (ENABLE_REALIGN_DIAGNOSTICS) console.info('[Re-align] Applied in-place transform to existing aligned structures.');
+                await runWithTemporarySyncDisabled(syncEnabled, setSyncEnabled, async () => {
+                    try {
+                        const appliedInPlace = await applyInPlaceRealign();
+                        if (appliedInPlace) {
+                            // Match right-viewer viewpoint to left-viewer viewpoint.
+                            copyCameraZoomRadius(viewerA.ref, viewerB.ref);
+                            if (ENABLE_REALIGN_DIAGNOSTICS) console.info('[Re-align] Applied in-place transform to existing aligned structures.');
+                            return;
+                        }
+                    } catch (inPlaceErr) {
+                        console.warn('[Re-align] In-place transform failed; falling back to reload-based realign.', inPlaceErr);
+                    }
+
+                    const file = new File([alignedFile], alignedFile.name);
+                    await loadMoleculeIntoViewers(file, ReAligned, alignmentData);
+                    pluginA.canvas3d?.requestDraw?.();
+                    const pluginB = viewerB.ref.current;
+                    if (!pluginB) {
+                        console.warn('Viewer B not initialized.');
                         return;
                     }
-                } catch (inPlaceErr) {
-                    console.warn('[Re-align] In-place transform failed; falling back to reload-based realign.', inPlaceErr);
-                }
-
-                const file = new File([alignedFile], alignedFile.name);
-                await loadMoleculeIntoViewers(file, ReAligned, alignmentData);
-                pluginA.canvas3d?.requestDraw?.();
-                const pluginB = viewerB.ref.current;
-                if (!pluginB) {
-                    console.warn('Viewer B not initialized.');
-                    return;
-                }
-                pluginB.canvas3d?.requestDraw?.();
-                // Keep zoom parity in fallback mode as well.
-                copyCameraZoomRadius(viewerA.ref, viewerB.ref);
-                if (ENABLE_REALIGN_DIAGNOSTICS) console.info('[Re-align] Applied reload-based fallback realign.');
+                    pluginB.canvas3d?.requestDraw?.();
+                    // Keep viewpoint parity in fallback mode as well.
+                    copyCameraZoomRadius(viewerA.ref, viewerB.ref);
+                    if (ENABLE_REALIGN_DIAGNOSTICS) console.info('[Re-align] Applied reload-based fallback realign.');
+                });
             })();
             if (ENABLE_REALIGN_DIAGNOSTICS) console.info('Realignment applied to Viewer A and B models.');
         } catch (err) {
@@ -3355,27 +3357,29 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                     return;
                 }
 
-                try {
-                    const appliedInPlace = await applyInPlaceRealign();
-                    if (appliedInPlace) {
-                        await subunitZoomBAligned.handleButtonClick();
-                        console.log('[Re-align Subunit] Applied in-place transform to existing aligned structures.');
+                await runWithTemporarySyncDisabled(syncEnabled, setSyncEnabled, async () => {
+                    try {
+                        const appliedInPlace = await applyInPlaceRealign();
+                        if (appliedInPlace) {
+                            await subunitZoomBAligned.handleButtonClick();
+                            console.log('[Re-align Subunit] Applied in-place transform to existing aligned structures.');
+                            return;
+                        }
+                    } catch (inPlaceErr) {
+                        console.warn('[Re-align Subunit] In-place transform failed; falling back to reload-based realign.', inPlaceErr);
+                    }
+
+                    const file = new File([alignedFile], alignedFile.name);
+                    await loadMoleculeIntoViewers(file, ReAligned, alignmentData);
+                    pluginA.canvas3d?.requestDraw?.();
+                    const pluginB = viewerB.ref.current;
+                    if (!pluginB) {
+                        console.warn('Viewer B not initialized.');
                         return;
                     }
-                } catch (inPlaceErr) {
-                    console.warn('[Re-align Subunit] In-place transform failed; falling back to reload-based realign.', inPlaceErr);
-                }
-
-                const file = new File([alignedFile], alignedFile.name);
-                await loadMoleculeIntoViewers(file, ReAligned, alignmentData);
-                pluginA.canvas3d?.requestDraw?.();
-                const pluginB = viewerB.ref.current;
-                if (!pluginB) {
-                    console.warn('Viewer B not initialized.');
-                    return;
-                }
-                pluginB.canvas3d?.requestDraw?.();
-                console.log('[Re-align Subunit] Applied reload-based fallback realign.');
+                    pluginB.canvas3d?.requestDraw?.();
+                    console.log('[Re-align Subunit] Applied reload-based fallback realign.');
+                });
             })();
         } catch (err) {
             console.error('Subunit alignment error:', err);
@@ -3556,27 +3560,29 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                     return;
                 }
 
-                try {
-                    const appliedInPlace = await applyInPlaceRealign();
-                    if (appliedInPlace) {
-                        await residueZoomBAligned.handleButtonClick();
-                        console.log('[Re-align Residue] Applied in-place transform to existing aligned structures.');
+                await runWithTemporarySyncDisabled(syncEnabled, setSyncEnabled, async () => {
+                    try {
+                        const appliedInPlace = await applyInPlaceRealign();
+                        if (appliedInPlace) {
+                            await residueZoomBAligned.handleButtonClick();
+                            console.log('[Re-align Residue] Applied in-place transform to existing aligned structures.');
+                            return;
+                        }
+                    } catch (inPlaceErr) {
+                        console.warn('[Re-align Residue] In-place transform failed; falling back to reload-based realign.', inPlaceErr);
+                    }
+
+                    const file = new File([alignedFile], alignedFile.name);
+                    await loadMoleculeIntoViewers(file, ReAligned, alignmentData);
+                    pluginAAsync.canvas3d?.requestDraw?.();
+                    const pluginBAsync = viewerB.ref.current;
+                    if (!pluginBAsync) {
+                        console.warn('Viewer B not initialized.');
                         return;
                     }
-                } catch (inPlaceErr) {
-                    console.warn('[Re-align Residue] In-place transform failed; falling back to reload-based realign.', inPlaceErr);
-                }
-
-                const file = new File([alignedFile], alignedFile.name);
-                await loadMoleculeIntoViewers(file, ReAligned, alignmentData);
-                pluginAAsync.canvas3d?.requestDraw?.();
-                const pluginBAsync = viewerB.ref.current;
-                if (!pluginBAsync) {
-                    console.warn('Viewer B not initialized.');
-                    return;
-                }
-                pluginBAsync.canvas3d?.requestDraw?.();
-                console.log('[Re-align Residue] Applied reload-based fallback realign.');
+                    pluginBAsync.canvas3d?.requestDraw?.();
+                    console.log('[Re-align Residue] Applied reload-based fallback realign.');
+                });
             })();
         } catch (err) {
             console.error('Residue alignment error:', err);
@@ -3595,6 +3601,17 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
     }, [selectedSubunitAligned, subunitToChainIdsAligned]);
 
     // Menu bar handlers
+
+    const buildPersistedColorThemes = useCallback((): PersistedColorTheme[] => {
+        return loadedColorThemes
+            .filter(option => option.value !== DEFAULT_COLOR_THEME_NAME)
+            .map(option => ({
+                value: option.value,
+                label: option.label,
+                rows: loadedColorThemeRowsByName[option.value] ?? [],
+            }))
+            .filter(theme => theme.rows.length > 0);
+    }, [loadedColorThemeRowsByName, loadedColorThemes]);
 
     // Session save: use custom hook
     const handleSaveSession = useSessionSave(() => ({
@@ -3659,6 +3676,18 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                     residueIds: selectedResidueIdsAligned,
                 },
             },
+            highlights: {
+                alignedTo: {
+                    chain: chainHighlightOnAlignedTo,
+                    residue: residueHighlightOnAlignedTo,
+                    subunit: subunitHighlightOnAlignedTo,
+                },
+                aligned: {
+                    chain: chainHighlightOnAligned,
+                    residue: residueHighlightOnAligned,
+                    subunit: subunitHighlightOnAligned,
+                },
+            },
             syncEnabled,
             activeViewer,
             cameraSnapshots: {
@@ -3666,10 +3695,23 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 viewerB: getSerializableCameraSnapshot(viewerB.ref),
             },
             uniprotGeneNames,
-            showUniprotAccessionInChainLabels,
+            showUniprotAccessionInChainLabelsByViewer: {
+                viewerA: showUniprotAccessionInChainLabelsA,
+                viewerB: showUniprotAccessionInChainLabelsB,
+            },
             chainFinderQueries: {
                 alignedTo: chainFinderQueryAlignedTo,
                 aligned: chainFinderQueryAligned,
+            },
+            colorThemesByMode: {
+                alignedTo: {
+                    selectedThemeName: selectedColorThemeByMode.AlignedTo,
+                    themes: buildPersistedColorThemes(),
+                },
+                aligned: {
+                    selectedThemeName: selectedColorThemeByMode.Aligned,
+                    themes: buildPersistedColorThemes(),
+                },
             },
         } as SessionUiState,
     }));
@@ -3735,6 +3777,18 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                         residueIds: selectedResidueIdsAligned,
                     },
                 },
+                highlights: {
+                    alignedTo: {
+                        chain: chainHighlightOnAlignedTo,
+                        residue: residueHighlightOnAlignedTo,
+                        subunit: subunitHighlightOnAlignedTo,
+                    },
+                    aligned: {
+                        chain: chainHighlightOnAligned,
+                        residue: residueHighlightOnAligned,
+                        subunit: subunitHighlightOnAligned,
+                    },
+                },
                 syncEnabled,
                 activeViewer,
                 cameraSnapshots: {
@@ -3742,10 +3796,23 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                     viewerB: getSerializableCameraSnapshot(viewerB.ref),
                 },
                 uniprotGeneNames,
-                showUniprotAccessionInChainLabels,
+                showUniprotAccessionInChainLabelsByViewer: {
+                    viewerA: showUniprotAccessionInChainLabelsA,
+                    viewerB: showUniprotAccessionInChainLabelsB,
+                },
                 chainFinderQueries: {
                     alignedTo: chainFinderQueryAlignedTo,
                     aligned: chainFinderQueryAligned,
+                },
+                colorThemesByMode: {
+                    alignedTo: {
+                        selectedThemeName: selectedColorThemeByMode.AlignedTo,
+                        themes: buildPersistedColorThemes(),
+                    },
+                    aligned: {
+                        selectedThemeName: selectedColorThemeByMode.Aligned,
+                        themes: buildPersistedColorThemes(),
+                    },
                 },
             } as SessionUiState,
         }),
@@ -3845,6 +3912,56 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 loadedAny = true;
             }
             const uiState = session?.uiState as SessionUiState | undefined;
+            if (uiState?.colorThemesByMode) {
+                const isValidPersistedTheme = (theme: any): theme is PersistedColorTheme =>
+                    typeof theme?.value === 'string'
+                    && theme.value.length > 0
+                    && typeof theme?.label === 'string'
+                    && Array.isArray(theme?.rows);
+
+                const alignedToThemes = (uiState.colorThemesByMode.alignedTo?.themes ?? []).filter(isValidPersistedTheme);
+                const alignedThemes = (uiState.colorThemesByMode.aligned?.themes ?? []).filter(isValidPersistedTheme);
+
+                const mergedByValue = new Map<string, PersistedColorTheme>();
+                [...alignedToThemes, ...alignedThemes].forEach(theme => {
+                    if (!mergedByValue.has(theme.value)) mergedByValue.set(theme.value, theme);
+                });
+
+                const mergedThemes = Array.from(mergedByValue.values());
+                const options: LoadedColorThemeOption[] = [
+                    { value: DEFAULT_COLOR_THEME_NAME, label: DEFAULT_COLOR_THEME_LABEL },
+                    ...mergedThemes.map(theme => ({ value: theme.value, label: theme.label })),
+                ];
+
+                setLoadedColorThemes(options);
+
+                setLoadedColorThemeRowsByName(prev => {
+                    const next = { ...prev };
+                    mergedThemes.forEach(theme => {
+                        next[theme.value] = theme.rows;
+                        registerLoadedColorTheme(theme.value, theme.rows);
+                    });
+                    return next;
+                });
+
+                const alignedToSelectedCandidate = uiState.colorThemesByMode.alignedTo?.selectedThemeName;
+                const alignedSelectedCandidate = uiState.colorThemesByMode.aligned?.selectedThemeName;
+
+                setSelectedColorThemeByMode(prev => ({
+                    ...prev,
+                    AlignedTo: options.some(option => option.value === alignedToSelectedCandidate)
+                        ? alignedToSelectedCandidate!
+                        : DEFAULT_COLOR_THEME_NAME,
+                    Aligned: options.some(option => option.value === alignedSelectedCandidate)
+                        ? alignedSelectedCandidate!
+                        : DEFAULT_COLOR_THEME_NAME,
+                }));
+
+                const hasCustomThemes = mergedThemes.length > 0;
+                setIsMoleculeAlignedToColoursLoaded(hasCustomThemes);
+                setIsMoleculeAlignedColoursLoaded(hasCustomThemes);
+            }
+
             if (uiState?.zoomByViewer?.viewerA || uiState?.zoomByViewer?.viewerB) {
                 const zoomA = uiState.zoomByViewer?.viewerA;
                 const zoomB = uiState.zoomByViewer?.viewerB;
@@ -3888,6 +4005,28 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                     setSelectedResidueIdAligned(uiState.selections.aligned.residueId);
                 }
             }
+            if (uiState?.highlights?.alignedTo) {
+                if (typeof uiState.highlights.alignedTo.chain === 'boolean') {
+                    setChainHighlightOnAlignedTo(uiState.highlights.alignedTo.chain);
+                }
+                if (typeof uiState.highlights.alignedTo.residue === 'boolean') {
+                    setResidueHighlightOnAlignedTo(uiState.highlights.alignedTo.residue);
+                }
+                if (typeof uiState.highlights.alignedTo.subunit === 'boolean') {
+                    setSubunitHighlightOnAlignedTo(uiState.highlights.alignedTo.subunit);
+                }
+            }
+            if (uiState?.highlights?.aligned) {
+                if (typeof uiState.highlights.aligned.chain === 'boolean') {
+                    setChainHighlightOnAligned(uiState.highlights.aligned.chain);
+                }
+                if (typeof uiState.highlights.aligned.residue === 'boolean') {
+                    setResidueHighlightOnAligned(uiState.highlights.aligned.residue);
+                }
+                if (typeof uiState.highlights.aligned.subunit === 'boolean') {
+                    setSubunitHighlightOnAligned(uiState.highlights.aligned.subunit);
+                }
+            }
 
             // Restore per-viewer camera snapshots with sync temporarily disabled so
             // one viewer snapshot does not immediately overwrite the other.
@@ -3910,13 +4049,14 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 setUniprotGeneNames(prev => ({ ...prev, ...resolvedOnly }));
             }
             if (typeof uiState?.showUniprotAccessionInChainLabels === 'boolean') {
-                setShowUniprotAccessionInChainLabels(uiState.showUniprotAccessionInChainLabels);
-            } else if (uiState?.showUniprotAccessionInChainLabelsByViewer) {
-                if (typeof uiState.showUniprotAccessionInChainLabelsByViewer.viewerA === 'boolean') {
-                    setShowUniprotAccessionInChainLabels(uiState.showUniprotAccessionInChainLabelsByViewer.viewerA);
-                } else if (typeof uiState.showUniprotAccessionInChainLabelsByViewer.viewerB === 'boolean') {
-                    setShowUniprotAccessionInChainLabels(uiState.showUniprotAccessionInChainLabelsByViewer.viewerB);
-                }
+                setShowUniprotAccessionInChainLabelsA(uiState.showUniprotAccessionInChainLabels);
+                setShowUniprotAccessionInChainLabelsB(uiState.showUniprotAccessionInChainLabels);
+            }
+            if (typeof uiState?.showUniprotAccessionInChainLabelsByViewer?.viewerA === 'boolean') {
+                setShowUniprotAccessionInChainLabelsA(uiState.showUniprotAccessionInChainLabelsByViewer.viewerA);
+            }
+            if (typeof uiState?.showUniprotAccessionInChainLabelsByViewer?.viewerB === 'boolean') {
+                setShowUniprotAccessionInChainLabelsB(uiState.showUniprotAccessionInChainLabelsByViewer.viewerB);
             }
             if (typeof uiState?.chainFinderQueries?.alignedTo === 'string') {
                 setChainFinderQueryAlignedTo(uiState.chainFinderQueries.alignedTo);
@@ -3943,12 +4083,19 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         setSelectedResidueIdsAligned,
         setSelectedResidueIdAlignedTo,
         setSelectedResidueIdAligned,
+        setChainHighlightOnAlignedTo,
+        setChainHighlightOnAligned,
+        setResidueHighlightOnAlignedTo,
+        setResidueHighlightOnAligned,
+        setSubunitHighlightOnAlignedTo,
+        setSubunitHighlightOnAligned,
         setClippingA,
         setClippingB,
         setChainFinderQueryAlignedTo,
         setChainFinderQueryAligned,
         setUniprotGeneNames,
-        setShowUniprotAccessionInChainLabels,
+        setShowUniprotAccessionInChainLabelsA,
+        setShowUniprotAccessionInChainLabelsB,
     ]);
 
     // Initialize session load modal with the callback
@@ -3961,172 +4108,6 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 <SyncProvider>
                 <div className="App">
                     <AppHeader />
-                    {/* Session menu dropdown below the title */}
-                    <nav className="session-menu-bar">
-                        <div className="session-menu-container">
-                            <button
-                                className="session-menu-btn"
-                                id="session-menu-btn"
-                                onClick={e => {
-                                    const menu = document.getElementById('session-menu-dropdown');
-                                    if (menu) {
-                                        const willOpen = menu.style.display !== 'block';
-                                        menu.style.display = willOpen ? 'block' : 'none';
-                                        console.log(`[SessionMenu] Menu ${willOpen ? 'opened' : 'closed'} by button click`);
-                                    }
-                                }}
-                                onBlur={e => {
-                                    if (process.env.NODE_ENV !== 'test') {
-                                        setTimeout(() => {
-                                            const menu = document.getElementById('session-menu-dropdown');
-                                            if (menu) {
-                                                menu.style.display = 'none';
-                                                console.log('[SessionMenu] Menu closed by blur');
-                                            }
-                                        }, 150);
-                                    }
-                                }}
-                            >
-                                Session ▾
-                            </button>
-                            <div
-                                id="session-menu-dropdown"
-                                className="session-menu-dropdown"
-                                style={{ display: 'none', position: 'absolute', background: '#fff', border: '1px solid #ccc', borderRadius: 4, minWidth: 120, zIndex: 1000 }}
-                            >
-                                <div
-                                    className="session-menu-item session-menu-item-border"
-                                    onClick={() => {
-                                        handleSaveSession();
-                                        document.getElementById('session-menu-dropdown')!.style.display = 'none';
-                                    }}
-                                    tabIndex={0}
-                                    onKeyDown={e => { if (e.key === 'Enter') handleSaveSession(); }}
-                                    style={{ padding: '8px 16px', cursor: 'pointer', borderBottom: '1px solid #eee' }}
-                                >
-                                    Save
-                                </div>
-                                <div
-                                    className="session-menu-item session-menu-item-border"
-                                    onClick={() => {
-                                        void handleSaveSessionAll();
-                                        document.getElementById('session-menu-dropdown')!.style.display = 'none';
-                                    }}
-                                    tabIndex={0}
-                                    onKeyDown={e => { if (e.key === 'Enter') void handleSaveSessionAll(); }}
-                                    style={{ padding: '8px 16px', cursor: 'pointer', borderBottom: '1px solid #eee' }}
-                                >
-                                    Save All
-                                </div>
-                                <div
-                                    className="session-menu-item session-menu-item-border"
-                                    onClick={() => {
-                                        console.log('[SessionMenu] Load menu item clicked');
-                                        if (confirm('Loading a session will unload all current data and replace the session. Please save your work first if needed. Continue?')) {
-                                            console.log('[SessionMenu] Triggering file input for session load');
-                                            document.getElementById('session-menu-file-input')?.click();
-                                        }
-                                        setTimeout(() => {
-                                            const dropdown = document.getElementById('session-menu-dropdown');
-                                            if (dropdown) dropdown.style.display = 'none';
-                                        }, 0);
-                                    }}
-                                    tabIndex={0}
-                                    onKeyDown={e => {
-                                        if (e.key === 'Enter') {
-                                            console.log('[SessionMenu] Load menu item activated by Enter key');
-                                            if (confirm('Loading a session will unload all current data and replace the session. Please save your work first if needed. Continue?')) {
-                                                console.log('[SessionMenu] Triggering file input for session load (Enter)');
-                                                document.getElementById('session-menu-file-input')?.click();
-                                            }
-                                            setTimeout(() => {
-                                                const dropdown = document.getElementById('session-menu-dropdown');
-                                                if (dropdown) dropdown.style.display = 'none';
-                                            }, 0);
-                                        }
-                                    }}
-                                    style={{ padding: '8px 16px', cursor: 'pointer', borderBottom: '1px solid #eee' }}
-                                >
-                                    Load
-                                </div>
-                                <div
-                                    className="session-menu-item session-menu-item-border"
-                                    onClick={() => {
-                                        console.log('[SessionMenu] Load All menu item clicked');
-                                        if (confirm('Loading a session will unload all current data and replace the session. Please save your work first if needed. Continue?')) {
-                                            console.log('[SessionMenu] Triggering file input for session load all');
-                                            document.getElementById('session-menu-file-input-all')?.click();
-                                        }
-                                        setTimeout(() => {
-                                            const dropdown = document.getElementById('session-menu-dropdown');
-                                            if (dropdown) dropdown.style.display = 'none';
-                                        }, 0);
-                                    }}
-                                    tabIndex={0}
-                                    onKeyDown={e => {
-                                        if (e.key === 'Enter') {
-                                            console.log('[SessionMenu] Load All menu item activated by Enter key');
-                                            if (confirm('Loading a session will unload all current data and replace the session. Please save your work first if needed. Continue?')) {
-                                                console.log('[SessionMenu] Triggering file input for session load all (Enter)');
-                                                document.getElementById('session-menu-file-input-all')?.click();
-                                            }
-                                            setTimeout(() => {
-                                                const dropdown = document.getElementById('session-menu-dropdown');
-                                                if (dropdown) dropdown.style.display = 'none';
-                                            }, 0);
-                                        }
-                                    }}
-                                    style={{ padding: '8px 16px', cursor: 'pointer', borderBottom: '1px solid #eee' }}
-                                >
-                                    Load All
-                                </div>
-                                <div
-                                    className="session-menu-item"
-                                    onClick={() => {
-                                        if (confirm('Restarting will unload all data and reset the session. Please save your work first if needed. Continue?')) {
-                                            window.location.reload();
-                                        } else {
-                                            const dropdown = document.getElementById('session-menu-dropdown');
-                                            if (dropdown) dropdown.style.display = 'none';
-                                        }
-                                    }}
-                                    tabIndex={0}
-                                    onKeyDown={e => {
-                                        if (e.key === 'Enter') {
-                                            if (confirm('Restarting will unload all data and reset the session. Please save your work first if needed. Continue?')) {
-                                                window.location.reload();
-                                            } else {
-                                                document.getElementById('session-menu-dropdown')!.style.display = 'none';
-                                            }
-                                        }
-                                    }}
-                                    style={{ padding: '8px 16px', cursor: 'pointer' }}
-                                >
-                                    Restart
-                                </div>
-                            </div>
-                            <input
-                                id="session-menu-file-input"
-                                type="file"
-                                accept="application/json"
-                                style={{ display: 'none' }}
-                                onChange={e => {
-                                    console.log('[SessionMenu] File input changed (session load)');
-                                    handleLoadSession(e);
-                                }}
-                            />
-                            <input
-                                id="session-menu-file-input-all"
-                                type="file"
-                                accept="application/json"
-                                style={{ display: 'none' }}
-                                onChange={e => {
-                                    console.log('[SessionMenu] File input changed (session load all)');
-                                    handleLoadAllSession(e);
-                                }}
-                            />
-                        </div>
-                    </nav>
                     {SessionLoadModal}
                     <GeneralControls
                         viewerA={viewerA.ref.current}
@@ -4135,13 +4116,171 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                         syncEnabled={syncEnabled}
                         setSyncEnabled={setSyncEnabled}
                         syncDisabled={!viewerA.isMoleculeAlignedLoaded || !viewerB.isMoleculeAlignedLoaded}
-                        showUniprotAccessionInChainLabels={showUniprotAccessionInChainLabels}
-                        setShowUniprotAccessionInChainLabels={setShowUniprotAccessionInChainLabels}
-                        uniprotLookupStatus={{
-                            completed: completedUniProtCount,
-                            pending: pendingUniProtCount,
-                            inFlight: inFlightUniProtCount,
-                        }}
+                        sessionMenu={(
+                            <div className="session-menu-container" style={{ position: 'relative' }}>
+                                <button
+                                    className="session-menu-btn"
+                                    id="session-menu-btn"
+                                    onClick={e => {
+                                        const menu = document.getElementById('session-menu-dropdown');
+                                        if (menu) {
+                                            const willOpen = menu.style.display !== 'block';
+                                            menu.style.display = willOpen ? 'block' : 'none';
+                                            console.log(`[SessionMenu] Menu ${willOpen ? 'opened' : 'closed'} by button click`);
+                                        }
+                                    }}
+                                    onBlur={e => {
+                                        if (process.env.NODE_ENV !== 'test') {
+                                            setTimeout(() => {
+                                                const menu = document.getElementById('session-menu-dropdown');
+                                                if (menu) {
+                                                    menu.style.display = 'none';
+                                                    console.log('[SessionMenu] Menu closed by blur');
+                                                }
+                                            }, 150);
+                                        }
+                                    }}
+                                >
+                                    Session ▾
+                                </button>
+                                <div
+                                    id="session-menu-dropdown"
+                                    className="session-menu-dropdown"
+                                    style={{ display: 'none', position: 'absolute', background: '#fff', border: '1px solid #ccc', borderRadius: 4, minWidth: 120, zIndex: 1000 }}
+                                >
+                                    <div
+                                        className="session-menu-item session-menu-item-border"
+                                        onClick={() => {
+                                            handleSaveSession();
+                                            document.getElementById('session-menu-dropdown')!.style.display = 'none';
+                                        }}
+                                        tabIndex={0}
+                                        onKeyDown={e => { if (e.key === 'Enter') handleSaveSession(); }}
+                                        style={{ padding: '8px 16px', cursor: 'pointer', borderBottom: '1px solid #eee' }}
+                                    >
+                                        Save
+                                    </div>
+                                    <div
+                                        className="session-menu-item session-menu-item-border"
+                                        onClick={() => {
+                                            void handleSaveSessionAll();
+                                            document.getElementById('session-menu-dropdown')!.style.display = 'none';
+                                        }}
+                                        tabIndex={0}
+                                        onKeyDown={e => { if (e.key === 'Enter') void handleSaveSessionAll(); }}
+                                        style={{ padding: '8px 16px', cursor: 'pointer', borderBottom: '1px solid #eee' }}
+                                    >
+                                        Save All
+                                    </div>
+                                    <div
+                                        className="session-menu-item session-menu-item-border"
+                                        onClick={() => {
+                                            console.log('[SessionMenu] Load menu item clicked');
+                                            if (confirm('Loading a session will unload all current data and replace the session. Please save your work first if needed. Continue?')) {
+                                                console.log('[SessionMenu] Triggering file input for session load');
+                                                document.getElementById('session-menu-file-input')?.click();
+                                            }
+                                            setTimeout(() => {
+                                                const dropdown = document.getElementById('session-menu-dropdown');
+                                                if (dropdown) dropdown.style.display = 'none';
+                                            }, 0);
+                                        }}
+                                        tabIndex={0}
+                                        onKeyDown={e => {
+                                            if (e.key === 'Enter') {
+                                                console.log('[SessionMenu] Load menu item activated by Enter key');
+                                                if (confirm('Loading a session will unload all current data and replace the session. Please save your work first if needed. Continue?')) {
+                                                    console.log('[SessionMenu] Triggering file input for session load (Enter)');
+                                                    document.getElementById('session-menu-file-input')?.click();
+                                                }
+                                                setTimeout(() => {
+                                                    const dropdown = document.getElementById('session-menu-dropdown');
+                                                    if (dropdown) dropdown.style.display = 'none';
+                                                }, 0);
+                                            }
+                                        }}
+                                        style={{ padding: '8px 16px', cursor: 'pointer', borderBottom: '1px solid #eee' }}
+                                    >
+                                        Load
+                                    </div>
+                                    <div
+                                        className="session-menu-item session-menu-item-border"
+                                        onClick={() => {
+                                            console.log('[SessionMenu] Load All menu item clicked');
+                                            if (confirm('Loading a session will unload all current data and replace the session. Please save your work first if needed. Continue?')) {
+                                                console.log('[SessionMenu] Triggering file input for session load all');
+                                                document.getElementById('session-menu-file-input-all')?.click();
+                                            }
+                                            setTimeout(() => {
+                                                const dropdown = document.getElementById('session-menu-dropdown');
+                                                if (dropdown) dropdown.style.display = 'none';
+                                            }, 0);
+                                        }}
+                                        tabIndex={0}
+                                        onKeyDown={e => {
+                                            if (e.key === 'Enter') {
+                                                console.log('[SessionMenu] Load All menu item activated by Enter key');
+                                                if (confirm('Loading a session will unload all current data and replace the session. Please save your work first if needed. Continue?')) {
+                                                    console.log('[SessionMenu] Triggering file input for session load all (Enter)');
+                                                    document.getElementById('session-menu-file-input-all')?.click();
+                                                }
+                                                setTimeout(() => {
+                                                    const dropdown = document.getElementById('session-menu-dropdown');
+                                                    if (dropdown) dropdown.style.display = 'none';
+                                                }, 0);
+                                            }
+                                        }}
+                                        style={{ padding: '8px 16px', cursor: 'pointer', borderBottom: '1px solid #eee' }}
+                                    >
+                                        Load All
+                                    </div>
+                                    <div
+                                        className="session-menu-item"
+                                        onClick={() => {
+                                            if (confirm('Restarting will unload all data and reset the session. Please save your work first if needed. Continue?')) {
+                                                window.location.reload();
+                                            } else {
+                                                const dropdown = document.getElementById('session-menu-dropdown');
+                                                if (dropdown) dropdown.style.display = 'none';
+                                            }
+                                        }}
+                                        tabIndex={0}
+                                        onKeyDown={e => {
+                                            if (e.key === 'Enter') {
+                                                if (confirm('Restarting will unload all data and reset the session. Please save your work first if needed. Continue?')) {
+                                                    window.location.reload();
+                                                } else {
+                                                    document.getElementById('session-menu-dropdown')!.style.display = 'none';
+                                                }
+                                            }
+                                        }}
+                                        style={{ padding: '8px 16px', cursor: 'pointer' }}
+                                    >
+                                        Restart
+                                    </div>
+                                </div>
+                                <input
+                                    id="session-menu-file-input"
+                                    type="file"
+                                    accept="application/json"
+                                    style={{ display: 'none' }}
+                                    onChange={e => {
+                                        console.log('[SessionMenu] File input changed (session load)');
+                                        handleLoadSession(e);
+                                    }}
+                                />
+                                <input
+                                    id="session-menu-file-input-all"
+                                    type="file"
+                                    accept="application/json"
+                                    style={{ display: 'none' }}
+                                    onChange={e => {
+                                        console.log('[SessionMenu] File input changed (session load all)');
+                                        handleLoadAllSession(e);
+                                    }}
+                                />
+                            </div>
+                        )}
                         selectedChainIdAlignedTo={selectedChainIdAlignedTo}
                         selectedChainIdAligned={selectedChainIdAligned}
                         realignmentExists={realignmentExists}
@@ -4176,14 +4315,20 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     setRepresentationType: setRepresentationTypeAlignedTo,
                                     colorsFile: colorsAlignedToFile,
                                     isMoleculeColoursLoaded: isMoleculeAlignedToColoursLoaded,
+                                    colorThemeOptions: loadedColorThemes,
+                                    selectedColorThemeName: selectedColorThemeByMode.AlignedTo,
+                                    setSelectedColorThemeName: (themeName: string) => setSelectedColorThemeByMode(prev => ({ ...prev, AlignedTo: themeName })),
+                                    onRemoveColorTheme: () => handleRemoveSelectedColorTheme('AlignedTo'),
+                                    removeColorThemeDisabled: selectedColorThemeByMode.AlignedTo === DEFAULT_COLOR_THEME_NAME
+                                        || isThemeInUse(selectedColorThemeByMode.AlignedTo),
                                     structureRef: structureRefAAlignedTo,
                                     otherStructureRef: structureRefBAlignedTo,
                                     selectedSubunit: selectedSubunitAlignedTo,
                                     setSelectedSubunit: setSelectedSubunitAlignedTo,
                                     subunitZoomLabel: selectedSubunitAlignedTo,
                                     onSubunitHighlight: subunitHighlightAAlignedTo.handleButtonClick,
-                                    subunitHighlightOn: subunitHighlightOnAAlignedTo,
-                                    subunitHighlightDisabled: selectedSubunitChainIdsAlignedTo.length === 0 && !subunitHighlightOnAAlignedTo,
+                                    subunitHighlightOn: subunitHighlightOnAlignedTo,
+                                    subunitHighlightDisabled: selectedSubunitChainIdsAlignedTo.length === 0 && !subunitHighlightOnAlignedTo,
                                     onSubunitInspect: subunitInspectAAlignedTo.handleButtonClick,
                                     subunitInspectOn: subunitInspectOnAAlignedTo,
                                     subunitInspectDisabled: selectedSubunitChainIdsAlignedTo.length === 0 && !subunitInspectOnAAlignedTo,
@@ -4197,20 +4342,27 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                         ? chainInfoAlignedTo.chainLabels.get(selectedChainIdAlignedTo) ?? ''
                                         : '',
                                     onChainHighlight: chainHighlightAAlignedTo.handleButtonClick,
-                                    chainHighlightOn: chainHighlightOnAAlignedTo,
-                                    chainHighlightDisabled: !selectedChainIdAlignedTo && !chainHighlightOnAAlignedTo,
+                                    chainHighlightOn: chainHighlightOnAlignedTo,
+                                    chainHighlightDisabled: !selectedChainIdAlignedTo && !chainHighlightOnAlignedTo,
                                     onChainInspect: chainInspectAAlignedTo.handleButtonClick,
                                     chainInspectOn: chainInspectOnAAlignedTo,
                                     chainInspectDisabled: !selectedChainIdAlignedTo && !chainInspectOnAAlignedTo,
                                     onChainZoom: chainZoomAAlignedTo.handleButtonClick,
                                     chainZoomDisabled: !selectedChainIdAlignedTo,
+                                    showUniprotAccessionInChainLabels: showUniprotAccessionInChainLabelsA,
+                                    setShowUniprotAccessionInChainLabels: setShowUniprotAccessionInChainLabelsA,
+                                    uniprotLookupStatus: {
+                                        completed: completedUniProtCount,
+                                        pending: pendingUniProtCount,
+                                        inFlight: inFlightUniProtCount,
+                                    },
                                     residueInfo: residueInfoAlignedTo,
                                     selectedResidueIds: selectedResidueIdsAlignedTo,
                                     setSelectedResidueIds: setSelectedResidueIdsAlignedTo,
                                     residueZoomLabel: residueZoomLabelAlignedTo,
                                     onResidueHighlight: residueHighlightAAlignedTo.handleButtonClick,
-                                    residueHighlightOn: residueHighlightOnAAlignedTo,
-                                    residueHighlightDisabled: selectedResidueIdsAlignedTo.length === 0 && !residueHighlightOnAAlignedTo,
+                                    residueHighlightOn: residueHighlightOnAlignedTo,
+                                    residueHighlightDisabled: selectedResidueIdsAlignedTo.length === 0 && !residueHighlightOnAlignedTo,
                                     onResidueInspect: residueInspectAAlignedTo.handleButtonClick,
                                     residueInspectOn: residueInspectOnAAlignedTo,
                                     residueInspectDisabled: selectedResidueIdsAlignedTo.length === 0 && !residueInspectOnAAlignedTo,
@@ -4251,14 +4403,20 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     setRepresentationType: setRepresentationTypeAligned,
                                     colorsFile: colorsAlignedFile,
                                     isMoleculeColoursLoaded: isMoleculeAlignedColoursLoaded,
+                                    colorThemeOptions: loadedColorThemes,
+                                    selectedColorThemeName: selectedColorThemeByMode.Aligned,
+                                    setSelectedColorThemeName: (themeName: string) => setSelectedColorThemeByMode(prev => ({ ...prev, Aligned: themeName })),
+                                    onRemoveColorTheme: () => handleRemoveSelectedColorTheme('Aligned'),
+                                    removeColorThemeDisabled: selectedColorThemeByMode.Aligned === DEFAULT_COLOR_THEME_NAME
+                                        || isThemeInUse(selectedColorThemeByMode.Aligned),
                                     structureRef: structureRefAAligned,
                                     otherStructureRef: structureRefBAligned,
                                     selectedSubunit: selectedSubunitAligned,
                                     setSelectedSubunit: setSelectedSubunitAligned,
                                     subunitZoomLabel: selectedSubunitAligned,
                                     onSubunitHighlight: subunitHighlightAAligned.handleButtonClick,
-                                    subunitHighlightOn: subunitHighlightOnAAligned,
-                                    subunitHighlightDisabled: selectedSubunitChainIdsAligned.length === 0 && !subunitHighlightOnAAligned,
+                                    subunitHighlightOn: subunitHighlightOnAligned,
+                                    subunitHighlightDisabled: selectedSubunitChainIdsAligned.length === 0 && !subunitHighlightOnAligned,
                                     onSubunitInspect: subunitInspectAAligned.handleButtonClick,
                                     subunitInspectOn: subunitInspectOnAAligned,
                                     subunitInspectDisabled: selectedSubunitChainIdsAligned.length === 0 && !subunitInspectOnAAligned,
@@ -4272,20 +4430,27 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                         ? chainInfoAligned.chainLabels.get(selectedChainIdAligned) ?? ''
                                         : '',
                                     onChainHighlight: chainHighlightAAligned.handleButtonClick,
-                                    chainHighlightOn: chainHighlightOnAAligned,
-                                    chainHighlightDisabled: !selectedChainIdAligned && !chainHighlightOnAAligned,
+                                    chainHighlightOn: chainHighlightOnAligned,
+                                    chainHighlightDisabled: !selectedChainIdAligned && !chainHighlightOnAligned,
                                     onChainInspect: chainInspectAAligned.handleButtonClick,
                                     chainInspectOn: chainInspectOnAAligned,
                                     chainInspectDisabled: !selectedChainIdAligned && !chainInspectOnAAligned,
                                     onChainZoom: chainZoomAAligned.handleButtonClick,
                                     chainZoomDisabled: !selectedChainIdAligned,
+                                    showUniprotAccessionInChainLabels: showUniprotAccessionInChainLabelsB,
+                                    setShowUniprotAccessionInChainLabels: setShowUniprotAccessionInChainLabelsB,
+                                    uniprotLookupStatus: {
+                                        completed: completedUniProtCount,
+                                        pending: pendingUniProtCount,
+                                        inFlight: inFlightUniProtCount,
+                                    },
                                     residueInfo: residueInfoAligned,
                                     selectedResidueIds: selectedResidueIdsAligned,
                                     setSelectedResidueIds: setSelectedResidueIdsAligned,
                                     residueZoomLabel: residueZoomLabelAligned,
                                     onResidueHighlight: residueHighlightAAligned.handleButtonClick,
-                                    residueHighlightOn: residueHighlightOnAAligned,
-                                    residueHighlightDisabled: selectedResidueIdsAligned.length === 0 && !residueHighlightOnAAligned,
+                                    residueHighlightOn: residueHighlightOnAligned,
+                                    residueHighlightDisabled: selectedResidueIdsAligned.length === 0 && !residueHighlightOnAligned,
                                     onResidueInspect: residueInspectAAligned.handleButtonClick,
                                     residueInspectOn: residueInspectOnAAligned,
                                     residueInspectDisabled: selectedResidueIdsAligned.length === 0 && !residueInspectOnAAligned,
@@ -4414,14 +4579,20 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     setRepresentationType: setRepresentationTypeAlignedTo,
                                     colorsFile: colorsAlignedToFile,
                                     isMoleculeColoursLoaded: isMoleculeAlignedToColoursLoaded,
+                                    colorThemeOptions: loadedColorThemes,
+                                    selectedColorThemeName: selectedColorThemeByMode.AlignedTo,
+                                    setSelectedColorThemeName: (themeName: string) => setSelectedColorThemeByMode(prev => ({ ...prev, AlignedTo: themeName })),
+                                    onRemoveColorTheme: () => handleRemoveSelectedColorTheme('AlignedTo'),
+                                    removeColorThemeDisabled: selectedColorThemeByMode.AlignedTo === DEFAULT_COLOR_THEME_NAME
+                                        || isThemeInUse(selectedColorThemeByMode.AlignedTo),
                                     structureRef: structureRefBAlignedTo,
                                     otherStructureRef: structureRefAAlignedTo,
                                     selectedSubunit: selectedSubunitAlignedTo,
                                     setSelectedSubunit: setSelectedSubunitAlignedTo,
                                     subunitZoomLabel: selectedSubunitAlignedTo,
                                     onSubunitHighlight: subunitHighlightBAlignedTo.handleButtonClick,
-                                    subunitHighlightOn: subunitHighlightOnBAlignedTo,
-                                    subunitHighlightDisabled: selectedSubunitChainIdsAlignedTo.length === 0 && !subunitHighlightOnBAlignedTo,
+                                    subunitHighlightOn: subunitHighlightOnAlignedTo,
+                                    subunitHighlightDisabled: selectedSubunitChainIdsAlignedTo.length === 0 && !subunitHighlightOnAlignedTo,
                                     onSubunitInspect: subunitInspectBAlignedTo.handleButtonClick,
                                     subunitInspectOn: subunitInspectOnBAlignedTo,
                                     subunitInspectDisabled: selectedSubunitChainIdsAlignedTo.length === 0 && !subunitInspectOnBAlignedTo,
@@ -4435,20 +4606,27 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                         ? chainInfoAlignedTo.chainLabels.get(selectedChainIdAlignedTo) ?? ''
                                         : '',
                                     onChainHighlight: chainHighlightBAlignedTo.handleButtonClick,
-                                    chainHighlightOn: chainHighlightOnBAlignedTo,
-                                    chainHighlightDisabled: !selectedChainIdAlignedTo && !chainHighlightOnBAlignedTo,
+                                    chainHighlightOn: chainHighlightOnAlignedTo,
+                                    chainHighlightDisabled: !selectedChainIdAlignedTo && !chainHighlightOnAlignedTo,
                                     onChainInspect: chainInspectBAlignedTo.handleButtonClick,
                                     chainInspectOn: chainInspectOnBAlignedTo,
                                     chainInspectDisabled: !selectedChainIdAlignedTo && !chainInspectOnBAlignedTo,
                                     onChainZoom: chainZoomBAlignedTo.handleButtonClick,
                                     chainZoomDisabled: !selectedChainIdAlignedTo,
+                                    showUniprotAccessionInChainLabels: showUniprotAccessionInChainLabelsA,
+                                    setShowUniprotAccessionInChainLabels: setShowUniprotAccessionInChainLabelsA,
+                                    uniprotLookupStatus: {
+                                        completed: completedUniProtCount,
+                                        pending: pendingUniProtCount,
+                                        inFlight: inFlightUniProtCount,
+                                    },
                                     residueInfo: residueInfoAlignedTo,
                                     selectedResidueIds: selectedResidueIdsAlignedTo,
                                     setSelectedResidueIds: setSelectedResidueIdsAlignedTo,
                                     residueZoomLabel: residueZoomLabelAlignedTo,
                                     onResidueHighlight: residueHighlightBAlignedTo.handleButtonClick,
-                                    residueHighlightOn: residueHighlightOnBAlignedTo,
-                                    residueHighlightDisabled: selectedResidueIdsAlignedTo.length === 0 && !residueHighlightOnBAlignedTo,
+                                    residueHighlightOn: residueHighlightOnAlignedTo,
+                                    residueHighlightDisabled: selectedResidueIdsAlignedTo.length === 0 && !residueHighlightOnAlignedTo,
                                     onResidueInspect: residueInspectBAlignedTo.handleButtonClick,
                                     residueInspectOn: residueInspectOnBAlignedTo,
                                     residueInspectDisabled: selectedResidueIdsAlignedTo.length === 0 && !residueInspectOnBAlignedTo,
@@ -4489,14 +4667,20 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     setRepresentationType: setRepresentationTypeAligned,
                                     colorsFile: colorsAlignedFile,
                                     isMoleculeColoursLoaded: isMoleculeAlignedColoursLoaded,
+                                    colorThemeOptions: loadedColorThemes,
+                                    selectedColorThemeName: selectedColorThemeByMode.Aligned,
+                                    setSelectedColorThemeName: (themeName: string) => setSelectedColorThemeByMode(prev => ({ ...prev, Aligned: themeName })),
+                                    onRemoveColorTheme: () => handleRemoveSelectedColorTheme('Aligned'),
+                                    removeColorThemeDisabled: selectedColorThemeByMode.Aligned === DEFAULT_COLOR_THEME_NAME
+                                        || isThemeInUse(selectedColorThemeByMode.Aligned),
                                     structureRef: structureRefBAligned,
                                     otherStructureRef: structureRefAAligned,
                                     selectedSubunit: selectedSubunitAligned,
                                     setSelectedSubunit: setSelectedSubunitAligned,
                                     subunitZoomLabel: selectedSubunitAligned,
                                     onSubunitHighlight: subunitHighlightBAligned.handleButtonClick,
-                                    subunitHighlightOn: subunitHighlightOnBAligned,
-                                    subunitHighlightDisabled: selectedSubunitChainIdsAligned.length === 0 && !subunitHighlightOnBAligned,
+                                    subunitHighlightOn: subunitHighlightOnAligned,
+                                    subunitHighlightDisabled: selectedSubunitChainIdsAligned.length === 0 && !subunitHighlightOnAligned,
                                     onSubunitInspect: subunitInspectBAligned.handleButtonClick,
                                     subunitInspectOn: subunitInspectOnBAligned,
                                     subunitInspectDisabled: selectedSubunitChainIdsAligned.length === 0 && !subunitInspectOnBAligned,
@@ -4510,20 +4694,27 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                         ? chainInfoAligned.chainLabels.get(selectedChainIdAligned) ?? ''
                                         : '',
                                     onChainHighlight: chainHighlightBAligned.handleButtonClick,
-                                    chainHighlightOn: chainHighlightOnBAligned,
-                                    chainHighlightDisabled: !selectedChainIdAligned && !chainHighlightOnBAligned,
+                                    chainHighlightOn: chainHighlightOnAligned,
+                                    chainHighlightDisabled: !selectedChainIdAligned && !chainHighlightOnAligned,
                                     onChainInspect: chainInspectBAligned.handleButtonClick,
                                     chainInspectOn: chainInspectOnBAligned,
                                     chainInspectDisabled: !selectedChainIdAligned && !chainInspectOnBAligned,
                                     onChainZoom: chainZoomBAligned.handleButtonClick,
                                     chainZoomDisabled: !selectedChainIdAligned,
+                                    showUniprotAccessionInChainLabels: showUniprotAccessionInChainLabelsB,
+                                    setShowUniprotAccessionInChainLabels: setShowUniprotAccessionInChainLabelsB,
+                                    uniprotLookupStatus: {
+                                        completed: completedUniProtCount,
+                                        pending: pendingUniProtCount,
+                                        inFlight: inFlightUniProtCount,
+                                    },
                                     residueInfo: residueInfoAligned,
                                     selectedResidueIds: selectedResidueIdsAligned,
                                     setSelectedResidueIds: setSelectedResidueIdsAligned,
                                     residueZoomLabel: residueZoomLabelAligned,
                                     onResidueHighlight: residueHighlightBAligned.handleButtonClick,
-                                    residueHighlightOn: residueHighlightOnBAligned,
-                                    residueHighlightDisabled: selectedResidueIdsAligned.length === 0 && !residueHighlightOnBAligned,
+                                    residueHighlightOn: residueHighlightOnAligned,
+                                    residueHighlightDisabled: selectedResidueIdsAligned.length === 0 && !residueHighlightOnAligned,
                                     onResidueInspect: residueInspectBAligned.handleButtonClick,
                                     residueInspectOn: residueInspectOnBAligned,
                                     residueInspectDisabled: selectedResidueIdsAligned.length === 0 && !residueInspectOnBAligned,

@@ -114,6 +114,40 @@ const MoleculeUI: React.FC<MoleculeUIProps> = ({
         // If isHidden is undefined or false, treat as visible
         return cell?.state?.isHidden !== true;
     };
+
+    const getRepOpacity = (ref: string): number => {
+        if (!plugin) return 1;
+        const cell = plugin.state?.data?.cells?.get(ref);
+        const alpha = cell?.params?.values?.type?.params?.alpha;
+        return typeof alpha === 'number' && Number.isFinite(alpha) ? alpha : 1;
+    };
+
+    const setRepOpacity = async (ref: string, opacity: number) => {
+        if (!plugin) return;
+        const cell = plugin.state?.data?.cells?.get(ref);
+        const values = cell?.params?.values;
+        if (!values?.type) return;
+
+        const nextOpacity = Number.isFinite(opacity) ? Math.max(0, Math.min(1, opacity)) : 1;
+        const currentOpacity = values?.type?.params?.alpha;
+        if (typeof currentOpacity === 'number' && Math.abs(currentOpacity - nextOpacity) < 1e-6) return;
+
+        const nextParams = {
+            ...values,
+            type: {
+                ...values.type,
+                params: {
+                    ...(values.type.params ?? {}),
+                    alpha: nextOpacity,
+                },
+            },
+        };
+
+        const tree = plugin.state.data.build().to(ref).update(nextParams);
+        await plugin.runTask(plugin.state.data.updateTree(tree));
+        plugin.canvas3d?.requestDraw?.();
+        forceUpdate();
+    };
     // Toggle visibility for a representation.
     const handleToggleRepVisibility = async (ref: string, retryCount = 0) => {
         if (!plugin) return;
@@ -155,6 +189,7 @@ const MoleculeUI: React.FC<MoleculeUIProps> = ({
                             const cell = plugin?.state?.data?.cells?.get(ref);
                             const typeName = getRepType(ref);
                             const isVisible = isRepVisible(ref);
+                            const opacity = getRepOpacity(ref);
                             if (!typeName) return null;
                             // Use _ribocodeId if available, else fallback to ref
                             const repId = cell?.params?.values?._ribocodeId || ref;
@@ -170,6 +205,25 @@ const MoleculeUI: React.FC<MoleculeUIProps> = ({
                                         {isVisible ? <VisibilityOutlinedSvg /> : <VisibilityOffOutlinedSvg />}
                                         <span className="molstar-label">{typeName}</span>
                                     </button>
+                                    <label
+                                        htmlFor={idPrefix ? `${idPrefix}-rep-opacity-${repId}` : undefined}
+                                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                                    >
+                                        <span className="molstar-label">Opacity</span>
+                                        <input
+                                            id={idPrefix ? `${idPrefix}-rep-opacity-${repId}` : undefined}
+                                            type="range"
+                                            min={0.1}
+                                            max={1}
+                                            step={0.05}
+                                            value={opacity}
+                                            disabled={!isLoaded}
+                                            onChange={e => {
+                                                void setRepOpacity(ref, Number(e.target.value));
+                                            }}
+                                        />
+                                        <span className="molstar-label">{Math.round(opacity * 100)}%</span>
+                                    </label>
                                     {/* Delete button */}
                                     <button
                                         onClick={() => onDeleteRepresentation && onDeleteRepresentation(repId)}

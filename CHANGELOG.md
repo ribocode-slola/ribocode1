@@ -1,3 +1,42 @@
+## [v0.15.0] - 2026-10-13
+Release summary: this minor release improves highlight readability and reliability by introducing ordered multi-style highlighting, custom default highlight colours, and session persistence for highlight toggle state.
+- Added per-representation opacity sliders in molecule controls so each representation can be faded in or out independently.
+- Updated dataset highlight behavior to use shared mirrored state across viewers, so toggling highlight for a dataset applies consistently to both viewers.
+- Fixed highlight desynchronization across chain/subunit/residue interactions by replacing incremental clear/apply logic with deterministic full reconciliation from current state.
+- Updated default highlight visual style with distinct colours for each highlight type and explicit render ordering so subunit highlights apply first, then chain, then residues.
+- Updated highlight rendering internals to serialize overpaint updates and avoid race conditions during rapid toggles.
+- Added a selection display-mode control (`Highlight (halo)`, `Colour overlay`, `Hybrid`) and optional `Dim unselected` controls with adjustable strength.
+- Persisted and restored selection display preferences in session `uiState` (`mode`, `dimUnselected`, `dimStrength`) with integration regression coverage.
+- Fixed ViewerColumn pass-through wiring for selection-display controls so active panel interactions update app state correctly.
+- Fixed add-representation camera behavior under sync by snapshotting and restoring both viewer cameras after representation creation.
+- Fixed chain realignment translation behavior by applying centroid-aware rigid transforms consistently in Mol* geometry alignment.
+- Updated Chain controls wording from `Selected Chain` to `Selected` for clearer, consistent terminology.
+- Updated molecule representation-row layout to render representation controls on separate rows with compact spacing/indent for improved readability when multiple representations exist.
+- Hardened E2E selector timing for aligned/alignedto file-load button independence under parallel test load.
+- Added session save/load support for highlight toggle state (`chain`, `residue`, `subunit`) for both `AlignedTo` and `Aligned` datasets.
+- Added regression coverage across unit/integration/E2E tests, including highlight interaction stability and session highlight-state persistence/round-tripping.
+- Added [ROADMAP.md](./ROADMAP.md) to document planned future version themes and likely contribution areas.
+- Updated `DeveloperGuide.md` to link developers to both roadmap direction and GitHub issues when choosing what to contribute.
+
+## [v0.14.0] - 2026-10-09
+Release summary: this minor release introduces a per-mode colour theme manager so users can keep multiple loaded themes available, choose the active theme for new representations, and safely manage theme lifecycle.
+- Added a new `Colour Theme` selector for each load panel, with options for the default theme plus all loaded themes for that mode (`AlignedTo`/`Aligned`).
+- Updated `Load Colours` behavior so each uploaded theme is added to a persistent in-session selection list instead of replacing the only available custom theme.
+- Added `Remove Theme` support with guardrails: `Default` cannot be removed, and in-use themes are protected from removal until representations using them are switched.
+- Updated representation creation so new representations always use the currently selected colour theme for the active mode.
+- Extended session `uiState` save/load to persist and restore loaded colour themes (including parsed rows) and per-mode selected theme.
+- Added regression coverage for colour-theme selector interactions, remove-theme behavior, selected-theme application during representation add, and session round-tripping.
+
+## [v0.13.0] - 2026-10-08
+Release summary: this minor release standardizes `Select and Zoom` control UX across subunit/chain/residue flows, clarifies chain-label controls, and improves selector/test stability.
+- Updated `Re-align` to chains so sync is temporarily disabled while realignment runs, then restored to its prior enabled state.
+- Standardized Subunit, Chain, and Residue control sections to a consistent nested layout with aligned indentation and action ordering (`Zoom`, `Highlight`, `Inspect`).
+- Simplified action button labels across controls (for example `Zoom`, `Highlight: On/Off`, `Inspect: On/Off`) to reduce visual clutter.
+- Added nested chain controls with `Show/Hide Chain Controls` and `Show/Hide Select Chain Control`; selected-chain summary/actions remain visible while select-table details can be collapsed.
+- Changed chain-selection panel naming to `Select Chain` in both columns for clearer, symmetric terminology.
+- Renamed chain-label toggle wording to `Include UniProt accession in chain labels` for consistency with `Show/Hide` section controls.
+- Updated tests to prefer stable ID-based selectors for control actions and added regression coverage for nested chain-section visibility and repeated realign workflows.
+
 ## [v0.12.2] - 2026-10-08
 Release summary: this patch release aligns chain re-alignment camera behavior across viewers for a consistent side-by-side viewpoint.
 - Updated chain re-alignment camera behavior so after `Re-align` to chains, the `Aligned` viewer camera matches the `AlignedTo` viewer viewpoint (zoom, pan target, and orientation).

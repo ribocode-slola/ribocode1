@@ -281,33 +281,37 @@ vi.mock('./components/MolstarContainer', () => {
       updateTree: vi.fn(() => ({ kind: 'mock-tree-update' })),
     };
   };
-  const buildPlugin = () => ({
-    managers: {
-      structure: {
-        hierarchy: {
-          current: {
-            structures: [
-              buildStructure('mock-ref-0'),
-              buildStructure('mock-ref-1'),
-            ],
-          },
-        },
-      },
-    },
-    state: { data: buildStateData() },
-    runTask: vi.fn().mockResolvedValue(undefined),
-    canvas3d: {
+  const buildPlugin = () => {
+    const canvas3d = {
       props: {
         camera: {},
         cameraClipping: { minNear: 0.5, radius: 77, far: true },
       },
-      setProps: vi.fn(function (nextProps: any) {
-        this.props = { ...this.props, ...nextProps };
+      setProps: vi.fn((nextProps: any) => {
+        canvas3d.props = { ...canvas3d.props, ...nextProps };
       }),
       requestDraw: vi.fn(),
       camera: createMockCamera(),
-    },
-  });
+    };
+
+    return {
+      managers: {
+        structure: {
+          hierarchy: {
+            current: {
+              structures: [
+                buildStructure('mock-ref-0'),
+                buildStructure('mock-ref-1'),
+              ],
+            },
+          },
+        },
+      },
+      state: { data: buildStateData() },
+      runTask: vi.fn().mockResolvedValue(undefined),
+      canvas3d,
+    };
+  };
   const mockPluginA = buildPlugin();
   const mockPluginB = buildPlugin();
   // @ts-ignore
@@ -391,11 +395,15 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     const alignedToInput = document.getElementById('viewer-column-A-alignedto-file-input') as HTMLInputElement | null;
     const alignedInput = document.getElementById('viewer-column-B-aligned-file-input') as HTMLInputElement | null;
     const alignedLoadBtn = document.getElementById('viewer-column-B-aligned-load-btn') as HTMLButtonElement | null;
-    const alignedColoursBtn = document.getElementById('viewer-column-B-aligned-load-colours-btn') as HTMLButtonElement | null;
+    const alignedRepControlsToggle = document.getElementById('viewer-column-B-aligned-representation-controls-toggle-btn') as HTMLButtonElement | null;
 
     expect(alignedToInput).toBeInTheDocument();
     expect(alignedInput).toBeInTheDocument();
     expect(alignedLoadBtn).toBeInTheDocument();
+    expect(alignedRepControlsToggle).toBeInTheDocument();
+    fireEvent.click(alignedRepControlsToggle!);
+
+    const alignedColoursBtn = document.getElementById('viewer-column-B-aligned-load-colours-btn') as HTMLButtonElement | null;
     expect(alignedColoursBtn).toBeInTheDocument();
     expect(alignedColoursBtn).toBeDisabled();
 
@@ -409,6 +417,13 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     fireEvent.change(alignedInput!, { target: { files: [loadTestFile('6xu8.cif')] } });
     fireEvent.click(alignedLoadBtn!);
 
+    const molstarInstances = (globalThis as any).__molstarViewerInstances as any[];
+    expect(Array.isArray(molstarInstances)).toBe(true);
+    for (const instance of molstarInstances) {
+      instance?.setStructureRef?.('AlignedTo', 'mock-ref-0');
+      instance?.setStructureRef?.('Aligned', 'mock-ref-1');
+    }
+
     await waitFor(() => {
       expect(document.getElementById('viewer-column-B-aligned-load-colours-btn')).not.toBeDisabled();
     }, { timeout: 5000 });
@@ -417,7 +432,7 @@ describe('App integration: AlignedTo and Aligned loading', () => {
   it('enables Sync after Aligned data are loaded', async () => {
     render(<App />);
 
-    const syncSelect = document.getElementById('generalcontrols-sync-select') as HTMLSelectElement | null;
+    const syncSelect = document.getElementById('generalcontrols-sync-select') as HTMLButtonElement | null;
     const alignedToInput = document.getElementById('viewer-column-A-alignedto-file-input') as HTMLInputElement | null;
     const alignedInput = document.getElementById('viewer-column-B-aligned-file-input') as HTMLInputElement | null;
     const alignedLoadBtn = document.getElementById('viewer-column-B-aligned-load-btn') as HTMLButtonElement | null;
@@ -450,6 +465,7 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     expect(alignedToInput).toBeInTheDocument();
 
     fireEvent.change(alignedToInput!, { target: { files: [loadTestFile('4ug0.cif')] } });
+    fireEvent.click(document.getElementById('viewer-column-A-alignedto-representation-controls-toggle-btn') as HTMLButtonElement);
 
     await waitFor(() => {
       expect(document.getElementById('viewer-column-A-alignedto-add-representation-btn')).not.toBeDisabled();
@@ -496,7 +512,7 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     const pluginB = (globalThis as any).__mockPluginB;
     pluginA.canvas3d.camera.setState.mockClear();
 
-    fireEvent.change(document.getElementById('generalcontrols-sync-select') as HTMLSelectElement, { target: { value: 'On' } });
+    fireEvent.click(document.getElementById('generalcontrols-sync-select') as HTMLButtonElement);
 
     pluginB.canvas3d.camera.emit({
       position: [99, 98, 97],
@@ -528,7 +544,7 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     }, { timeout: 5000 });
 
     fireEvent.mouseDown(document.getElementById('viewer-column-B-molstar-container-mock') as HTMLElement);
-    fireEvent.change(document.getElementById('generalcontrols-sync-select') as HTMLSelectElement, { target: { value: 'On' } });
+    fireEvent.click(document.getElementById('generalcontrols-sync-select') as HTMLButtonElement);
 
     const pluginA = (globalThis as any).__mockPluginA;
     const pluginB = (globalThis as any).__mockPluginB;
@@ -569,7 +585,7 @@ describe('App integration: AlignedTo and Aligned loading', () => {
 
     // Make B active first, then switch back to A via hover to validate both directions.
     fireEvent.pointerDown(document.getElementById('viewer-column-B-molstar-container-mock') as HTMLElement);
-    fireEvent.change(document.getElementById('generalcontrols-sync-select') as HTMLSelectElement, { target: { value: 'On' } });
+    fireEvent.click(document.getElementById('generalcontrols-sync-select') as HTMLButtonElement);
     fireEvent.pointerMove(document.getElementById('viewer-column-A-molstar-container-mock') as HTMLElement);
 
     const pluginA = (globalThis as any).__mockPluginA;
@@ -588,6 +604,30 @@ describe('App integration: AlignedTo and Aligned loading', () => {
       target: [7, 8, 9],
       radius: 33,
     }));
+  });
+
+  it('updates clipping controls after Mol* camera zoom events', async () => {
+    render(<App />);
+
+    await waitFor(() => {
+      expect(document.getElementById('viewer-column-A-clipping-controls-toggle-btn')).toBeInTheDocument();
+    }, { timeout: 5000 });
+
+    fireEvent.click(document.getElementById('viewer-column-A-clipping-controls-toggle-btn') as HTMLButtonElement);
+
+    const pluginA = (globalThis as any).__mockPluginA;
+    pluginA.canvas3d.props.cameraClipping = {
+      ...(pluginA.canvas3d.props.cameraClipping || {}),
+      minNear: 0.72,
+      radius: 61,
+    };
+
+    pluginA.canvas3d.camera.emit({ radius: 21 });
+
+    await waitFor(() => {
+      expect((document.getElementById('viewer-column-A-alignedto-clip-near-number') as HTMLInputElement).value).toBe('0.72');
+      expect((document.getElementById('viewer-column-A-alignedto-clip-far-number') as HTMLInputElement).value).toBe('61');
+    }, { timeout: 5000 });
   });
 
   let loadMoleculeFileToViewerMock: any;
@@ -641,6 +681,7 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     const toggle = document.getElementById('viewer-column-A-select-zoom-controls-toggle-btn') as HTMLButtonElement | null;
     expect(toggle).toBeInTheDocument();
     fireEvent.click(toggle!);
+    fireEvent.click(document.getElementById('viewer-column-A-alignedto-chain-controls-toggle-btn') as HTMLButtonElement);
 
     await waitFor(() => {
       const zoomChainButtons = Array.from(
@@ -735,12 +776,31 @@ describe('App integration: AlignedTo and Aligned loading', () => {
 
     fireEvent.click(document.getElementById('viewer-column-A-select-zoom-controls-toggle-btn') as HTMLButtonElement);
     fireEvent.click(document.getElementById('viewer-column-B-select-zoom-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-A-alignedto-subunit-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-A-alignedto-chain-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-B-aligned-subunit-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-B-aligned-chain-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-A-alignedto-select-chain-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-B-aligned-select-chain-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-A-clipping-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-B-clipping-controls-toggle-btn') as HTMLButtonElement);
 
     await waitFor(() => {
       expect(document.getElementById('viewer-column-A-alignedto-subunit-select')).toBeInTheDocument();
       expect(document.getElementById('viewer-column-B-aligned-subunit-select')).toBeInTheDocument();
+      expect(document.getElementById('viewer-column-A-chain-table-container')).toBeInTheDocument();
+      expect(document.getElementById('viewer-column-B-chain-table-container')).toBeInTheDocument();
       expect(document.getElementById('generalcontrols-sync-select')).toBeInTheDocument();
     }, { timeout: 5000 });
+
+    const alignedToFirstChainRow = document.querySelector('[data-testid^="viewer-column-A-chain-table-row-"]') as HTMLTableRowElement | null;
+    const alignedFirstChainRow = document.querySelector('[data-testid^="viewer-column-B-chain-table-row-"]') as HTMLTableRowElement | null;
+    expect(alignedToFirstChainRow).toBeInTheDocument();
+    expect(alignedFirstChainRow).toBeInTheDocument();
+    fireEvent.click(alignedToFirstChainRow as HTMLTableRowElement);
+    fireEvent.click(alignedFirstChainRow as HTMLTableRowElement);
+    fireEvent.click(document.getElementById('viewer-column-A-alignedto-residue-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-B-aligned-residue-controls-toggle-btn') as HTMLButtonElement);
 
     fireEvent.change(document.getElementById('viewer-column-A-alignedto-zoom-extra-radius') as HTMLInputElement, { target: { value: '24' } });
     fireEvent.change(document.getElementById('viewer-column-A-alignedto-zoom-min-radius') as HTMLInputElement, { target: { value: '12' } });
@@ -750,8 +810,11 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     fireEvent.change(document.getElementById('viewer-column-A-alignedto-clip-far-number') as HTMLInputElement, { target: { value: '66' } });
     fireEvent.change(document.getElementById('viewer-column-B-aligned-clip-near-number') as HTMLInputElement, { target: { value: '0.9' } });
     fireEvent.change(document.getElementById('viewer-column-B-aligned-clip-far-number') as HTMLInputElement, { target: { value: '67' } });
-    fireEvent.change(document.getElementById('generalcontrols-sync-select') as HTMLSelectElement, { target: { value: 'On' } });
-    fireEvent.click(document.getElementById('generalcontrols-show-uniprot-accession') as HTMLInputElement);
+    fireEvent.click(document.getElementById('generalcontrols-sync-select') as HTMLButtonElement);
+    await waitFor(() => {
+      expect(document.getElementById('viewer-column-A-alignedto-show-uniprot-accession')).toBeInTheDocument();
+    }, { timeout: 5000 });
+    fireEvent.click(document.getElementById('viewer-column-A-alignedto-show-uniprot-accession') as HTMLButtonElement);
     fireEvent.change(document.getElementById('viewer-column-A-alignedto-subunit-select') as HTMLSelectElement, { target: { value: 'Large' } });
     fireEvent.change(document.getElementById('viewer-column-B-aligned-subunit-select') as HTMLSelectElement, { target: { value: 'Small' } });
 
@@ -769,14 +832,39 @@ describe('App integration: AlignedTo and Aligned loading', () => {
       viewerB: { minNear: 0.9, clipRadius: 67 },
     });
     expect(session.uiState.syncEnabled).toBe(true);
-    expect(session.uiState.showUniprotAccessionInChainLabels).toBe(false);
+    expect(session.uiState.showUniprotAccessionInChainLabelsByViewer).toEqual({
+      viewerA: false,
+      viewerB: true,
+    });
     expect(session.uiState.selections.alignedTo).toEqual(expect.objectContaining({
       subunit: 'Large',
     }));
     expect(session.uiState.selections.aligned).toEqual(expect.objectContaining({
       subunit: 'Small',
     }));
+    expect(session.uiState.highlights).toEqual({
+      alignedTo: {
+        chain: false,
+        residue: false,
+        subunit: false,
+      },
+      aligned: {
+        chain: false,
+        residue: false,
+        subunit: false,
+      },
+    });
     expect(session.uiState.chainFinderQueries).toEqual({ alignedTo: '', aligned: '' });
+    expect(session.uiState.colorThemesByMode).toEqual({
+      alignedTo: {
+        selectedThemeName: 'default',
+        themes: [],
+      },
+      aligned: {
+        selectedThemeName: 'default',
+        themes: [],
+      },
+    });
     expect(session.uiState.cameraSnapshots.viewerA).toEqual(expect.objectContaining({ radius: 10 }));
     expect(session.uiState.cameraSnapshots.viewerB).toEqual(expect.objectContaining({ radius: 10 }));
   });
@@ -806,9 +894,32 @@ describe('App integration: AlignedTo and Aligned loading', () => {
           alignedTo: 'auth CU',
           aligned: 'L22-like',
         },
+        colorThemesByMode: {
+          alignedTo: {
+            selectedThemeName: 'AlignedTo-custom-theme-test',
+            themes: [
+              {
+                value: 'AlignedTo-custom-theme-test',
+                label: 'AlignedTo test theme',
+                rows: [
+                  { pdb_chain: 'A', color: '#ff0000' },
+                  { pdb_chain: 'B', color: '#00ff00' },
+                ],
+              },
+            ],
+          },
+          aligned: {
+            selectedThemeName: 'default',
+            themes: [],
+          },
+        },
         selections: {
           alignedTo: { subunit: 'Large', chainId: 'A', residueId: '10' },
           aligned: { subunit: 'Small', chainId: 'B', residueId: '20' },
+        },
+        highlights: {
+          alignedTo: { subunit: true, chain: true, residue: true },
+          aligned: { subunit: true, chain: true, residue: false },
         },
         cameraSnapshots: {
           viewerA: { position: [10, 11, 12], target: [1, 2, 3], up: [0, 1, 0], radius: 42 },
@@ -830,6 +941,18 @@ describe('App integration: AlignedTo and Aligned loading', () => {
 
     fireEvent.click(document.getElementById('viewer-column-A-select-zoom-controls-toggle-btn') as HTMLButtonElement);
     fireEvent.click(document.getElementById('viewer-column-B-select-zoom-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-A-alignedto-subunit-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-A-alignedto-chain-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-A-alignedto-select-chain-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-A-alignedto-residue-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-B-aligned-subunit-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-B-aligned-chain-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-B-aligned-select-chain-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-B-aligned-residue-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-A-clipping-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-B-clipping-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-A-alignedto-representation-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-B-aligned-representation-controls-toggle-btn') as HTMLButtonElement);
 
     await waitFor(() => {
       expect((document.getElementById('viewer-column-A-alignedto-zoom-extra-radius') as HTMLInputElement).value).toBe('31');
@@ -840,8 +963,18 @@ describe('App integration: AlignedTo and Aligned loading', () => {
       expect((document.getElementById('viewer-column-A-alignedto-clip-far-number') as HTMLInputElement).value).toBe('60');
       expect((document.getElementById('viewer-column-B-aligned-clip-near-number') as HTMLInputElement).value).toBe('0.85');
       expect((document.getElementById('viewer-column-B-aligned-clip-far-number') as HTMLInputElement).value).toBe('70');
-      expect((document.getElementById('generalcontrols-sync-select') as HTMLSelectElement).value).toBe('On');
-      expect((document.getElementById('generalcontrols-show-uniprot-accession') as HTMLInputElement).checked).toBe(false);
+      expect(document.getElementById('generalcontrols-sync-select')).toHaveTextContent('Sync: On');
+      expect(document.getElementById('viewer-column-A-alignedto-show-uniprot-accession')).toHaveAttribute('aria-pressed', 'false');
+      expect(document.getElementById('viewer-column-B-aligned-show-uniprot-accession')).toHaveAttribute('aria-pressed', 'false');
+      expect(document.getElementById('viewer-column-A-alignedto-highlight-subunit-btn')).toHaveAttribute('aria-pressed', 'true');
+      expect(document.getElementById('viewer-column-A-alignedto-highlight-chain-btn')).toHaveAttribute('aria-pressed', 'true');
+      expect(document.getElementById('viewer-column-A-alignedto-highlight-residue-btn')).toHaveAttribute('aria-pressed', 'true');
+      expect(document.getElementById('viewer-column-B-aligned-highlight-subunit-btn')).toHaveAttribute('aria-pressed', 'true');
+      expect(document.getElementById('viewer-column-B-aligned-highlight-chain-btn')).toHaveAttribute('aria-pressed', 'true');
+      expect(document.getElementById('viewer-column-B-aligned-highlight-residue-btn')).toHaveAttribute('aria-pressed', 'false');
+      expect((document.getElementById('viewer-column-A-alignedto-colour-theme-select') as HTMLSelectElement).value).toBe('AlignedTo-custom-theme-test');
+      expect(document.querySelector('#viewer-column-A-alignedto-colour-theme-select option[value="AlignedTo-custom-theme-test"]')).toBeInTheDocument();
+      expect(document.querySelector('#viewer-column-B-aligned-colour-theme-select option[value="AlignedTo-custom-theme-test"]')).toBeInTheDocument();
     }, { timeout: 5000 });
 
     const getSessionState = (globalThis as any).__getSessionState as (() => any) | undefined;
@@ -851,6 +984,17 @@ describe('App integration: AlignedTo and Aligned loading', () => {
       alignedTo: 'auth CU',
       aligned: 'L22-like',
     });
+    expect(restoredSession.uiState.highlights).toEqual({
+      alignedTo: { subunit: true, chain: true, residue: true },
+      aligned: { subunit: true, chain: true, residue: false },
+    });
+    expect(restoredSession.uiState.colorThemesByMode.alignedTo.selectedThemeName).toBe('AlignedTo-custom-theme-test');
+    expect(restoredSession.uiState.colorThemesByMode.alignedTo.themes).toEqual([
+      expect.objectContaining({
+        value: 'AlignedTo-custom-theme-test',
+        label: 'AlignedTo test theme',
+      })
+    ]);
 
     expect(pluginA.canvas3d.camera.setState).toHaveBeenCalledWith(expect.objectContaining({
       position: [10, 11, 12],
@@ -943,7 +1087,7 @@ describe('App integration: AlignedTo and Aligned loading', () => {
       const residueRealignButton = document.getElementById('generalcontrols-realign-residue-btn') as HTMLButtonElement | null;
       expect(residueRealignButton).toBeInTheDocument();
       expect(residueRealignButton).toBeDisabled();
-      expect(residueRealignButton?.textContent).toContain('Realign to Residues');
+      expect(residueRealignButton?.textContent).toContain('Align Residues');
     }, { timeout: 5000 });
 
     const bothSidesSelected = {
@@ -963,7 +1107,7 @@ describe('App integration: AlignedTo and Aligned loading', () => {
       const residueRealignButton = document.getElementById('generalcontrols-realign-residue-btn') as HTMLButtonElement | null;
       expect(residueRealignButton).toBeInTheDocument();
       expect(residueRealignButton).not.toBeDisabled();
-      expect(residueRealignButton?.textContent).toContain('Realign to Residues: 2 to 1');
+      expect(residueRealignButton?.textContent).toContain('Align Residues: 2 to 1');
     }, { timeout: 5000 });
   });
 
@@ -984,17 +1128,20 @@ describe('App integration: AlignedTo and Aligned loading', () => {
 
     fireEvent.click(document.getElementById('viewer-column-A-select-zoom-controls-toggle-btn') as HTMLButtonElement);
     fireEvent.click(document.getElementById('viewer-column-B-select-zoom-controls-toggle-btn') as HTMLButtonElement);
-
-    const chainSelectAlignedTo = document.getElementById('viewer-column-A-alignedto-chain-select') as HTMLSelectElement;
-    const chainSelectAligned = document.getElementById('viewer-column-B-aligned-chain-select') as HTMLSelectElement;
+    fireEvent.click(document.getElementById('viewer-column-A-alignedto-chain-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-B-aligned-chain-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-A-alignedto-select-chain-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-B-aligned-select-chain-controls-toggle-btn') as HTMLButtonElement);
 
     await waitFor(() => {
-      expect(chainSelectAlignedTo.options.length).toBeGreaterThan(1);
-      expect(chainSelectAligned.options.length).toBeGreaterThan(1);
+      expect(document.querySelector('[data-testid^="viewer-column-A-chain-table-row-"]')).toBeInTheDocument();
+      expect(document.querySelector('[data-testid^="viewer-column-B-chain-table-row-"]')).toBeInTheDocument();
     }, { timeout: 5000 });
 
-    fireEvent.change(chainSelectAlignedTo, { target: { value: 'A' } });
-    fireEvent.change(chainSelectAligned, { target: { value: 'B' } });
+    const alignedToFirstChainRow = document.querySelector('[data-testid^="viewer-column-A-chain-table-row-"]') as HTMLTableRowElement | null;
+    const alignedFirstChainRow = document.querySelector('[data-testid^="viewer-column-B-chain-table-row-"]') as HTMLTableRowElement | null;
+    fireEvent.click(alignedToFirstChainRow as HTMLTableRowElement);
+    fireEvent.click(alignedFirstChainRow as HTMLTableRowElement);
 
     const realignButton = document.getElementById('generalcontrols-realign-btn') as HTMLButtonElement;
     await waitFor(() => {
@@ -1025,16 +1172,20 @@ describe('App integration: AlignedTo and Aligned loading', () => {
 
     fireEvent.click(document.getElementById('viewer-column-A-select-zoom-controls-toggle-btn') as HTMLButtonElement);
     fireEvent.click(document.getElementById('viewer-column-B-select-zoom-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-A-alignedto-chain-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-B-aligned-chain-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-A-alignedto-select-chain-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-B-aligned-select-chain-controls-toggle-btn') as HTMLButtonElement);
 
-    const chainSelectAlignedTo = document.getElementById('viewer-column-A-alignedto-chain-select') as HTMLSelectElement;
-    const chainSelectAligned = document.getElementById('viewer-column-B-aligned-chain-select') as HTMLSelectElement;
     await waitFor(() => {
-      expect(chainSelectAlignedTo.options.length).toBeGreaterThan(1);
-      expect(chainSelectAligned.options.length).toBeGreaterThan(1);
+      expect(document.querySelector('[data-testid^="viewer-column-A-chain-table-row-"]')).toBeInTheDocument();
+      expect(document.querySelector('[data-testid^="viewer-column-B-chain-table-row-"]')).toBeInTheDocument();
     }, { timeout: 5000 });
 
-    fireEvent.change(chainSelectAlignedTo, { target: { value: 'A' } });
-    fireEvent.change(chainSelectAligned, { target: { value: 'B' } });
+    const alignedToFirstChainRow = document.querySelector('[data-testid^="viewer-column-A-chain-table-row-"]') as HTMLTableRowElement | null;
+    const alignedFirstChainRow = document.querySelector('[data-testid^="viewer-column-B-chain-table-row-"]') as HTMLTableRowElement | null;
+    fireEvent.click(alignedToFirstChainRow as HTMLTableRowElement);
+    fireEvent.click(alignedFirstChainRow as HTMLTableRowElement);
 
     const pluginA = (globalThis as any).__mockPluginA;
     const capturedMatrices: number[][] = [];

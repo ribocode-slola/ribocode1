@@ -32,21 +32,28 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('repeat re-align attempts for the same pair are blocked', async ({ page }) => {
+test('repeat align attempts for the same pair remain available', async ({ page }) => {
   await page.goto('http://localhost:5173/');
   await loadAlignedToAndAligned(page);
 
-  await expect(page.locator('#viewer-column-A-alignedto-chain-select')).toBeVisible();
-  await expect(page.locator('#viewer-column-B-aligned-chain-select')).toBeVisible();
+  await page.click('#viewer-column-A-select-zoom-controls-toggle-btn');
+  await page.click('#viewer-column-B-select-zoom-controls-toggle-btn');
+  await page.click('#viewer-column-A-alignedto-chain-controls-toggle-btn');
+  await page.click('#viewer-column-B-aligned-chain-controls-toggle-btn');
+  await page.click('#viewer-column-A-alignedto-select-chain-controls-toggle-btn');
+  await page.click('#viewer-column-B-aligned-select-chain-controls-toggle-btn');
+
+  await expect(page.locator('#viewer-column-A-chain-table-container')).toBeVisible();
+  await expect(page.locator('#viewer-column-B-chain-table-container')).toBeVisible();
 
   const alignedToChainValues = await page.evaluate(() => {
-    return Array.from(document.querySelectorAll('#viewer-column-A-alignedto-chain-select option'))
-      .map(opt => (opt as HTMLOptionElement).value)
+    return Array.from(document.querySelectorAll('[data-testid^="viewer-column-A-chain-table-row-"]'))
+      .map(row => (row.getAttribute('data-testid') || '').replace('viewer-column-A-chain-table-row-', ''))
       .filter(value => value && value !== '');
   });
   const alignedChainValues = await page.evaluate(() => {
-    return Array.from(document.querySelectorAll('#viewer-column-B-aligned-chain-select option'))
-      .map(opt => (opt as HTMLOptionElement).value)
+    return Array.from(document.querySelectorAll('[data-testid^="viewer-column-B-chain-table-row-"]'))
+      .map(row => (row.getAttribute('data-testid') || '').replace('viewer-column-B-chain-table-row-', ''))
       .filter(value => value && value !== '');
   });
 
@@ -57,21 +64,21 @@ test('repeat re-align attempts for the same pair are blocked', async ({ page }) 
   const alignedValue = alignedChainValues[0];
   const alternateAlignedValue = alignedChainValues.find(v => v !== alignedValue);
 
-  await page.selectOption('#viewer-column-A-alignedto-chain-select', alignedToValue);
-  await page.selectOption('#viewer-column-B-aligned-chain-select', alignedValue);
+  await page.click(`[data-testid="viewer-column-A-chain-table-row-${alignedToValue}"]`);
+  await page.click(`[data-testid="viewer-column-B-chain-table-row-${alignedValue}"]`);
 
   const realignBtn = page.locator('#generalcontrols-realign-btn');
   await expect(realignBtn).toBeEnabled();
 
   await realignBtn.click();
-  await expect(realignBtn).toBeDisabled({ timeout: 10000 });
-  await expect(realignBtn).toHaveText(/Already re-aligned:\s*.+\s*→\s*.+/);
+  await expect(realignBtn).toBeEnabled({ timeout: 10000 });
+  await expect(realignBtn).toHaveText(/Align Chains:\s*.+\s*→\s*.+/);
 
-  // Change away from the pair and back; the already-applied pair should remain blocked.
+  // Change away from the pair and back; same-pair align remains available.
   if (alternateAlignedValue) {
-    await page.selectOption('#viewer-column-B-aligned-chain-select', alternateAlignedValue);
+    await page.click(`[data-testid="viewer-column-B-chain-table-row-${alternateAlignedValue}"]`);
     await expect(realignBtn).toBeEnabled();
-    await page.selectOption('#viewer-column-B-aligned-chain-select', alignedValue);
-    await expect(realignBtn).toBeDisabled();
+    await page.click(`[data-testid="viewer-column-B-chain-table-row-${alignedValue}"]`);
+    await expect(realignBtn).toBeEnabled();
   }
 });

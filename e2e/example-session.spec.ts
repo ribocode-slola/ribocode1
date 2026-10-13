@@ -15,15 +15,20 @@ const inputDir = path.resolve(__dirname, '../data/input');
 const alignedToFile = path.join(inputDir, '4ug0.cif');
 const alignedFile = path.join(inputDir, '6xu8.cif');
 
+async function waitForSessionMenuReady(page: Page) {
+  await expect(page.locator('#session-menu-btn')).toBeVisible({ timeout: 45000 });
+}
+
 async function completeRequiredFilesModal(page: Page) {
   await expect(page.getByText('Load Session: Select Required Files')).toBeVisible();
   const fileInputs = await page.$$('[data-testid^="session-load-modal-file-input-"]');
 
   for (const input of fileInputs) {
     const label = await input.evaluate((el: HTMLInputElement) => el.parentElement?.textContent || '');
-    if (label.includes('4ug0.cif')) {
+    const normalizedLabel = label.toLowerCase();
+    if (normalizedLabel.includes('4ug0.cif')) {
       await input.setInputFiles(alignedToFile);
-    } else if (label.includes('6xu8.cif')) {
+    } else if (normalizedLabel.includes('6xu8.cif')) {
       await input.setInputFiles(alignedFile);
     }
   }
@@ -34,20 +39,25 @@ async function completeRequiredFilesModal(page: Page) {
 
 test.describe('Session Save/Load E2E', () => {
   test('can load, save, and reload session with real data', async ({ page }) => {
+    test.setTimeout(60000);
+
     await page.goto('http://localhost:5173/');
+    await waitForSessionMenuReady(page);
 
     await page.click('#viewer-column-A-alignedto-load-btn');
     await page.setInputFiles('#viewer-column-A-alignedto-file-input', alignedToFile);
-    await page.click('#viewer-column-B-aligned-load-btn');
+    await expect(page.locator('#viewer-column-B-aligned-load-btn')).toBeEnabled({ timeout: 20000 });
     await page.setInputFiles('#viewer-column-B-aligned-file-input', alignedFile);
+    await page.click('#viewer-column-B-aligned-load-btn');
 
-    await expect(page.locator('#viewer-column-A-alignedto-filename-label')).toHaveText(/4ug0\.cif/i);
-    await expect(page.locator('#viewer-column-B-aligned-load-btn')).toHaveCount(0, { timeout: 10000 });
+    await expect(page.getByRole('button', { name: /Hide 4UG0/i })).toBeVisible({ timeout: 30000 });
+    await expect(page.getByRole('button', { name: /Hide 6XU8/i })).toBeVisible({ timeout: 30000 });
 
     await page.click('#session-menu-btn');
     await page.click('#session-menu-dropdown .session-menu-item:text-is("Save")');
 
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: 45000 });
+    await waitForSessionMenuReady(page);
     await page.click('#session-menu-btn');
     await page.click('#session-menu-dropdown .session-menu-item:text-is("Load")');
 
@@ -57,7 +67,7 @@ test.describe('Session Save/Load E2E', () => {
 
     await expect(page.locator('#viewer-column-A-molstar-container')).toBeVisible();
     await expect(page.locator('#viewer-column-B-molstar-container')).toBeVisible();
-    await expect(page.locator('#viewer-column-A-alignedto-filename-label')).toHaveText(/4ug0\.cif/i);
-    await expect(page.locator('#viewer-column-B-aligned-load-btn')).toHaveCount(0, { timeout: 20000 });
+    await expect(page.getByRole('button', { name: /Hide 4UG0/i })).toBeVisible({ timeout: 30000 });
+    await expect(page.getByRole('button', { name: /Hide 6XU8/i })).toBeVisible({ timeout: 30000 });
   });
 });

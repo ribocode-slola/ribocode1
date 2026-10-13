@@ -133,6 +133,25 @@ describe('viewerHelpers', () => {
     );
   });
 
+  it('invokes onAfterZoom callback after zooming', async () => {
+    vi.mocked(focusLociOnChain).mockClear();
+    const pluginRef = { current: { id: 'plugin-a' } };
+    const onAfterZoom = vi.fn();
+    const handler = makeZoomHandler({
+      pluginRef: pluginRef as any,
+      structureRef: 'struct-a',
+      property: 'chain-test',
+      chainId: 'B',
+      sync: false,
+      onAfterZoom,
+    });
+
+    await handler.handleButtonClick();
+
+    expect(focusLociOnChain).toHaveBeenCalled();
+    expect(onAfterZoom).toHaveBeenCalledTimes(1);
+  });
+
   it('syncs residue zoom with zoom options to the other viewer when sync is enabled', async () => {
     vi.mocked(focusLociOnResidue).mockClear();
     const pluginRef = { current: { id: 'plugin-a' } };
@@ -514,6 +533,51 @@ describe('viewerHelpers', () => {
     expect(clearHighlights).not.toHaveBeenCalled();
     expect(highlightLociOnSubunit).not.toHaveBeenCalled();
     expect(setIsHighlighted).toHaveBeenCalledWith(false);
+  });
+
+  it('enabling subunit highlight does not clear an existing chain highlight', async () => {
+    vi.mocked(highlightLociOnChain).mockClear();
+    vi.mocked(unhighlightLociOnChain).mockClear();
+    vi.mocked(highlightLociOnSubunit).mockClear();
+
+    const pluginRef = {
+      current: {
+        id: 'plugin-a',
+        managers: {
+          interactivity: { lociSelects: { deselectAll: vi.fn() }, lociHighlights: { clearHighlights: vi.fn() } },
+          structure: { focus: { clear: vi.fn() } }
+        },
+      },
+    };
+
+    const setChainHighlighted = vi.fn();
+    const chainHandler = createChainHighlightToggleHandler(
+      pluginRef as any,
+      'struct-a',
+      'A',
+      false,
+      setChainHighlighted,
+      false
+    );
+
+    const setSubunitHighlighted = vi.fn();
+    const subunitHandler = createSubunitHighlightToggleHandler(
+      pluginRef as any,
+      'struct-a',
+      ['A', 'B'],
+      false,
+      setSubunitHighlighted,
+      false
+    );
+
+    await chainHandler.handleButtonClick();
+    await subunitHandler.handleButtonClick();
+
+    expect(highlightLociOnChain).toHaveBeenCalledTimes(1);
+    expect(unhighlightLociOnChain).not.toHaveBeenCalled();
+    expect(setChainHighlighted).toHaveBeenCalledWith(true);
+    expect(highlightLociOnSubunit).toHaveBeenCalledTimes(1);
+    expect(setSubunitHighlighted).toHaveBeenCalledWith(true);
   });
 
   it('toggles chain inspect on and uses focus manager path', async () => {

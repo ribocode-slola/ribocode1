@@ -13,6 +13,75 @@ import { StructureElement, StructureSelection } from 'molstar/lib/mol-model/stru
 import { QueryContext } from 'molstar/lib/mol-model/structure/query/context';
 import { MolScriptBuilder } from 'molstar/lib/mol-script/language/builder';
 import { compile } from 'molstar/lib/mol-script/runtime/query/base';
+import { Color } from 'molstar/lib/mol-util/color';
+import { setStructureOverpaint, clearStructureOverpaint } from 'molstar/lib/mol-plugin-state/helpers/structure-overpaint';
+
+const SUBUNIT_HIGHLIGHT_COLOR = Color(0x4C78A8);
+const CHAIN_HIGHLIGHT_COLOR = Color(0xF58518);
+const RESIDUE_HIGHLIGHT_COLOR = Color(0xE45756);
+const overpaintQueuesByPlugin = new WeakMap<PluginUIContext, Map<string, Promise<void>>>();
+
+function enqueueOverpaintUpdate(
+    plugin: PluginUIContext,
+    structureRef: string,
+    task: () => Promise<void>
+) {
+    let queues = overpaintQueuesByPlugin.get(plugin);
+    if (!queues) {
+        queues = new Map<string, Promise<void>>();
+        overpaintQueuesByPlugin.set(plugin, queues);
+    }
+    const previous = queues.get(structureRef) ?? Promise.resolve();
+    const next = previous
+        .catch(() => undefined)
+        .then(task)
+        .catch(() => undefined);
+    queues.set(structureRef, next);
+}
+
+function getStructureComponentsByRef(plugin: PluginUIContext, structureRef: string) {
+    return plugin.managers.structure.hierarchy.current.structures.find(
+        s => s.cell.transform.ref === structureRef
+    )?.components;
+}
+
+function addColorLayerForLoci(
+    plugin: PluginUIContext,
+    structureRef: string,
+    loci: any,
+    color: ReturnType<typeof Color>
+) {
+    const components = getStructureComponentsByRef(plugin, structureRef);
+    if (!components || components.length === 0 || !loci) return false;
+    enqueueOverpaintUpdate(plugin, structureRef, () =>
+        setStructureOverpaint(plugin as any, components as any, color, async () => loci)
+    );
+    return true;
+}
+
+function clearColorLayerForLoci(
+    plugin: PluginUIContext,
+    structureRef: string,
+    loci: any
+) {
+    const components = getStructureComponentsByRef(plugin, structureRef);
+    if (!components || components.length === 0 || !loci) return false;
+    enqueueOverpaintUpdate(plugin, structureRef, () =>
+        setStructureOverpaint(plugin as any, components as any, -1, async () => loci)
+    );
+    return true;
+}
+
+export function clearStructureHighlightOverpaint(
+    plugin: PluginUIContext,
+    structureRef: string
+) {
+    const components = getStructureComponentsByRef(plugin, structureRef);
+    if (!components || components.length === 0) return;
+    enqueueOverpaintUpdate(plugin, structureRef, () =>
+        clearStructureOverpaint(plugin as any, components as any)
+    );
+}
 
 /**
  * Focus the camera on a residue loci, with optional sync to another plugin.
@@ -92,6 +161,7 @@ export function highlightLociOnChain(
     const applyHighlight = (targetPlugin: PluginUIContext, targetStructureRef: string, targetChainId: string) => {
         const loci = getChainLociFn(targetPlugin, targetStructureRef, targetChainId);
         if (!loci) return;
+        if (addColorLayerForLoci(targetPlugin, targetStructureRef, loci, CHAIN_HIGHLIGHT_COLOR)) return;
         const lociSelects = targetPlugin.managers.interactivity?.lociSelects;
         if (lociSelects?.select) {
             lociSelects.select({ loci }, false);
@@ -125,6 +195,7 @@ export function unhighlightLociOnChain(
     const removeHighlight = (targetPlugin: PluginUIContext, targetStructureRef: string, targetChainId: string) => {
         const loci = getChainLociFn(targetPlugin, targetStructureRef, targetChainId);
         if (!loci) return;
+        if (clearColorLayerForLoci(targetPlugin, targetStructureRef, loci)) return;
         const lociSelects = targetPlugin.managers.interactivity?.lociSelects;
         if (lociSelects?.deselect) {
             lociSelects.deselect({ loci }, false);
@@ -272,6 +343,7 @@ export function highlightLociOnSubunit(
     ) => {
         const loci = getSubunitLoci(targetPlugin, targetStructureRef, targetChainIds);
         if (!loci) return;
+        if (addColorLayerForLoci(targetPlugin, targetStructureRef, loci, SUBUNIT_HIGHLIGHT_COLOR)) return;
         const lociSelects = targetPlugin.managers.interactivity?.lociSelects;
         if (lociSelects?.select) {
             lociSelects.select({ loci }, false);
@@ -308,6 +380,7 @@ export function unhighlightLociOnSubunit(
     ) => {
         const loci = getSubunitLoci(targetPlugin, targetStructureRef, targetChainIds);
         if (!loci) return;
+        if (clearColorLayerForLoci(targetPlugin, targetStructureRef, loci)) return;
         const lociSelects = targetPlugin.managers.interactivity?.lociSelects;
         if (lociSelects?.deselect) {
             lociSelects.deselect({ loci }, false);
@@ -488,6 +561,7 @@ export function highlightLociOnResidues(
     ) => {
         const loci = getResiduesLoci(targetPlugin, targetStructureRef, targetChainId, targetResidueIds, targetResidueInsCodes);
         if (!loci) return;
+        if (addColorLayerForLoci(targetPlugin, targetStructureRef, loci, RESIDUE_HIGHLIGHT_COLOR)) return;
         const lociSelects = targetPlugin.managers.interactivity?.lociSelects;
         if (lociSelects?.select) {
             lociSelects.select({ loci }, false);
@@ -536,6 +610,7 @@ export function unhighlightLociOnResidues(
     ) => {
         const loci = getResiduesLoci(targetPlugin, targetStructureRef, targetChainId, targetResidueIds, targetResidueInsCodes);
         if (!loci) return;
+        if (clearColorLayerForLoci(targetPlugin, targetStructureRef, loci)) return;
         const lociSelects = targetPlugin.managers.interactivity?.lociSelects;
         if (lociSelects?.deselect) {
             lociSelects.deselect({ loci }, false);

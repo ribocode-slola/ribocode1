@@ -13,7 +13,6 @@ import LoadDataRow, { SelectZoomControls } from './LoadMolecule';
 import MoleculeUI from './Molecule';
 import RealignedMoleculeList from './RealignedMoleculeList';
 import MolstarContainer from './MolstarContainer';
-import ChainSelectionTable from './ChainSelectionTable';
 import MolstarAdvancedControls from './MolstarAdvancedControls';
 import { AllowedRepresentationType } from '../types/ribocode';
 import RepresentationSelectButton from './buttons/select/Representation';
@@ -40,6 +39,11 @@ export interface LoadDataRowPropsInput {
 	setRepresentationType: (val: any) => void;
 	colorsFile: any;
 	isMoleculeColoursLoaded: boolean;
+	colorThemeOptions?: Array<{ value: string; label: string }>;
+	selectedColorThemeName?: string;
+	setSelectedColorThemeName?: (themeName: string) => void;
+	onRemoveColorTheme?: () => void;
+	removeColorThemeDisabled?: boolean;
 	structureRef: any;
 	otherStructureRef: any;
 	selectedSubunit: any;
@@ -66,6 +70,13 @@ export interface LoadDataRowPropsInput {
 	chainInspectDisabled: boolean;
 	onChainZoom: () => void;
 	chainZoomDisabled: boolean;
+	showUniprotAccessionInChainLabels?: boolean;
+	setShowUniprotAccessionInChainLabels?: (val: boolean) => void;
+	uniprotLookupStatus?: {
+		completed: number;
+		pending: number;
+		inFlight: number;
+	};
 	residueInfo: any;
 	selectedResidueIds: string[];
 	setSelectedResidueIds: (val: string[]) => void;
@@ -128,6 +139,11 @@ export function getLoadDataRowProps({
 	setRepresentationType,
 	colorsFile,
 	isMoleculeColoursLoaded,
+	colorThemeOptions,
+	selectedColorThemeName,
+	setSelectedColorThemeName,
+	onRemoveColorTheme,
+	removeColorThemeDisabled,
 	structureRef,
 	otherStructureRef,
 	selectedSubunit,
@@ -154,6 +170,9 @@ export function getLoadDataRowProps({
 	chainInspectDisabled,
 	onChainZoom,
 	chainZoomDisabled,
+	showUniprotAccessionInChainLabels,
+	setShowUniprotAccessionInChainLabels,
+	uniprotLookupStatus,
 	residueInfo,
 	selectedResidueIds,
 	setSelectedResidueIds,
@@ -182,19 +201,47 @@ export function getLoadDataRowProps({
 	syncEnabled,
 	realignedRepRefs,
 	setRealignedRepRefs,
-	setRealignedStructRefs
+	setRealignedStructRefs,
+	loadedFilename,
 }: LoadDataRowPropsInput) {
+	const captureCameraSnapshot = (molstarInstance: any) => {
+		const camera = molstarInstance?.pluginRef?.current?.canvas3d?.camera;
+		const snapshot = camera?.getSnapshot?.();
+		if (!camera || !snapshot) return null;
+		return {
+			camera,
+			snapshot,
+			requestDraw: molstarInstance?.pluginRef?.current?.canvas3d?.requestDraw,
+		};
+	};
+
+	const restoreCameraSnapshot = (captured: any) => {
+		if (!captured?.camera || !captured?.snapshot || typeof captured.camera.setState !== 'function') return;
+		captured.camera.setState({
+			...captured.camera.state,
+			position: captured.snapshot.position,
+			target: captured.snapshot.target,
+			up: captured.snapshot.up,
+			radius: captured.snapshot.radius,
+		});
+		if (typeof captured.requestDraw === 'function') {
+			captured.requestDraw();
+		}
+	};
+
 	   return {
 			  // Use the correct molecule and loaded state for each row
 			  viewerTitle:
 				  Aligned === 'AlignedTo'
 					  ? (viewer.moleculeAlignedTo ? Aligned + `: ${viewer.moleculeAlignedTo.name || viewer.moleculeAlignedTo.label || viewer.moleculeAlignedTo.filename}` : "")
 					  : (viewer.moleculeAligned ? Aligned + `: ${viewer.moleculeAligned.name || viewer.moleculeAligned.label || viewer.moleculeAligned.filename}` : ""),
-			  isLoaded: Aligned === 'AlignedTo' ? isMoleculeAlignedToLoaded : (viewer.moleculeAligned && viewer.moleculeAligned.filename ? true : false),
+			  isLoaded: Aligned === 'AlignedTo'
+				  ? (isMoleculeAlignedToLoaded || Boolean(loadedFilename))
+				  : (isMoleculeAlignedLoaded || Boolean(loadedFilename) || Boolean(viewer.moleculeAligned && viewer.moleculeAligned.filename)),
 			  loadedFilename:
 				  Aligned === 'AlignedTo'
-					  ? (viewer.moleculeAlignedTo?.filename || viewer.moleculeAlignedTo?.name || viewer.moleculeAlignedTo?.label || "")
-					  : (viewer.moleculeAligned?.filename || viewer.moleculeAligned?.name || viewer.moleculeAligned?.label || ""),
+					  ? (viewer.moleculeAlignedTo?.filename || loadedFilename || viewer.moleculeAlignedTo?.name || viewer.moleculeAlignedTo?.label || "")
+					  : (viewer.moleculeAligned?.filename || loadedFilename || viewer.moleculeAligned?.name || viewer.moleculeAligned?.label || ""),
 		   onFileInputClick: viewer.handleFileInputButtonClick,
 		   fileInputRef: viewer.fileInputRef,
 		   onFileChange: (e: any) => handleFileChange(e, Aligned),
@@ -217,62 +264,72 @@ export function getLoadDataRowProps({
 		),
 		onAddColorsClick: colorsFile.handleButtonClick,
 			addColorsDisabled: Aligned === 'AlignedTo' ? !isMoleculeAlignedToLoaded : !isMoleculeAlignedLoaded,
-		onAddRepresentationClick: () => {
-			let colorTheme;
-			if (isMoleculeColoursLoaded) {
-				colorTheme = { name: Aligned + '-custom-chain-colors', params: {} };
-			} else {
-				colorTheme = { name: 'default', params: {} };
-			}
+		colorThemeOptions,
+		selectedColorThemeName,
+		onSelectedColorThemeNameChange: setSelectedColorThemeName,
+		onRemoveColorTheme,
+		removeColorThemeDisabled,
+		onAddRepresentationClick: async () => {
+			const colorThemeName = selectedColorThemeName || (isMoleculeColoursLoaded ? Aligned + '-custom-chain-colors' : 'default');
+			const colorTheme = { name: colorThemeName, params: {} };
 			const repId = (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
+			const thisCameraBefore = captureCameraSnapshot(molstar);
+			const otherCameraBefore = captureCameraSnapshot(otherMolstar);
 			const thisViewerVisible = Aligned === 'AlignedTo'
 				? viewer.isMoleculeAlignedToVisible
 				: viewer.isMoleculeAlignedVisible;
 			const otherViewerVisible = Aligned === 'AlignedTo'
 				? otherViewer.isMoleculeAlignedToVisible
 				: otherViewer.isMoleculeAlignedVisible;
+			const addPromises: Promise<unknown>[] = [];
 			if ((Aligned === 'AlignedTo' ? viewer.moleculeAlignedTo : viewer.moleculeAligned) && structureRef) {
-				molstar.addRepresentation(
+				addPromises.push(molstar.addRepresentation(
 					Aligned,
 					structureRef,
 					representationType,
 					colorTheme,
 					repId,
 					thisViewerVisible
-				);
+				));
 			}
 			if ((Aligned === 'AlignedTo' ? otherViewer.moleculeAlignedTo : otherViewer.moleculeAligned) && otherStructureRef) {
-				otherMolstar.addRepresentation(
+				addPromises.push(otherMolstar.addRepresentation(
 					Aligned,
 					otherStructureRef,
 					representationType,
 					colorTheme,
 					repId,
 					otherViewerVisible
-				);
+				));
 			}
 			Object.entries(realignedStructRefs).forEach(([id, structRef]) => {
 				if (structRef) {
-					molstar.addRepresentation(
+					addPromises.push(molstar.addRepresentation(
 						id,
 						structRef,
 						representationType,
 						colorTheme,
 						repId
-					);
+					));
 				}
 			});
 			Object.entries(otherRealignedStructRefs).forEach(([id, structRef]) => {
 				if (structRef) {
-					otherMolstar.addRepresentation(
+					addPromises.push(otherMolstar.addRepresentation(
 						id,
 						structRef,
 						representationType,
 						colorTheme,
 						repId
-					);
+					));
 				}
 			});
+
+			await Promise.all(addPromises);
+
+			// Representation creation can transiently perturb camera states; restore both viewers.
+			restoreCameraSnapshot(thisCameraBefore);
+			restoreCameraSnapshot(otherCameraBefore);
 		},
 		addRepresentationDisabled: Aligned === 'AlignedTo' ? (!isMoleculeAlignedToLoaded || !representationType) : (!isMoleculeAlignedLoaded || !representationType),
 		colorsInputRef: colorsFile.inputRef,
@@ -301,6 +358,9 @@ export function getLoadDataRowProps({
 		chainInspectDisabled,
 		onChainZoom,
 		chainZoomDisabled,
+		showUniprotAccessionInChainLabels,
+		onShowUniprotAccessionInChainLabelsChange: setShowUniprotAccessionInChainLabels,
+		uniprotLookupStatus,
 		chainSelectDisabled: !isMoleculeAlignedToLoaded,
 		residueInfo,
 		selectedResidueIds,
@@ -336,6 +396,8 @@ export function getLoadDataRowProps({
 		},
 		clippingMinNear: clipping.minNear,
 		clippingRadius: clipping.clipRadius,
+		clippingDefaultMinNear: Number(clippingDefaults?.minNear ?? clipping.minNear ?? 1),
+		clippingDefaultRadius: Number(clippingDefaults?.clipRadius ?? clipping.clipRadius ?? 0),
 		onClippingMinNearChange: (val: number) => {
 			setClipping.setMinNear(val);
 			updateFog(viewer.ref.current, null, fog.enabled, fog.near, fog.far, val, clipping.clipRadius);
@@ -716,12 +778,13 @@ const ViewerColumn: React.FC<ViewerColumnProps> = ({
 	const viewerIdPrefix = idPrefix ? `${idPrefix}-${idSuffix}-${viewerKey}` : `${idSuffix}-${viewerKey}`;
 	const [showAdvancedMolstarControls, setShowAdvancedMolstarControls] = React.useState(false);
 	const [showSelectZoomControls, setShowSelectZoomControls] = React.useState(false);
+	const [showClippingControls, setShowClippingControls] = React.useState(false);
 	const chainTableProps = viewerKey === 'A'
 		? {
 			chainLabels: loadDataRowPropsAlignedTo?.chainInfo?.chainLabels as Map<string, string>,
 			selectedChainId: loadDataRowPropsAlignedTo?.selectedChainId ?? '',
 			onSelectChainId: loadDataRowPropsAlignedTo?.onSelectChainId as (chainId: string) => void,
-			title: 'AlignedTo Chain Finder',
+			title: 'Select',
 			query: alignedToChainFinderQuery,
 			onQueryChange: onAlignedToChainFinderQueryChange,
 		}
@@ -729,7 +792,7 @@ const ViewerColumn: React.FC<ViewerColumnProps> = ({
 			chainLabels: loadDataRowPropsAligned?.chainInfo?.chainLabels as Map<string, string>,
 			selectedChainId: loadDataRowPropsAligned?.selectedChainId ?? '',
 			onSelectChainId: loadDataRowPropsAligned?.onSelectChainId as (chainId: string) => void,
-			title: 'Aligned Chain Finder',
+			title: 'Select',
 			query: alignedChainFinderQuery,
 			onQueryChange: onAlignedChainFinderQueryChange,
 		};
@@ -737,6 +800,8 @@ const ViewerColumn: React.FC<ViewerColumnProps> = ({
 	const activeSelectZoomIdPrefix = viewerKey === 'A' ? `${viewerIdPrefix}-alignedto` : `${viewerIdPrefix}-aligned`;
 	const clippingNear = Number(activeLoadProps?.clippingMinNear ?? 1);
 	const clippingFar = Number(activeLoadProps?.clippingRadius ?? 0);
+	const clippingDefaultNear = Number(activeLoadProps?.clippingDefaultMinNear ?? clippingNear);
+	const clippingDefaultFar = Number(activeLoadProps?.clippingDefaultRadius ?? clippingFar);
 
 	       return (
 		       <div className="Column" id={viewerIdPrefix}>
@@ -756,15 +821,18 @@ const ViewerColumn: React.FC<ViewerColumnProps> = ({
 					   {viewerKey === 'B' && (
 					   <LoadDataRow {...loadDataRowPropsAligned} showSelectZoomControls={false} testMode={testMode} idPrefix={`${viewerIdPrefix}-aligned`} />
 					   )}
-		       <div className="load-data-controls" id={`${activeSelectZoomIdPrefix}-clipping-controls`}>
+		       <button
+			   id={`${viewerIdPrefix}-clipping-controls-toggle-btn`}
+			   data-testid={`${viewerIdPrefix}-clipping-controls-toggle-btn`}
+			   className="molstar-file-btn molstar-advanced-controls-toggle"
+			   type="button"
+			   onClick={() => setShowClippingControls((current) => !current)}
+		       >
+			   {showClippingControls ? 'Hide Clipping Controls' : 'Show Clipping Controls'}
+		       </button>
+		       {showClippingControls && (
+			       <div className="load-data-controls" id={`${activeSelectZoomIdPrefix}-clipping-controls`}>
 				   <div className="load-data-control-row" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-					   <strong>Clipping</strong>
-					   <span
-						   style={{ fontSize: 12, opacity: 0.8 }}
-						   title="Matches Mol* clipping settings: Min Near controls minimum near plane distance, Clip Radius controls how much of the scene is shown."
-					   >
-						   Matches Mol* clipping settings
-					   </span>
 					   <label htmlFor={`${activeSelectZoomIdPrefix}-clip-near-range`}>Min Near:</label>
 					   <input
 						   id={`${activeSelectZoomIdPrefix}-clip-near-range`}
@@ -785,6 +853,16 @@ const ViewerColumn: React.FC<ViewerColumnProps> = ({
 						   onChange={(e) => activeLoadProps?.onClippingMinNearChange?.(Number(e.target.value))}
 						   style={{ width: 80 }}
 					   />
+					   <button
+						   type="button"
+						   className="msp-btn msp-form-control"
+						   id={`${activeSelectZoomIdPrefix}-clip-near-reset-btn`}
+						   onClick={() => activeLoadProps?.onClippingMinNearChange?.(clippingDefaultNear)}
+					   >
+						   Reset
+					   </button>
+				   </div>
+				   <div className="load-data-control-row" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
 					   <label htmlFor={`${activeSelectZoomIdPrefix}-clip-far-range`}>Clip Radius:</label>
 					   <input
 						   id={`${activeSelectZoomIdPrefix}-clip-far-range`}
@@ -808,13 +886,14 @@ const ViewerColumn: React.FC<ViewerColumnProps> = ({
 					   <button
 						   type="button"
 						   className="msp-btn msp-form-control"
-						   id={`${activeSelectZoomIdPrefix}-clip-reset-btn`}
-						   onClick={() => activeLoadProps?.onResetClipping?.()}
+						   id={`${activeSelectZoomIdPrefix}-clip-far-reset-btn`}
+						   onClick={() => activeLoadProps?.onClippingRadiusChange?.(clippingDefaultFar)}
 					   >
-						   Reset Clipping
+						   Reset
 					   </button>
 				   </div>
 		       </div>
+		       )}
 		       <button
 			   id={`${viewerIdPrefix}-select-zoom-controls-toggle-btn`}
 			   data-testid={`${viewerIdPrefix}-select-zoom-controls-toggle-btn`}
@@ -854,6 +933,9 @@ const ViewerColumn: React.FC<ViewerColumnProps> = ({
 						   chainInspectDisabled={activeLoadProps.chainInspectDisabled}
 						   onChainZoom={activeLoadProps.onChainZoom}
 						   chainZoomDisabled={activeLoadProps.chainZoomDisabled}
+						   showUniprotAccessionInChainLabels={activeLoadProps.showUniprotAccessionInChainLabels}
+						   onShowUniprotAccessionInChainLabelsChange={activeLoadProps.onShowUniprotAccessionInChainLabelsChange}
+						   uniprotLookupStatus={activeLoadProps.uniprotLookupStatus}
 						   residueInfo={activeLoadProps.residueInfo}
 						   selectedResidueIds={activeLoadProps.selectedResidueIds}
 						   onSelectResidueIds={activeLoadProps.onSelectResidueIds}
@@ -871,18 +953,16 @@ const ViewerColumn: React.FC<ViewerColumnProps> = ({
 						   onZoomExtraRadiusChange={activeLoadProps.onZoomExtraRadiusChange}
 						   zoomMinRadius={activeLoadProps.zoomMinRadius}
 						   onZoomMinRadiusChange={activeLoadProps.onZoomMinRadiusChange}
+						   chainFinderChainLabels={chainTableProps.chainLabels || new Map<string, string>()}
+						   chainFinderSelectedChainId={chainTableProps.selectedChainId}
+						   chainFinderOnSelectChainId={chainTableProps.onSelectChainId || (() => {})}
+						   chainFinderTitle={chainTableProps.title}
+						   chainFinderQuery={chainTableProps.query}
+						   chainFinderOnQueryChange={chainTableProps.onQueryChange}
+						   chainFinderIdPrefix={viewerIdPrefix}
 						   idPrefix={activeSelectZoomIdPrefix}
 					   />
 				   </div>
-				   <ChainSelectionTable
-					   chainLabels={chainTableProps.chainLabels || new Map<string, string>()}
-					   selectedChainId={chainTableProps.selectedChainId}
-					   onSelectChainId={chainTableProps.onSelectChainId || (() => {})}
-					   title={chainTableProps.title}
-					   query={chainTableProps.query}
-					   onQueryChange={chainTableProps.onQueryChange}
-					   idPrefix={viewerIdPrefix}
-				   />
 			   </>
 			       )}
 			       <button

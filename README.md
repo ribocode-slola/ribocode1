@@ -62,12 +62,12 @@ For more details, see the [Developer Guide](./DeveloperGuide.md).
 
 1. Load `AlignedTo` data.
 2. Load `Aligned` data.
-3. Work with representations/visibility and other controls.
+3. Work with representations/visibility and other controls, including `Highlight display` (`Highlight (halo)`, `Colour overlay`, `Hybrid`) and optional `Dim unselected`.
 4. Save session state:
    - `Session > Save` to save session configuration.
    - `Session > Save All` to save session configuration together with wrapped input data for sharing with another user.
 
-Saved sessions should preserve created representations and their visibilities so the state can be restored on load.
+Saved sessions should preserve created representations and their visibilities, highlight toggles, and selection display preferences so the state can be restored on load.
 
 ### First-use workflow 2: Load a shared all-in-one session
 

@@ -38,13 +38,7 @@ interface GeneralControlsProps {
   syncEnabled: boolean;
   setSyncEnabled: (v: boolean) => void;
   syncDisabled: boolean;
-  showUniprotAccessionInChainLabels: boolean;
-  setShowUniprotAccessionInChainLabels: (v: boolean) => void;
-  uniprotLookupStatus?: {
-    completed: number;
-    pending: number;
-    inFlight: number;
-  };
+  sessionMenu?: React.ReactNode;
   selectedChainIdAlignedTo: string;
   selectedChainIdAligned: string;
   realignmentExists: boolean;
@@ -73,9 +67,7 @@ const GeneralControls: React.FC<GeneralControlsProps> = ({
   syncEnabled,
   setSyncEnabled,
   syncDisabled,
-  showUniprotAccessionInChainLabels,
-  setShowUniprotAccessionInChainLabels,
-  uniprotLookupStatus,
+  sessionMenu,
   selectedChainIdAlignedTo,
   selectedChainIdAligned,
   realignmentExists,
@@ -92,22 +84,7 @@ const GeneralControls: React.FC<GeneralControlsProps> = ({
   idPrefix = 'generalcontrols',
 }) => (
   <div className="General-Controls" id={idPrefix ? `${idPrefix}-${idSuffix}` : idSuffix}>
-    <label htmlFor={`${idPrefix}-show-uniprot-accession`}>
-      <input
-        id={`${idPrefix}-show-uniprot-accession`}
-        type="checkbox"
-        checked={showUniprotAccessionInChainLabels}
-        onChange={e => setShowUniprotAccessionInChainLabels(e.target.checked)}
-        style={{ marginRight: 4 }}
-      />
-      Show UniProt accession in chain labels
-    </label>
-    <span
-      id={`${idPrefix}-uniprot-status`}
-      style={{ fontSize: 12, color: '#555', marginLeft: 8 }}
-    >
-      UniProt cache: {uniprotLookupStatus?.completed ?? 0} cached, {uniprotLookupStatus?.pending ?? 0} pending, {uniprotLookupStatus?.inFlight ?? 0} in-flight
-    </span>
+    {sessionMenu}
     <SyncButton
       viewerA={viewerA}
       viewerB={viewerB}
@@ -124,9 +101,9 @@ const GeneralControls: React.FC<GeneralControlsProps> = ({
     >
       {canRealignToSubunits
         ? subunitRealignmentExists
-          ? `Already realigned subunits: ${selectedSubunitAlignedTo} -> ${selectedSubunitAligned}`
-          : `Realign to Subunits: ${selectedSubunitAlignedTo} -> ${selectedSubunitAligned}`
-        : 'Realign to Subunits'}
+          ? `Already aligned subunits: ${selectedSubunitAlignedTo} -> ${selectedSubunitAligned}`
+          : `Align Subunits: ${selectedSubunitAlignedTo} -> ${selectedSubunitAligned}`
+        : 'Align Subunits'}
     </button>
     <button
       disabled={!selectedChainIdAlignedTo || !selectedChainIdAligned || realignmentExists}
@@ -135,9 +112,9 @@ const GeneralControls: React.FC<GeneralControlsProps> = ({
     >
       {selectedChainIdAlignedTo && selectedChainIdAligned
         ? realignmentExists
-          ? `Already re-aligned: ${selectedChainIdAlignedTo} → ${selectedChainIdAligned}`
-          : `Re-align : ${selectedChainIdAlignedTo} → ${selectedChainIdAligned}`
-        : 'Re-align to Chains'}
+          ? `Already aligned chains: ${selectedChainIdAlignedTo} → ${selectedChainIdAligned}`
+          : `Align Chains: ${selectedChainIdAlignedTo} → ${selectedChainIdAligned}`
+        : 'Align Chains'}
     </button>
     <button
       disabled={!canRealignToResidues || residueRealignmentExists}
@@ -146,9 +123,9 @@ const GeneralControls: React.FC<GeneralControlsProps> = ({
     >
       {canRealignToResidues
         ? residueRealignmentExists
-          ? `Already realigned residues: ${residueRealignSummary}`
-          : `Realign to Residues: ${residueRealignSummary}`
-        : 'Realign to Residues'}
+          ? `Already aligned residues: ${residueRealignSummary}`
+          : `Align Residues: ${residueRealignSummary}`
+        : 'Align Residues'}
     </button>
   </div>
 );

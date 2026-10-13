@@ -120,4 +120,55 @@ describe('MoleculeUI', () => {
         expect(topRow?.querySelector('.rep-controls')).toBeInTheDocument();
         expect(topRow?.querySelector('.rep-btn-group')).toBeInTheDocument();
     });
+
+    it('updates representation opacity when slider is changed', () => {
+        const repRef = 'rep-ref-3';
+        const update = vi.fn(() => ({ kind: 'mock-tree-update' }));
+        const to = vi.fn(() => ({ update }));
+        const build = vi.fn(() => ({ to }));
+        const updateTree = vi.fn(() => ({ kind: 'mock-tree-commit' }));
+        const runTask = vi.fn(async () => undefined);
+
+        const pluginWithRep = {
+            state: {
+                data: {
+                    cells: new Map([
+                        [repRef, {
+                            params: {
+                                values: {
+                                    type: { name: 'cartoon', params: { alpha: 1 } },
+                                    _ribocodeId: 'custom-id-3'
+                                }
+                            },
+                            state: { isHidden: false }
+                        }]
+                    ]),
+                    build,
+                    updateTree,
+                }
+            },
+            runTask,
+            canvas3d: {
+                requestDraw: vi.fn(),
+            },
+        } as any;
+
+        render(
+            <MoleculeUI
+                {...baseProps}
+                plugin={pluginWithRep}
+                representationRefs={[repRef]}
+                idPrefix="viewer-column-A-aligned"
+            />
+        );
+
+        const slider = document.getElementById('viewer-column-A-aligned-rep-opacity-custom-id-3') as HTMLInputElement | null;
+        expect(slider).toBeInTheDocument();
+        fireEvent.change(slider!, { target: { value: '0.35' } });
+
+        expect(build).toHaveBeenCalled();
+        expect(to).toHaveBeenCalledWith(repRef);
+        expect(update).toHaveBeenCalledTimes(1);
+        expect(runTask).toHaveBeenCalledWith({ kind: 'mock-tree-commit' });
+    });
 });

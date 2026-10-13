@@ -19,20 +19,21 @@ test('AlignedTo is hidden in right viewer and Aligned is hidden in left viewer b
   const alignedToBtnA = page.locator('#viewer-column-A-alignedto-load-btn');
   await alignedToBtnA.click();
   await page.locator('#viewer-column-A-alignedto-file-input').setInputFiles(dataPath('4ug0.cif'));
-  await expect(page.locator('#viewer-column-A-alignedto-filename-label')).toHaveText(/4ug0\.cif/i);
+  await expect(page.getByRole('button', { name: /Hide 4UG0/i })).toBeVisible({ timeout: 30000 });
 
-  const alignedToToggleB = page.locator('#viewer-column-B-moleculeui-4ug0 #viewer-column-B-toggle-visibility-btn');
+  const alignedToToggleB = page.locator('#viewer-column-B-toggle-visibility-btn').first();
   await expect(alignedToToggleB).toBeVisible();
   await expect(alignedToToggleB).toHaveAttribute('aria-label', /show/i);
   await alignedToToggleB.click();
   await expect(alignedToToggleB).toHaveAttribute('aria-label', /hide/i);
 
   const alignedBtnB = page.locator('#viewer-column-B-aligned-load-btn');
+  await expect(alignedBtnB).toBeEnabled({ timeout: 20000 });
   await alignedBtnB.click();
   await page.locator('#viewer-column-B-aligned-file-input').setInputFiles(dataPath('6xu8.cif'));
-  await expect(page.locator('#viewer-column-B-aligned-filename-label')).toHaveText(/6xu8\.cif/i);
+  await expect(page.getByRole('button', { name: /Hide 6XU8/i })).toBeVisible({ timeout: 30000 });
 
-  const alignedToggleA = page.locator('#viewer-column-A-moleculeui-6xu8 #viewer-column-A-toggle-visibility-btn');
+  const alignedToggleA = page.locator('#viewer-column-A-toggle-visibility-btn').nth(1);
   await expect(alignedToggleA).toBeVisible();
   await expect(alignedToggleA).toHaveAttribute('aria-label', /show/i);
   await alignedToggleA.click();

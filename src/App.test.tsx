@@ -11,7 +11,7 @@
  */
 import { vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import App, { copyCameraZoomRadiusBetweenViewers, readClippingFromViewer } from './App';
+import App, { copyCameraZoomRadiusBetweenViewers, readClippingFromViewer, runWithTemporarySyncDisabled } from './App';
 
 const makeZoomHandlerMock = vi.fn((config: any) => ({ handleButtonClick: vi.fn(), config }));
 
@@ -142,6 +142,42 @@ describe('App chain realign zoom helper', () => {
       radius: 37,
     }));
     expect(requestDraw).toHaveBeenCalled();
+  });
+});
+
+describe('App sync toggle helper', () => {
+  it('temporarily disables sync around an action and restores it afterwards', async () => {
+    const setSyncEnabled = vi.fn();
+    const action = vi.fn(async () => 'done');
+
+    const result = await runWithTemporarySyncDisabled(true, setSyncEnabled, action);
+
+    expect(result).toBe('done');
+    expect(action).toHaveBeenCalledTimes(1);
+    expect(setSyncEnabled).toHaveBeenNthCalledWith(1, false);
+    expect(setSyncEnabled).toHaveBeenNthCalledWith(2, true);
+  });
+
+  it('does not toggle sync when sync is already disabled', async () => {
+    const setSyncEnabled = vi.fn();
+    const action = vi.fn(async () => 'done');
+
+    const result = await runWithTemporarySyncDisabled(false, setSyncEnabled, action);
+
+    expect(result).toBe('done');
+    expect(action).toHaveBeenCalledTimes(1);
+    expect(setSyncEnabled).not.toHaveBeenCalled();
+  });
+
+  it('restores sync when action throws', async () => {
+    const setSyncEnabled = vi.fn();
+    const action = vi.fn(async () => {
+      throw new Error('boom');
+    });
+
+    await expect(runWithTemporarySyncDisabled(true, setSyncEnabled, action)).rejects.toThrow('boom');
+    expect(setSyncEnabled).toHaveBeenNthCalledWith(1, false);
+    expect(setSyncEnabled).toHaveBeenNthCalledWith(2, true);
   });
 });
 
