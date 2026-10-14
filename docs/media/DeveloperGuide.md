@@ -33,6 +33,7 @@ Welcome to the Ribocode Developer Guide!
   - [Test File Structure](#test-file-structure)
   - [Creating Tests](#creating-tests)
   - [Running Tests](#running-tests)
+  - [Alignment Regression Testing](#alignment-regression-testing)
   - [End-to-End (E2E) Testing with Playwright](#end-to-end-e2e-testing-with-playwright)
     - [E2E Test Structure](#e2e-test-structure)
     - [System Dependencies for Playwright (Linux)](#system-dependencies-for-playwright-linux)
@@ -428,10 +429,56 @@ test('renders the component', () => {
   npm test -- src/components/MyComponent.test.tsx
   ```
 
+### Alignment Regression Testing
+
+Alignment changes should be validated with both automated and manual checks before release.
+
+Reference decision record: [ADR-0001 Alignment Quality Gates](decisions/ADR-0001-alignment-quality-gates.md).
+
+Recent findings from benchmark datasets:
+
+- 6XU6.cif -> 6XU8.cif, chain CU -> CU is currently stable with strong improvement.
+- 7WTT.cif -> 7WTZ.cif, chain e -> e currently improves only modestly and remains a known weak case.
+- The current fit already includes both rotation and translation, so adding a second translation pass is not expected to fix weak fits by itself.
+- A robust outlier-trim re-fit experiment was evaluated and did not improve the 7WTT/7WTZ e-case.
+
+Recommended focused automated checks:
+
+```sh
+npm test -- src/utils/alignmentGeometry.test.ts src/utils/realignment.test.ts src/App.test.tsx
+npm test -- src/utils/alignmentPerformance.test.ts
+npx playwright test e2e/sync-and-realign-camera.e2e.spec.ts
+npx playwright test e2e/alignment-performance-cu-6xu6-6xu8.e2e.spec.ts
+npx playwright test e2e/alignment-diagnostic-e-7wtt-7wtz.e2e.spec.ts
+```
+
+Recommended manual benchmark workflow:
+
+1. Load `AlignedTo` using `6XU6.cif`.
+2. Load `Aligned` using `6XU8.cif`.
+3. Select known chain pairs used in day-to-day analysis and run `Align Chains`.
+4. Repeat alignment for the same pair and for several different pairs.
+5. Confirm alignment quality does not degrade and that camera/viewpoint behavior remains consistent.
+
+When alignment internals are changed:
+
+- If the change is in `packages/molstar`, treat it as package-level geometry behavior and validate against the benchmark workflow above.
+- If the change is in `src/App.tsx`, verify both in-place transform behavior and reload-based fallback behavior.
+- Record any expected behavior changes in `CHANGELOG.md` so regressions are easier to trace.
+
+Next alignment investigation focus:
+
+- Improve correspondence quality for difficult chain pairs (for example, long-chain e -> e cases) rather than adding extra translation-only corrections.
+- Investigate residue-correspondence-aware pairing coverage in chain alignment tests, including gaps in automated checks for residue-key alignment behavior.
+- Keep both benchmark families active during changes:
+  - Strong-case guardrail: 6XU6/6XU8 CU -> CU should remain stable.
+  - Weak-case guardrail: 7WTT/7WTZ e -> e should materially improve without regressions elsewhere.
+
 ### Additional Resources
 
 - [Vitest documentation](https://vitest.dev/guide/)
 - [Testing Library docs](https://testing-library.com/docs/)
+- [ADR-0001 Alignment Quality Gates](decisions/ADR-0001-alignment-quality-gates.md)
 
 
 
@@ -551,6 +598,12 @@ The following scripts are available in `package.json`:
 - For session load/save/reload flows, wait for key controls (for example `#session-menu-btn`) before interacting after navigation or reload.
 - Long session workflows can exceed the default 30s test timeout under parallel workers; set a per-test timeout (for example `test.setTimeout(60000)`) for save/reload/load scenarios.
 - For load completion assertions, prefer checking filename labels (for example `#viewer-column-B-aligned-filename-label`) rather than assuming the absence/presence of a specific load button.
+
+#### Retrospective: 0.16.2 Test Stabilization
+
+- Preserve product contracts before hardening tests. In particular, keep `Load Aligned` disabled until `AlignedTo` is loaded; changing this contract can make integration tests fail while masking the real regression.
+- Prefer structural selectors over label text for repeated controls. Column-scoped IDs and `data-testid` selectors are more reliable than role/name selectors when `Show/Hide` controls appear in both viewers.
+- Treat timeout increases as a last step, not the first step. Flaky tests were primarily caused by async UI transitions and selector ambiguity, not by timeout settings alone.
 
 ### Resources
 
