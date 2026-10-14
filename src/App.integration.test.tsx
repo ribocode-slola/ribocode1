@@ -801,11 +801,24 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     fireEvent.click(alignedFirstChainRow as HTMLTableRowElement);
     fireEvent.click(document.getElementById('viewer-column-A-alignedto-residue-controls-toggle-btn') as HTMLButtonElement);
     fireEvent.click(document.getElementById('viewer-column-B-aligned-residue-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-A-alignedto-visibility-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-B-aligned-visibility-controls-toggle-btn') as HTMLButtonElement);
 
     fireEvent.change(document.getElementById('viewer-column-A-alignedto-zoom-extra-radius') as HTMLInputElement, { target: { value: '24' } });
     fireEvent.change(document.getElementById('viewer-column-A-alignedto-zoom-min-radius') as HTMLInputElement, { target: { value: '12' } });
     fireEvent.change(document.getElementById('viewer-column-B-aligned-zoom-extra-radius') as HTMLInputElement, { target: { value: '32' } });
     fireEvent.change(document.getElementById('viewer-column-B-aligned-zoom-min-radius') as HTMLInputElement, { target: { value: '15' } });
+    expect(document.getElementById('viewer-column-A-alignedto-selection-display-mode')).toBeInTheDocument();
+    expect(document.getElementById('viewer-column-A-alignedto-dim-unselected-toggle-btn')).toBeInTheDocument();
+    expect(document.getElementById('viewer-column-A-alignedto-dim-unselected-strength')).toBeInTheDocument();
+    fireEvent.change(document.getElementById('viewer-column-A-alignedto-selection-display-mode') as HTMLSelectElement, { target: { value: 'overlay' } });
+    fireEvent.click(document.getElementById('viewer-column-A-alignedto-dim-unselected-toggle-btn') as HTMLButtonElement);
+    fireEvent.change(document.getElementById('viewer-column-A-alignedto-dim-unselected-strength') as HTMLInputElement, { target: { value: '0.7' } });
+    await waitFor(() => {
+      expect((document.getElementById('viewer-column-A-alignedto-selection-display-mode') as HTMLSelectElement).value).toBe('overlay');
+      expect(document.getElementById('viewer-column-A-alignedto-dim-unselected-toggle-btn')).toHaveAttribute('aria-pressed', 'true');
+      expect((document.getElementById('viewer-column-A-alignedto-dim-unselected-strength') as HTMLInputElement).value).toBe('0.7');
+    });
     fireEvent.change(document.getElementById('viewer-column-A-alignedto-clip-near-number') as HTMLInputElement, { target: { value: '0.8' } });
     fireEvent.change(document.getElementById('viewer-column-A-alignedto-clip-far-number') as HTMLInputElement, { target: { value: '66' } });
     fireEvent.change(document.getElementById('viewer-column-B-aligned-clip-near-number') as HTMLInputElement, { target: { value: '0.9' } });
@@ -867,6 +880,11 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     });
     expect(session.uiState.cameraSnapshots.viewerA).toEqual(expect.objectContaining({ radius: 10 }));
     expect(session.uiState.cameraSnapshots.viewerB).toEqual(expect.objectContaining({ radius: 10 }));
+    expect(session.uiState.selectionDisplay).toEqual({
+      mode: 'overlay',
+      dimUnselected: true,
+      dimStrength: 0.7,
+    });
   });
 
   it('restores zoom, selectors, and camera snapshot from session uiState', async () => {
@@ -921,6 +939,11 @@ describe('App integration: AlignedTo and Aligned loading', () => {
           alignedTo: { subunit: true, chain: true, residue: true },
           aligned: { subunit: true, chain: true, residue: false },
         },
+        selectionDisplay: {
+          mode: 'halo',
+          dimUnselected: true,
+          dimStrength: 0.65,
+        },
         cameraSnapshots: {
           viewerA: { position: [10, 11, 12], target: [1, 2, 3], up: [0, 1, 0], radius: 42 },
           viewerB: { position: [20, 21, 22], target: [4, 5, 6], up: [0, 1, 0], radius: 84 },
@@ -941,6 +964,8 @@ describe('App integration: AlignedTo and Aligned loading', () => {
 
     fireEvent.click(document.getElementById('viewer-column-A-select-zoom-controls-toggle-btn') as HTMLButtonElement);
     fireEvent.click(document.getElementById('viewer-column-B-select-zoom-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-A-alignedto-visibility-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-B-aligned-visibility-controls-toggle-btn') as HTMLButtonElement);
     fireEvent.click(document.getElementById('viewer-column-A-alignedto-subunit-controls-toggle-btn') as HTMLButtonElement);
     fireEvent.click(document.getElementById('viewer-column-A-alignedto-chain-controls-toggle-btn') as HTMLButtonElement);
     fireEvent.click(document.getElementById('viewer-column-A-alignedto-select-chain-controls-toggle-btn') as HTMLButtonElement);
@@ -972,6 +997,9 @@ describe('App integration: AlignedTo and Aligned loading', () => {
       expect(document.getElementById('viewer-column-B-aligned-highlight-subunit-btn')).toHaveAttribute('aria-pressed', 'true');
       expect(document.getElementById('viewer-column-B-aligned-highlight-chain-btn')).toHaveAttribute('aria-pressed', 'true');
       expect(document.getElementById('viewer-column-B-aligned-highlight-residue-btn')).toHaveAttribute('aria-pressed', 'false');
+      expect((document.getElementById('viewer-column-A-alignedto-selection-display-mode') as HTMLSelectElement).value).toBe('halo');
+      expect(document.getElementById('viewer-column-A-alignedto-dim-unselected-toggle-btn')).toHaveAttribute('aria-pressed', 'true');
+      expect((document.getElementById('viewer-column-A-alignedto-dim-unselected-strength') as HTMLInputElement).value).toBe('0.65');
       expect((document.getElementById('viewer-column-A-alignedto-colour-theme-select') as HTMLSelectElement).value).toBe('AlignedTo-custom-theme-test');
       expect(document.querySelector('#viewer-column-A-alignedto-colour-theme-select option[value="AlignedTo-custom-theme-test"]')).toBeInTheDocument();
       expect(document.querySelector('#viewer-column-B-aligned-colour-theme-select option[value="AlignedTo-custom-theme-test"]')).toBeInTheDocument();
@@ -995,6 +1023,11 @@ describe('App integration: AlignedTo and Aligned loading', () => {
         label: 'AlignedTo test theme',
       })
     ]);
+    expect(restoredSession.uiState.selectionDisplay).toEqual({
+      mode: 'halo',
+      dimUnselected: true,
+      dimStrength: 0.65,
+    });
 
     expect(pluginA.canvas3d.camera.setState).toHaveBeenCalledWith(expect.objectContaining({
       position: [10, 11, 12],

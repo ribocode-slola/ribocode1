@@ -93,6 +93,12 @@ export interface LoadDataRowPropsInput {
 	setZoomExtraRadius: (val: number) => void;
 	zoomMinRadius: number;
 	setZoomMinRadius: (val: number) => void;
+	selectionDisplayMode?: 'halo' | 'overlay' | 'hybrid';
+	setSelectionDisplayMode?: (mode: 'halo' | 'overlay' | 'hybrid') => void;
+	dimUnselected?: boolean;
+	setDimUnselected?: (value: boolean) => void;
+	dimUnselectedStrength?: number;
+	setDimUnselectedStrength?: (value: number) => void;
 	fog: { enabled: boolean; near: number; far: number };
 	setFog: {
 		setEnabled: (val: boolean) => void;
@@ -189,6 +195,12 @@ export function getLoadDataRowProps({
 	setZoomExtraRadius,
 	zoomMinRadius,
 	setZoomMinRadius,
+	selectionDisplayMode,
+	setSelectionDisplayMode,
+	dimUnselected,
+	setDimUnselected,
+	dimUnselectedStrength,
+	setDimUnselectedStrength,
 	fog,
 	setFog,
 	clipping,
@@ -378,6 +390,12 @@ export function getLoadDataRowProps({
 		onZoomExtraRadiusChange: setZoomExtraRadius,
 		zoomMinRadius,
 		onZoomMinRadiusChange: setZoomMinRadius,
+		selectionDisplayMode,
+		onSelectionDisplayModeChange: setSelectionDisplayMode,
+		dimUnselected,
+		onDimUnselectedChange: setDimUnselected,
+		dimUnselectedStrength,
+		onDimUnselectedStrengthChange: setDimUnselectedStrength,
 		residueSelectDisabled: !isMoleculeAlignedToLoaded,
 		fogEnabled: fog.enabled,
 		fogNear: fog.near,
@@ -953,6 +971,12 @@ const ViewerColumn: React.FC<ViewerColumnProps> = ({
 						   onZoomExtraRadiusChange={activeLoadProps.onZoomExtraRadiusChange}
 						   zoomMinRadius={activeLoadProps.zoomMinRadius}
 						   onZoomMinRadiusChange={activeLoadProps.onZoomMinRadiusChange}
+						   selectionDisplayMode={activeLoadProps.selectionDisplayMode}
+						   onSelectionDisplayModeChange={activeLoadProps.onSelectionDisplayModeChange}
+						   dimUnselected={activeLoadProps.dimUnselected}
+						   onDimUnselectedChange={activeLoadProps.onDimUnselectedChange}
+						   dimUnselectedStrength={activeLoadProps.dimUnselectedStrength}
+						   onDimUnselectedStrengthChange={activeLoadProps.onDimUnselectedStrengthChange}
 						   chainFinderChainLabels={chainTableProps.chainLabels || new Map<string, string>()}
 						   chainFinderSelectedChainId={chainTableProps.selectedChainId}
 						   chainFinderOnSelectChainId={chainTableProps.onSelectChainId || (() => {})}

@@ -15,6 +15,12 @@ import { StructureElement, StructureProperties } from 'molstar/lib/mol-model/str
 
 const ENABLE_ATOM_DATA_DIAGNOSTICS = false;
 
+function normalizeChainIdValue(value: unknown): string {
+    const s = String(value ?? '').trim();
+    if (!s || s === '?' || s === '.') return '';
+    return s;
+}
+
 /**
  * Load a molecule from a URL into the Molstar viewer.
  * @param viewer The Molstar viewer/plugin instance.
@@ -102,10 +108,13 @@ export function getAtomDataFromStructureUnits(structure: any, filterChainId?: st
 
                     const authId = String(StructureProperties.chain.auth_asym_id(loc) ?? '');
                     const labelId = String(StructureProperties.chain.label_asym_id(loc) ?? '');
-                    const authNorm = authId.trim().toUpperCase();
-                    const labelNorm = labelId.trim().toUpperCase();
+                    const normalizedAuthId = normalizeChainIdValue(authId);
+                    const normalizedLabelId = normalizeChainIdValue(labelId);
+                    const resolvedChainId = normalizedAuthId || normalizedLabelId;
+                    const authNorm = normalizedAuthId.toUpperCase();
+                    const labelNorm = normalizedLabelId.toUpperCase();
 
-                    if (authId) uniqueChainIds.add(authId);
+                    if (resolvedChainId) uniqueChainIds.add(resolvedChainId);
                     if (normalizedFilterChainId && authNorm !== normalizedFilterChainId && labelNorm !== normalizedFilterChainId) {
                         continue;
                     }
@@ -114,7 +123,7 @@ export function getAtomDataFromStructureUnits(structure: any, filterChainId?: st
                     unit.conformation.position(atomIdx, p);
 
                     symbolTypes.push(symbol);
-                    chainIds.push(authId);
+                    chainIds.push(resolvedChainId);
                     xs.push(p[0]);
                     ys.push(p[1]);
                     zs.push(p[2]);
@@ -163,13 +172,14 @@ export function getAtomDataFromStructureUnits(structure: any, filterChainId?: st
             let chainId = '';
             let labelChainId = '';
             if (chains && chains.auth_asym_id && typeof chains.auth_asym_id.value === 'function' && chainIdx !== undefined) {
-                chainId = chains.auth_asym_id.value(chainIdx);
-                labelChainId = chains.label_asym_id?.value?.(chainIdx) ?? '';
+                chainId = normalizeChainIdValue(chains.auth_asym_id.value(chainIdx));
+                labelChainId = normalizeChainIdValue(chains.label_asym_id?.value?.(chainIdx) ?? '');
             }
-            if (chainId) uniqueChainIds.add(chainId);
+            const resolvedChainId = chainId || labelChainId;
+            if (resolvedChainId) uniqueChainIds.add(resolvedChainId);
             if (normalizedFilterChainId) {
-                const authNorm = String(chainId ?? '').trim().toUpperCase();
-                const labelNorm = String(labelChainId ?? '').trim().toUpperCase();
+                const authNorm = String(chainId ?? '').toUpperCase();
+                const labelNorm = String(labelChainId ?? '').toUpperCase();
                 if (authNorm !== normalizedFilterChainId && labelNorm !== normalizedFilterChainId) continue;
             }
             let symbol = '';
@@ -180,7 +190,7 @@ export function getAtomDataFromStructureUnits(structure: any, filterChainId?: st
             const y = conformation.y?.[atomIdx] ?? NaN;
             const z = conformation.z?.[atomIdx] ?? NaN;
             symbolTypes.push(symbol);
-            chainIds.push(chainId);
+            chainIds.push(resolvedChainId);
             xs.push(x);
             ys.push(y);
             zs.push(z);

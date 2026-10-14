@@ -9,7 +9,7 @@
  * @see https://github.com/ribocode-slola/ribocode1
  */
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
-import { StructureElement, StructureSelection } from 'molstar/lib/mol-model/structure';
+import { Structure, StructureElement, StructureSelection } from 'molstar/lib/mol-model/structure';
 import { QueryContext } from 'molstar/lib/mol-model/structure/query/context';
 import { MolScriptBuilder } from 'molstar/lib/mol-script/language/builder';
 import { compile } from 'molstar/lib/mol-script/runtime/query/base';
@@ -20,6 +20,17 @@ const SUBUNIT_HIGHLIGHT_COLOR = Color(0x4C78A8);
 const CHAIN_HIGHLIGHT_COLOR = Color(0xF58518);
 const RESIDUE_HIGHLIGHT_COLOR = Color(0xE45756);
 const overpaintQueuesByPlugin = new WeakMap<PluginUIContext, Map<string, Promise<void>>>();
+
+export type HighlightDisplayMode = 'halo' | 'overlay' | 'hybrid';
+
+const clamp01 = (value: number) => Math.max(0, Math.min(1, value));
+
+function getNeutralDimColor(strength: number): ReturnType<typeof Color> {
+    const t = clamp01(strength);
+    const channel = Math.round(0xD8 - (0x70 * t));
+    const hex = (channel << 16) | (channel << 8) | channel;
+    return Color(hex);
+}
 
 function enqueueOverpaintUpdate(
     plugin: PluginUIContext,
@@ -81,6 +92,57 @@ export function clearStructureHighlightOverpaint(
     enqueueOverpaintUpdate(plugin, structureRef, () =>
         clearStructureOverpaint(plugin as any, components as any)
     );
+}
+
+export function applyStructureDimOverlay(
+    plugin: PluginUIContext,
+    structureRef: string,
+    strength: number
+) {
+    const components = getStructureComponentsByRef(plugin, structureRef);
+    if (!components || components.length === 0) return false;
+    const structureObj = plugin.managers.structure.hierarchy.current.structures.find(
+        s => s.cell.transform.ref === structureRef
+    )?.cell.obj?.data;
+    if (!structureObj) return false;
+
+    const color = getNeutralDimColor(strength);
+    const allLoci = Structure.toStructureElementLoci(structureObj as any);
+    enqueueOverpaintUpdate(plugin, structureRef, () =>
+        setStructureOverpaint(plugin as any, components as any, color, async () => allLoci as any)
+    );
+    return true;
+}
+
+function applyLociHighlightByMode(
+    targetPlugin: PluginUIContext,
+    targetStructureRef: string,
+    loci: any,
+    color: ReturnType<typeof Color>,
+    mode: HighlightDisplayMode
+) {
+    if (!loci) return;
+
+    const shouldApplyOverlay = mode === 'overlay' || mode === 'hybrid';
+    const shouldApplyHalo = mode === 'halo' || mode === 'hybrid';
+
+    if (shouldApplyOverlay) {
+        const appliedOverlay = addColorLayerForLoci(targetPlugin, targetStructureRef, loci, color);
+        if (mode === 'overlay' && appliedOverlay) return;
+    }
+
+    if (!shouldApplyHalo) return;
+
+    const lociSelects = targetPlugin.managers.interactivity?.lociSelects;
+    if (lociSelects?.select) {
+        lociSelects.select({ loci }, false);
+        return;
+    }
+    if (lociSelects?.selectOnly) {
+        lociSelects.selectOnly({ loci }, false);
+        return;
+    }
+    targetPlugin.managers.interactivity?.lociHighlights?.highlight?.({ loci }, false);
 }
 
 /**
@@ -153,6 +215,7 @@ export function highlightLociOnChain(
     plugin: PluginUIContext,
     structureRef: string,
     chainId: string,
+    mode: HighlightDisplayMode = 'overlay',
     syncPlugin?: PluginUIContext,
     getChainLociFn: (plugin: PluginUIContext, structureRef: string, chainId: string) => any = getChainLoci,
     syncStructureRef?: string,
@@ -160,18 +223,7 @@ export function highlightLociOnChain(
 ) {
     const applyHighlight = (targetPlugin: PluginUIContext, targetStructureRef: string, targetChainId: string) => {
         const loci = getChainLociFn(targetPlugin, targetStructureRef, targetChainId);
-        if (!loci) return;
-        if (addColorLayerForLoci(targetPlugin, targetStructureRef, loci, CHAIN_HIGHLIGHT_COLOR)) return;
-        const lociSelects = targetPlugin.managers.interactivity?.lociSelects;
-        if (lociSelects?.select) {
-            lociSelects.select({ loci }, false);
-            return;
-        }
-        if (lociSelects?.selectOnly) {
-            lociSelects.selectOnly({ loci }, false);
-            return;
-        }
-        targetPlugin.managers.interactivity?.lociHighlights?.highlight?.({ loci }, false);
+        applyLociHighlightByMode(targetPlugin, targetStructureRef, loci, CHAIN_HIGHLIGHT_COLOR, mode);
     };
 
     applyHighlight(plugin, structureRef, chainId);
@@ -332,6 +384,7 @@ export function highlightLociOnSubunit(
     plugin: PluginUIContext,
     structureRef: string,
     chainIds: string[],
+    mode: HighlightDisplayMode = 'overlay',
     syncPlugin?: PluginUIContext,
     syncStructureRef?: string,
     syncChainIds?: string[]
@@ -342,18 +395,7 @@ export function highlightLociOnSubunit(
         targetChainIds: string[]
     ) => {
         const loci = getSubunitLoci(targetPlugin, targetStructureRef, targetChainIds);
-        if (!loci) return;
-        if (addColorLayerForLoci(targetPlugin, targetStructureRef, loci, SUBUNIT_HIGHLIGHT_COLOR)) return;
-        const lociSelects = targetPlugin.managers.interactivity?.lociSelects;
-        if (lociSelects?.select) {
-            lociSelects.select({ loci }, false);
-            return;
-        }
-        if (lociSelects?.selectOnly) {
-            lociSelects.selectOnly({ loci }, false);
-            return;
-        }
-        targetPlugin.managers.interactivity?.lociHighlights?.highlight?.({ loci }, false);
+        applyLociHighlightByMode(targetPlugin, targetStructureRef, loci, SUBUNIT_HIGHLIGHT_COLOR, mode);
     };
 
     applyHighlight(plugin, structureRef, chainIds);
@@ -546,6 +588,7 @@ export function highlightLociOnResidues(
     chainId: string,
     residueIds: string[],
     residueInsCodes?: Record<string, string | undefined>,
+    mode: HighlightDisplayMode = 'overlay',
     syncPlugin?: PluginUIContext,
     syncStructureRef?: string,
     syncChainId?: string,
@@ -560,18 +603,7 @@ export function highlightLociOnResidues(
         targetResidueInsCodes?: Record<string, string | undefined>
     ) => {
         const loci = getResiduesLoci(targetPlugin, targetStructureRef, targetChainId, targetResidueIds, targetResidueInsCodes);
-        if (!loci) return;
-        if (addColorLayerForLoci(targetPlugin, targetStructureRef, loci, RESIDUE_HIGHLIGHT_COLOR)) return;
-        const lociSelects = targetPlugin.managers.interactivity?.lociSelects;
-        if (lociSelects?.select) {
-            lociSelects.select({ loci }, false);
-            return;
-        }
-        if (lociSelects?.selectOnly) {
-            lociSelects.selectOnly({ loci }, false);
-            return;
-        }
-        targetPlugin.managers.interactivity?.lociHighlights?.highlight?.({ loci }, false);
+        applyLociHighlightByMode(targetPlugin, targetStructureRef, loci, RESIDUE_HIGHLIGHT_COLOR, mode);
     };
 
     applyHighlight(plugin, structureRef, chainId, residueIds, residueInsCodes);

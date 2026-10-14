@@ -734,7 +734,7 @@ function buildAtomDataForChainGroup(structure: any, chainIds: string[]) {
     };
 }
 
-function buildAtomDataForResidueGroup(
+export function buildAtomDataForResidueGroup(
     structure: any,
     residueIds: string[],
     residueToAtomIds: Record<string, string[]>,

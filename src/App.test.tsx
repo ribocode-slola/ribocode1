@@ -11,7 +11,7 @@
  */
 import { vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import App, { copyCameraZoomRadiusBetweenViewers, readClippingFromViewer, runWithTemporarySyncDisabled } from './App';
+import App, { buildAtomDataForResidueGroup, copyCameraZoomRadiusBetweenViewers, readClippingFromViewer, runWithTemporarySyncDisabled } from './App';
 
 const makeZoomHandlerMock = vi.fn((config: any) => ({ handleButtonClick: vi.fn(), config }));
 
@@ -178,6 +178,87 @@ describe('App sync toggle helper', () => {
     await expect(runWithTemporarySyncDisabled(true, setSyncEnabled, action)).rejects.toThrow('boom');
     expect(setSyncEnabled).toHaveBeenNthCalledWith(1, false);
     expect(setSyncEnabled).toHaveBeenNthCalledWith(2, true);
+  });
+});
+
+describe('App residue atom extraction helper', () => {
+  it('builds residue atom cloud from selected residue atom ids', () => {
+    const structure = {
+      units: [
+        {
+          kind: 0,
+          elements: [10, 11, 12, 13],
+          model: {
+            atomicHierarchy: {
+              atoms: {
+                type_symbol: {
+                  value: (atomIdx: number) => ({ 10: 'C', 11: 'N', 12: 'O', 13: 'S' }[atomIdx] || ''),
+                },
+              },
+            },
+            atomicConformation: {
+              x: { 10: 1, 11: 2, 12: 3, 13: 4 },
+              y: { 10: 11, 11: 12, 12: 13, 13: 14 },
+              z: { 10: 21, 11: 22, 12: 23, 13: 24 },
+            },
+          },
+        },
+      ],
+    } as any;
+
+    const result = buildAtomDataForResidueGroup(
+      structure,
+      ['r1', 'r2'],
+      {
+        r1: ['10', '11'],
+        r2: ['13'],
+      },
+      'ANY'
+    );
+
+    expect(result.symbolTypes).toEqual(['C', 'N', 'S']);
+    expect(result.chainIds).toEqual(['__residue__', '__residue__', '__residue__']);
+    expect(result.xs).toEqual([1, 2, 4]);
+    expect(result.ys).toEqual([11, 12, 14]);
+    expect(result.zs).toEqual([21, 22, 24]);
+  });
+
+  it('does not drop selected residue atoms due to chain-id filtering mismatches', () => {
+    const structure = {
+      units: [
+        {
+          kind: 0,
+          elements: [200, 201],
+          model: {
+            atomicHierarchy: {
+              atoms: {
+                type_symbol: {
+                  value: (atomIdx: number) => ({ 200: 'CA', 201: 'CB' }[atomIdx] || ''),
+                },
+              },
+            },
+            atomicConformation: {
+              x: { 200: 10, 201: 20 },
+              y: { 200: 30, 201: 40 },
+              z: { 200: 50, 201: 60 },
+            },
+          },
+        },
+      ],
+    } as any;
+
+    const result = buildAtomDataForResidueGroup(
+      structure,
+      ['23', '24'],
+      {
+        '23': ['200'],
+        '24': ['201'],
+      },
+      'w'
+    );
+
+    expect(result.xs.length).toBe(2);
+    expect(result.symbolTypes).toEqual(['CA', 'CB']);
   });
 });
 

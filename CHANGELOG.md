@@ -1,3 +1,10 @@
+## [v0.16.4] - 2026-10-14
+Release summary: this patch release strengthens regression detection for residue realignment by adding fast low-level tests that catch residue atom-extraction failures before end-to-end runs.
+- Added focused unit regression coverage in `src/App.test.tsx` for residue atom extraction used by residue realignment.
+- Added a guard test to ensure selected residue atom IDs are preserved and not dropped by chain-id mismatch behavior.
+- Exported the residue atom-extraction helper from `src/App.tsx` to enable direct low-level validation.
+- Verified the new low-level checks alongside the targeted residue realignment E2E suite (`e2e/residue-realign.e2e.spec.ts`).
+
 ## [v0.16.3] - 2026-10-14
 Release summary: this patch release fixes a residue-realignment regression where valid residue selections could produce no usable atom set, and adds focused regression coverage to keep this workflow stable.
 - Fixed residue realignment atom extraction so selected residues consistently produce finite coordinate sets for alignment.

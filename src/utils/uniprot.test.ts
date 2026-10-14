@@ -117,4 +117,31 @@ describe('parseChainToMoleculeNameFromCifText', () => {
         expect(map.get('ZB')).toBe('Ribosomal protein L22-like protein');
         expect(map.get('CU')).toBe('Ribosomal protein L22-like protein');
     });
+
+    it('prefers auth-chain mapping when auth and label IDs collide', () => {
+        const cifText = [
+            'loop_',
+            '_entity.id',
+            '_entity.pdbx_description',
+            "7 '40S ribosomal protein S30'",
+            "10 '40S ribosomal protein S6'",
+            '#',
+            'loop_',
+            '_struct_asym.id',
+            '_struct_asym.entity_id',
+            'G 7',
+            'J 10',
+            '#',
+            'loop_',
+            '_pdbx_poly_seq_scheme.asym_id',
+            '_pdbx_poly_seq_scheme.pdb_strand_id',
+            'G e',
+            'J G',
+            '#',
+        ].join('\n');
+
+        const map = parseChainToMoleculeNameFromCifText(cifText);
+        expect(map.get('e')).toBe('40S ribosomal protein S30');
+        expect(map.get('G')).toBe('40S ribosomal protein S6');
+    });
 });

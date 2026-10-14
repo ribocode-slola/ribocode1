@@ -62,6 +62,21 @@ describe('getChainInfo', () => {
         expect(result.chainLabels.get('C')).toBe('[auth C]');
     });
 
+    it('falls back to label_asym_id when auth_asym_id is placeholder', () => {
+        const mockChains = {
+            _rowCount: 1,
+            auth_asym_id: { value: () => '.' },
+            label_asym_id: { value: () => 'A' },
+        };
+        const structure = {
+            units: [
+                { model: { atomicHierarchy: { chains: mockChains } } }
+            ]
+        } as any;
+        const result = getChainInfo(structure);
+        expect(result.chainLabels.get('A')).toBe('A [auth A]');
+    });
+
     it('deduplicates chains with the same auth_asym_id across units', () => {
         const mockChains = {
             _rowCount: 1,
@@ -344,5 +359,62 @@ describe('getChainInfo with rpNameLookup enrichment', () => {
         ]);
         const result = getChainInfo(structure, rpNameLookup, undefined, true, undefined, chainToMoleculeOverride);
         expect(result.chainLabels.get('CU')).toBe('eL22 | P35268 | ZB [auth CU] | Ribosomal protein L22-like protein');
+    });
+
+    it('keeps S30 on auth chain e and S6 on auth chain G when auth/label IDs collide', () => {
+        const rpNameLookup = new Map<string, string>([
+            ['P62861', 'eS30'],
+            ['P62753', 'eS6'],
+        ]);
+        const structure = {
+            units: [
+                {
+                    model: {
+                        atomicHierarchy: {
+                            chains: {
+                                _rowCount: 2,
+                                auth_asym_id: { value: (i: number) => (i === 0 ? 'e' : 'G') },
+                                label_asym_id: { value: (i: number) => (i === 0 ? 'G' : 'J') },
+                                label_entity_id: { value: (i: number) => (i === 0 ? '7' : '10') },
+                            }
+                        },
+                        sourceData: {
+                            data: {
+                                db: {
+                                    struct_ref: {
+                                        _rowCount: 2,
+                                        entity_id: { value: (i: number) => (i === 0 ? '7' : '10') },
+                                        pdbx_db_accession: { value: (i: number) => (i === 0 ? 'P62861' : 'P62753') }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            ]
+        } as any;
+
+        const chainToMoleculeOverride = new Map<string, string>([
+            ['e', '40S ribosomal protein S30'],
+            ['G', '40S ribosomal protein S6'],
+            ['J', '40S ribosomal protein S6'],
+        ]);
+        const chainToUniprotOverride = new Map<string, string>([
+            ['e', 'P62861'],
+            ['G', 'P62753'],
+            ['J', 'P62753'],
+        ]);
+
+        const result = getChainInfo(
+            structure,
+            rpNameLookup,
+            undefined,
+            true,
+            chainToUniprotOverride,
+            chainToMoleculeOverride
+        );
+
+        expect(result.chainLabels.get('e')).toBe('eS30 | P62861 | G [auth e] | 40S ribosomal protein S30');
+        expect(result.chainLabels.get('G')).toBe('eS6 | P62753 | J [auth G] | 40S ribosomal protein S6');
     });
 });

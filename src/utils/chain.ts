@@ -11,6 +11,12 @@
 import { Structure } from 'molstar/lib/mol-model/structure';
 import { buildChainToUniprotMap, buildEntityToUniprotMap, inferSpeciesKeyFromModel, RpNameLookupBySpecies } from './rpNameTable';
 
+function normalizeChainIdentifier(value: unknown): string {
+    const v = String(value ?? '').trim();
+    if (!v || v === '?' || v === '.') return '';
+    return v;
+}
+
 function getEntityIdForChain(chains: any, row: number): string | undefined {
     const labelEntityId = chains.label_entity_id?.value?.(row);
     if (labelEntityId != null && String(labelEntityId).trim()) {
@@ -181,10 +187,12 @@ export function getChainInfo(
             : rpNameLookup;
 
         for (let i = 0; i < chains._rowCount; i++) {
-            const authId: string = auth_asym_id.value(i);
+            const rawAuthId = auth_asym_id?.value ? auth_asym_id.value(i) : '';
+            const labelId: string = label_asym_id?.value ? label_asym_id.value(i) : '';
+            const authId = normalizeChainIdentifier(rawAuthId) || normalizeChainIdentifier(labelId);
+            if (!authId) continue;
             if (chainLabels.has(authId)) continue; // deduplicate across units
 
-            const labelId: string = label_asym_id?.value ? label_asym_id.value(i) : '';
             const entityId = getEntityIdForChain(chains, i);
             let moleculeName = chainToMoleculeNameOverride?.get(authId)
                 ?? (labelId ? chainToMoleculeNameOverride?.get(labelId) : undefined)

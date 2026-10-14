@@ -181,6 +181,45 @@ describe('data.ts utility functions', () => {
             expect(byLabel.xs).toEqual([101]);
             expect(byLabel.chainIds).toEqual(['CU']);
         });
+
+        it('falls back to label_asym_id when auth_asym_id is placeholder', () => {
+            const mockStructure = {
+                units: [
+                    {
+                        kind: 0,
+                        model: {
+                            atomicHierarchy: {
+                                atoms: {
+                                    type_symbol: { value: (i: number) => ['C', 'N'][i] }
+                                },
+                                chains: {
+                                    auth_asym_id: { value: () => '.' },
+                                    label_asym_id: { value: () => 'A' },
+                                    _rowCount: 1
+                                },
+                                residueAtomSegments: {
+                                    index: [0, 1]
+                                },
+                                chainAtomSegments: {
+                                    index: [0, 0]
+                                }
+                            },
+                            atomicConformation: {
+                                x: [10, 20],
+                                y: [30, 40],
+                                z: [50, 60]
+                            }
+                        },
+                        elements: [0, 1],
+                    }
+                ]
+            };
+
+            const result = dataUtils.getAtomDataFromStructureUnits(mockStructure, 'A');
+            expect(result.symbolTypes).toEqual(['C', 'N']);
+            expect(result.chainIds).toEqual(['A', 'A']);
+            expect(result.xs).toEqual([10, 20]);
+        });
     });
 
     describe('summarizeAtomCloud', () => {
