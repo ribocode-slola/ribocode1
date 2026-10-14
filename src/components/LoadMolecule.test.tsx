@@ -210,9 +210,11 @@ describe('LoadDataRow', () => {
         const subunitToggleIndex = findRowIndex('Show Subunit Controls');
         const chainToggleIndex = findRowIndex('Show Chain Controls');
         const residueToggleIndex = findRowIndex('Show Residue Controls');
+        const visibilityToggleIndex = findRowIndex('Show Visibility Controls');
         const repControlsToggleIndex = findRowIndex('Show Representation Controls');
 
         expect(repControlsToggleIndex).toBeGreaterThanOrEqual(0);
+        expect(visibilityToggleIndex).toBeGreaterThan(repControlsToggleIndex);
         expect(subunitToggleIndex).toBeGreaterThan(repControlsToggleIndex);
         expect(chainToggleIndex).toBeGreaterThan(subunitToggleIndex);
         expect(residueToggleIndex).toBeGreaterThan(chainToggleIndex);
@@ -313,5 +315,49 @@ describe('LoadDataRow', () => {
         expect(document.getElementById('test-viewer-a-inspect-subunit-btn')).toHaveTextContent('Inspect: On');
         expect(document.getElementById('test-viewer-a-inspect-chain-btn')).toHaveTextContent('Inspect: On');
         expect(document.getElementById('test-viewer-a-inspect-residue-btn')).toHaveTextContent('Inspect: On');
+    });
+
+    it('supports selection display mode and dim-unselected controls', () => {
+        const onSelectionDisplayModeChange = vi.fn();
+        const onDimUnselectedChange = vi.fn();
+        const onDimUnselectedStrengthChange = vi.fn();
+
+        render(
+            <LoadDataRow
+                {...baseProps}
+                isLoaded={true}
+                selectionDisplayMode="overlay"
+                onSelectionDisplayModeChange={onSelectionDisplayModeChange}
+                dimUnselected={false}
+                onDimUnselectedChange={onDimUnselectedChange}
+                dimUnselectedStrength={0.4}
+                onDimUnselectedStrengthChange={onDimUnselectedStrengthChange}
+            />
+        );
+
+        expect(document.getElementById('test-viewer-a-selection-display-mode')).toBeNull();
+        expect(document.getElementById('test-viewer-a-dim-unselected-toggle-btn')).toBeNull();
+        expect(document.getElementById('test-viewer-a-dim-unselected-strength')).toBeNull();
+
+        fireEvent.click(screen.getByText('Show Visibility Controls'));
+
+        const modeSelect = document.getElementById('test-viewer-a-selection-display-mode') as HTMLSelectElement;
+        const dimToggle = document.getElementById('test-viewer-a-dim-unselected-toggle-btn') as HTMLButtonElement;
+        const dimStrength = document.getElementById('test-viewer-a-dim-unselected-strength') as HTMLInputElement;
+
+        expect(modeSelect).toBeInTheDocument();
+        expect(modeSelect.value).toBe('overlay');
+        fireEvent.change(modeSelect, { target: { value: 'halo' } });
+        expect(onSelectionDisplayModeChange).toHaveBeenCalledWith('halo');
+
+        expect(dimToggle).toBeInTheDocument();
+        expect(dimToggle).toHaveAttribute('aria-pressed', 'false');
+        fireEvent.click(dimToggle);
+        expect(onDimUnselectedChange).toHaveBeenCalledWith(true);
+
+        expect(dimStrength).toBeInTheDocument();
+        expect(dimStrength.disabled).toBe(true);
+        fireEvent.change(dimStrength, { target: { value: '0.7' } });
+        expect(onDimUnselectedStrengthChange).toHaveBeenCalledWith(0.7);
     });
 });

@@ -65,4 +65,27 @@ describe('ChainSelectionTable', () => {
     fireEvent.change(search, { target: { value: 'AA' } });
     expect(onQueryChange).toHaveBeenCalledWith('AA');
   });
+
+  it('returns only chain e when searching s30 in collision-style labels', () => {
+    const onSelectChainId = vi.fn();
+    const chainLabels = new Map<string, string>([
+      ['e', 'eS30 | P62861 | G [auth e] | 40S ribosomal protein S30'],
+      ['G', 'eS6 | P62753 | J [auth G] | 40S ribosomal protein S6'],
+    ]);
+
+    render(
+      <ChainSelectionTable
+        chainLabels={chainLabels}
+        selectedChainId=""
+        onSelectChainId={onSelectChainId}
+        idPrefix="viewer-column-C"
+      />
+    );
+
+    const search = screen.getByTestId('viewer-column-C-chain-table-search');
+    fireEvent.change(search, { target: { value: 's30' } });
+
+    expect(screen.getByText('e')).toBeInTheDocument();
+    expect(screen.queryByText('G')).not.toBeInTheDocument();
+  });
 });

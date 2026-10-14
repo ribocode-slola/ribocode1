@@ -219,8 +219,19 @@ describe('ViewerColumn', () => {
 
         fireEvent.click(toggleButton as HTMLElement);
         expect(toggleButton).toHaveTextContent('Hide Select and Zoom Controls');
+        const visibilityToggle = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-alignedto-visibility-controls-toggle-btn`);
+        expect(visibilityToggle).toBeInTheDocument();
+        expect(document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-alignedto-zoom-extra-radius`)).toBeNull();
+        expect(document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-alignedto-zoom-min-radius`)).toBeNull();
+        expect(document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-alignedto-selection-display-mode`)).toBeNull();
+        expect(document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-alignedto-dim-unselected-toggle-btn`)).toBeNull();
+        expect(document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-alignedto-dim-unselected-strength`)).toBeNull();
+        fireEvent.click(visibilityToggle as HTMLElement);
         expect(document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-alignedto-zoom-extra-radius`)).toBeInTheDocument();
         expect(document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-alignedto-zoom-min-radius`)).toBeInTheDocument();
+        expect(document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-alignedto-selection-display-mode`)).toBeInTheDocument();
+        expect(document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-alignedto-dim-unselected-toggle-btn`)).toBeInTheDocument();
+        expect(document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-alignedto-dim-unselected-strength`)).toBeInTheDocument();
         const chainControlsToggle = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-alignedto-chain-controls-toggle-btn`);
         expect(chainControlsToggle).toBeInTheDocument();
         expect(document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-chain-table-container`)).toBeNull();

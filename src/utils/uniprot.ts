@@ -236,7 +236,9 @@ export function parseChainToMoleculeNameFromCifText(cifText: string): Map<string
                 const authChainId = normalizeCifToken(row[authChainIdx]);
                 if (!labelChainId || !authChainId) continue;
                 const description = chainToMolecule.get(labelChainId);
-                if (description && !chainToMolecule.has(authChainId)) {
+                // Auth chain IDs are what users interact with in selectors. If an auth ID collides
+                // with an existing label ID key, prefer the auth-derived mapping.
+                if (description) {
                     chainToMolecule.set(authChainId, description);
                 }
             }

@@ -144,6 +144,12 @@ interface LoadDataRowProps {
     onZoomExtraRadiusChange?: (value: number) => void;
     zoomMinRadius?: number;
     onZoomMinRadiusChange?: (value: number) => void;
+    selectionDisplayMode?: 'halo' | 'overlay' | 'hybrid';
+    onSelectionDisplayModeChange?: (mode: 'halo' | 'overlay' | 'hybrid') => void;
+    dimUnselected?: boolean;
+    onDimUnselectedChange?: (value: boolean) => void;
+    dimUnselectedStrength?: number;
+    onDimUnselectedStrengthChange?: (value: number) => void;
     // Optional representation type selector
     representationTypeSelector?: React.ReactNode;
     onAddRepresentationClick: () => void;
@@ -220,6 +226,12 @@ interface LoadDataRowProps {
         onZoomExtraRadiusChange?: (value: number) => void;
         zoomMinRadius?: number;
         onZoomMinRadiusChange?: (value: number) => void;
+        selectionDisplayMode?: 'halo' | 'overlay' | 'hybrid';
+        onSelectionDisplayModeChange?: (mode: 'halo' | 'overlay' | 'hybrid') => void;
+        dimUnselected?: boolean;
+        onDimUnselectedChange?: (value: boolean) => void;
+        dimUnselectedStrength?: number;
+        onDimUnselectedStrengthChange?: (value: number) => void;
         chainFinderChainLabels?: Map<string, string>;
         chainFinderSelectedChainId?: string;
         chainFinderOnSelectChainId?: (chainId: string) => void;
@@ -277,6 +289,12 @@ interface LoadDataRowProps {
         onZoomExtraRadiusChange = () => {},
         zoomMinRadius = 0,
         onZoomMinRadiusChange = () => {},
+        selectionDisplayMode = 'hybrid',
+        onSelectionDisplayModeChange = () => {},
+        dimUnselected = false,
+        onDimUnselectedChange = () => {},
+        dimUnselectedStrength = 0.45,
+        onDimUnselectedStrengthChange = () => {},
         chainFinderChainLabels,
         chainFinderSelectedChainId,
         chainFinderOnSelectChainId,
@@ -286,6 +304,7 @@ interface LoadDataRowProps {
         chainFinderIdPrefix,
         idPrefix,
     }) => {
+        const [showVisibilityControls, setShowVisibilityControls] = React.useState(false);
         const [showSubunitControls, setShowSubunitControls] = React.useState(false);
         const [showChainControls, setShowChainControls] = React.useState(false);
         const [showSelectChainControls, setShowSelectChainControls] = React.useState(false);
@@ -306,30 +325,80 @@ interface LoadDataRowProps {
 
         return (
             <>
-                <div className="load-data-control-row" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <label htmlFor={`${idPrefix}-zoom-extra-radius`}>Zoom extraRadius:</label>
-                    <input
-                        id={`${idPrefix}-zoom-extra-radius`}
-                        type="number"
-                        value={zoomExtraRadius}
-                        min={0}
-                        max={100}
-                        step={1}
-                        style={{ width: 60 }}
-                        onChange={e => onZoomExtraRadiusChange(Number(e.target.value))}
-                    />
-                    <label htmlFor={`${idPrefix}-zoom-min-radius`}>minRadius:</label>
-                    <input
-                        id={`${idPrefix}-zoom-min-radius`}
-                        type="number"
-                        value={zoomMinRadius}
-                        min={0}
-                        max={100}
-                        step={1}
-                        style={{ width: 60 }}
-                        onChange={e => onZoomMinRadiusChange(Number(e.target.value))}
-                    />
+                <div className="load-data-control-row">
+                    <button
+                        type="button"
+                        className="msp-btn msp-form-control"
+                        id={`${idPrefix}-visibility-controls-toggle-btn`}
+                        onClick={() => setShowVisibilityControls((current) => !current)}
+                    >
+                        {showVisibilityControls ? 'Hide Visibility Controls' : 'Show Visibility Controls'}
+                    </button>
                 </div>
+                {showVisibilityControls && (
+                    <>
+                        <div className="load-data-control-row" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginLeft: 12 }}>
+                            <label htmlFor={`${idPrefix}-zoom-extra-radius`}>Zoom extraRadius:</label>
+                            <input
+                                id={`${idPrefix}-zoom-extra-radius`}
+                                type="number"
+                                value={zoomExtraRadius}
+                                min={0}
+                                max={100}
+                                step={1}
+                                style={{ width: 60 }}
+                                onChange={e => onZoomExtraRadiusChange(Number(e.target.value))}
+                            />
+                            <label htmlFor={`${idPrefix}-zoom-min-radius`}>minRadius:</label>
+                            <input
+                                id={`${idPrefix}-zoom-min-radius`}
+                                type="number"
+                                value={zoomMinRadius}
+                                min={0}
+                                max={100}
+                                step={1}
+                                style={{ width: 60 }}
+                                onChange={e => onZoomMinRadiusChange(Number(e.target.value))}
+                            />
+                        </div>
+                        <div className="load-data-control-row" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginLeft: 12 }}>
+                            <label htmlFor={`${idPrefix}-selection-display-mode`}>Highlight display:</label>
+                            <select
+                                id={`${idPrefix}-selection-display-mode`}
+                                value={selectionDisplayMode}
+                                onChange={e => onSelectionDisplayModeChange(e.target.value as 'halo' | 'overlay' | 'hybrid')}
+                                className="msp-select msp-form-control"
+                            >
+                                <option value="halo">Highlight (halo)</option>
+                                <option value="overlay">Colour overlay</option>
+                                <option value="hybrid">Hybrid</option>
+                            </select>
+                        </div>
+                        <div className="load-data-control-row" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginLeft: 12 }}>
+                            <button
+                                type="button"
+                                className="msp-btn msp-form-control"
+                                id={`${idPrefix}-dim-unselected-toggle-btn`}
+                                aria-pressed={dimUnselected}
+                                onClick={() => onDimUnselectedChange(!dimUnselected)}
+                            >
+                                Dim unselected: {dimUnselected ? 'On' : 'Off'}
+                            </button>
+                            <label htmlFor={`${idPrefix}-dim-unselected-strength`}>Strength:</label>
+                            <input
+                                id={`${idPrefix}-dim-unselected-strength`}
+                                type="number"
+                                min={0}
+                                max={1}
+                                step={0.05}
+                                value={dimUnselectedStrength}
+                                style={{ width: 70 }}
+                                onChange={e => onDimUnselectedStrengthChange(Number(e.target.value))}
+                                disabled={!dimUnselected}
+                            />
+                        </div>
+                    </>
+                )}
                 <div className="load-data-control-row">
                     <button
                         type="button"
@@ -652,6 +721,12 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
     onZoomExtraRadiusChange = () => {},
     zoomMinRadius = 0,
     onZoomMinRadiusChange = () => {},
+    selectionDisplayMode = 'hybrid',
+    onSelectionDisplayModeChange = () => {},
+    dimUnselected = false,
+    onDimUnselectedChange = () => {},
+    dimUnselectedStrength = 0.45,
+    onDimUnselectedStrengthChange = () => {},
     representationTypeSelector,
     onAddRepresentationClick = () => { },
     addRepresentationDisabled = false,
@@ -865,6 +940,12 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
                         onZoomExtraRadiusChange={onZoomExtraRadiusChange}
                         zoomMinRadius={zoomMinRadius}
                         onZoomMinRadiusChange={onZoomMinRadiusChange}
+                        selectionDisplayMode={selectionDisplayMode}
+                        onSelectionDisplayModeChange={onSelectionDisplayModeChange}
+                        dimUnselected={dimUnselected}
+                        onDimUnselectedChange={onDimUnselectedChange}
+                        dimUnselectedStrength={dimUnselectedStrength}
+                        onDimUnselectedStrengthChange={onDimUnselectedStrengthChange}
                         idPrefix={idPrefix}
                     />
             )}
