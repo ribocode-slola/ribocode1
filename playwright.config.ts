@@ -30,7 +30,8 @@ export default defineConfig({
   webServer: {
     command: 'npm run dev',
     port: 5173,
-    reuseExistingServer: !process.env.CI,
+    // Avoid reusing stale local dev servers that can keep port 5173 open but unresponsive.
+    reuseExistingServer: false,
     timeout: 120 * 1000,
   },
 });

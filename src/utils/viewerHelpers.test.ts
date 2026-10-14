@@ -611,6 +611,38 @@ describe('viewerHelpers', () => {
     expect(setIsInspecting).toHaveBeenCalledWith(true);
   });
 
+  it('toggles chain inspect on and forwards inspect to sync viewer when enabled', async () => {
+    vi.mocked(inspectLociOnChain).mockClear();
+    const pluginRef = { current: { id: 'plugin-a', managers: { structure: { focus: { clear: vi.fn() } } } } };
+    const syncPluginRef = { current: { id: 'plugin-b', managers: { structure: { focus: { clear: vi.fn() } } } } };
+    const setIsInspecting = vi.fn();
+
+    const handler = createChainInspectToggleHandler(
+      pluginRef as any,
+      'struct-a',
+      'A',
+      false,
+      setIsInspecting,
+      true,
+      syncPluginRef as any,
+      'struct-b',
+      'A'
+    );
+
+    await handler.handleButtonClick();
+
+    expect(inspectLociOnChain).toHaveBeenCalledWith(
+      pluginRef.current,
+      'struct-a',
+      'A',
+      syncPluginRef.current,
+      undefined,
+      'struct-b',
+      'A'
+    );
+    expect(setIsInspecting).toHaveBeenCalledWith(true);
+  });
+
   it('toggles residue inspect off and clears focus channel', async () => {
     vi.mocked(inspectLociOnResidues).mockClear();
     const clearFocus = vi.fn();
