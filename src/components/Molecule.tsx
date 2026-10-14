@@ -211,7 +211,7 @@ const MoleculeUI: React.FC<MoleculeUIProps> = ({
     // Defensive: ensure label is a string
     const safeLabel = typeof label === 'string' ? label : '';
     const hasRepresentationControls = representationRefs.length > 0;
-    const effectiveVisible = hasRepresentationControls ? getAnyRepresentationVisible() : isVisible;
+    const effectiveVisible = isVisible;
 
     return (
         <div className={`molecule-row${hasRepresentationControls ? ' has-rep-controls' : ''}`} id={idPrefix ? `${idPrefix}-${idSuffix}-${safeLabel.replace(/\s+/g, '-').toLowerCase()}` : `${idSuffix}-${safeLabel.replace(/\s+/g, '-').toLowerCase()}` }>

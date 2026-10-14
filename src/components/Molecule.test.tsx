@@ -175,7 +175,7 @@ describe('MoleculeUI', () => {
         expect(runTask).toHaveBeenCalledWith({ kind: 'mock-tree-commit' });
     });
 
-    it('shows general visibility as hidden when all representations are hidden', () => {
+    it('shows general visibility as visible when dataset is visible even if all representations are hidden', () => {
         const repRef = 'rep-ref-hidden';
         const pluginWithHiddenRep = {
             state: {
@@ -199,7 +199,7 @@ describe('MoleculeUI', () => {
             />
         );
 
-        expect(screen.getByLabelText('Show Test Molecule')).toBeInTheDocument();
+        expect(screen.getByLabelText('Hide Test Molecule')).toBeInTheDocument();
     });
 
     it('general visibility toggle sets all representations visible when all are hidden', async () => {
@@ -233,7 +233,7 @@ describe('MoleculeUI', () => {
             />
         );
 
-        fireEvent.click(screen.getByLabelText('Show Test Molecule'));
+        fireEvent.click(screen.getByLabelText('Hide Test Molecule'));
 
         await waitFor(() => {
             expect(onToggleRepVisibility).toHaveBeenCalledTimes(2);

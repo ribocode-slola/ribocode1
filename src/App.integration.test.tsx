@@ -737,6 +737,53 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     }, { timeout: 5000 });
   }, 10000);
 
+  it('gates Column A AlignedTo residue inspect by AlignedTo visibility, not Aligned visibility (regression)', async () => {
+    render(<App />);
+    await waitFor(() => expect(screen.getByRole('banner')).toBeInTheDocument());
+
+    const onSessionLoaded = (globalThis as any).__onSessionLoaded as ((session: any, files: Record<string, File>) => Promise<void>) | undefined;
+    expect(onSessionLoaded).toBeDefined();
+
+    const session = {
+      viewerA: {
+        moleculeAlignedTo: { filename: '4ug0.cif' },
+        moleculeAligned: { filename: '6xu8.cif' },
+      },
+      viewerB: { moleculeAligned: { filename: '6xu8.cif' } },
+      uiState: {
+        selections: {
+          alignedTo: { subunit: 'Large', chainId: 'A', residueIds: ['10'], residueId: '10' },
+          aligned: { subunit: 'Small', chainId: 'B', residueIds: ['20'], residueId: '20' },
+        },
+      },
+    };
+    const files = {
+      '4ug0.cif': loadTestFile('4ug0.cif'),
+      '6xu8.cif': loadTestFile('6xu8.cif'),
+    };
+
+    await onSessionLoaded!(session, files);
+
+    fireEvent.click(document.getElementById('viewer-column-A-select-zoom-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-A-alignedto-residue-controls-toggle-btn') as HTMLButtonElement);
+
+    const alignedToInspectResidueBtnId = 'viewer-column-A-alignedto-inspect-residue-btn';
+    const viewerACol = document.getElementById('viewer-column-A') as HTMLElement | null;
+    expect(viewerACol).toBeInTheDocument();
+
+    await waitFor(() => {
+      const inspectResidueBtn = document.getElementById(alignedToInspectResidueBtnId) as HTMLButtonElement | null;
+      expect(inspectResidueBtn).toBeInTheDocument();
+      expect(inspectResidueBtn).not.toBeDisabled();
+    }, { timeout: 5000 });
+
+    // Regardless of Aligned visibility state in Viewer A, AlignedTo residue inspect must remain enabled.
+    expect(within(viewerACol!).getByRole('button', { name: /(Show|Hide) 6xu8\.cif/i })).toBeInTheDocument();
+    const inspectResidueBtn = document.getElementById(alignedToInspectResidueBtnId) as HTMLButtonElement | null;
+    expect(inspectResidueBtn).toBeInTheDocument();
+    expect(inspectResidueBtn).not.toBeDisabled();
+  });
+
   it('passes alignment data when loading Aligned (regression)', async () => {
     render(<App />);
     await waitFor(() => expect(screen.getByRole('banner')).toBeInTheDocument());

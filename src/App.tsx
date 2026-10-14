@@ -1969,48 +1969,14 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         };
     }, [viewerBReady, syncClippingFromMolstarCameraEvent, viewerB.ref]);
 
-    // Toggle visibility for moleculeAlignedTo in viewer A.
-    const clearViewerInspectState = useCallback((viewerKey: ViewerKey, mode: MoleculeMode) => {
-        const pluginRef = viewerKey === A ? viewerA.ref : viewerB.ref;
-        pluginRef.current?.managers?.structure?.focus?.clear?.();
-
-        if (viewerKey === A && mode === AlignedTo) {
-            setChainInspectOnAAlignedTo(false);
-            setResidueInspectOnAAlignedTo(false);
-            setSubunitInspectOnAAlignedTo(false);
-            return;
-        }
-        if (viewerKey === A && mode === Aligned) {
-            setChainInspectOnAAligned(false);
-            setResidueInspectOnAAligned(false);
-            setSubunitInspectOnAAligned(false);
-            return;
-        }
-        if (viewerKey === B && mode === AlignedTo) {
-            setChainInspectOnBAlignedTo(false);
-            setResidueInspectOnBAlignedTo(false);
-            setSubunitInspectOnBAlignedTo(false);
-            return;
-        }
-        if (viewerKey === B && mode === Aligned) {
-            setChainInspectOnBAligned(false);
-            setResidueInspectOnBAligned(false);
-            setSubunitInspectOnBAligned(false);
-        }
-    }, [viewerA.ref, viewerB.ref]);
-
     const toggleViewerAAlignedTo = {
         handleButtonClick: async () => {
-            const wasVisible = viewerA.isMoleculeAlignedToVisible;
             await handleToggle(
                 viewerA,
                 'molecule' + AlignedTo,
                 viewerA.setIsMoleculeAlignedToVisible,
                 viewerA.isMoleculeAlignedToVisible
             );
-            if (wasVisible) {
-                clearViewerInspectState(A, AlignedTo);
-            }
         },
     };
 
@@ -2043,8 +2009,6 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                     copyCameraZoomRadius(viewerB.ref, viewerA.ref);
                 }
                 syncClippingFromMolstarAfterZoom(B, true);
-            } else {
-                clearViewerInspectState(A, Aligned);
             }
         },
     };
@@ -2078,8 +2042,6 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                     copyCameraZoomRadius(viewerA.ref, viewerB.ref);
                 }
                 syncClippingFromMolstarAfterZoom(A, true);
-            } else {
-                clearViewerInspectState(B, AlignedTo);
             }
         },
     };
@@ -2087,16 +2049,12 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
     // Toggle visibility for moleculeAligned in viewer B.
     const toggleViewerBAligned = {
         handleButtonClick: async () => {
-            const wasVisible = viewerB.isMoleculeAlignedVisible;
             await handleToggle(
                 viewerB,
                 'molecule' + Aligned,
                 viewerB.setIsMoleculeAlignedVisible,
                 viewerB.isMoleculeAlignedVisible
             );
-            if (wasVisible) {
-                clearViewerInspectState(B, Aligned);
-            }
         },
     };
 
@@ -2260,7 +2218,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         chainId: selectedChainIdAlignedTo,
         isInspecting: chainInspectOnAAlignedTo,
         setIsInspecting: setChainInspectOnAAlignedTo,
-        sync: syncEnabled,
+        sync: true,
         syncPluginRef: viewerB.ref,
         syncStructureRef: structureRefBAlignedTo,
         syncChainId: selectedChainIdAlignedTo,
@@ -2271,7 +2229,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         chainId: selectedChainIdAligned,
         isInspecting: chainInspectOnAAligned,
         setIsInspecting: setChainInspectOnAAligned,
-        sync: syncEnabled,
+        sync: true,
         syncPluginRef: viewerB.ref,
         syncStructureRef: structureRefBAligned,
         syncChainId: selectedChainIdAligned,
@@ -2282,7 +2240,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         chainId: selectedChainIdAlignedTo,
         isInspecting: chainInspectOnBAlignedTo,
         setIsInspecting: setChainInspectOnBAlignedTo,
-        sync: syncEnabled,
+        sync: true,
         syncPluginRef: viewerA.ref,
         syncStructureRef: structureRefAAlignedTo,
         syncChainId: selectedChainIdAlignedTo,
@@ -2293,7 +2251,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         chainId: selectedChainIdAligned,
         isInspecting: chainInspectOnBAligned,
         setIsInspecting: setChainInspectOnBAligned,
-        sync: syncEnabled,
+        sync: true,
         syncPluginRef: viewerA.ref,
         syncStructureRef: structureRefAAligned,
         syncChainId: selectedChainIdAligned,
@@ -2475,7 +2433,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         residueInsCodes: selectedResidueInsCodesAlignedTo,
         isInspecting: residueInspectOnAAlignedTo,
         setIsInspecting: setResidueInspectOnAAlignedTo,
-        sync: syncEnabled,
+        sync: true,
         syncPluginRef: viewerB.ref,
         syncStructureRef: structureRefBAlignedTo,
         syncChainId: selectedChainIdAlignedTo,
@@ -2490,7 +2448,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         residueInsCodes: selectedResidueInsCodesAligned,
         isInspecting: residueInspectOnAAligned,
         setIsInspecting: setResidueInspectOnAAligned,
-        sync: syncEnabled,
+        sync: true,
         syncPluginRef: viewerB.ref,
         syncStructureRef: structureRefBAligned,
         syncChainId: selectedChainIdAligned,
@@ -2505,7 +2463,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         residueInsCodes: selectedResidueInsCodesAlignedTo,
         isInspecting: residueInspectOnBAlignedTo,
         setIsInspecting: setResidueInspectOnBAlignedTo,
-        sync: syncEnabled,
+        sync: true,
         syncPluginRef: viewerA.ref,
         syncStructureRef: structureRefAAlignedTo,
         syncChainId: selectedChainIdAlignedTo,
@@ -2520,7 +2478,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         residueInsCodes: selectedResidueInsCodesAligned,
         isInspecting: residueInspectOnBAligned,
         setIsInspecting: setResidueInspectOnBAligned,
-        sync: syncEnabled,
+        sync: true,
         syncPluginRef: viewerA.ref,
         syncStructureRef: structureRefAAligned,
         syncChainId: selectedChainIdAligned,
@@ -2769,7 +2727,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         chainIds: selectedSubunitChainIdsAlignedTo,
         isInspecting: subunitInspectOnAAlignedTo,
         setIsInspecting: setSubunitInspectOnAAlignedTo,
-        sync: syncEnabled,
+        sync: true,
         syncPluginRef: viewerB.ref,
         syncStructureRef: structureRefBAlignedTo,
         syncChainIds: selectedSubunitChainIdsAlignedTo,
@@ -2780,7 +2738,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         chainIds: selectedSubunitChainIdsAligned,
         isInspecting: subunitInspectOnAAligned,
         setIsInspecting: setSubunitInspectOnAAligned,
-        sync: syncEnabled,
+        sync: true,
         syncPluginRef: viewerB.ref,
         syncStructureRef: structureRefBAligned,
         syncChainIds: selectedSubunitChainIdsAligned,
@@ -2791,7 +2749,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         chainIds: selectedSubunitChainIdsAlignedTo,
         isInspecting: subunitInspectOnBAlignedTo,
         setIsInspecting: setSubunitInspectOnBAlignedTo,
-        sync: syncEnabled,
+        sync: true,
         syncPluginRef: viewerA.ref,
         syncStructureRef: structureRefAAlignedTo,
         syncChainIds: selectedSubunitChainIdsAlignedTo,
@@ -2802,7 +2760,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         chainIds: selectedSubunitChainIdsAligned,
         isInspecting: subunitInspectOnBAligned,
         setIsInspecting: setSubunitInspectOnBAligned,
-        sync: syncEnabled,
+        sync: true,
         syncPluginRef: viewerA.ref,
         syncStructureRef: structureRefAAligned,
         syncChainIds: selectedSubunitChainIdsAligned,
@@ -4821,9 +4779,9 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     onSubunitHighlight: subunitHighlightAAligned.handleButtonClick,
                                     subunitHighlightOn: viewerA.isMoleculeAlignedVisible ? subunitHighlightOnAligned : false,
                                     subunitHighlightDisabled: !viewerA.isMoleculeAlignedVisible || (selectedSubunitChainIdsAligned.length === 0 && !subunitHighlightOnAligned),
-                                    onSubunitInspect: subunitInspectAAlignedTo.handleButtonClick,
-                                    subunitInspectOn: viewerA.isMoleculeAlignedToVisible ? subunitInspectOnAAlignedTo : false,
-                                    subunitInspectDisabled: !viewerA.isMoleculeAlignedToVisible || (selectedSubunitChainIdsAlignedTo.length === 0 && !subunitInspectOnAAlignedTo),
+                                    onSubunitInspect: subunitInspectAAligned.handleButtonClick,
+                                    subunitInspectOn: viewerA.isMoleculeAlignedVisible ? subunitInspectOnAAligned : false,
+                                    subunitInspectDisabled: !viewerA.isMoleculeAlignedVisible || (selectedSubunitChainIdsAligned.length === 0 && !subunitInspectOnAAligned),
                                     onSubunitZoom: subunitZoomAAligned.handleButtonClick,
                                     subunitZoomDisabled: selectedSubunitChainIdsAligned.length === 0,
                                     subunitToChainIds: subunitToChainIdsAligned,
@@ -4836,9 +4794,9 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     onChainHighlight: chainHighlightAAligned.handleButtonClick,
                                     chainHighlightOn: viewerA.isMoleculeAlignedVisible ? chainHighlightOnAligned : false,
                                     chainHighlightDisabled: !viewerA.isMoleculeAlignedVisible || (!selectedChainIdAligned && !chainHighlightOnAligned),
-                                    onChainInspect: chainInspectAAlignedTo.handleButtonClick,
-                                    chainInspectOn: viewerA.isMoleculeAlignedToVisible ? chainInspectOnAAlignedTo : false,
-                                    chainInspectDisabled: !viewerA.isMoleculeAlignedToVisible || (!selectedChainIdAlignedTo && !chainInspectOnAAlignedTo),
+                                    onChainInspect: chainInspectAAligned.handleButtonClick,
+                                    chainInspectOn: viewerA.isMoleculeAlignedVisible ? chainInspectOnAAligned : false,
+                                    chainInspectDisabled: !viewerA.isMoleculeAlignedVisible || (!selectedChainIdAligned && !chainInspectOnAAligned),
                                     onChainZoom: chainZoomAAligned.handleButtonClick,
                                     chainZoomDisabled: !selectedChainIdAligned,
                                     showUniprotAccessionInChainLabels: showUniprotAccessionInChainLabelsB,
@@ -4855,9 +4813,9 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     onResidueHighlight: residueHighlightAAligned.handleButtonClick,
                                     residueHighlightOn: viewerA.isMoleculeAlignedVisible ? residueHighlightOnAligned : false,
                                     residueHighlightDisabled: !viewerA.isMoleculeAlignedVisible || (selectedResidueIdsAligned.length === 0 && !residueHighlightOnAligned),
-                                    onResidueInspect: residueInspectAAlignedTo.handleButtonClick,
-                                    residueInspectOn: viewerA.isMoleculeAlignedToVisible ? residueInspectOnAAlignedTo : false,
-                                    residueInspectDisabled: !viewerA.isMoleculeAlignedToVisible || (selectedResidueIdsAlignedTo.length === 0 && !residueInspectOnAAlignedTo),
+                                    onResidueInspect: residueInspectAAligned.handleButtonClick,
+                                    residueInspectOn: viewerA.isMoleculeAlignedVisible ? residueInspectOnAAligned : false,
+                                    residueInspectDisabled: !viewerA.isMoleculeAlignedVisible || (selectedResidueIdsAligned.length === 0 && !residueInspectOnAAligned),
                                     onResidueZoom: residueZoomAAligned.handleButtonClick,
                                     residueZoomDisabled: residueZoomDisabledAligned,
                                     zoomExtraRadius: zoomExtraRadiusA,
@@ -5003,9 +4961,9 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     onSubunitHighlight: subunitHighlightBAlignedTo.handleButtonClick,
                                     subunitHighlightOn: viewerB.isMoleculeAlignedToVisible ? subunitHighlightOnAlignedTo : false,
                                     subunitHighlightDisabled: !viewerB.isMoleculeAlignedToVisible || (selectedSubunitChainIdsAlignedTo.length === 0 && !subunitHighlightOnAlignedTo),
-                                    onSubunitInspect: subunitInspectBAligned.handleButtonClick,
-                                    subunitInspectOn: viewerB.isMoleculeAlignedVisible ? subunitInspectOnBAligned : false,
-                                    subunitInspectDisabled: !viewerB.isMoleculeAlignedVisible || (selectedSubunitChainIdsAligned.length === 0 && !subunitInspectOnBAligned),
+                                    onSubunitInspect: subunitInspectBAlignedTo.handleButtonClick,
+                                    subunitInspectOn: viewerB.isMoleculeAlignedToVisible ? subunitInspectOnBAlignedTo : false,
+                                    subunitInspectDisabled: !viewerB.isMoleculeAlignedToVisible || (selectedSubunitChainIdsAlignedTo.length === 0 && !subunitInspectOnBAlignedTo),
                                     onSubunitZoom: subunitZoomBAlignedTo.handleButtonClick,
                                     subunitZoomDisabled: selectedSubunitChainIdsAlignedTo.length === 0,
                                     subunitToChainIds: subunitToChainIdsAlignedTo,
@@ -5018,9 +4976,9 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     onChainHighlight: chainHighlightBAlignedTo.handleButtonClick,
                                     chainHighlightOn: viewerB.isMoleculeAlignedToVisible ? chainHighlightOnAlignedTo : false,
                                     chainHighlightDisabled: !viewerB.isMoleculeAlignedToVisible || (!selectedChainIdAlignedTo && !chainHighlightOnAlignedTo),
-                                    onChainInspect: chainInspectBAligned.handleButtonClick,
-                                    chainInspectOn: viewerB.isMoleculeAlignedVisible ? chainInspectOnBAligned : false,
-                                    chainInspectDisabled: !viewerB.isMoleculeAlignedVisible || (!selectedChainIdAligned && !chainInspectOnBAligned),
+                                    onChainInspect: chainInspectBAlignedTo.handleButtonClick,
+                                    chainInspectOn: viewerB.isMoleculeAlignedToVisible ? chainInspectOnBAlignedTo : false,
+                                    chainInspectDisabled: !viewerB.isMoleculeAlignedToVisible || (!selectedChainIdAlignedTo && !chainInspectOnBAlignedTo),
                                     onChainZoom: chainZoomBAlignedTo.handleButtonClick,
                                     chainZoomDisabled: !selectedChainIdAlignedTo,
                                     showUniprotAccessionInChainLabels: showUniprotAccessionInChainLabelsA,
@@ -5037,9 +4995,9 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     onResidueHighlight: residueHighlightBAlignedTo.handleButtonClick,
                                     residueHighlightOn: viewerB.isMoleculeAlignedToVisible ? residueHighlightOnAlignedTo : false,
                                     residueHighlightDisabled: !viewerB.isMoleculeAlignedToVisible || (selectedResidueIdsAlignedTo.length === 0 && !residueHighlightOnAlignedTo),
-                                    onResidueInspect: residueInspectBAligned.handleButtonClick,
-                                    residueInspectOn: viewerB.isMoleculeAlignedVisible ? residueInspectOnBAligned : false,
-                                    residueInspectDisabled: !viewerB.isMoleculeAlignedVisible || (selectedResidueIdsAligned.length === 0 && !residueInspectOnBAligned),
+                                    onResidueInspect: residueInspectBAlignedTo.handleButtonClick,
+                                    residueInspectOn: viewerB.isMoleculeAlignedToVisible ? residueInspectOnBAlignedTo : false,
+                                    residueInspectDisabled: !viewerB.isMoleculeAlignedToVisible || (selectedResidueIdsAlignedTo.length === 0 && !residueInspectOnBAlignedTo),
                                     onResidueZoom: residueZoomBAlignedTo.handleButtonClick,
                                     residueZoomDisabled: residueZoomDisabledAlignedTo,
                                     zoomExtraRadius: zoomExtraRadiusB,
