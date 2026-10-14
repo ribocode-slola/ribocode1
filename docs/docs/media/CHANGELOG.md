@@ -1,3 +1,13 @@
+## [v0.16.7] - 2026-10-14
+Release summary: this patch release aligns Highlight/Inspect control state with per-viewer molecule visibility, clears stale inspect focus when datasets are hidden, and hardens E2E startup against stale local dev servers.
+- Updated visibility semantics in `src/App.tsx` so Highlight/Inspect controls show `Off` and are disabled when the corresponding dataset is hidden in that viewer.
+- Updated dataset-visibility toggles in `src/App.tsx` so hiding/showing a dataset no longer mutates residue/chain/subunit inspect toggle state.
+- Fixed inspect-control wiring in `src/App.tsx` so each viewer row uses inspect handlers/state for its own dataset (not the other dataset in the same column), preventing cross-dataset residue inspect/detail changes.
+- Updated molecule visibility UI semantics in `src/components/Molecule.tsx` so overall dataset visibility reflects dataset state directly and can remain visible even when all representations are hidden.
+- Kept `Dim unselected` behavior selection-driven (not highlight-toggle-driven), preserving dimming when a valid chain/residue/subunit selection exists.
+- Hardened Playwright local test startup in `playwright.config.ts` by setting `webServer.reuseExistingServer` to `false`, avoiding stale listener reuse that caused `page.goto` abort failures.
+- Re-validated behavior with full Playwright E2E coverage (`18 passed`).
+
 ## [v0.16.6] - 2026-10-14
 Release summary: this patch release fixes `Dim unselected` behavior so dimming remains active whenever a selection exists, even if highlight toggles are off.
 - Fixed selection-display dimming logic in `src/App.tsx` so `Dim unselected` is gated by selection presence (chain/residue/subunit selection), not by highlight toggle state.
