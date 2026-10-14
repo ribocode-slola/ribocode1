@@ -1,3 +1,13 @@
+/**
+ * Test suite for UniProt utilities.
+ * 
+ * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
+ * 
+ * @author Andy Turner <agdturner@gmail.com>
+ * @version 1.0.0
+ * @lastModified 2026-10-14
+ * @see https://github.com/ribocode-slola/ribocode1
+ */
 import { extractUniProtAccessionsFromText, fetchUniProtGeneNames, fetchUniProtGeneNamesBatched, parseChainToMoleculeNameFromCifText } from './uniprot';
 import { vi } from 'vitest';
 

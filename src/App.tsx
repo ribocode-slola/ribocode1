@@ -196,9 +196,29 @@ interface SessionUiState {
         dimUnselected?: boolean;
         dimStrength?: number;
     };
+    selectionDisplayByMode?: {
+        alignedTo?: {
+            mode?: HighlightDisplayMode;
+            dimUnselected?: boolean;
+            dimStrength?: number;
+        };
+        aligned?: {
+            mode?: HighlightDisplayMode;
+            dimUnselected?: boolean;
+            dimStrength?: number;
+        };
+    };
 }
 
 type ColorThemeMode = 'AlignedTo' | 'Aligned';
+
+interface SelectionDisplaySettings {
+    mode: HighlightDisplayMode;
+    dimUnselected: boolean;
+    dimStrength: number;
+}
+
+type SelectionDisplayByMode = Record<ColorThemeMode, SelectionDisplaySettings>;
 
 interface LoadedColorThemeOption {
     value: string;
@@ -842,9 +862,32 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
     const [syncEnabled, setSyncEnabled] = useState(false);
     const [showUniprotAccessionInChainLabelsA, setShowUniprotAccessionInChainLabelsA] = useState(true);
     const [showUniprotAccessionInChainLabelsB, setShowUniprotAccessionInChainLabelsB] = useState(true);
-    const [selectionDisplayMode, setSelectionDisplayMode] = useState<HighlightDisplayMode>('hybrid');
-    const [dimUnselected, setDimUnselected] = useState(false);
-    const [dimUnselectedStrength, setDimUnselectedStrength] = useState(0.45);
+    const [selectionDisplayByMode, setSelectionDisplayByMode] = useState<SelectionDisplayByMode>({
+        AlignedTo: { mode: 'hybrid', dimUnselected: false, dimStrength: 0.45 },
+        Aligned: { mode: 'hybrid', dimUnselected: false, dimStrength: 0.45 },
+    });
+
+    const setSelectionDisplayModeFor = useCallback((modeKey: ColorThemeMode, mode: HighlightDisplayMode) => {
+        setSelectionDisplayByMode(prev => ({
+            ...prev,
+            [modeKey]: { ...prev[modeKey], mode },
+        }));
+    }, []);
+
+    const setDimUnselectedFor = useCallback((modeKey: ColorThemeMode, value: boolean) => {
+        setSelectionDisplayByMode(prev => ({
+            ...prev,
+            [modeKey]: { ...prev[modeKey], dimUnselected: value },
+        }));
+    }, []);
+
+    const setDimUnselectedStrengthFor = useCallback((modeKey: ColorThemeMode, value: number) => {
+        const clamped = Math.max(0, Math.min(1, Number(value)));
+        setSelectionDisplayByMode(prev => ({
+            ...prev,
+            [modeKey]: { ...prev[modeKey], dimStrength: clamped },
+        }));
+    }, []);
     const rpNameLookupBySpecies = useMemo(
         () => parseRpNameTableBySpecies(rpNameTableCsv),
         []
@@ -2545,6 +2588,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
     useEffect(() => {
         type HighlightDatasetConfig = {
             structureRef: string | null;
+            modeKey: ColorThemeMode;
             chainId: string;
             residueIds: string[];
             residueInsCodes?: Record<string, string | undefined>;
@@ -2552,6 +2596,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             chainOn: boolean;
             residueOn: boolean;
             subunitOn: boolean;
+            displaySettings: SelectionDisplaySettings;
         };
 
         const applyHighlightsForPlugin = (
@@ -2570,17 +2615,17 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 if (!config.structureRef) continue;
 
                 const hasActiveHighlight = config.subunitOn || config.chainOn || config.residueOn;
-                if (dimUnselected && hasActiveHighlight) {
-                    applyStructureDimOverlay(plugin, config.structureRef, dimUnselectedStrength);
+                if (config.displaySettings.dimUnselected && hasActiveHighlight) {
+                    applyStructureDimOverlay(plugin, config.structureRef, config.displaySettings.dimStrength);
                 }
 
                 const uniqueSubunitChainIds = Array.from(new Set(config.subunitChainIds.filter(Boolean)));
                 if (config.subunitOn && uniqueSubunitChainIds.length > 0) {
-                    highlightLociOnSubunit(plugin, config.structureRef, uniqueSubunitChainIds, selectionDisplayMode);
+                    highlightLociOnSubunit(plugin, config.structureRef, uniqueSubunitChainIds, config.displaySettings.mode);
                 }
 
                 if (config.chainOn && config.chainId) {
-                    highlightLociOnChain(plugin, config.structureRef, config.chainId, selectionDisplayMode);
+                    highlightLociOnChain(plugin, config.structureRef, config.chainId, config.displaySettings.mode);
                 }
 
                 if (config.residueOn && config.chainId && config.residueIds.length > 0) {
@@ -2590,7 +2635,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                         config.chainId,
                         config.residueIds,
                         config.residueInsCodes,
-                        selectionDisplayMode
+                        config.displaySettings.mode
                     );
                 }
             }
@@ -2599,6 +2644,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         const datasetConfigs: HighlightDatasetConfig[] = [
             {
                 structureRef: structureRefAAlignedTo,
+                modeKey: 'AlignedTo',
                 chainId: selectedChainIdAlignedTo,
                 residueIds: selectedResidueIdsAlignedTo,
                 residueInsCodes: selectedResidueInsCodesAlignedTo,
@@ -2606,9 +2652,11 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 chainOn: chainHighlightOnAlignedTo,
                 residueOn: residueHighlightOnAlignedTo,
                 subunitOn: subunitHighlightOnAlignedTo,
+                displaySettings: selectionDisplayByMode.AlignedTo,
             },
             {
                 structureRef: structureRefAAligned,
+                modeKey: 'Aligned',
                 chainId: selectedChainIdAligned,
                 residueIds: selectedResidueIdsAligned,
                 residueInsCodes: selectedResidueInsCodesAligned,
@@ -2616,6 +2664,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 chainOn: chainHighlightOnAligned,
                 residueOn: residueHighlightOnAligned,
                 subunitOn: subunitHighlightOnAligned,
+                displaySettings: selectionDisplayByMode.Aligned,
             },
         ];
 
@@ -2637,9 +2686,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         residueHighlightOnAligned,
         subunitHighlightOnAlignedTo,
         subunitHighlightOnAligned,
-        selectionDisplayMode,
-        dimUnselected,
-        dimUnselectedStrength,
+        selectionDisplayByMode,
         selectedChainIdAlignedTo,
         selectedChainIdAligned,
         selectedResidueIdsAlignedTo,
@@ -3933,9 +3980,21 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 },
             },
             selectionDisplay: {
-                mode: selectionDisplayMode,
-                dimUnselected,
-                dimStrength: dimUnselectedStrength,
+                mode: selectionDisplayByMode.AlignedTo.mode,
+                dimUnselected: selectionDisplayByMode.AlignedTo.dimUnselected,
+                dimStrength: selectionDisplayByMode.AlignedTo.dimStrength,
+            },
+            selectionDisplayByMode: {
+                alignedTo: {
+                    mode: selectionDisplayByMode.AlignedTo.mode,
+                    dimUnselected: selectionDisplayByMode.AlignedTo.dimUnselected,
+                    dimStrength: selectionDisplayByMode.AlignedTo.dimStrength,
+                },
+                aligned: {
+                    mode: selectionDisplayByMode.Aligned.mode,
+                    dimUnselected: selectionDisplayByMode.Aligned.dimUnselected,
+                    dimStrength: selectionDisplayByMode.Aligned.dimStrength,
+                },
             },
         } as SessionUiState,
     }));
@@ -4040,9 +4099,21 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                     },
                 },
                 selectionDisplay: {
-                    mode: selectionDisplayMode,
-                    dimUnselected,
-                    dimStrength: dimUnselectedStrength,
+                    mode: selectionDisplayByMode.AlignedTo.mode,
+                    dimUnselected: selectionDisplayByMode.AlignedTo.dimUnselected,
+                    dimStrength: selectionDisplayByMode.AlignedTo.dimStrength,
+                },
+                selectionDisplayByMode: {
+                    alignedTo: {
+                        mode: selectionDisplayByMode.AlignedTo.mode,
+                        dimUnselected: selectionDisplayByMode.AlignedTo.dimUnselected,
+                        dimStrength: selectionDisplayByMode.AlignedTo.dimStrength,
+                    },
+                    aligned: {
+                        mode: selectionDisplayByMode.Aligned.mode,
+                        dimUnselected: selectionDisplayByMode.Aligned.dimUnselected,
+                        dimStrength: selectionDisplayByMode.Aligned.dimStrength,
+                    },
                 },
             } as SessionUiState,
         }),
@@ -4294,17 +4365,38 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             if (typeof uiState?.chainFinderQueries?.aligned === 'string') {
                 setChainFinderQueryAligned(uiState.chainFinderQueries.aligned);
             }
-            if (uiState?.selectionDisplay) {
+            if (uiState?.selectionDisplayByMode) {
+                const modeToStateKey: Array<[keyof NonNullable<SessionUiState['selectionDisplayByMode']>, ColorThemeMode]> = [
+                    ['alignedTo', 'AlignedTo'],
+                    ['aligned', 'Aligned'],
+                ];
+                for (const [sessionKey, modeKey] of modeToStateKey) {
+                    const persisted = uiState.selectionDisplayByMode?.[sessionKey];
+                    if (!persisted) continue;
+                    if (persisted.mode === 'halo' || persisted.mode === 'overlay' || persisted.mode === 'hybrid') {
+                        setSelectionDisplayModeFor(modeKey, persisted.mode);
+                    }
+                    if (typeof persisted.dimUnselected === 'boolean') {
+                        setDimUnselectedFor(modeKey, persisted.dimUnselected);
+                    }
+                    if (Number.isFinite(persisted.dimStrength)) {
+                        setDimUnselectedStrengthFor(modeKey, Number(persisted.dimStrength));
+                    }
+                }
+            } else if (uiState?.selectionDisplay) {
                 const mode = uiState.selectionDisplay.mode;
                 if (mode === 'halo' || mode === 'overlay' || mode === 'hybrid') {
-                    setSelectionDisplayMode(mode);
+                    setSelectionDisplayModeFor('AlignedTo', mode);
+                    setSelectionDisplayModeFor('Aligned', mode);
                 }
                 if (typeof uiState.selectionDisplay.dimUnselected === 'boolean') {
-                    setDimUnselected(uiState.selectionDisplay.dimUnselected);
+                    setDimUnselectedFor('AlignedTo', uiState.selectionDisplay.dimUnselected);
+                    setDimUnselectedFor('Aligned', uiState.selectionDisplay.dimUnselected);
                 }
                 if (Number.isFinite(uiState.selectionDisplay.dimStrength)) {
                     const clamped = Math.max(0, Math.min(1, Number(uiState.selectionDisplay.dimStrength)));
-                    setDimUnselectedStrength(clamped);
+                    setDimUnselectedStrengthFor('AlignedTo', clamped);
+                    setDimUnselectedStrengthFor('Aligned', clamped);
                 }
             }
 
@@ -4339,6 +4431,9 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         setUniprotGeneNames,
         setShowUniprotAccessionInChainLabelsA,
         setShowUniprotAccessionInChainLabelsB,
+        setSelectionDisplayModeFor,
+        setDimUnselectedFor,
+        setDimUnselectedStrengthFor,
     ]);
 
     // Initialize session load modal with the callback
@@ -4615,12 +4710,12 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     setZoomExtraRadius: setZoomExtraRadiusA,
                                     zoomMinRadius: zoomMinRadiusA,
                                     setZoomMinRadius: setZoomMinRadiusA,
-                                    selectionDisplayMode,
-                                    setSelectionDisplayMode,
-                                    dimUnselected,
-                                    setDimUnselected,
-                                    dimUnselectedStrength,
-                                    setDimUnselectedStrength,
+                                    selectionDisplayMode: selectionDisplayByMode.AlignedTo.mode,
+                                    setSelectionDisplayMode: (mode: HighlightDisplayMode) => setSelectionDisplayModeFor('AlignedTo', mode),
+                                    dimUnselected: selectionDisplayByMode.AlignedTo.dimUnselected,
+                                    setDimUnselected: (value: boolean) => setDimUnselectedFor('AlignedTo', value),
+                                    dimUnselectedStrength: selectionDisplayByMode.AlignedTo.dimStrength,
+                                    setDimUnselectedStrength: (value: number) => setDimUnselectedStrengthFor('AlignedTo', value),
                                     fog: fogA,
                                     setFog: makeFogSetters(setFogA),
                                     clipping: clippingA,
@@ -4709,12 +4804,12 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     setZoomExtraRadius: setZoomExtraRadiusA,
                                     zoomMinRadius: zoomMinRadiusA,
                                     setZoomMinRadius: setZoomMinRadiusA,
-                                    selectionDisplayMode,
-                                    setSelectionDisplayMode,
-                                    dimUnselected,
-                                    setDimUnselected,
-                                    dimUnselectedStrength,
-                                    setDimUnselectedStrength,
+                                    selectionDisplayMode: selectionDisplayByMode.Aligned.mode,
+                                    setSelectionDisplayMode: (mode: HighlightDisplayMode) => setSelectionDisplayModeFor('Aligned', mode),
+                                    dimUnselected: selectionDisplayByMode.Aligned.dimUnselected,
+                                    setDimUnselected: (value: boolean) => setDimUnselectedFor('Aligned', value),
+                                    dimUnselectedStrength: selectionDisplayByMode.Aligned.dimStrength,
+                                    setDimUnselectedStrength: (value: number) => setDimUnselectedStrengthFor('Aligned', value),
                                     fog: fogA,
                                     setFog: makeFogSetters(setFogA),
                                     clipping: clippingA,
@@ -4891,12 +4986,12 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     setZoomExtraRadius: setZoomExtraRadiusB,
                                     zoomMinRadius: zoomMinRadiusB,
                                     setZoomMinRadius: setZoomMinRadiusB,
-                                    selectionDisplayMode,
-                                    setSelectionDisplayMode,
-                                    dimUnselected,
-                                    setDimUnselected,
-                                    dimUnselectedStrength,
-                                    setDimUnselectedStrength,
+                                    selectionDisplayMode: selectionDisplayByMode.AlignedTo.mode,
+                                    setSelectionDisplayMode: (mode: HighlightDisplayMode) => setSelectionDisplayModeFor('AlignedTo', mode),
+                                    dimUnselected: selectionDisplayByMode.AlignedTo.dimUnselected,
+                                    setDimUnselected: (value: boolean) => setDimUnselectedFor('AlignedTo', value),
+                                    dimUnselectedStrength: selectionDisplayByMode.AlignedTo.dimStrength,
+                                    setDimUnselectedStrength: (value: number) => setDimUnselectedStrengthFor('AlignedTo', value),
                                     fog: fogB,
                                     setFog: makeFogSetters(setFogB),
                                     clipping: clippingB,
@@ -4985,12 +5080,12 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     setZoomExtraRadius: setZoomExtraRadiusB,
                                     zoomMinRadius: zoomMinRadiusB,
                                     setZoomMinRadius: setZoomMinRadiusB,
-                                    selectionDisplayMode,
-                                    setSelectionDisplayMode,
-                                    dimUnselected,
-                                    setDimUnselected,
-                                    dimUnselectedStrength,
-                                    setDimUnselectedStrength,
+                                    selectionDisplayMode: selectionDisplayByMode.Aligned.mode,
+                                    setSelectionDisplayMode: (mode: HighlightDisplayMode) => setSelectionDisplayModeFor('Aligned', mode),
+                                    dimUnselected: selectionDisplayByMode.Aligned.dimUnselected,
+                                    setDimUnselected: (value: boolean) => setDimUnselectedFor('Aligned', value),
+                                    dimUnselectedStrength: selectionDisplayByMode.Aligned.dimStrength,
+                                    setDimUnselectedStrength: (value: number) => setDimUnselectedStrengthFor('Aligned', value),
                                     fog: fogB,
                                     setFog: makeFogSetters(setFogB),
                                     clipping: clippingB,

@@ -813,11 +813,14 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     expect(document.getElementById('viewer-column-A-alignedto-dim-unselected-strength')).toBeInTheDocument();
     fireEvent.change(document.getElementById('viewer-column-A-alignedto-selection-display-mode') as HTMLSelectElement, { target: { value: 'overlay' } });
     fireEvent.click(document.getElementById('viewer-column-A-alignedto-dim-unselected-toggle-btn') as HTMLButtonElement);
-    fireEvent.change(document.getElementById('viewer-column-A-alignedto-dim-unselected-strength') as HTMLInputElement, { target: { value: '0.7' } });
+    fireEvent.change(document.getElementById('viewer-column-A-alignedto-dim-unselected-strength') as HTMLInputElement, { target: { value: '70' } });
     await waitFor(() => {
       expect((document.getElementById('viewer-column-A-alignedto-selection-display-mode') as HTMLSelectElement).value).toBe('overlay');
       expect(document.getElementById('viewer-column-A-alignedto-dim-unselected-toggle-btn')).toHaveAttribute('aria-pressed', 'true');
-      expect((document.getElementById('viewer-column-A-alignedto-dim-unselected-strength') as HTMLInputElement).value).toBe('0.7');
+      expect((document.getElementById('viewer-column-A-alignedto-dim-unselected-strength') as HTMLInputElement).value).toBe('70');
+      expect((document.getElementById('viewer-column-B-aligned-selection-display-mode') as HTMLSelectElement).value).toBe('hybrid');
+      expect(document.getElementById('viewer-column-B-aligned-dim-unselected-toggle-btn')).toHaveAttribute('aria-pressed', 'false');
+      expect((document.getElementById('viewer-column-B-aligned-dim-unselected-strength') as HTMLInputElement).value).toBe('45');
     });
     fireEvent.change(document.getElementById('viewer-column-A-alignedto-clip-near-number') as HTMLInputElement, { target: { value: '0.8' } });
     fireEvent.change(document.getElementById('viewer-column-A-alignedto-clip-far-number') as HTMLInputElement, { target: { value: '66' } });
@@ -884,6 +887,18 @@ describe('App integration: AlignedTo and Aligned loading', () => {
       mode: 'overlay',
       dimUnselected: true,
       dimStrength: 0.7,
+    });
+    expect(session.uiState.selectionDisplayByMode).toEqual({
+      alignedTo: {
+        mode: 'overlay',
+        dimUnselected: true,
+        dimStrength: 0.7,
+      },
+      aligned: {
+        mode: 'hybrid',
+        dimUnselected: false,
+        dimStrength: 0.45,
+      },
     });
   });
 
@@ -999,7 +1014,10 @@ describe('App integration: AlignedTo and Aligned loading', () => {
       expect(document.getElementById('viewer-column-B-aligned-highlight-residue-btn')).toHaveAttribute('aria-pressed', 'false');
       expect((document.getElementById('viewer-column-A-alignedto-selection-display-mode') as HTMLSelectElement).value).toBe('halo');
       expect(document.getElementById('viewer-column-A-alignedto-dim-unselected-toggle-btn')).toHaveAttribute('aria-pressed', 'true');
-      expect((document.getElementById('viewer-column-A-alignedto-dim-unselected-strength') as HTMLInputElement).value).toBe('0.65');
+      expect((document.getElementById('viewer-column-A-alignedto-dim-unselected-strength') as HTMLInputElement).value).toBe('65');
+      expect((document.getElementById('viewer-column-B-aligned-selection-display-mode') as HTMLSelectElement).value).toBe('halo');
+      expect(document.getElementById('viewer-column-B-aligned-dim-unselected-toggle-btn')).toHaveAttribute('aria-pressed', 'true');
+      expect((document.getElementById('viewer-column-B-aligned-dim-unselected-strength') as HTMLInputElement).value).toBe('65');
       expect((document.getElementById('viewer-column-A-alignedto-colour-theme-select') as HTMLSelectElement).value).toBe('AlignedTo-custom-theme-test');
       expect(document.querySelector('#viewer-column-A-alignedto-colour-theme-select option[value="AlignedTo-custom-theme-test"]')).toBeInTheDocument();
       expect(document.querySelector('#viewer-column-B-aligned-colour-theme-select option[value="AlignedTo-custom-theme-test"]')).toBeInTheDocument();
@@ -1027,6 +1045,18 @@ describe('App integration: AlignedTo and Aligned loading', () => {
       mode: 'halo',
       dimUnselected: true,
       dimStrength: 0.65,
+    });
+    expect(restoredSession.uiState.selectionDisplayByMode).toEqual({
+      alignedTo: {
+        mode: 'halo',
+        dimUnselected: true,
+        dimStrength: 0.65,
+      },
+      aligned: {
+        mode: 'halo',
+        dimUnselected: true,
+        dimStrength: 0.65,
+      },
     });
 
     expect(pluginA.canvas3d.camera.setState).toHaveBeenCalledWith(expect.objectContaining({

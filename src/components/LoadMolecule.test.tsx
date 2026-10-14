@@ -357,7 +357,7 @@ describe('LoadDataRow', () => {
 
         expect(dimStrength).toBeInTheDocument();
         expect(dimStrength.disabled).toBe(true);
-        fireEvent.change(dimStrength, { target: { value: '0.7' } });
+        fireEvent.change(dimStrength, { target: { value: '70' } });
         expect(onDimUnselectedStrengthChange).toHaveBeenCalledWith(0.7);
     });
 });
