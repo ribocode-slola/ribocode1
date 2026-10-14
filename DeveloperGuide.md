@@ -599,6 +599,12 @@ The following scripts are available in `package.json`:
 - Long session workflows can exceed the default 30s test timeout under parallel workers; set a per-test timeout (for example `test.setTimeout(60000)`) for save/reload/load scenarios.
 - For load completion assertions, prefer checking filename labels (for example `#viewer-column-B-aligned-filename-label`) rather than assuming the absence/presence of a specific load button.
 
+#### Retrospective: 0.16.2 Test Stabilization
+
+- Preserve product contracts before hardening tests. In particular, keep `Load Aligned` disabled until `AlignedTo` is loaded; changing this contract can make integration tests fail while masking the real regression.
+- Prefer structural selectors over label text for repeated controls. Column-scoped IDs and `data-testid` selectors are more reliable than role/name selectors when `Show/Hide` controls appear in both viewers.
+- Treat timeout increases as a last step, not the first step. Flaky tests were primarily caused by async UI transitions and selector ambiguity, not by timeout settings alone.
+
 ### Resources
 
 - [Playwright documentation](https://playwright.dev/docs/intro)

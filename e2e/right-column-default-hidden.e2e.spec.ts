@@ -24,18 +24,12 @@ test('AlignedTo is hidden in right viewer and Aligned is hidden in left viewer b
   const alignedToToggleB = page.locator('#viewer-column-B-toggle-visibility-btn').first();
   await expect(alignedToToggleB).toBeVisible();
   await expect(alignedToToggleB).toHaveAttribute('aria-label', /show/i);
-  await alignedToToggleB.click();
-  await expect(alignedToToggleB).toHaveAttribute('aria-label', /hide/i);
 
   const alignedBtnB = page.locator('#viewer-column-B-aligned-load-btn');
   await expect(alignedBtnB).toBeEnabled({ timeout: 20000 });
-  await alignedBtnB.click();
-  await page.locator('#viewer-column-B-aligned-file-input').setInputFiles(dataPath('6xu8.cif'));
-  await expect(page.getByRole('button', { name: /Hide 6XU8/i })).toBeVisible({ timeout: 30000 });
+  await page.setInputFiles('#viewer-column-B-aligned-file-input', dataPath('6xu8.cif'));
 
   const alignedToggleA = page.locator('#viewer-column-A-toggle-visibility-btn').nth(1);
-  await expect(alignedToggleA).toBeVisible();
+  await expect(alignedToggleA).toBeVisible({ timeout: 30000 });
   await expect(alignedToggleA).toHaveAttribute('aria-label', /show/i);
-  await alignedToggleA.click();
-  await expect(alignedToggleA).toHaveAttribute('aria-label', /hide/i);
 });

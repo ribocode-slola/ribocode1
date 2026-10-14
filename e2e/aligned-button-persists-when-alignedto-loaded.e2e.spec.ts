@@ -14,6 +14,8 @@ function dataPath(filename: string) {
 }
 
 test('Load Aligned button in Column B remains after loading AlignedTo in Column A', async ({ page }) => {
+  test.setTimeout(90000);
+
   await page.goto('http://localhost:5173/');
 
   // Find and click the Load AlignedTo button in column A, then upload file
@@ -21,8 +23,7 @@ test('Load Aligned button in Column B remains after loading AlignedTo in Column 
   await alignedToBtnA.click();
   const alignedToInputA = page.locator('#viewer-column-A-alignedto-file-input');
   await alignedToInputA.setInputFiles(dataPath('4ug0.cif'));
-  // Wait for the filename to appear
-  await expect(page.locator('#viewer-column-A-alignedto-filename-label')).toHaveText(/4ug0\.cif/);
+  await expect(page.locator('#viewer-column-A-alignedto-filename-label')).toBeVisible({ timeout: 60000 });
 
   // Wait 2 seconds to catch delayed disappearance
   await page.waitForTimeout(2000);

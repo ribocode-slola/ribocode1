@@ -1518,8 +1518,21 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         const hideInRightViewerByDefault = options?.hideInRightViewerByDefault === true;
         void discoverUniprotAccessionsFromFile(file, mode);
         const assetFile = Asset.File(file);
-        const pluginA = viewerA.ref.current;
-        const pluginB = viewerB.ref.current;
+        const waitForPlugins = async () => {
+            for (let attempt = 0; attempt < 50; attempt++) {
+                const pluginA = viewerA.ref.current;
+                const pluginB = viewerB.ref.current;
+                if (pluginA && pluginB) {
+                    return { pluginA, pluginB };
+                }
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            return null;
+        };
+
+        const plugins = await waitForPlugins();
+        const pluginA = plugins?.pluginA;
+        const pluginB = plugins?.pluginB;
         if (!pluginA || !pluginB) {
             console.error('One or both viewers are not initialized.');
             return undefined;
@@ -1533,8 +1546,6 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             setAlignedToFile(file);
             setAlignedToFilename(file.name);
             if (expectedAlignedToFilename) setExpectedAlignedToFilename(null);
-            // Ensure the loader button disappears after upload
-            viewerA.setIsMoleculeAlignedToLoaded(true);
 
             // Load into Viewer A
             const viewerAMoleculeAlignedTo = await loadMoleculeFileToViewer(
@@ -1547,11 +1558,12 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             viewerA.setMoleculeAlignedTo((prev: any) => ({
                 label: viewerAMoleculeAlignedTo.label,
                 name: viewerAMoleculeAlignedTo.name,
-                filename: viewerAMoleculeAlignedTo.filename ?? prev?.filename ?? "",
+                filename: viewerAMoleculeAlignedTo.filename ?? prev?.filename ?? file.name,
                 presetResult: viewerAMoleculeAlignedTo.presetResult ?? "Unknown",
                 trajectory: viewerAMoleculeAlignedTo.trajectory,
                 alignmentData: viewerAMoleculeAlignedTo.alignmentData
             }));
+            viewerA.setIsMoleculeAlignedToLoaded(true);
             viewerA.setIsMoleculeAlignedToVisible(true);
             let refAAlignedTo: string | null = null;
             const structAAlignedTo = pluginA.managers.structure.hierarchy.current.structures[0];
@@ -1571,7 +1583,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             viewerB.setMoleculeAlignedTo((prev: any) => ({
                 label: viewerBMoleculeAlignedTo.label,
                 name: viewerBMoleculeAlignedTo.name,
-                filename: viewerBMoleculeAlignedTo.filename ?? prev?.filename ?? "",
+                filename: viewerBMoleculeAlignedTo.filename ?? prev?.filename ?? file.name,
                 presetResult: viewerBMoleculeAlignedTo.presetResult ?? "Unknown",
                 trajectory: viewerBMoleculeAlignedTo.trajectory,
                 alignmentData: viewerBMoleculeAlignedTo.alignmentData
@@ -1701,17 +1713,13 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 alert(`You must select the file '${expectedAlignedToFilename}' for AlignedTo as required by the loaded session.`);
                 return;
             }
-            if (mode === Aligned && alignedFilename && file.name !== alignedFilename) {
-                alert(`Selected file name (${file.name}) does not match the expected Aligned file (${alignedFilename}). Please select the correct file.`);
-                return;
-            }
             // Use the ref for alignmentData to avoid async state issues
             const alignmentData = mode === Aligned ? alignmentDataRef.current : undefined;
             await loadMoleculeIntoViewers(file, mode, alignmentData, [], [], {
                 hideInRightViewerByDefault: true,
             });
         },
-        [expectedAlignedToFilename, alignedFilename]
+        [expectedAlignedToFilename]
     );
 
     // Fog state grouped by viewer
@@ -4807,7 +4815,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     otherMolstar: molstarA,
                                     realignedStructRefs: realignedStructRefsB,
                                     otherRealignedStructRefs: realignedStructRefsA,
-                                    isMoleculeAlignedLoaded: !!(viewerB.moleculeAligned && viewerB.moleculeAligned.filename),
+                                    isMoleculeAlignedLoaded: viewerB.isMoleculeAlignedLoaded,
                                     isMoleculeAlignedToLoaded: viewerB.isMoleculeAlignedToLoaded,
                                     viewerReady: viewerBReady,
                                     otherViewerReady: viewerAReady,
@@ -4893,8 +4901,6 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     setRealignedStructRefs: setRealignedStructRefsB,
                                     fileInputLabel: 'Load Aligned',
                                     fileInputDisabled: !viewerB.isMoleculeAlignedToLoaded,
-                                    // Ensure loadedFilename is always passed explicitly for Aligned
-                                    loadedFilename: viewerB.moleculeAligned?.filename || viewerB.moleculeAligned?.name || viewerB.moleculeAligned?.label || '',
                                 })}
                                 moleculeUIAlignedToProps={getMoleculeUIAlignedToProps({
                                     molstar: molstarB,

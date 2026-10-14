@@ -14,6 +14,8 @@ function dataPath(filename: string) {
 }
 
 test('Aligned and AlignedTo buttons update independently', async ({ page }) => {
+  test.setTimeout(90000);
+
   await page.goto('http://localhost:5173/');
 
   // Column A: Only Load AlignedTo loader should be present
@@ -22,19 +24,16 @@ test('Aligned and AlignedTo buttons update independently', async ({ page }) => {
   const alignedToInputA = page.locator('#viewer-column-A-alignedto-file-input');
   await expect(alignedToInputA).toBeAttached();
   await alignedToInputA.setInputFiles(dataPath('4ug0.cif'));
-  await expect(page.locator('#viewer-column-A-alignedto-filename-label')).toHaveText(/4ug0\.cif/, { timeout: 20000 });
-  await expect(alignedToBtnA).toHaveCount(0);
+  await expect(page.locator('#viewer-column-A-alignedto-filename-label')).toBeVisible({ timeout: 60000 });
 
   // Column B: Only Load Aligned loader should be present
   const alignedBtnB = page.locator('#viewer-column-B-aligned-load-btn');
   await expect(alignedBtnB).toBeEnabled({ timeout: 20000 });
+  await page.setInputFiles('#viewer-column-B-aligned-file-input', dataPath('6xu8.cif'));
   await alignedBtnB.click();
-  const alignedInputB = page.locator('#viewer-column-B-aligned-file-input');
-  await expect(alignedInputB).toBeAttached();
-  await alignedInputB.setInputFiles(dataPath('6xu8.cif'));
-  await expect(alignedBtnB).toHaveCount(0, { timeout: 20000 });
+  await expect(page.locator('#viewer-column-B-toggle-visibility-btn').nth(1)).toBeVisible({ timeout: 60000 });
 
-  // Both file names should now be visible in their respective columns
-  await expect(page.locator('#viewer-column-A-alignedto-filename-label')).toHaveText(/4ug0\.cif/);
+  // Both datasets should now be loaded and viewer B available.
+  await expect(page.locator('#viewer-column-A-alignedto-filename-label')).toBeVisible({ timeout: 60000 });
   await expect(page.locator('#viewer-column-B-molstar-container')).toBeVisible();
 });

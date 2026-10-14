@@ -53,7 +53,7 @@ export function useMoleculeLoader({
         viewerA.setMoleculeAlignedTo((prev: any) => ({
           label: viewerAMoleculeAlignedTo.label,
           name: viewerAMoleculeAlignedTo.name,
-          filename: viewerAMoleculeAlignedTo.filename ?? prev?.filename ?? "",
+          filename: viewerAMoleculeAlignedTo.filename ?? prev?.filename ?? file.name ?? "",
           presetResult: viewerAMoleculeAlignedTo.presetResult ?? "Unknown",
           trajectory: viewerAMoleculeAlignedTo.trajectory,
           alignmentData: viewerAMoleculeAlignedTo.alignmentData
@@ -76,7 +76,7 @@ export function useMoleculeLoader({
         viewerB.setMoleculeAlignedTo((prev: any) => ({
           label: viewerBMoleculeAlignedTo.label,
           name: viewerBMoleculeAlignedTo.name,
-          filename: viewerBMoleculeAlignedTo.filename ?? prev?.filename ?? "",
+          filename: viewerBMoleculeAlignedTo.filename ?? prev?.filename ?? file.name ?? "",
           presetResult: viewerBMoleculeAlignedTo.presetResult ?? "Unknown",
           trajectory: viewerBMoleculeAlignedTo.trajectory,
         }));
@@ -105,7 +105,7 @@ export function useMoleculeLoader({
         viewerA.setMoleculeAligned((prev: any) => ({
           label: viewerAMoleculeAligned.label,
           name: viewerAMoleculeAligned.name,
-          filename: viewerAMoleculeAligned.filename ?? prev?.filename ?? "",
+          filename: viewerAMoleculeAligned.filename ?? prev?.filename ?? file.name ?? "",
           presetResult: viewerAMoleculeAligned.presetResult ?? "Unknown",
           trajectory: viewerAMoleculeAligned.trajectory,
         }));
@@ -127,7 +127,7 @@ export function useMoleculeLoader({
         viewerB.setMoleculeAligned((prev: any) => ({
           label: viewerBMoleculeAligned.label,
           name: viewerBMoleculeAligned.name,
-          filename: viewerBMoleculeAligned.filename ?? prev?.filename ?? "",
+          filename: viewerBMoleculeAligned.filename ?? prev?.filename ?? file.name ?? "",
           presetResult: viewerBMoleculeAligned.presetResult ?? "Unknown",
           trajectory: viewerBMoleculeAligned.trajectory,
         }));

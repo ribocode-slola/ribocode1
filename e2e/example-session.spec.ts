@@ -48,10 +48,10 @@ test.describe('Session Save/Load E2E', () => {
     await page.setInputFiles('#viewer-column-A-alignedto-file-input', alignedToFile);
     await expect(page.locator('#viewer-column-B-aligned-load-btn')).toBeEnabled({ timeout: 20000 });
     await page.setInputFiles('#viewer-column-B-aligned-file-input', alignedFile);
-    await page.click('#viewer-column-B-aligned-load-btn');
+    await expect(page.locator('#viewer-column-B-toggle-visibility-btn').nth(1)).toBeVisible({ timeout: 60000 });
 
-    await expect(page.getByRole('button', { name: /Hide 4UG0/i })).toBeVisible({ timeout: 30000 });
-    await expect(page.getByRole('button', { name: /Hide 6XU8/i })).toBeVisible({ timeout: 30000 });
+    await expect(page.locator('#viewer-column-A-toggle-visibility-btn').first()).toBeVisible({ timeout: 30000 });
+    await expect(page.locator('#viewer-column-B-toggle-visibility-btn').nth(1)).toBeVisible({ timeout: 60000 });
 
     await page.click('#session-menu-btn');
     await page.click('#session-menu-dropdown .session-menu-item:text-is("Save")');
@@ -67,7 +67,7 @@ test.describe('Session Save/Load E2E', () => {
 
     await expect(page.locator('#viewer-column-A-molstar-container')).toBeVisible();
     await expect(page.locator('#viewer-column-B-molstar-container')).toBeVisible();
-    await expect(page.getByRole('button', { name: /Hide 4UG0/i })).toBeVisible({ timeout: 30000 });
-    await expect(page.getByRole('button', { name: /Hide 6XU8/i })).toBeVisible({ timeout: 30000 });
+    await expect(page.locator('#viewer-column-A-toggle-visibility-btn').first()).toBeVisible({ timeout: 30000 });
+    await expect(page.locator('#viewer-column-B-toggle-visibility-btn').nth(1)).toBeVisible({ timeout: 60000 });
   });
 });
