@@ -61,10 +61,12 @@ The UI layout is as follows:
     - `Select and Zoom Controls`
       - Hidden by default.
       - Allows users to select parts of the AlignedTo data, zoom to it, highlight it and show details of it.
-      - `Highlight display`
-        - Allows users to choose selection visual style: `Highlight (halo)`, `Colour overlay`, or `Hybrid`.
-      - `Dim unselected`
-        - Optional contrast mode with adjustable `Strength`.
+      - `Visibility Controls`
+        - Hidden by default.
+        - Includes:
+          - `Zoom extraRadius` and `minRadius`.
+          - `Highlight display` (`Highlight (halo)`, `Colour overlay`, `Hybrid`).
+          - `Dim unselected` with adjustable `Strength`.
       - `Subunit Controls`
         - Hidden by default.
         - For subunit selection, zoom, highlight and inspection via:
@@ -120,10 +122,12 @@ The UI layout is as follows:
     - `Select and Zoom Controls`
       - Hidden by default.
       - Allows users to select parts of the Aligned data, zoom to it, highlight it and show details of it.
-      - `Highlight display`
-        - Allows users to choose selection visual style: `Highlight (halo)`, `Colour overlay`, or `Hybrid`.
-      - `Dim unselected`
-        - Optional contrast mode with adjustable `Strength`.
+      - `Visibility Controls`
+        - Hidden by default.
+        - Includes:
+          - `Zoom extraRadius` and `minRadius`.
+          - `Highlight display` (`Highlight (halo)`, `Colour overlay`, `Hybrid`).
+          - `Dim unselected` with adjustable `Strength`.
       - `Subunit Controls`
         - Hidden by default.
         - For subunit selection, zoom, highlight and inspection via:
@@ -184,10 +188,10 @@ The UI layout is as follows:
 |  Clip Radius                 |  Clip Radius                 |
 | ------------------------     | ------------------------     |
 | Select and Zoom Controls     | Select and Zoom Controls     |
-|  Zoom extra | Zoom min       |  Zoom extra | Zoom min       |
-|    Radius   |  Radius        |    Radius   |  Radius        |
-|  Highlight display           |  Highlight display           |
-|  Dim unselected              |  Dim unselected              |
+|  Visibility Controls         |  Visibility Controls         |
+|   Zoom extra/min Radius      |   Zoom extra/min Radius      |
+|   Highlight display          |   Highlight display          |
+|   Dim unselected             |   Dim unselected             |
 |  Subunit Controls            |  Subunit Controls            |
 |   Select                     |   Select                     |
 |   Zoom Highlight Inspect     |   Zoom Highlight Inspect     |

@@ -1,3 +1,59 @@
+## [v0.16.7] - 2026-10-14
+Release summary: this patch release aligns Highlight/Inspect control state with per-viewer molecule visibility, clears stale inspect focus when datasets are hidden, and hardens E2E startup against stale local dev servers.
+- Updated visibility semantics in `src/App.tsx` so Highlight/Inspect controls show `Off` and are disabled when the corresponding dataset is hidden in that viewer.
+- Updated dataset-visibility toggles in `src/App.tsx` so hiding/showing a dataset no longer mutates residue/chain/subunit inspect toggle state.
+- Fixed inspect-control wiring in `src/App.tsx` so each viewer row uses inspect handlers/state for its own dataset (not the other dataset in the same column), preventing cross-dataset residue inspect/detail changes.
+- Updated molecule visibility UI semantics in `src/components/Molecule.tsx` so overall dataset visibility reflects dataset state directly and can remain visible even when all representations are hidden.
+- Kept `Dim unselected` behavior selection-driven (not highlight-toggle-driven), preserving dimming when a valid chain/residue/subunit selection exists.
+- Hardened Playwright local test startup in `playwright.config.ts` by setting `webServer.reuseExistingServer` to `false`, avoiding stale listener reuse that caused `page.goto` abort failures.
+- Re-validated behavior with full Playwright E2E coverage (`18 passed`).
+
+## [v0.16.6] - 2026-10-14
+Release summary: this patch release fixes `Dim unselected` behavior so dimming remains active whenever a selection exists, even if highlight toggles are off.
+- Fixed selection-display dimming logic in `src/App.tsx` so `Dim unselected` is gated by selection presence (chain/residue/subunit selection), not by highlight toggle state.
+- Added and exported a deterministic selection predicate helper (`hasSelectionForDisplayDim`) in `src/App.tsx` to make dimming behavior explicit and testable.
+- Added focused unit regression coverage in `src/App.test.tsx` for dim-selection gating across chain, residue, and subunit selection cases, plus no-selection negative cases.
+- Verified targeted app/unit/integration suites for this behavior path remain green.
+
+## [v0.16.4] - 2026-10-14
+Release summary: this patch release strengthens regression detection for residue realignment by adding fast low-level tests that catch residue atom-extraction failures before end-to-end runs.
+- Added focused unit regression coverage in `src/App.test.tsx` for residue atom extraction used by residue realignment.
+- Added a guard test to ensure selected residue atom IDs are preserved and not dropped by chain-id mismatch behavior.
+- Exported the residue atom-extraction helper from `src/App.tsx` to enable direct low-level validation.
+- Verified the new low-level checks alongside the targeted residue realignment E2E suite (`e2e/residue-realign.e2e.spec.ts`).
+
+## [v0.16.3] - 2026-10-14
+Release summary: this patch release fixes a residue-realignment regression where valid residue selections could produce no usable atom set, and adds focused regression coverage to keep this workflow stable.
+- Fixed residue realignment atom extraction so selected residues consistently produce finite coordinate sets for alignment.
+- Fixed residue chain-id lookup to support both auth and label asym identifiers when deriving residue mappings.
+- Added focused Playwright E2E coverage in `e2e/residue-realign.e2e.spec.ts` for:
+	- full-chain residue realign consistency against chain realign on `6XU6`/`6XU8` (`CU->CU`), and
+	- targeted auth-range residue realign (`23..30`) for `7WTT` chain `w` to `AF-Q13895-F1-model_v6` chain `A`.
+- Added residue realignment debug exposure via test API to make regressions fail fast with actionable diagnostics instead of opaque timeouts.
+
+## [v0.16.2] - 2026-10-14
+Release summary: this patch release improves alignment compatibility and reliability, and fixes visibility/camera behavior for default-hidden dual-viewer workflows.
+- Added benchmark E2E coverage for chain-specific CU->CU alignment metrics on `6XU6`/`6XU8` to guard against fit-quality regressions.
+- Added an alignment diagnostics E2E benchmark for the weaker `7WTT`/`7WTZ` `e->e` case to track non-ideal but expected behavior.
+- Added ADR documentation for alignment quality gates and ownership split in `decisions/ADR-0001-alignment-quality-gates.md`, with guide/roadmap references.
+- Fixed Viewer B reveal behavior for default-hidden structures by stabilizing camera framing/reset flow after visibility changes.
+- Updated general molecule visibility controls so they reflect aggregate representation visibility and toggle all representations on/off.
+- Fixed trajectory alignment fallback for datasets without phosphorus atoms by selecting a best shared atom type when the requested selector yields no atoms (for example protein-only `CA` datasets).
+- Added regression coverage in `src/utils/alignmentGeometry.test.ts` to ensure default selector alignment no longer throws when only shared non-`P` atom types are present.
+
+## [v0.16.1] - 2026-10-13
+Release summary: this patch release restores expected chain realignment behavior for 6XU6/6XU8-style workflows.
+- Fixed a chain realignment regression by reverting rigid-transform translation behavior in `packages/molstar/src/extensions/ribocode/utils/geometry.ts` to the prior stable coordinate path.
+
+## [v0.16.0] - 2026-10-13
+Release summary: this minor release improves chain-label correctness for mmCIF files where auth and label chain IDs collide, and adds focused regression coverage to keep chain search behavior reliable.
+- Fixed chain label molecule-name mapping precedence so auth-chain mappings from `_pdbx_poly_seq_scheme` override colliding label-chain keys when needed.
+- Fixed incorrect molecule-description carry-over in auth/label collision cases (for example, preventing chain `G` inheriting chain `e` `S30` description in `7WTT`-style mappings).
+- Added regression coverage in `src/utils/uniprot.test.ts` for auth/label chain-ID collision handling during chain-to-molecule parsing.
+- Added regression coverage in `src/utils/chain.test.ts` to verify final enriched labels remain correct for both chains in collision scenarios (`eS30` on auth `e`, `eS6` on auth `G`).
+- Added chain-table search regression coverage in `src/components/ChainSelectionTable.test.tsx` to ensure `s30` matches only the intended chain label.
+- Updated `src/utils/viewerHelpers.test.ts` highlight-on assertions to align with the explicit highlight display-mode argument (`overlay`) used by current helper signatures.
+
 ## [v0.15.0] - 2026-10-13
 Release summary: this minor release improves highlight readability and reliability by introducing ordered multi-style highlighting, custom default highlight colours, and session persistence for highlight toggle state.
 - Added per-representation opacity sliders in molecule controls so each representation can be faded in or out independently.
