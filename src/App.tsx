@@ -833,6 +833,17 @@ function getResidueSelectionKey(
     return `${chainId}|${ordered.map(id => `${id}:${residueInsCodes?.[id] ?? ''}`).join(',')}`;
 }
 
+export function hasSelectionForDisplayDim(config: {
+    chainId?: string;
+    residueIds?: string[];
+    subunitChainIds?: string[];
+}): boolean {
+    const uniqueSubunitChainIds = Array.from(new Set((config.subunitChainIds ?? []).filter(Boolean)));
+    const hasChain = Boolean(config.chainId);
+    const hasResidues = (config.residueIds ?? []).length > 0;
+    return uniqueSubunitChainIds.length > 0 || hasChain || hasResidues;
+}
+
 const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
 
     // Store Files and filenames for aligned and alignedTo molecule reloads.
@@ -2614,12 +2625,18 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             for (const config of datasetConfigs) {
                 if (!config.structureRef) continue;
 
-                const hasActiveHighlight = config.subunitOn || config.chainOn || config.residueOn;
-                if (config.displaySettings.dimUnselected && hasActiveHighlight) {
+                const uniqueSubunitChainIds = Array.from(new Set(config.subunitChainIds.filter(Boolean)));
+                const hasSelection = hasSelectionForDisplayDim({
+                    chainId: config.chainId,
+                    residueIds: config.residueIds,
+                    subunitChainIds: config.subunitChainIds,
+                });
+
+                // Dimming is tied to selected loci, not to whether highlight toggles are currently enabled.
+                if (config.displaySettings.dimUnselected && hasSelection) {
                     applyStructureDimOverlay(plugin, config.structureRef, config.displaySettings.dimStrength);
                 }
 
-                const uniqueSubunitChainIds = Array.from(new Set(config.subunitChainIds.filter(Boolean)));
                 if (config.subunitOn && uniqueSubunitChainIds.length > 0) {
                     highlightLociOnSubunit(plugin, config.structureRef, uniqueSubunitChainIds, config.displaySettings.mode);
                 }

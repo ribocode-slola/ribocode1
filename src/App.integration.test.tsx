@@ -11,6 +11,7 @@
 import React from 'react';
 import { render, screen, waitFor, fireEvent, within, cleanup } from '@testing-library/react';
 import App from './App';
+import * as structureUtils from './utils/structure';
 import { vi, beforeAll, beforeEach, afterEach } from 'vitest';
 import { PluginCommands } from 'molstar/lib/mol-plugin/commands';
 
@@ -53,6 +54,8 @@ vi.mock('./utils/structure', () => ({
   focusLociOnResidue: vi.fn(),
   focusLociOnResidues: vi.fn(),
   focusLociOnSubunit: vi.fn(),
+  clearStructureHighlightOverpaint: vi.fn(),
+  applyStructureDimOverlay: vi.fn(),
   highlightLociOnChain: vi.fn(),
   highlightLociOnResidues: vi.fn(),
   highlightLociOnSubunit: vi.fn(),
@@ -652,6 +655,8 @@ describe('App integration: AlignedTo and Aligned loading', () => {
   beforeEach(() => {
     vi.useRealTimers();
     loadMoleculeFileToViewerMock?.mockClear?.();
+    vi.mocked(structureUtils.applyStructureDimOverlay).mockClear();
+    vi.mocked(structureUtils.clearStructureHighlightOverpaint).mockClear();
     (globalThis as any).__molstarViewerInstances = [];
     (globalThis as any).__mockStructureRepsByRef = {};
     (PluginCommands.State.RemoveObject.apply as any).mockClear?.();

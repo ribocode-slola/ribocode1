@@ -1,3 +1,10 @@
+## [v0.16.6] - 2026-10-14
+Release summary: this patch release fixes `Dim unselected` behavior so dimming remains active whenever a selection exists, even if highlight toggles are off.
+- Fixed selection-display dimming logic in `src/App.tsx` so `Dim unselected` is gated by selection presence (chain/residue/subunit selection), not by highlight toggle state.
+- Added and exported a deterministic selection predicate helper (`hasSelectionForDisplayDim`) in `src/App.tsx` to make dimming behavior explicit and testable.
+- Added focused unit regression coverage in `src/App.test.tsx` for dim-selection gating across chain, residue, and subunit selection cases, plus no-selection negative cases.
+- Verified targeted app/unit/integration suites for this behavior path remain green.
+
 ## [v0.16.4] - 2026-10-14
 Release summary: this patch release strengthens regression detection for residue realignment by adding fast low-level tests that catch residue atom-extraction failures before end-to-end runs.
 - Added focused unit regression coverage in `src/App.test.tsx` for residue atom extraction used by residue realignment.

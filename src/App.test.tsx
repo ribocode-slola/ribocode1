@@ -11,7 +11,7 @@
  */
 import { vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import App, { buildAtomDataForResidueGroup, copyCameraZoomRadiusBetweenViewers, readClippingFromViewer, runWithTemporarySyncDisabled } from './App';
+import App, { buildAtomDataForResidueGroup, copyCameraZoomRadiusBetweenViewers, hasSelectionForDisplayDim, readClippingFromViewer, runWithTemporarySyncDisabled } from './App';
 
 const makeZoomHandlerMock = vi.fn((config: any) => ({ handleButtonClick: vi.fn(), config }));
 
@@ -93,6 +93,25 @@ describe('App clipping defaults', () => {
   it('falls back to app defaults when Mol* clipping props are missing', () => {
     const clipping = readClippingFromViewer({ canvas3d: { props: {} } });
     expect(clipping).toEqual({ minNear: 1, clipRadius: 0 });
+  });
+});
+
+describe('App dim-selection predicate', () => {
+  it('returns true when chain selection is present even with no highlights', () => {
+    expect(hasSelectionForDisplayDim({ chainId: 'A', residueIds: [], subunitChainIds: [] })).toBe(true);
+  });
+
+  it('returns true when residue selection is present', () => {
+    expect(hasSelectionForDisplayDim({ chainId: '', residueIds: ['23', '30'], subunitChainIds: [] })).toBe(true);
+  });
+
+  it('returns true when subunit chain selection is present', () => {
+    expect(hasSelectionForDisplayDim({ chainId: '', residueIds: [], subunitChainIds: ['A', 'B'] })).toBe(true);
+  });
+
+  it('returns false when no selection is present', () => {
+    expect(hasSelectionForDisplayDim({ chainId: '', residueIds: [], subunitChainIds: [] })).toBe(false);
+    expect(hasSelectionForDisplayDim({})).toBe(false);
   });
 });
 
