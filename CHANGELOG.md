@@ -1,3 +1,7 @@
+## [Unreleased]
+- Fixed trajectory alignment fallback for datasets without phosphorus atoms by selecting a best shared atom type when the requested selector yields no atoms (for example protein-only `CA` datasets).
+- Added regression coverage in `src/utils/alignmentGeometry.test.ts` to ensure default selector alignment no longer throws when only shared non-`P` atom types are present.
+
 ## [v0.16.1] - 2026-10-13
 Release summary: this patch release restores expected chain realignment behavior for 6XU6/6XU8-style workflows.
 - Fixed a chain realignment regression by reverting rigid-transform translation behavior in `packages/molstar/src/extensions/ribocode/utils/geometry.ts` to the prior stable coordinate path.
