@@ -384,18 +384,20 @@ interface LoadDataRowProps {
                             >
                                 Dim unselected: {dimUnselected ? 'On' : 'Off'}
                             </button>
-                            <label htmlFor={`${idPrefix}-dim-unselected-strength`}>Strength:</label>
-                            <input
-                                id={`${idPrefix}-dim-unselected-strength`}
-                                type="number"
-                                min={0}
-                                max={1}
-                                step={0.05}
-                                value={dimUnselectedStrength}
-                                style={{ width: 70 }}
-                                onChange={e => onDimUnselectedStrengthChange(Number(e.target.value))}
-                                disabled={!dimUnselected}
-                            />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <label htmlFor={`${idPrefix}-dim-unselected-strength`}>Opacity</label>
+                                <input
+                                    id={`${idPrefix}-dim-unselected-strength`}
+                                    type="range"
+                                    min={0}
+                                    max={100}
+                                    step={1}
+                                    value={Math.round(dimUnselectedStrength * 100)}
+                                    onChange={e => onDimUnselectedStrengthChange(Number(e.target.value) / 100)}
+                                    disabled={!dimUnselected}
+                                />
+                                <span>{Math.round(dimUnselectedStrength * 100)}%</span>
+                            </div>
                         </div>
                     </>
                 )}
