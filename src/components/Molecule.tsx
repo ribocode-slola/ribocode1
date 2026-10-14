@@ -45,7 +45,7 @@ interface MoleculeUIProps {
     label: string;
     plugin: PluginUIContext | null;
     isVisible: boolean;
-    onToggleVisibility: () => void;
+    onToggleVisibility: () => void | Promise<void>;
     chainZoomLabel: string;
     onChainZoom: () => void;
     chainZoomDisabled: boolean;
@@ -164,82 +164,126 @@ const MoleculeUI: React.FC<MoleculeUIProps> = ({
         plugin.canvas3d?.requestDraw?.();
         forceUpdate();
     };
+
+    const setRepresentationVisibility = async (ref: string, visible: boolean) => {
+        if (!plugin) return;
+        const cell = plugin.state?.data?.cells?.get(ref);
+        if (!cell) return;
+        const currentlyVisible = cell?.state?.isHidden !== true;
+        if (currentlyVisible === visible) return;
+        if (onToggleRepVisibility) {
+            onToggleRepVisibility(ref);
+            return;
+        }
+        await PluginCommands.State.ToggleVisibility.apply(plugin, [plugin, { state: plugin.state.data, ref }]);
+    };
+
+    const getAnyRepresentationVisible = () => {
+        if (!plugin || representationRefs.length === 0) return isVisible;
+        return representationRefs.some(ref => isRepVisible(ref));
+    };
+
+    const handleToggleAllVisibility = async () => {
+        const hasRepresentationControls = representationRefs.length > 0;
+        if (!hasRepresentationControls || !plugin) {
+            await onToggleVisibility();
+            return;
+        }
+
+        const anyVisible = getAnyRepresentationVisible();
+        const targetVisible = !anyVisible;
+
+        // Keep the parent structure state and camera behavior consistent on reveal/hide.
+        if ((targetVisible && !isVisible) || (!targetVisible && isVisible)) {
+            await onToggleVisibility();
+        }
+
+        for (const ref of representationRefs) {
+            await setRepresentationVisibility(ref, targetVisible);
+        }
+
+        plugin.canvas3d?.requestDraw?.();
+        forceUpdate();
+    };
     // Per-representation menu state
     const [openMenu, setOpenMenu] = useState<string | null>(null);
     // Render the component.
     // Defensive: ensure label is a string
     const safeLabel = typeof label === 'string' ? label : '';
+    const hasRepresentationControls = representationRefs.length > 0;
+    const effectiveVisible = hasRepresentationControls ? getAnyRepresentationVisible() : isVisible;
+
     return (
-        <div className="molecule-row" id={idPrefix ? `${idPrefix}-${idSuffix}-${safeLabel.replace(/\s+/g, '-').toLowerCase()}` : `${idSuffix}-${safeLabel.replace(/\s+/g, '-').toLowerCase()}` }>
+        <div className={`molecule-row${hasRepresentationControls ? ' has-rep-controls' : ''}`} id={idPrefix ? `${idPrefix}-${idSuffix}-${safeLabel.replace(/\s+/g, '-').toLowerCase()}` : `${idSuffix}-${safeLabel.replace(/\s+/g, '-').toLowerCase()}` }>
             <div className="molecule-top-row">
                 <button
-                    onClick={onToggleVisibility}
+                    onClick={() => { void handleToggleAllVisibility(); }}
                     disabled={!plugin || !isLoaded}
                     className="msp-btn msp-form-control molecule-visibility-btn"
-                    aria-label={isVisible ? `Hide ${label}` : `Show ${label}`}
+                    aria-label={effectiveVisible ? `Hide ${label}` : `Show ${label}`}
                     id={idPrefix ? `${idPrefix}-toggle-visibility-btn` : undefined}
                 >
-                    {isVisible ? <VisibilityOutlinedSvg /> : <VisibilityOffOutlinedSvg />}
+                    {effectiveVisible ? <VisibilityOutlinedSvg /> : <VisibilityOffOutlinedSvg />}
                     <span className="molstar-label">{label}</span>
                 </button>
-                {/* Per-representation controls */}
-                {representationRefs.length > 0 && (
-                    <span className="rep-controls">
-                        {representationRefs.map(ref => {
-                            const cell = plugin?.state?.data?.cells?.get(ref);
-                            const typeName = getRepType(ref);
-                            const isVisible = isRepVisible(ref);
-                            const opacity = getRepOpacity(ref);
-                            if (!typeName) return null;
-                            // Use _ribocodeId if available, else fallback to ref
-                            const repId = cell?.params?.values?._ribocodeId || ref;
-                            return (
-                                <span key={ref} className="rep-btn-group">
-                                    <button
-                                        onClick={() => onToggleRepVisibility ? onToggleRepVisibility(ref) : handleToggleRepVisibility(ref)}
-                                        className="msp-btn msp-form-control"
-                                        disabled={!isLoaded}
-                                        aria-label={`Toggle visibility for ${typeName} representation`}
-                                        id={idPrefix ? `${idPrefix}-${toggleVisibilityRepIdSuffix}-${repId}` : undefined}
-                                    >
-                                        {isVisible ? <VisibilityOutlinedSvg /> : <VisibilityOffOutlinedSvg />}
-                                        <span className="molstar-label">{typeName}</span>
-                                    </button>
-                                    <label
-                                        htmlFor={idPrefix ? `${idPrefix}-rep-opacity-${repId}` : undefined}
-                                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-                                    >
-                                        <span className="molstar-label">Opacity</span>
-                                        <input
-                                            id={idPrefix ? `${idPrefix}-rep-opacity-${repId}` : undefined}
-                                            type="range"
-                                            min={0.1}
-                                            max={1}
-                                            step={0.05}
-                                            value={opacity}
-                                            disabled={!isLoaded}
-                                            onChange={e => {
-                                                void setRepOpacity(ref, Number(e.target.value));
-                                            }}
-                                        />
-                                        <span className="molstar-label">{Math.round(opacity * 100)}%</span>
-                                    </label>
-                                    {/* Delete button */}
-                                    <button
-                                        onClick={() => onDeleteRepresentation && onDeleteRepresentation(repId)}
-                                        className="msp-btn msp-btn-danger msp-form-control"
-                                        disabled={!isLoaded}
-                                        aria-label={`Delete ${typeName} representation`}
-                                        id={idPrefix ? `${idPrefix}-delete-rep-${repId}` : undefined}
-                                    >
-                                        &#x2716;
-                                    </button>
-                                </span>
-                            );
-                        })}
-                    </span>
-                )}
             </div>
+            {/* Per-representation controls rendered below in indented rows. */}
+            {hasRepresentationControls && (
+                <div className="rep-controls-row">
+                    {representationRefs.map(ref => {
+                        const cell = plugin?.state?.data?.cells?.get(ref);
+                        const typeName = getRepType(ref);
+                        const repVisible = isRepVisible(ref);
+                        const opacity = getRepOpacity(ref);
+                        if (!typeName) return null;
+                        // Use _ribocodeId if available, else fallback to ref
+                        const repId = cell?.params?.values?._ribocodeId || ref;
+                        return (
+                            <div key={ref} className="rep-btn-group rep-btn-group-row">
+                                <button
+                                    onClick={() => onToggleRepVisibility ? onToggleRepVisibility(ref) : handleToggleRepVisibility(ref)}
+                                    className="msp-btn msp-form-control"
+                                    disabled={!isLoaded}
+                                    aria-label={`Toggle visibility for ${typeName} representation`}
+                                    id={idPrefix ? `${idPrefix}-${toggleVisibilityRepIdSuffix}-${repId}` : undefined}
+                                >
+                                    {repVisible ? <VisibilityOutlinedSvg /> : <VisibilityOffOutlinedSvg />}
+                                    <span className="molstar-label">{typeName}</span>
+                                </button>
+                                <label
+                                    htmlFor={idPrefix ? `${idPrefix}-rep-opacity-${repId}` : undefined}
+                                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                                >
+                                    <span className="molstar-label">Opacity</span>
+                                    <input
+                                        id={idPrefix ? `${idPrefix}-rep-opacity-${repId}` : undefined}
+                                        type="range"
+                                        min={0.1}
+                                        max={1}
+                                        step={0.05}
+                                        value={opacity}
+                                        disabled={!isLoaded}
+                                        onChange={e => {
+                                            void setRepOpacity(ref, Number(e.target.value));
+                                        }}
+                                    />
+                                    <span className="molstar-label">{Math.round(opacity * 100)}%</span>
+                                </label>
+                                {/* Delete button */}
+                                <button
+                                    onClick={() => onDeleteRepresentation && onDeleteRepresentation(repId)}
+                                    className="msp-btn msp-btn-danger msp-form-control"
+                                    disabled={!isLoaded}
+                                    aria-label={`Delete ${typeName} representation`}
+                                    id={idPrefix ? `${idPrefix}-delete-rep-${repId}` : undefined}
+                                >
+                                    &#x2716;
+                                </button>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
             {/* Remove button for realigned molecules */}
             {onRemove && (
                 <button

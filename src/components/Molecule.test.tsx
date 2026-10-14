@@ -8,7 +8,7 @@
  * @lastModified 2026-04-24
  * @see https://github.com/ribocode-slola/ribocode1
  */
-import { vi } from 'vitest';import { render, screen, fireEvent } from '@testing-library/react';
+import { vi } from 'vitest';import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import MoleculeUI, { idSuffix as moleculeIdSuffix } from './Molecule';
 
 describe('MoleculeUI', () => {
@@ -91,7 +91,7 @@ describe('MoleculeUI', () => {
         expect(onToggleRepVisibility).toHaveBeenCalledWith(repRef);
     });
 
-    it('renders representation controls in the same top row as main visibility control', () => {
+    it('renders representation controls in an indented row below the main visibility control', () => {
         const repRef = 'rep-ref-2';
         const pluginWithRep = {
             state: {
@@ -117,8 +117,11 @@ describe('MoleculeUI', () => {
         const topRow = container.querySelector('.molecule-top-row');
         expect(topRow).toBeInTheDocument();
         expect(topRow?.querySelector('.molecule-visibility-btn')).toBeInTheDocument();
-        expect(topRow?.querySelector('.rep-controls')).toBeInTheDocument();
-        expect(topRow?.querySelector('.rep-btn-group')).toBeInTheDocument();
+        expect(topRow?.querySelector('.rep-controls')).not.toBeInTheDocument();
+
+        const repRow = container.querySelector('.rep-controls-row');
+        expect(repRow).toBeInTheDocument();
+        expect(repRow?.querySelector('.rep-btn-group-row')).toBeInTheDocument();
     });
 
     it('updates representation opacity when slider is changed', () => {
@@ -170,5 +173,70 @@ describe('MoleculeUI', () => {
         expect(to).toHaveBeenCalledWith(repRef);
         expect(update).toHaveBeenCalledTimes(1);
         expect(runTask).toHaveBeenCalledWith({ kind: 'mock-tree-commit' });
+    });
+
+    it('shows general visibility as hidden when all representations are hidden', () => {
+        const repRef = 'rep-ref-hidden';
+        const pluginWithHiddenRep = {
+            state: {
+                data: {
+                    cells: new Map([
+                        [repRef, {
+                            params: { values: { type: { name: 'cartoon' }, _ribocodeId: 'rep-hidden' } },
+                            state: { isHidden: true }
+                        }]
+                    ])
+                }
+            }
+        } as any;
+
+        render(
+            <MoleculeUI
+                {...baseProps}
+                plugin={pluginWithHiddenRep}
+                isVisible={true}
+                representationRefs={[repRef]}
+            />
+        );
+
+        expect(screen.getByLabelText('Show Test Molecule')).toBeInTheDocument();
+    });
+
+    it('general visibility toggle sets all representations visible when all are hidden', async () => {
+        const repA = 'rep-a-hidden';
+        const repB = 'rep-b-hidden';
+
+        const onToggleRepVisibility = vi.fn((ref: string) => {
+            const cell = pluginWithHiddenReps.state.data.cells.get(ref);
+            if (cell) cell.state.isHidden = !cell.state.isHidden;
+        });
+
+        const pluginWithHiddenReps = {
+            state: {
+                data: {
+                    cells: new Map([
+                        [repA, { params: { values: { type: { name: 'cartoon' } } }, state: { isHidden: true } }],
+                        [repB, { params: { values: { type: { name: 'spacefill' } } }, state: { isHidden: true } }],
+                    ])
+                }
+            },
+            canvas3d: { requestDraw: vi.fn() },
+        } as any;
+
+        render(
+            <MoleculeUI
+                {...baseProps}
+                plugin={pluginWithHiddenReps}
+                isVisible={true}
+                representationRefs={[repA, repB]}
+                onToggleRepVisibility={onToggleRepVisibility}
+            />
+        );
+
+        fireEvent.click(screen.getByLabelText('Show Test Molecule'));
+
+        await waitFor(() => {
+            expect(onToggleRepVisibility).toHaveBeenCalledTimes(2);
+        });
     });
 });

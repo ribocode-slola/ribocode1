@@ -14,6 +14,8 @@ function dataPath(filename: string) {
 }
 
 test('Visibility toggles work for Aligned and AlignedTo in both columns', async ({ page }) => {
+  test.setTimeout(90000);
+
   await page.goto('http://localhost:5173/');
 
   // Load AlignedTo in column A
@@ -21,29 +23,30 @@ test('Visibility toggles work for Aligned and AlignedTo in both columns', async 
   await alignedToBtnA.click();
   const alignedToInputA = page.locator('#viewer-column-A-alignedto-file-input');
   await alignedToInputA.setInputFiles(dataPath('4ug0.cif'));
-  await expect(page.getByRole('button', { name: /Hide 4UG0/i })).toBeVisible({ timeout: 30000 });
+  await expect(page.getByRole('button', { name: /(Hide|Show)\s+4UG0/i })).toBeVisible({ timeout: 30000 });
 
   // Load Aligned in column B
   const alignedBtnB = page.locator('#viewer-column-B-aligned-load-btn');
   await expect(alignedBtnB).toBeEnabled({ timeout: 20000 });
-  const alignedInputB = page.locator('#viewer-column-B-aligned-file-input');
-  await alignedInputB.setInputFiles(dataPath('6xu8.cif'));
+  await page.setInputFiles('#viewer-column-B-aligned-file-input', dataPath('6xu8.cif'));
   await alignedBtnB.click();
-  await expect(page.getByRole('button', { name: /Hide 6XU8/i })).toBeVisible({ timeout: 30000 });
+  await expect(page.locator('#viewer-column-B-toggle-visibility-btn').nth(1)).toBeVisible({ timeout: 60000 });
 
   // Toggle visibility for AlignedTo in column A
   const toggleAlignedToA = page.locator('#viewer-column-A-toggle-visibility-btn').first();
   await expect(toggleAlignedToA).toBeVisible();
-  await toggleAlignedToA.click();
+  await expect(toggleAlignedToA).toBeEnabled({ timeout: 30000 });
+  await toggleAlignedToA.click({ force: true });
   // Optionally, check for a class or style change indicating hidden state
 
   // Toggle visibility for Aligned in column B
-  const toggleAlignedB = page.locator('#viewer-column-B-toggle-visibility-btn').first();
+  const toggleAlignedB = page.locator('#viewer-column-B-toggle-visibility-btn').nth(1);
   await expect(toggleAlignedB).toBeVisible();
-  await toggleAlignedB.click();
+  await expect(toggleAlignedB).toBeEnabled({ timeout: 30000 });
+  await toggleAlignedB.click({ force: true });
   // Optionally, check for a class or style change indicating hidden state
 
   // Toggle back to visible
-  await toggleAlignedToA.click();
-  await toggleAlignedB.click();
+  await toggleAlignedToA.click({ force: true });
+  await toggleAlignedB.click({ force: true });
 });

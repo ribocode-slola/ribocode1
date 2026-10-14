@@ -1,3 +1,22 @@
+## [v0.16.3] - 2026-10-14
+Release summary: this patch release fixes a residue-realignment regression where valid residue selections could produce no usable atom set, and adds focused regression coverage to keep this workflow stable.
+- Fixed residue realignment atom extraction so selected residues consistently produce finite coordinate sets for alignment.
+- Fixed residue chain-id lookup to support both auth and label asym identifiers when deriving residue mappings.
+- Added focused Playwright E2E coverage in `e2e/residue-realign.e2e.spec.ts` for:
+	- full-chain residue realign consistency against chain realign on `6XU6`/`6XU8` (`CU->CU`), and
+	- targeted auth-range residue realign (`23..30`) for `7WTT` chain `w` to `AF-Q13895-F1-model_v6` chain `A`.
+- Added residue realignment debug exposure via test API to make regressions fail fast with actionable diagnostics instead of opaque timeouts.
+
+## [v0.16.2] - 2026-10-14
+Release summary: this patch release improves alignment compatibility and reliability, and fixes visibility/camera behavior for default-hidden dual-viewer workflows.
+- Added benchmark E2E coverage for chain-specific CU->CU alignment metrics on `6XU6`/`6XU8` to guard against fit-quality regressions.
+- Added an alignment diagnostics E2E benchmark for the weaker `7WTT`/`7WTZ` `e->e` case to track non-ideal but expected behavior.
+- Added ADR documentation for alignment quality gates and ownership split in `decisions/ADR-0001-alignment-quality-gates.md`, with guide/roadmap references.
+- Fixed Viewer B reveal behavior for default-hidden structures by stabilizing camera framing/reset flow after visibility changes.
+- Updated general molecule visibility controls so they reflect aggregate representation visibility and toggle all representations on/off.
+- Fixed trajectory alignment fallback for datasets without phosphorus atoms by selecting a best shared atom type when the requested selector yields no atoms (for example protein-only `CA` datasets).
+- Added regression coverage in `src/utils/alignmentGeometry.test.ts` to ensure default selector alignment no longer throws when only shared non-`P` atom types are present.
+
 ## [v0.16.1] - 2026-10-13
 Release summary: this patch release restores expected chain realignment behavior for 6XU6/6XU8-style workflows.
 - Fixed a chain realignment regression by reverting rigid-transform translation behavior in `packages/molstar/src/extensions/ribocode/utils/geometry.ts` to the prior stable coordinate path.

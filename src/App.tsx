@@ -83,6 +83,37 @@ interface SerializableCameraSnapshot {
     radius: number;
 }
 
+interface ChainRealignMetrics {
+    timestamp: number;
+    alignedToChainId: string;
+    alignedChainId: string;
+    atomPairCount: number;
+    rmsd: number;
+    meanPairDistanceBefore: number;
+    meanPairDistanceAfter: number;
+    improvementRatio: number;
+}
+
+interface ResidueRealignMetrics {
+    timestamp: number;
+    alignedToChainId: string;
+    alignedChainId: string;
+    alignedToResidueIds: string[];
+    alignedResidueIds: string[];
+    atomPairCount: number;
+    rmsd: number;
+    meanPairDistanceBefore: number;
+    meanPairDistanceAfter: number;
+    improvementRatio: number;
+}
+
+interface ResidueRealignDebugStatus {
+    phase: 'idle' | 'blocked' | 'running' | 'success' | 'failed';
+    reason?: string;
+    details?: Record<string, unknown>;
+    timestamp: number;
+}
+
 interface SessionUiState {
     zoom?: {
         extraRadius: number;
@@ -318,6 +349,20 @@ function getColumnStringValue(column: any, index: number): string {
     return '';
 }
 
+function normalizeResidueInsCode(raw: string): string {
+    const ins = String(raw || '').trim();
+    if (!ins || ins === '?' || ins === '.') return '';
+    return ins;
+}
+
+function buildResidueKeyFromParts(authSeqRaw: unknown, labelSeqRaw: unknown, insRaw: unknown): string {
+    const authSeq = String(authSeqRaw ?? '').trim();
+    const labelSeq = String(labelSeqRaw ?? '').trim();
+    const seq = authSeq && authSeq !== '?' && authSeq !== '.' ? authSeq : labelSeq;
+    const ins = normalizeResidueInsCode(String(insRaw ?? ''));
+    return `${seq}:${ins}`;
+}
+
 function buildAnchorAtomDataForChain(structure: any, chainId: string) {
     const symbolTypes: string[] = [];
     const chainIds: string[] = [];
@@ -368,7 +413,12 @@ function buildAnchorAtomDataForChain(structure: any, chainId: string) {
                     const anchor = normalizeAnchorName(labelAtomId || authAtomId);
                     if (!anchor) continue;
 
-                    const residueKey = `${StructureProperties.residue.auth_seq_id(loc) ?? ''}:${StructureProperties.residue.pdbx_PDB_ins_code(loc) ?? ''}`;
+                    const residueKey = buildResidueKeyFromParts(
+                        StructureProperties.residue.auth_seq_id(loc),
+                        StructureProperties.residue.label_seq_id(loc),
+                        StructureProperties.residue.pdbx_PDB_ins_code(loc)
+                    );
+                    if (!residueKey || residueKey === ':') continue;
                     const dedupeKey = `${anchor}:${residueKey}`;
                     if (seen.has(dedupeKey)) continue;
                     seen.add(dedupeKey);
@@ -396,6 +446,7 @@ function buildAnchorAtomDataForChain(structure: any, chainId: string) {
         if (unit.kind !== 0) continue;
         const model = unit.model;
         const chains = model?.atomicHierarchy?.chains;
+        const residues = model?.atomicHierarchy?.residues;
         const atoms = model?.atomicHierarchy?.atoms;
         const conformation = model?.atomicConformation;
         const residueAtomSegmentsIndex = model?.atomicHierarchy?.residueAtomSegments?.index;
@@ -418,7 +469,12 @@ function buildAnchorAtomDataForChain(structure: any, chainId: string) {
 
             const residueIdx = residueAtomSegmentsIndex[atomIdx];
             if (!Number.isFinite(residueIdx)) continue;
-            const residueKey = String(residueIdx);
+            const residueKey = buildResidueKeyFromParts(
+                getColumnStringValue(residues?.auth_seq_id, residueIdx),
+                getColumnStringValue(residues?.label_seq_id, residueIdx),
+                getColumnStringValue(residues?.pdbx_PDB_ins_code, residueIdx)
+            );
+            if (!residueKey || residueKey === ':') continue;
             const dedupeKey = `${anchor}:${residueKey}`;
             if (seen.has(dedupeKey)) continue;
             seen.add(dedupeKey);
@@ -702,28 +758,9 @@ function buildAtomDataForResidueGroup(
     }
 
     const units = structure?.data?.units ?? structure?.units ?? [];
-    const normalizedSelectedChainId = selectedChainId ? String(selectedChainId).trim().toUpperCase() : undefined;
-
-    const resolveChainIdxForAtom = (unit: any, atomIdx: number, elementOffset: number): number | undefined => {
-        const model = unit?.model;
-        const residueAtomSegmentsIndex = model?.atomicHierarchy?.residueAtomSegments?.index;
-        const chainAtomSegmentsIndex = model?.atomicHierarchy?.chainAtomSegments?.index;
-        if (residueAtomSegmentsIndex && chainAtomSegmentsIndex) {
-            const residueIdx = residueAtomSegmentsIndex[atomIdx];
-            if (residueIdx !== undefined) {
-                const derivedChainIdx = chainAtomSegmentsIndex[residueIdx];
-                if (derivedChainIdx !== undefined) return derivedChainIdx;
-            }
-        }
-        const unitChainIndex = unit?.chainIndex;
-        if (unitChainIndex) {
-            const local = unitChainIndex[elementOffset];
-            if (local !== undefined) return local;
-            const byAtom = unitChainIndex[atomIdx];
-            if (byAtom !== undefined) return byAtom;
-        }
-        return undefined;
-    };
+    // Residue IDs are already built from the currently selected chain in getResidueInfo,
+    // so re-filtering by chain index here can drop valid atoms due to model/unit index mismatches.
+    void selectedChainId;
 
     for (const unit of units) {
         if (unit.kind !== 0) continue;
@@ -737,17 +774,6 @@ function buildAtomDataForResidueGroup(
         for (let i = 0; i < elements.length; i++) {
             const atomIdx = elements[i];
             if (!allowedAtomIdx.has(atomIdx)) continue;
-
-            if (normalizedSelectedChainId) {
-                const chainIdx = resolveChainIdxForAtom(unit, atomIdx, i);
-                const authChainId = chains?.auth_asym_id?.value?.(chainIdx) ?? '';
-                const labelChainId = chains?.label_asym_id?.value?.(chainIdx) ?? '';
-                const authNorm = String(authChainId).trim().toUpperCase();
-                const labelNorm = String(labelChainId).trim().toUpperCase();
-                if (authNorm !== normalizedSelectedChainId && labelNorm !== normalizedSelectedChainId) {
-                    continue;
-                }
-            }
 
             const symbol = atoms.type_symbol && typeof atoms.type_symbol.value === 'function'
                 ? String(atoms.type_symbol.value(atomIdx) ?? '')
@@ -1310,6 +1336,11 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 syncEnabled,
                 activeViewer,
             }),
+            getLastRealignMetrics: () => ({
+                chain: lastChainRealignMetricsRef.current,
+                residue: lastResidueRealignMetricsRef.current,
+            }),
+            getLastResidueRealignDebug: () => lastResidueRealignDebugRef.current,
         };
 
         return () => {
@@ -1479,8 +1510,21 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         const hideInRightViewerByDefault = options?.hideInRightViewerByDefault === true;
         void discoverUniprotAccessionsFromFile(file, mode);
         const assetFile = Asset.File(file);
-        const pluginA = viewerA.ref.current;
-        const pluginB = viewerB.ref.current;
+        const waitForPlugins = async () => {
+            for (let attempt = 0; attempt < 50; attempt++) {
+                const pluginA = viewerA.ref.current;
+                const pluginB = viewerB.ref.current;
+                if (pluginA && pluginB) {
+                    return { pluginA, pluginB };
+                }
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            return null;
+        };
+
+        const plugins = await waitForPlugins();
+        const pluginA = plugins?.pluginA;
+        const pluginB = plugins?.pluginB;
         if (!pluginA || !pluginB) {
             console.error('One or both viewers are not initialized.');
             return undefined;
@@ -1494,8 +1538,6 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             setAlignedToFile(file);
             setAlignedToFilename(file.name);
             if (expectedAlignedToFilename) setExpectedAlignedToFilename(null);
-            // Ensure the loader button disappears after upload
-            viewerA.setIsMoleculeAlignedToLoaded(true);
 
             // Load into Viewer A
             const viewerAMoleculeAlignedTo = await loadMoleculeFileToViewer(
@@ -1508,11 +1550,12 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             viewerA.setMoleculeAlignedTo((prev: any) => ({
                 label: viewerAMoleculeAlignedTo.label,
                 name: viewerAMoleculeAlignedTo.name,
-                filename: viewerAMoleculeAlignedTo.filename ?? prev?.filename ?? "",
+                filename: viewerAMoleculeAlignedTo.filename ?? prev?.filename ?? file.name,
                 presetResult: viewerAMoleculeAlignedTo.presetResult ?? "Unknown",
                 trajectory: viewerAMoleculeAlignedTo.trajectory,
                 alignmentData: viewerAMoleculeAlignedTo.alignmentData
             }));
+            viewerA.setIsMoleculeAlignedToLoaded(true);
             viewerA.setIsMoleculeAlignedToVisible(true);
             let refAAlignedTo: string | null = null;
             const structAAlignedTo = pluginA.managers.structure.hierarchy.current.structures[0];
@@ -1532,7 +1575,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             viewerB.setMoleculeAlignedTo((prev: any) => ({
                 label: viewerBMoleculeAlignedTo.label,
                 name: viewerBMoleculeAlignedTo.name,
-                filename: viewerBMoleculeAlignedTo.filename ?? prev?.filename ?? "",
+                filename: viewerBMoleculeAlignedTo.filename ?? prev?.filename ?? file.name,
                 presetResult: viewerBMoleculeAlignedTo.presetResult ?? "Unknown",
                 trajectory: viewerBMoleculeAlignedTo.trajectory,
                 alignmentData: viewerBMoleculeAlignedTo.alignmentData
@@ -1662,17 +1705,13 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 alert(`You must select the file '${expectedAlignedToFilename}' for AlignedTo as required by the loaded session.`);
                 return;
             }
-            if (mode === Aligned && alignedFilename && file.name !== alignedFilename) {
-                alert(`Selected file name (${file.name}) does not match the expected Aligned file (${alignedFilename}). Please select the correct file.`);
-                return;
-            }
             // Use the ref for alignmentData to avoid async state issues
             const alignmentData = mode === Aligned ? alignmentDataRef.current : undefined;
             await loadMoleculeIntoViewers(file, mode, alignmentData, [], [], {
                 hideInRightViewerByDefault: true,
             });
         },
-        [expectedAlignedToFilename, alignedFilename]
+        [expectedAlignedToFilename]
     );
 
     // Fog state grouped by viewer
@@ -1889,24 +1928,68 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
 
     // Toggle visibility for moleculeAligned in viewer A.
     const toggleViewerAAligned = {
-        handleButtonClick: () =>
-            handleToggle(
+        handleButtonClick: async () => {
+            const wasVisible = viewerA.isMoleculeAlignedVisible;
+            const sourceSnapshot = !wasVisible ? getSerializableCameraSnapshot(viewerB.ref) : undefined;
+            await handleToggle(
                 viewerA,
                 'molecule' + Aligned,
                 viewerA.setIsMoleculeAlignedVisible,
                 viewerA.isMoleculeAlignedVisible
-            ),
+            );
+            // Aligned is hidden in Viewer A by default. When revealing it, align camera/clipping with Viewer B.
+            if (!wasVisible) {
+                const targetPlugin = viewerA.ref.current;
+                if (targetPlugin) {
+                    try {
+                        await MolPluginCommands.Camera.Reset(targetPlugin);
+                    } catch (err) {
+                        console.warn('Viewer A camera reset before reveal sync failed.', err);
+                    }
+                }
+                if (sourceSnapshot) {
+                    applySerializableCameraSnapshot(viewerA.ref, sourceSnapshot);
+                    setTimeout(() => applySerializableCameraSnapshot(viewerA.ref, sourceSnapshot), 0);
+                    setTimeout(() => applySerializableCameraSnapshot(viewerA.ref, sourceSnapshot), 32);
+                } else {
+                    copyCameraZoomRadius(viewerB.ref, viewerA.ref);
+                }
+                syncClippingFromMolstarAfterZoom(B, true);
+            }
+        },
     };
 
     // Toggle visibility for moleculeAlignedTo in viewer B.
     const toggleViewerBAlignedTo = {
-        handleButtonClick: () =>
-            handleToggle(
+        handleButtonClick: async () => {
+            const wasVisible = viewerB.isMoleculeAlignedToVisible;
+            const sourceSnapshot = !wasVisible ? getSerializableCameraSnapshot(viewerA.ref) : undefined;
+            await handleToggle(
                 viewerB,
                 'molecule' + AlignedTo,
                 viewerB.setIsMoleculeAlignedToVisible,
                 viewerB.isMoleculeAlignedToVisible
-            ),
+            );
+            // AlignedTo is hidden in Viewer B by default. When revealing it, align camera/clipping with Viewer A.
+            if (!wasVisible) {
+                const targetPlugin = viewerB.ref.current;
+                if (targetPlugin) {
+                    try {
+                        await MolPluginCommands.Camera.Reset(targetPlugin);
+                    } catch (err) {
+                        console.warn('Viewer B camera reset before reveal sync failed.', err);
+                    }
+                }
+                if (sourceSnapshot) {
+                    applySerializableCameraSnapshot(viewerB.ref, sourceSnapshot);
+                    setTimeout(() => applySerializableCameraSnapshot(viewerB.ref, sourceSnapshot), 0);
+                    setTimeout(() => applySerializableCameraSnapshot(viewerB.ref, sourceSnapshot), 32);
+                } else {
+                    copyCameraZoomRadius(viewerA.ref, viewerB.ref);
+                }
+                syncClippingFromMolstarAfterZoom(A, true);
+            }
+        },
     };
 
     // Toggle visibility for moleculeAligned in viewer B.
@@ -2773,11 +2856,17 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
     const realignTransformCacheRef = useRef<Record<string, Mat4>>({});
     const realignBaseTransformCacheRef = useRef<Record<string, Mat4>>({});
     const realignDiagnosticsCounterRef = useRef<Record<string, number>>({});
+    const lastChainRealignMetricsRef = useRef<ChainRealignMetrics | null>(null);
+    const lastResidueRealignMetricsRef = useRef<ResidueRealignMetrics | null>(null);
+    const lastResidueRealignDebugRef = useRef<ResidueRealignDebugStatus>({ phase: 'idle', timestamp: Date.now() });
 
     useEffect(() => {
         realignTransformCacheRef.current = {};
         realignBaseTransformCacheRef.current = {};
         realignDiagnosticsCounterRef.current = {};
+        lastChainRealignMetricsRef.current = null;
+        lastResidueRealignMetricsRef.current = null;
+        lastResidueRealignDebugRef.current = { phase: 'idle', timestamp: Date.now() };
     }, [structureRefAAligned, structureRefBAligned]);
 
     const getStructureCoordinateSystemMatrix = useCallback((
@@ -3057,18 +3146,42 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
 
             const atomPairCount = Math.min(movingPairIndexes.length, referencePairIndexes.length);
             let pairwiseRmsd = NaN;
+            let meanPairDistanceBefore = NaN;
+            let meanPairDistanceAfter = NaN;
+            let improvementRatio = NaN;
             if (atomPairCount > 0) {
-                let sumSq = 0;
+                let sumSqBefore = 0;
+                let sumSqAfter = 0;
                 for (let i = 0; i < atomPairCount; i++) {
                     const movingIdx = movingPairIndexes[i];
                     const referenceIdx = referencePairIndexes[i];
+                    const dxBefore = fitMoving.xs[movingIdx] - fitReference.xs[referenceIdx];
+                    const dyBefore = fitMoving.ys[movingIdx] - fitReference.ys[referenceIdx];
+                    const dzBefore = fitMoving.zs[movingIdx] - fitReference.zs[referenceIdx];
                     const dx = result.alignedX[movingIdx] - fitReference.xs[referenceIdx];
                     const dy = result.alignedY[movingIdx] - fitReference.ys[referenceIdx];
                     const dz = result.alignedZ[movingIdx] - fitReference.zs[referenceIdx];
-                    sumSq += dx * dx + dy * dy + dz * dz;
+                    sumSqBefore += dxBefore * dxBefore + dyBefore * dyBefore + dzBefore * dzBefore;
+                    sumSqAfter += dx * dx + dy * dy + dz * dz;
                 }
-                pairwiseRmsd = Math.sqrt(sumSq / atomPairCount);
+                meanPairDistanceBefore = Math.sqrt(sumSqBefore / atomPairCount);
+                pairwiseRmsd = Math.sqrt(sumSqAfter / atomPairCount);
+                meanPairDistanceAfter = pairwiseRmsd;
+                if (Number.isFinite(meanPairDistanceBefore) && Number.isFinite(meanPairDistanceAfter) && meanPairDistanceAfter > 0) {
+                    improvementRatio = meanPairDistanceBefore / meanPairDistanceAfter;
+                }
             }
+
+            lastChainRealignMetricsRef.current = {
+                timestamp: Date.now(),
+                alignedToChainId: selectedChainIdAlignedTo,
+                alignedChainId: selectedChainIdAligned,
+                atomPairCount,
+                rmsd: pairwiseRmsd,
+                meanPairDistanceBefore,
+                meanPairDistanceAfter,
+                improvementRatio,
+            };
 
             if (ENABLE_REALIGN_DIAGNOSTICS) {
                 console.info('[Re-align][Fit quality]', {
@@ -3384,14 +3497,45 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
     };
 
     const handleRealignToResidues = () => {
-        if (!canRealignToResidues || residueRealignmentExists) return;
+        const setResidueRealignDebug = (
+            phase: ResidueRealignDebugStatus['phase'],
+            reason?: string,
+            details?: Record<string, unknown>
+        ) => {
+            lastResidueRealignDebugRef.current = {
+                phase,
+                reason,
+                details,
+                timestamp: Date.now(),
+            };
+        };
+
+        if (!canRealignToResidues || residueRealignmentExists) {
+            setResidueRealignDebug('blocked', 'residue-realign-precondition-failed', {
+                canRealignToResidues,
+                residueRealignmentExists,
+                selectedChainIdAlignedTo,
+                selectedChainIdAligned,
+                alignedToResidueCount: selectedResidueIdsAlignedTo.length,
+                alignedResidueCount: selectedResidueIdsAligned.length,
+            });
+            return;
+        }
+        setResidueRealignDebug('running', 'residue-realign-started', {
+            selectedChainIdAlignedTo,
+            selectedChainIdAligned,
+            alignedToResidueCount: selectedResidueIdsAlignedTo.length,
+            alignedResidueCount: selectedResidueIdsAligned.length,
+        });
         const pluginA = viewerA.ref.current;
         if (!pluginA) {
             console.warn('Viewer A not initialized.');
+            setResidueRealignDebug('failed', 'viewer-a-not-initialized');
             return;
         }
         if (!structureRefAAlignedTo) {
             console.warn('Viewer A aligned-to structure not selected.');
+            setResidueRealignDebug('failed', 'alignedto-structure-ref-missing');
             return;
         }
 
@@ -3404,6 +3548,12 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
 
         if (!structureAlignedTo || !structureAligned) {
             console.warn('Could not find structure objects for selected refs.');
+            setResidueRealignDebug('failed', 'structure-object-missing', {
+                hasAlignedToStructure: !!structureAlignedTo,
+                hasAlignedStructure: !!structureAligned,
+                structureRefAAlignedTo,
+                structureRefAAligned,
+            });
             return;
         }
 
@@ -3424,6 +3574,12 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         const alignedSummary = summarizeAtomCloud(atomDataAligned.xs, atomDataAligned.ys, atomDataAligned.zs);
         if (alignedToSummary.finiteAtomCount === 0 || alignedSummary.finiteAtomCount === 0) {
             console.warn('[Re-align Residue] Could not proceed: one or both selected residue sets contain no finite atom coordinates.', {
+                selectedResidueIdsAlignedTo,
+                selectedResidueIdsAligned,
+                alignedToFiniteAtomCount: alignedToSummary.finiteAtomCount,
+                alignedFiniteAtomCount: alignedSummary.finiteAtomCount,
+            });
+            setResidueRealignDebug('failed', 'no-finite-atom-coordinates', {
                 selectedResidueIdsAlignedTo,
                 selectedResidueIdsAligned,
                 alignedToFiniteAtomCount: alignedToSummary.finiteAtomCount,
@@ -3462,6 +3618,69 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
 
             const isFiniteCoord = (x: number, y: number, z: number) =>
                 Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z);
+
+            const movingPairIndexes = atomDataAligned.symbolTypes
+                .map((type, idx) => ({ type, idx }))
+                .filter(({ type, idx }) =>
+                    selectedAtomTypesForResidueRealign[type]
+                    && isFiniteCoord(atomDataAligned.xs[idx], atomDataAligned.ys[idx], atomDataAligned.zs[idx])
+                )
+                .map(({ idx }) => idx);
+
+            const referencePairIndexes = atomDataAlignedTo.symbolTypes
+                .map((type, idx) => ({ type, idx }))
+                .filter(({ type, idx }) =>
+                    selectedAtomTypesForResidueRealign[type]
+                    && isFiniteCoord(atomDataAlignedTo.xs[idx], atomDataAlignedTo.ys[idx], atomDataAlignedTo.zs[idx])
+                )
+                .map(({ idx }) => idx);
+
+            const atomPairCount = Math.min(movingPairIndexes.length, referencePairIndexes.length);
+            let pairwiseRmsd = NaN;
+            let meanPairDistanceBefore = NaN;
+            let meanPairDistanceAfter = NaN;
+            let improvementRatio = NaN;
+            if (atomPairCount > 0) {
+                let sumSqBefore = 0;
+                let sumSqAfter = 0;
+                for (let i = 0; i < atomPairCount; i++) {
+                    const movingIdx = movingPairIndexes[i];
+                    const referenceIdx = referencePairIndexes[i];
+                    const dxBefore = atomDataAligned.xs[movingIdx] - atomDataAlignedTo.xs[referenceIdx];
+                    const dyBefore = atomDataAligned.ys[movingIdx] - atomDataAlignedTo.ys[referenceIdx];
+                    const dzBefore = atomDataAligned.zs[movingIdx] - atomDataAlignedTo.zs[referenceIdx];
+                    const dx = result.alignedX[movingIdx] - atomDataAlignedTo.xs[referenceIdx];
+                    const dy = result.alignedY[movingIdx] - atomDataAlignedTo.ys[referenceIdx];
+                    const dz = result.alignedZ[movingIdx] - atomDataAlignedTo.zs[referenceIdx];
+                    sumSqBefore += dxBefore * dxBefore + dyBefore * dyBefore + dzBefore * dzBefore;
+                    sumSqAfter += dx * dx + dy * dy + dz * dz;
+                }
+                meanPairDistanceBefore = Math.sqrt(sumSqBefore / atomPairCount);
+                pairwiseRmsd = Math.sqrt(sumSqAfter / atomPairCount);
+                meanPairDistanceAfter = pairwiseRmsd;
+                if (Number.isFinite(meanPairDistanceBefore) && Number.isFinite(meanPairDistanceAfter) && meanPairDistanceAfter > 0) {
+                    improvementRatio = meanPairDistanceBefore / meanPairDistanceAfter;
+                }
+            }
+
+            lastResidueRealignMetricsRef.current = {
+                timestamp: Date.now(),
+                alignedToChainId: selectedChainIdAlignedTo,
+                alignedChainId: selectedChainIdAligned,
+                alignedToResidueIds: [...selectedResidueIdsAlignedTo],
+                alignedResidueIds: [...selectedResidueIdsAligned],
+                atomPairCount,
+                rmsd: pairwiseRmsd,
+                meanPairDistanceBefore,
+                meanPairDistanceAfter,
+                improvementRatio,
+            };
+            setResidueRealignDebug('success', 'residue-realign-metrics-updated', {
+                atomPairCount,
+                meanPairDistanceBefore,
+                meanPairDistanceAfter,
+                improvementRatio,
+            });
 
             const buildRigidTransformFromFit = (): Mat4 => {
                 const rot = result.rotmat;
@@ -3583,6 +3802,9 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             })();
         } catch (err) {
             console.error('Residue alignment error:', err);
+            setResidueRealignDebug('failed', 'residue-alignment-error', {
+                error: err instanceof Error ? err.message : String(err),
+            });
         }
     };
 
@@ -4698,7 +4920,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     otherMolstar: molstarA,
                                     realignedStructRefs: realignedStructRefsB,
                                     otherRealignedStructRefs: realignedStructRefsA,
-                                    isMoleculeAlignedLoaded: !!(viewerB.moleculeAligned && viewerB.moleculeAligned.filename),
+                                    isMoleculeAlignedLoaded: viewerB.isMoleculeAlignedLoaded,
                                     isMoleculeAlignedToLoaded: viewerB.isMoleculeAlignedToLoaded,
                                     viewerReady: viewerBReady,
                                     otherViewerReady: viewerAReady,
@@ -4784,8 +5006,6 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     setRealignedStructRefs: setRealignedStructRefsB,
                                     fileInputLabel: 'Load Aligned',
                                     fileInputDisabled: !viewerB.isMoleculeAlignedToLoaded,
-                                    // Ensure loadedFilename is always passed explicitly for Aligned
-                                    loadedFilename: viewerB.moleculeAligned?.filename || viewerB.moleculeAligned?.name || viewerB.moleculeAligned?.label || '',
                                 })}
                                 moleculeUIAlignedToProps={getMoleculeUIAlignedToProps({
                                     molstar: molstarB,

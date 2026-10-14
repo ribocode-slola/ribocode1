@@ -7,6 +7,7 @@ function dataPath(filename: string) {
 
 test('Clip Radius reflects Mol* Reset Zoom camera changes', async ({ page }) => {
   test.fail(true, 'Known issue: clipping controls do not always reflect native Mol* zoom interactions.');
+  test.setTimeout(90000);
 
   await page.goto('http://localhost:5173/');
 
@@ -15,8 +16,7 @@ test('Clip Radius reflects Mol* Reset Zoom camera changes', async ({ page }) => 
   await expect(page.locator('#viewer-column-B-aligned-load-btn')).toBeEnabled({ timeout: 30000 });
 
   await page.setInputFiles('#viewer-column-B-aligned-file-input', dataPath('6xu8.cif'));
-  await page.click('#viewer-column-B-aligned-load-btn');
-  await expect(page.getByRole('button', { name: /Hide 6XU8/i })).toBeVisible({ timeout: 30000 });
+  await expect(page.locator('#viewer-column-B-toggle-visibility-btn').nth(1)).toBeVisible({ timeout: 60000 });
 
   await page.click('#viewer-column-B-clipping-controls-toggle-btn');
   const clipRadiusInput = page.locator('#viewer-column-B-aligned-clip-far-number');

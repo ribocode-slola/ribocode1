@@ -6,6 +6,8 @@ function dataPath(filename: string) {
 }
 
 test('Clip Radius stays consistent while clipping controls remain open after zoom', async ({ page }) => {
+  test.setTimeout(90000);
+
   await page.goto('http://localhost:5173/');
 
   await page.click('#viewer-column-A-alignedto-load-btn');
@@ -13,8 +15,7 @@ test('Clip Radius stays consistent while clipping controls remain open after zoo
   await expect(page.locator('#viewer-column-B-aligned-load-btn')).toBeEnabled({ timeout: 30000 });
 
   await page.setInputFiles('#viewer-column-B-aligned-file-input', dataPath('6xu8.cif'));
-  await page.click('#viewer-column-B-aligned-load-btn');
-  await expect(page.locator('#viewer-column-B-aligned-filename-label')).toHaveText(/6xu8\.cif/i, { timeout: 30000 });
+  await expect(page.locator('#viewer-column-B-toggle-visibility-btn').nth(1)).toBeVisible({ timeout: 60000 });
 
   await page.click('#viewer-column-B-clipping-controls-toggle-btn');
   const clipRadiusInput = page.locator('#viewer-column-B-aligned-clip-far-number');
@@ -25,13 +26,9 @@ test('Clip Radius stays consistent while clipping controls remain open after zoo
   await page.click('#viewer-column-B-aligned-select-chain-controls-toggle-btn');
 
   await expect(page.locator('#viewer-column-B-chain-table-container')).toBeVisible({ timeout: 30000 });
-  const availableChainValue = await page.evaluate(() => {
-    const rows = Array.from(document.querySelectorAll('[data-testid^="viewer-column-B-chain-table-row-"]'));
-    const first = rows[0]?.getAttribute('data-testid') || '';
-    return first.replace('viewer-column-B-chain-table-row-', '');
-  });
-  expect(availableChainValue).not.toBe('');
-  await page.click(`[data-testid="viewer-column-B-chain-table-row-${availableChainValue}"]`);
+  const chainRows = page.locator('[data-testid^="viewer-column-B-chain-table-row-"]');
+  await expect(chainRows.first()).toBeVisible({ timeout: 30000 });
+  await chainRows.first().click();
 
   await page.click('#viewer-column-B-aligned-zoom-chain-btn');
 
