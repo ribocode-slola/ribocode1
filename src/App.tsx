@@ -329,6 +329,20 @@ function getColumnStringValue(column: any, index: number): string {
     return '';
 }
 
+function normalizeResidueInsCode(raw: string): string {
+    const ins = String(raw || '').trim();
+    if (!ins || ins === '?' || ins === '.') return '';
+    return ins;
+}
+
+function buildResidueKeyFromParts(authSeqRaw: unknown, labelSeqRaw: unknown, insRaw: unknown): string {
+    const authSeq = String(authSeqRaw ?? '').trim();
+    const labelSeq = String(labelSeqRaw ?? '').trim();
+    const seq = authSeq && authSeq !== '?' && authSeq !== '.' ? authSeq : labelSeq;
+    const ins = normalizeResidueInsCode(String(insRaw ?? ''));
+    return `${seq}:${ins}`;
+}
+
 function buildAnchorAtomDataForChain(structure: any, chainId: string) {
     const symbolTypes: string[] = [];
     const chainIds: string[] = [];
@@ -379,7 +393,12 @@ function buildAnchorAtomDataForChain(structure: any, chainId: string) {
                     const anchor = normalizeAnchorName(labelAtomId || authAtomId);
                     if (!anchor) continue;
 
-                    const residueKey = `${StructureProperties.residue.auth_seq_id(loc) ?? ''}:${StructureProperties.residue.pdbx_PDB_ins_code(loc) ?? ''}`;
+                    const residueKey = buildResidueKeyFromParts(
+                        StructureProperties.residue.auth_seq_id(loc),
+                        StructureProperties.residue.label_seq_id(loc),
+                        StructureProperties.residue.pdbx_PDB_ins_code(loc)
+                    );
+                    if (!residueKey || residueKey === ':') continue;
                     const dedupeKey = `${anchor}:${residueKey}`;
                     if (seen.has(dedupeKey)) continue;
                     seen.add(dedupeKey);
@@ -407,6 +426,7 @@ function buildAnchorAtomDataForChain(structure: any, chainId: string) {
         if (unit.kind !== 0) continue;
         const model = unit.model;
         const chains = model?.atomicHierarchy?.chains;
+        const residues = model?.atomicHierarchy?.residues;
         const atoms = model?.atomicHierarchy?.atoms;
         const conformation = model?.atomicConformation;
         const residueAtomSegmentsIndex = model?.atomicHierarchy?.residueAtomSegments?.index;
@@ -429,7 +449,12 @@ function buildAnchorAtomDataForChain(structure: any, chainId: string) {
 
             const residueIdx = residueAtomSegmentsIndex[atomIdx];
             if (!Number.isFinite(residueIdx)) continue;
-            const residueKey = String(residueIdx);
+            const residueKey = buildResidueKeyFromParts(
+                getColumnStringValue(residues?.auth_seq_id, residueIdx),
+                getColumnStringValue(residues?.label_seq_id, residueIdx),
+                getColumnStringValue(residues?.pdbx_PDB_ins_code, residueIdx)
+            );
+            if (!residueKey || residueKey === ':') continue;
             const dedupeKey = `${anchor}:${residueKey}`;
             if (seen.has(dedupeKey)) continue;
             seen.add(dedupeKey);
@@ -1903,24 +1928,68 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
 
     // Toggle visibility for moleculeAligned in viewer A.
     const toggleViewerAAligned = {
-        handleButtonClick: () =>
-            handleToggle(
+        handleButtonClick: async () => {
+            const wasVisible = viewerA.isMoleculeAlignedVisible;
+            const sourceSnapshot = !wasVisible ? getSerializableCameraSnapshot(viewerB.ref) : undefined;
+            await handleToggle(
                 viewerA,
                 'molecule' + Aligned,
                 viewerA.setIsMoleculeAlignedVisible,
                 viewerA.isMoleculeAlignedVisible
-            ),
+            );
+            // Aligned is hidden in Viewer A by default. When revealing it, align camera/clipping with Viewer B.
+            if (!wasVisible) {
+                const targetPlugin = viewerA.ref.current;
+                if (targetPlugin) {
+                    try {
+                        await MolPluginCommands.Camera.Reset(targetPlugin);
+                    } catch (err) {
+                        console.warn('Viewer A camera reset before reveal sync failed.', err);
+                    }
+                }
+                if (sourceSnapshot) {
+                    applySerializableCameraSnapshot(viewerA.ref, sourceSnapshot);
+                    setTimeout(() => applySerializableCameraSnapshot(viewerA.ref, sourceSnapshot), 0);
+                    setTimeout(() => applySerializableCameraSnapshot(viewerA.ref, sourceSnapshot), 32);
+                } else {
+                    copyCameraZoomRadius(viewerB.ref, viewerA.ref);
+                }
+                syncClippingFromMolstarAfterZoom(B, true);
+            }
+        },
     };
 
     // Toggle visibility for moleculeAlignedTo in viewer B.
     const toggleViewerBAlignedTo = {
-        handleButtonClick: () =>
-            handleToggle(
+        handleButtonClick: async () => {
+            const wasVisible = viewerB.isMoleculeAlignedToVisible;
+            const sourceSnapshot = !wasVisible ? getSerializableCameraSnapshot(viewerA.ref) : undefined;
+            await handleToggle(
                 viewerB,
                 'molecule' + AlignedTo,
                 viewerB.setIsMoleculeAlignedToVisible,
                 viewerB.isMoleculeAlignedToVisible
-            ),
+            );
+            // AlignedTo is hidden in Viewer B by default. When revealing it, align camera/clipping with Viewer A.
+            if (!wasVisible) {
+                const targetPlugin = viewerB.ref.current;
+                if (targetPlugin) {
+                    try {
+                        await MolPluginCommands.Camera.Reset(targetPlugin);
+                    } catch (err) {
+                        console.warn('Viewer B camera reset before reveal sync failed.', err);
+                    }
+                }
+                if (sourceSnapshot) {
+                    applySerializableCameraSnapshot(viewerB.ref, sourceSnapshot);
+                    setTimeout(() => applySerializableCameraSnapshot(viewerB.ref, sourceSnapshot), 0);
+                    setTimeout(() => applySerializableCameraSnapshot(viewerB.ref, sourceSnapshot), 32);
+                } else {
+                    copyCameraZoomRadius(viewerA.ref, viewerB.ref);
+                }
+                syncClippingFromMolstarAfterZoom(A, true);
+            }
+        },
     };
 
     // Toggle visibility for moleculeAligned in viewer B.
