@@ -102,15 +102,15 @@ export function getResidueInfo(
     const chains = model.atomicHierarchy.chains;
     const residues = model.atomicHierarchy.residues;
     const atoms = model.atomicHierarchy.atoms;
-    // Find chain index for the requested chainId
+    // Find chain index for the requested chainId using either auth or label asym IDs.
     let chainIdx: number | undefined = undefined;
-    if (chains && chains.auth_asym_id && typeof chains.auth_asym_id.value === 'function') {
-        for (let i = 0; i < chains._rowCount; i++) {
-            if (chains.auth_asym_id.value(i) === chainId) { chainIdx = i; break; }
-        }
-    } else if (chains && chains.auth_asym_id && Array.isArray(chains.auth_asym_id.value)) {
-        for (let i = 0; i < chains._rowCount; i++) {
-            if (chains.auth_asym_id.value[i] === chainId) { chainIdx = i; break; }
+    const targetChainId = String(chainId || '').trim().toUpperCase();
+    for (let i = 0; i < (chains?._rowCount ?? 0); i++) {
+        const authId = readColumnValue(chains?.auth_asym_id, i).trim().toUpperCase();
+        const labelId = readColumnValue(chains?.label_asym_id, i).trim().toUpperCase();
+        if (authId === targetChainId || labelId === targetChainId) {
+            chainIdx = i;
+            break;
         }
     }
     //console.log('[getResidueInfo] chainIdx for chainId', chainId, ':', chainIdx);
@@ -125,8 +125,10 @@ export function getResidueInfo(
         //console.log('[getResidueInfo] Processing unit:', unit, 'elements.length:', elements.length);
         for (let i = 0; i < elements.length; i++) {
             const atomIdx = elements[i];
-            if (chainIndex[atomIdx] !== chainIdx) continue;
-            const resIdx = residueIndex[atomIdx];
+            const unitChainIdx = chainIndex?.[atomIdx] ?? chainIndex?.[i];
+            if (unitChainIdx !== chainIdx) continue;
+            const resIdx = residueIndex?.[atomIdx] ?? residueIndex?.[i];
+            if (!Number.isFinite(resIdx)) continue;
             // Get residue auth_seq_id
             let residueId = '';
             if (residues && residues.auth_seq_id && typeof residues.auth_seq_id.value === 'function') {

@@ -94,6 +94,26 @@ interface ChainRealignMetrics {
     improvementRatio: number;
 }
 
+interface ResidueRealignMetrics {
+    timestamp: number;
+    alignedToChainId: string;
+    alignedChainId: string;
+    alignedToResidueIds: string[];
+    alignedResidueIds: string[];
+    atomPairCount: number;
+    rmsd: number;
+    meanPairDistanceBefore: number;
+    meanPairDistanceAfter: number;
+    improvementRatio: number;
+}
+
+interface ResidueRealignDebugStatus {
+    phase: 'idle' | 'blocked' | 'running' | 'success' | 'failed';
+    reason?: string;
+    details?: Record<string, unknown>;
+    timestamp: number;
+}
+
 interface SessionUiState {
     zoom?: {
         extraRadius: number;
@@ -738,28 +758,9 @@ function buildAtomDataForResidueGroup(
     }
 
     const units = structure?.data?.units ?? structure?.units ?? [];
-    const normalizedSelectedChainId = selectedChainId ? String(selectedChainId).trim().toUpperCase() : undefined;
-
-    const resolveChainIdxForAtom = (unit: any, atomIdx: number, elementOffset: number): number | undefined => {
-        const model = unit?.model;
-        const residueAtomSegmentsIndex = model?.atomicHierarchy?.residueAtomSegments?.index;
-        const chainAtomSegmentsIndex = model?.atomicHierarchy?.chainAtomSegments?.index;
-        if (residueAtomSegmentsIndex && chainAtomSegmentsIndex) {
-            const residueIdx = residueAtomSegmentsIndex[atomIdx];
-            if (residueIdx !== undefined) {
-                const derivedChainIdx = chainAtomSegmentsIndex[residueIdx];
-                if (derivedChainIdx !== undefined) return derivedChainIdx;
-            }
-        }
-        const unitChainIndex = unit?.chainIndex;
-        if (unitChainIndex) {
-            const local = unitChainIndex[elementOffset];
-            if (local !== undefined) return local;
-            const byAtom = unitChainIndex[atomIdx];
-            if (byAtom !== undefined) return byAtom;
-        }
-        return undefined;
-    };
+    // Residue IDs are already built from the currently selected chain in getResidueInfo,
+    // so re-filtering by chain index here can drop valid atoms due to model/unit index mismatches.
+    void selectedChainId;
 
     for (const unit of units) {
         if (unit.kind !== 0) continue;
@@ -773,17 +774,6 @@ function buildAtomDataForResidueGroup(
         for (let i = 0; i < elements.length; i++) {
             const atomIdx = elements[i];
             if (!allowedAtomIdx.has(atomIdx)) continue;
-
-            if (normalizedSelectedChainId) {
-                const chainIdx = resolveChainIdxForAtom(unit, atomIdx, i);
-                const authChainId = chains?.auth_asym_id?.value?.(chainIdx) ?? '';
-                const labelChainId = chains?.label_asym_id?.value?.(chainIdx) ?? '';
-                const authNorm = String(authChainId).trim().toUpperCase();
-                const labelNorm = String(labelChainId).trim().toUpperCase();
-                if (authNorm !== normalizedSelectedChainId && labelNorm !== normalizedSelectedChainId) {
-                    continue;
-                }
-            }
 
             const symbol = atoms.type_symbol && typeof atoms.type_symbol.value === 'function'
                 ? String(atoms.type_symbol.value(atomIdx) ?? '')
@@ -1348,7 +1338,9 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             }),
             getLastRealignMetrics: () => ({
                 chain: lastChainRealignMetricsRef.current,
+                residue: lastResidueRealignMetricsRef.current,
             }),
+            getLastResidueRealignDebug: () => lastResidueRealignDebugRef.current,
         };
 
         return () => {
@@ -2865,12 +2857,16 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
     const realignBaseTransformCacheRef = useRef<Record<string, Mat4>>({});
     const realignDiagnosticsCounterRef = useRef<Record<string, number>>({});
     const lastChainRealignMetricsRef = useRef<ChainRealignMetrics | null>(null);
+    const lastResidueRealignMetricsRef = useRef<ResidueRealignMetrics | null>(null);
+    const lastResidueRealignDebugRef = useRef<ResidueRealignDebugStatus>({ phase: 'idle', timestamp: Date.now() });
 
     useEffect(() => {
         realignTransformCacheRef.current = {};
         realignBaseTransformCacheRef.current = {};
         realignDiagnosticsCounterRef.current = {};
         lastChainRealignMetricsRef.current = null;
+        lastResidueRealignMetricsRef.current = null;
+        lastResidueRealignDebugRef.current = { phase: 'idle', timestamp: Date.now() };
     }, [structureRefAAligned, structureRefBAligned]);
 
     const getStructureCoordinateSystemMatrix = useCallback((
@@ -3501,14 +3497,45 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
     };
 
     const handleRealignToResidues = () => {
-        if (!canRealignToResidues || residueRealignmentExists) return;
+        const setResidueRealignDebug = (
+            phase: ResidueRealignDebugStatus['phase'],
+            reason?: string,
+            details?: Record<string, unknown>
+        ) => {
+            lastResidueRealignDebugRef.current = {
+                phase,
+                reason,
+                details,
+                timestamp: Date.now(),
+            };
+        };
+
+        if (!canRealignToResidues || residueRealignmentExists) {
+            setResidueRealignDebug('blocked', 'residue-realign-precondition-failed', {
+                canRealignToResidues,
+                residueRealignmentExists,
+                selectedChainIdAlignedTo,
+                selectedChainIdAligned,
+                alignedToResidueCount: selectedResidueIdsAlignedTo.length,
+                alignedResidueCount: selectedResidueIdsAligned.length,
+            });
+            return;
+        }
+        setResidueRealignDebug('running', 'residue-realign-started', {
+            selectedChainIdAlignedTo,
+            selectedChainIdAligned,
+            alignedToResidueCount: selectedResidueIdsAlignedTo.length,
+            alignedResidueCount: selectedResidueIdsAligned.length,
+        });
         const pluginA = viewerA.ref.current;
         if (!pluginA) {
             console.warn('Viewer A not initialized.');
+            setResidueRealignDebug('failed', 'viewer-a-not-initialized');
             return;
         }
         if (!structureRefAAlignedTo) {
             console.warn('Viewer A aligned-to structure not selected.');
+            setResidueRealignDebug('failed', 'alignedto-structure-ref-missing');
             return;
         }
 
@@ -3521,6 +3548,12 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
 
         if (!structureAlignedTo || !structureAligned) {
             console.warn('Could not find structure objects for selected refs.');
+            setResidueRealignDebug('failed', 'structure-object-missing', {
+                hasAlignedToStructure: !!structureAlignedTo,
+                hasAlignedStructure: !!structureAligned,
+                structureRefAAlignedTo,
+                structureRefAAligned,
+            });
             return;
         }
 
@@ -3541,6 +3574,12 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         const alignedSummary = summarizeAtomCloud(atomDataAligned.xs, atomDataAligned.ys, atomDataAligned.zs);
         if (alignedToSummary.finiteAtomCount === 0 || alignedSummary.finiteAtomCount === 0) {
             console.warn('[Re-align Residue] Could not proceed: one or both selected residue sets contain no finite atom coordinates.', {
+                selectedResidueIdsAlignedTo,
+                selectedResidueIdsAligned,
+                alignedToFiniteAtomCount: alignedToSummary.finiteAtomCount,
+                alignedFiniteAtomCount: alignedSummary.finiteAtomCount,
+            });
+            setResidueRealignDebug('failed', 'no-finite-atom-coordinates', {
                 selectedResidueIdsAlignedTo,
                 selectedResidueIdsAligned,
                 alignedToFiniteAtomCount: alignedToSummary.finiteAtomCount,
@@ -3579,6 +3618,69 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
 
             const isFiniteCoord = (x: number, y: number, z: number) =>
                 Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z);
+
+            const movingPairIndexes = atomDataAligned.symbolTypes
+                .map((type, idx) => ({ type, idx }))
+                .filter(({ type, idx }) =>
+                    selectedAtomTypesForResidueRealign[type]
+                    && isFiniteCoord(atomDataAligned.xs[idx], atomDataAligned.ys[idx], atomDataAligned.zs[idx])
+                )
+                .map(({ idx }) => idx);
+
+            const referencePairIndexes = atomDataAlignedTo.symbolTypes
+                .map((type, idx) => ({ type, idx }))
+                .filter(({ type, idx }) =>
+                    selectedAtomTypesForResidueRealign[type]
+                    && isFiniteCoord(atomDataAlignedTo.xs[idx], atomDataAlignedTo.ys[idx], atomDataAlignedTo.zs[idx])
+                )
+                .map(({ idx }) => idx);
+
+            const atomPairCount = Math.min(movingPairIndexes.length, referencePairIndexes.length);
+            let pairwiseRmsd = NaN;
+            let meanPairDistanceBefore = NaN;
+            let meanPairDistanceAfter = NaN;
+            let improvementRatio = NaN;
+            if (atomPairCount > 0) {
+                let sumSqBefore = 0;
+                let sumSqAfter = 0;
+                for (let i = 0; i < atomPairCount; i++) {
+                    const movingIdx = movingPairIndexes[i];
+                    const referenceIdx = referencePairIndexes[i];
+                    const dxBefore = atomDataAligned.xs[movingIdx] - atomDataAlignedTo.xs[referenceIdx];
+                    const dyBefore = atomDataAligned.ys[movingIdx] - atomDataAlignedTo.ys[referenceIdx];
+                    const dzBefore = atomDataAligned.zs[movingIdx] - atomDataAlignedTo.zs[referenceIdx];
+                    const dx = result.alignedX[movingIdx] - atomDataAlignedTo.xs[referenceIdx];
+                    const dy = result.alignedY[movingIdx] - atomDataAlignedTo.ys[referenceIdx];
+                    const dz = result.alignedZ[movingIdx] - atomDataAlignedTo.zs[referenceIdx];
+                    sumSqBefore += dxBefore * dxBefore + dyBefore * dyBefore + dzBefore * dzBefore;
+                    sumSqAfter += dx * dx + dy * dy + dz * dz;
+                }
+                meanPairDistanceBefore = Math.sqrt(sumSqBefore / atomPairCount);
+                pairwiseRmsd = Math.sqrt(sumSqAfter / atomPairCount);
+                meanPairDistanceAfter = pairwiseRmsd;
+                if (Number.isFinite(meanPairDistanceBefore) && Number.isFinite(meanPairDistanceAfter) && meanPairDistanceAfter > 0) {
+                    improvementRatio = meanPairDistanceBefore / meanPairDistanceAfter;
+                }
+            }
+
+            lastResidueRealignMetricsRef.current = {
+                timestamp: Date.now(),
+                alignedToChainId: selectedChainIdAlignedTo,
+                alignedChainId: selectedChainIdAligned,
+                alignedToResidueIds: [...selectedResidueIdsAlignedTo],
+                alignedResidueIds: [...selectedResidueIdsAligned],
+                atomPairCount,
+                rmsd: pairwiseRmsd,
+                meanPairDistanceBefore,
+                meanPairDistanceAfter,
+                improvementRatio,
+            };
+            setResidueRealignDebug('success', 'residue-realign-metrics-updated', {
+                atomPairCount,
+                meanPairDistanceBefore,
+                meanPairDistanceAfter,
+                improvementRatio,
+            });
 
             const buildRigidTransformFromFit = (): Mat4 => {
                 const rot = result.rotmat;
@@ -3700,6 +3802,9 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             })();
         } catch (err) {
             console.error('Residue alignment error:', err);
+            setResidueRealignDebug('failed', 'residue-alignment-error', {
+                error: err instanceof Error ? err.message : String(err),
+            });
         }
     };
 

@@ -1,3 +1,12 @@
+## [v0.16.3] - 2026-10-14
+Release summary: this patch release fixes a residue-realignment regression where valid residue selections could produce no usable atom set, and adds focused regression coverage to keep this workflow stable.
+- Fixed residue realignment atom extraction so selected residues consistently produce finite coordinate sets for alignment.
+- Fixed residue chain-id lookup to support both auth and label asym identifiers when deriving residue mappings.
+- Added focused Playwright E2E coverage in `e2e/residue-realign.e2e.spec.ts` for:
+	- full-chain residue realign consistency against chain realign on `6XU6`/`6XU8` (`CU->CU`), and
+	- targeted auth-range residue realign (`23..30`) for `7WTT` chain `w` to `AF-Q13895-F1-model_v6` chain `A`.
+- Added residue realignment debug exposure via test API to make regressions fail fast with actionable diagnostics instead of opaque timeouts.
+
 ## [v0.16.2] - 2026-10-14
 Release summary: this patch release improves alignment compatibility and reliability, and fixes visibility/camera behavior for default-hidden dual-viewer workflows.
 - Added benchmark E2E coverage for chain-specific CU->CU alignment metrics on `6XU6`/`6XU8` to guard against fit-quality regressions.
