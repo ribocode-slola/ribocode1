@@ -383,6 +383,36 @@ Developers looking for contributions should consult both:
 - [ROADMAP.md](./ROADMAP.md) for planned direction and upcoming themes.
 - [GitHub Issues](https://github.com/ribocode-slola/ribocode1/issues) for concrete tasks, bugs, feature requests, and places to respond with fixes.
 
+## Session Fidelity Inventory (v0.17.x)
+
+This section tracks session save/load parity for the roadmap workstream "v0.17.x (Session Fidelity and Collaboration)".
+
+### Parity Matrix
+
+| Category | Coverage |
+| --- | --- |
+| Persisted + restored | Dataset visibility per viewer/mode (`AlignedTo`/`Aligned`), representation list (`type`, `colorTheme`, `visible`), highlights (subunit/chain/residue), inspect toggles (subunit/chain/residue per viewer/mode), selected subunit/chain/residue(s), selection display mode + dim settings (per mode), zoom controls (global + per viewer), clipping controls (per viewer), fog settings (per viewer), camera snapshots (per viewer), sync enabled + active viewer, chain-finder queries, UniProt label toggle (legacy + per viewer), color-theme library + selected theme per mode, resolved UniProt gene-name cache. |
+| Persisted but restore has caveats | Camera/clipping/fog only restore when corresponding dataset/plugin state is available. If required files are missing or loaded later, those values may restore partially. Legacy `selectionDisplay` payloads (single mode) are restored to both modes as a compatibility fallback. Inspect/highlight restoration depends on chain/residue IDs being present in the loaded structures. |
+| Not persisted (known gaps) | Per-representation style parameters beyond `type`/`colorTheme`/`visible` (for example opacity sliders and other representation params), transient panel open/closed UI state, temporary diagnostics (realignment debug/status history), and ephemeral in-progress interaction state. |
+
+### Round-Trip Guarantees
+
+- Save -> load restores practical analysis context for the common paired-viewer workflow:
+  - what datasets are shown/hidden;
+  - which representations are visible;
+  - what selections/highlights/inspect toggles are active;
+  - display mode and dim settings;
+  - camera + clipping + fog controls.
+- Round-trip guarantees are validated by deterministic integration tests in `src/App.integration.test.tsx`, including a sync-on camera-restore regression check for preserving distinct viewer snapshots.
+- End-to-end parity coverage also includes `e2e/session-load-sync-camera-order.e2e.spec.ts`, which guards against Viewer B camera drift immediately after session load when sync is restored.
+
+### Known Limitations and Fallbacks
+
+- `Load` requires external files and opens a required-file picker when session references cannot be resolved automatically.
+- `Load All` can restore from embedded files in the session payload (`schemaVersion: 2`) and is the preferred collaboration/share path.
+- When datasets cannot be reloaded, session UI state may still apply partially and the app surfaces a non-blocking alert.
+- Non-persisted state listed above is intentionally out-of-scope for current v0.17.x parity.
+
 
 ## Tests
 
