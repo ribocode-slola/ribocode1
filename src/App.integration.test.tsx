@@ -120,6 +120,11 @@ vi.mock('molstar/lib/extensions/ribocode/utils/geometry', () => ({
 vi.mock('./hooks/useMolstarViewer', () => ({
   useMolstarViewer: vi.fn((pluginRef: any) => {
     const allInstances = ((globalThis as any).__molstarViewerInstances ||= []);
+    const instanceByPluginRef = ((globalThis as any).__molstarViewerInstanceByPluginRef ||= new Map<any, any>());
+    const existing = instanceByPluginRef.get(pluginRef);
+    if (existing) {
+      return existing;
+    }
     const structureRefs: Record<string, string> = {};
     const representationRefs: Record<string, string[]> = {};
     const repIdMap: Record<string, Record<string, string>> = {};
@@ -161,6 +166,7 @@ vi.mock('./hooks/useMolstarViewer', () => ({
         residueToAtomIds: { '10': ['1'], '20': ['2'] },
       }),
     };
+    instanceByPluginRef.set(pluginRef, instance);
     allInstances.push(instance);
     return instance;
   }),
@@ -658,6 +664,7 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     vi.mocked(structureUtils.applyStructureDimOverlay).mockClear();
     vi.mocked(structureUtils.clearStructureHighlightOverpaint).mockClear();
     (globalThis as any).__molstarViewerInstances = [];
+    (globalThis as any).__molstarViewerInstanceByPluginRef = new Map();
     (globalThis as any).__mockStructureRepsByRef = {};
     (PluginCommands.State.RemoveObject.apply as any).mockClear?.();
     const pluginA = (globalThis as any).__mockPluginA;
@@ -751,6 +758,10 @@ describe('App integration: AlignedTo and Aligned loading', () => {
       },
       viewerB: { moleculeAligned: { filename: '6xu8.cif' } },
       uiState: {
+        visibilityByViewer: {
+          viewerA: { alignedTo: true, aligned: false },
+          viewerB: { alignedTo: false, aligned: true },
+        },
         selections: {
           alignedTo: { subunit: 'Large', chainId: 'A', residueIds: ['10'], residueId: '10' },
           aligned: { subunit: 'Small', chainId: 'B', residueIds: ['20'], residueId: '20' },
@@ -782,6 +793,91 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     const inspectResidueBtn = document.getElementById(alignedToInspectResidueBtnId) as HTMLButtonElement | null;
     expect(inspectResidueBtn).toBeInTheDocument();
     expect(inspectResidueBtn).not.toBeDisabled();
+  });
+
+  it('does not mirror inspect to a hidden dataset in the opposite viewer (regression)', async () => {
+    render(<App />);
+    await waitFor(() => expect(screen.getByRole('banner')).toBeInTheDocument());
+
+    const onSessionLoaded = (globalThis as any).__onSessionLoaded as ((session: any, files: Record<string, File>) => Promise<void>) | undefined;
+    expect(onSessionLoaded).toBeDefined();
+
+    const session = {
+      viewerA: {
+        moleculeAlignedTo: { filename: '4ug0.cif' },
+        moleculeAligned: { filename: '6xu8.cif' },
+      },
+      viewerB: {
+        moleculeAlignedTo: { filename: '4ug0.cif' },
+        moleculeAligned: { filename: '6xu8.cif' },
+      },
+      uiState: {
+        visibilityByViewer: {
+          viewerA: { alignedTo: true, aligned: false },
+          viewerB: { alignedTo: false, aligned: true },
+        },
+        selections: {
+          alignedTo: { subunit: 'Large', chainId: 'A', residueIds: ['10'], residueId: '10' },
+          aligned: { subunit: 'Small', chainId: 'B', residueIds: ['20'], residueId: '20' },
+        },
+      },
+    };
+    const files = {
+      '4ug0.cif': loadTestFile('4ug0.cif'),
+      '6xu8.cif': loadTestFile('6xu8.cif'),
+    };
+
+    await onSessionLoaded!(session, files);
+
+    fireEvent.click(document.getElementById('viewer-column-A-select-zoom-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-B-select-zoom-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-A-alignedto-chain-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-B-aligned-chain-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-A-alignedto-select-chain-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-B-aligned-select-chain-controls-toggle-btn') as HTMLButtonElement);
+
+    const alignedToFirstChainRow = document.querySelector('[data-testid^="viewer-column-A-chain-table-row-"]') as HTMLTableRowElement | null;
+    const alignedFirstChainRow = document.querySelector('[data-testid^="viewer-column-B-chain-table-row-"]') as HTMLTableRowElement | null;
+    expect(alignedToFirstChainRow).toBeInTheDocument();
+    expect(alignedFirstChainRow).toBeInTheDocument();
+    fireEvent.click(alignedToFirstChainRow as HTMLTableRowElement);
+    fireEvent.click(alignedFirstChainRow as HTMLTableRowElement);
+
+    const inspectChains = vi.mocked(structureUtils.inspectLociOnChain);
+    inspectChains.mockClear();
+
+    const pluginA = (globalThis as any).__mockPluginA;
+    const pluginB = (globalThis as any).__mockPluginB;
+
+    const latestMolstarInstances = (globalThis as any).__molstarViewerInstances as any[];
+    expect(Array.isArray(latestMolstarInstances)).toBe(true);
+    for (const instance of latestMolstarInstances) {
+      instance?.setStructureRef?.('AlignedTo', 'mock-ref-0');
+      instance?.setStructureRef?.('Aligned', 'mock-ref-1');
+    }
+
+    const viewerACol = document.getElementById('viewer-column-A') as HTMLElement | null;
+    const viewerBCol = document.getElementById('viewer-column-B') as HTMLElement | null;
+    expect(viewerACol).toBeInTheDocument();
+    expect(viewerBCol).toBeInTheDocument();
+
+    const inspectBAligned = document.getElementById('viewer-column-B-aligned-inspect-chain-btn') as HTMLButtonElement | null;
+    expect(inspectBAligned).toBeInTheDocument();
+    expect(inspectBAligned).not.toBeDisabled();
+    fireEvent.click(inspectBAligned!);
+
+    expect(inspectChains).toHaveBeenCalled();
+    expect(inspectChains.mock.calls.some(args => args[3] === pluginA)).toBe(false);
+
+    inspectChains.mockClear();
+
+    const inspectAAlignedTo = document.getElementById('viewer-column-A-alignedto-inspect-chain-btn') as HTMLButtonElement | null;
+    expect(inspectAAlignedTo).toBeInTheDocument();
+    expect(inspectAAlignedTo).not.toBeDisabled();
+    fireEvent.click(inspectAAlignedTo!);
+
+    expect(inspectChains).toHaveBeenCalled();
+    expect(inspectChains.mock.calls.some(args => args[3] === pluginB)).toBe(false);
   });
 
   it('passes alignment data when loading Aligned (regression)', async () => {

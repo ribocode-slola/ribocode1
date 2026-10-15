@@ -2274,6 +2274,19 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         syncChainId: selectedChainIdAligned,
     });
 
+    const inspectSyncVisibilityRef = useRef({
+        viewerAAlignedToVisible: false,
+        viewerAAlignedVisible: false,
+        viewerBAlignedToVisible: false,
+        viewerBAlignedVisible: false,
+    });
+    inspectSyncVisibilityRef.current = {
+        viewerAAlignedToVisible: viewerA.isMoleculeAlignedToVisible,
+        viewerAAlignedVisible: viewerA.isMoleculeAlignedVisible,
+        viewerBAlignedToVisible: viewerB.isMoleculeAlignedToVisible,
+        viewerBAlignedVisible: viewerB.isMoleculeAlignedVisible,
+    };
+
     const chainInspectAAlignedTo = makeChainInspectToggleHandler({
         pluginRef: viewerA.ref,
         structureRef: structureRefAAlignedTo,
@@ -2281,6 +2294,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         isInspecting: chainInspectOnAAlignedTo,
         setIsInspecting: setChainInspectOnAAlignedTo,
         sync: true,
+        shouldSync: () => inspectSyncVisibilityRef.current.viewerBAlignedToVisible,
         syncPluginRef: viewerB.ref,
         syncStructureRef: structureRefBAlignedTo,
         syncChainId: selectedChainIdAlignedTo,
@@ -2292,6 +2306,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         isInspecting: chainInspectOnAAligned,
         setIsInspecting: setChainInspectOnAAligned,
         sync: true,
+        shouldSync: () => inspectSyncVisibilityRef.current.viewerBAlignedVisible,
         syncPluginRef: viewerB.ref,
         syncStructureRef: structureRefBAligned,
         syncChainId: selectedChainIdAligned,
@@ -2303,6 +2318,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         isInspecting: chainInspectOnBAlignedTo,
         setIsInspecting: setChainInspectOnBAlignedTo,
         sync: true,
+        shouldSync: () => inspectSyncVisibilityRef.current.viewerAAlignedToVisible,
         syncPluginRef: viewerA.ref,
         syncStructureRef: structureRefAAlignedTo,
         syncChainId: selectedChainIdAlignedTo,
@@ -2314,6 +2330,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         isInspecting: chainInspectOnBAligned,
         setIsInspecting: setChainInspectOnBAligned,
         sync: true,
+        shouldSync: () => inspectSyncVisibilityRef.current.viewerAAlignedVisible,
         syncPluginRef: viewerA.ref,
         syncStructureRef: structureRefAAligned,
         syncChainId: selectedChainIdAligned,
@@ -2496,6 +2513,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         isInspecting: residueInspectOnAAlignedTo,
         setIsInspecting: setResidueInspectOnAAlignedTo,
         sync: true,
+        shouldSync: () => inspectSyncVisibilityRef.current.viewerBAlignedToVisible,
         syncPluginRef: viewerB.ref,
         syncStructureRef: structureRefBAlignedTo,
         syncChainId: selectedChainIdAlignedTo,
@@ -2511,6 +2529,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         isInspecting: residueInspectOnAAligned,
         setIsInspecting: setResidueInspectOnAAligned,
         sync: true,
+        shouldSync: () => inspectSyncVisibilityRef.current.viewerBAlignedVisible,
         syncPluginRef: viewerB.ref,
         syncStructureRef: structureRefBAligned,
         syncChainId: selectedChainIdAligned,
@@ -2526,6 +2545,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         isInspecting: residueInspectOnBAlignedTo,
         setIsInspecting: setResidueInspectOnBAlignedTo,
         sync: true,
+        shouldSync: () => inspectSyncVisibilityRef.current.viewerAAlignedToVisible,
         syncPluginRef: viewerA.ref,
         syncStructureRef: structureRefAAlignedTo,
         syncChainId: selectedChainIdAlignedTo,
@@ -2541,6 +2561,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         isInspecting: residueInspectOnBAligned,
         setIsInspecting: setResidueInspectOnBAligned,
         sync: true,
+        shouldSync: () => inspectSyncVisibilityRef.current.viewerAAlignedVisible,
         syncPluginRef: viewerA.ref,
         syncStructureRef: structureRefAAligned,
         syncChainId: selectedChainIdAligned,
@@ -2790,6 +2811,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         isInspecting: subunitInspectOnAAlignedTo,
         setIsInspecting: setSubunitInspectOnAAlignedTo,
         sync: true,
+        shouldSync: () => inspectSyncVisibilityRef.current.viewerBAlignedToVisible,
         syncPluginRef: viewerB.ref,
         syncStructureRef: structureRefBAlignedTo,
         syncChainIds: selectedSubunitChainIdsAlignedTo,
@@ -2801,6 +2823,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         isInspecting: subunitInspectOnAAligned,
         setIsInspecting: setSubunitInspectOnAAligned,
         sync: true,
+        shouldSync: () => inspectSyncVisibilityRef.current.viewerBAlignedVisible,
         syncPluginRef: viewerB.ref,
         syncStructureRef: structureRefBAligned,
         syncChainIds: selectedSubunitChainIdsAligned,
@@ -2812,6 +2835,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         isInspecting: subunitInspectOnBAlignedTo,
         setIsInspecting: setSubunitInspectOnBAlignedTo,
         sync: true,
+        shouldSync: () => inspectSyncVisibilityRef.current.viewerAAlignedToVisible,
         syncPluginRef: viewerA.ref,
         syncStructureRef: structureRefAAlignedTo,
         syncChainIds: selectedSubunitChainIdsAlignedTo,
@@ -2823,6 +2847,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         isInspecting: subunitInspectOnBAligned,
         setIsInspecting: setSubunitInspectOnBAligned,
         sync: true,
+        shouldSync: () => inspectSyncVisibilityRef.current.viewerAAlignedVisible,
         syncPluginRef: viewerA.ref,
         syncStructureRef: structureRefAAligned,
         syncChainIds: selectedSubunitChainIdsAligned,
@@ -2831,6 +2856,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
     useEffect(() => {
         type InspectDatasetConfig = {
             structureRef: string | null;
+            isVisible: boolean;
             chainId: string;
             residueIds: string[];
             residueInsCodes?: Record<string, string | undefined>;
@@ -2848,7 +2874,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             plugin.managers.structure?.focus?.clear?.();
 
             for (const config of datasetConfigs) {
-                if (!config.structureRef) continue;
+                if (!config.structureRef || !config.isVisible) continue;
 
                 const uniqueSubunitChainIds = Array.from(new Set(config.subunitChainIds.filter(Boolean)));
                 if (config.subunitOn && uniqueSubunitChainIds.length > 0) {
@@ -2874,6 +2900,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         applyInspectForPlugin(viewerA.ref.current, [
             {
                 structureRef: structureRefAAlignedTo,
+                isVisible: viewerA.isMoleculeAlignedToVisible,
                 chainId: selectedChainIdAlignedTo,
                 residueIds: selectedResidueIdsAlignedTo,
                 residueInsCodes: selectedResidueInsCodesAlignedTo,
@@ -2884,6 +2911,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             },
             {
                 structureRef: structureRefAAligned,
+                isVisible: viewerA.isMoleculeAlignedVisible,
                 chainId: selectedChainIdAligned,
                 residueIds: selectedResidueIdsAligned,
                 residueInsCodes: selectedResidueInsCodesAligned,
@@ -2897,6 +2925,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         applyInspectForPlugin(viewerB.ref.current, [
             {
                 structureRef: structureRefBAlignedTo,
+                isVisible: viewerB.isMoleculeAlignedToVisible,
                 chainId: selectedChainIdAlignedTo,
                 residueIds: selectedResidueIdsAlignedTo,
                 residueInsCodes: selectedResidueInsCodesAlignedTo,
@@ -2907,6 +2936,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             },
             {
                 structureRef: structureRefBAligned,
+                isVisible: viewerB.isMoleculeAlignedVisible,
                 chainId: selectedChainIdAligned,
                 residueIds: selectedResidueIdsAligned,
                 residueInsCodes: selectedResidueInsCodesAligned,
@@ -2941,6 +2971,10 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         structureRefAAligned,
         structureRefBAlignedTo,
         structureRefBAligned,
+        viewerA.isMoleculeAlignedToVisible,
+        viewerA.isMoleculeAlignedVisible,
+        viewerB.isMoleculeAlignedToVisible,
+        viewerB.isMoleculeAlignedVisible,
         viewerA.ref,
         viewerB.ref,
     ]);

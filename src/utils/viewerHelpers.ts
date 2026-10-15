@@ -513,12 +513,14 @@ export function createChainInspectToggleHandler(
     sync: boolean = false,
     syncPluginRef?: React.RefObject<PluginUIContext | null>,
     syncStructureRef?: string | null,
-    syncChainId?: string
+    syncChainId?: string,
+    shouldSync?: () => boolean
 ) {
     return {
         handleButtonClick: async () => {
             const plugin = pluginRef.current;
-            const syncPlugin = sync && syncPluginRef?.current ? syncPluginRef.current : undefined;
+            const syncEnabledNow = sync && (shouldSync ? shouldSync() : true);
+            const syncPlugin = syncEnabledNow && syncPluginRef?.current ? syncPluginRef.current : undefined;
 
             if (isInspecting) {
                 clearStructureFocus(plugin);
@@ -553,6 +555,7 @@ export function makeChainInspectToggleHandler({
     syncPluginRef,
     syncStructureRef,
     syncChainId,
+    shouldSync,
 }: {
     pluginRef: React.RefObject<PluginUIContext | null>,
     structureRef: string | null,
@@ -563,6 +566,7 @@ export function makeChainInspectToggleHandler({
     syncPluginRef?: React.RefObject<PluginUIContext | null>,
     syncStructureRef?: string | null,
     syncChainId?: string,
+    shouldSync?: () => boolean,
 }) {
     return createChainInspectToggleHandler(
         pluginRef,
@@ -573,7 +577,8 @@ export function makeChainInspectToggleHandler({
         sync,
         syncPluginRef,
         syncStructureRef,
-        syncChainId
+        syncChainId,
+        shouldSync
     );
 }
 
@@ -590,12 +595,14 @@ export function createResidueInspectToggleHandler(
     syncStructureRef?: string | null,
     syncChainId?: string,
     syncResidueIds?: string[],
-    syncResidueInsCodes?: Record<string, string | undefined>
+    syncResidueInsCodes?: Record<string, string | undefined>,
+    shouldSync?: () => boolean
 ) {
     return {
         handleButtonClick: async () => {
             const plugin = pluginRef.current;
-            const syncPlugin = sync && syncPluginRef?.current ? syncPluginRef.current : undefined;
+            const syncEnabledNow = sync && (shouldSync ? shouldSync() : true);
+            const syncPlugin = syncEnabledNow && syncPluginRef?.current ? syncPluginRef.current : undefined;
 
             if (isInspecting) {
                 clearStructureFocus(plugin);
@@ -637,6 +644,7 @@ export function makeResidueInspectToggleHandler({
     syncChainId,
     syncResidueIds,
     syncResidueInsCodes,
+    shouldSync,
 }: {
     pluginRef: React.RefObject<PluginUIContext | null>,
     structureRef: string | null,
@@ -651,6 +659,7 @@ export function makeResidueInspectToggleHandler({
     syncChainId?: string,
     syncResidueIds?: string[],
     syncResidueInsCodes?: Record<string, string | undefined>,
+    shouldSync?: () => boolean,
 }) {
     return createResidueInspectToggleHandler(
         pluginRef,
@@ -665,7 +674,8 @@ export function makeResidueInspectToggleHandler({
         syncStructureRef,
         syncChainId,
         syncResidueIds,
-        syncResidueInsCodes
+        syncResidueInsCodes,
+        shouldSync
     );
 }
 
@@ -678,12 +688,14 @@ export function createSubunitInspectToggleHandler(
     sync: boolean = false,
     syncPluginRef?: React.RefObject<PluginUIContext | null>,
     syncStructureRef?: string | null,
-    syncChainIds?: string[]
+    syncChainIds?: string[],
+    shouldSync?: () => boolean
 ) {
     return {
         handleButtonClick: async () => {
             const plugin = pluginRef.current;
-            const syncPlugin = sync && syncPluginRef?.current ? syncPluginRef.current : undefined;
+            const syncEnabledNow = sync && (shouldSync ? shouldSync() : true);
+            const syncPlugin = syncEnabledNow && syncPluginRef?.current ? syncPluginRef.current : undefined;
 
             if (isInspecting) {
                 clearStructureFocus(plugin);
@@ -717,6 +729,7 @@ export function makeSubunitInspectToggleHandler({
     syncPluginRef,
     syncStructureRef,
     syncChainIds,
+    shouldSync,
 }: {
     pluginRef: React.RefObject<PluginUIContext | null>,
     structureRef: string | null,
@@ -727,6 +740,7 @@ export function makeSubunitInspectToggleHandler({
     syncPluginRef?: React.RefObject<PluginUIContext | null>,
     syncStructureRef?: string | null,
     syncChainIds?: string[],
+    shouldSync?: () => boolean,
 }) {
     return createSubunitInspectToggleHandler(
         pluginRef,
@@ -737,7 +751,8 @@ export function makeSubunitInspectToggleHandler({
         sync,
         syncPluginRef,
         syncStructureRef,
-        syncChainIds
+        syncChainIds,
+        shouldSync
     );
 }
 
