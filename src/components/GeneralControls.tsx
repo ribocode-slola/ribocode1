@@ -36,6 +36,7 @@ interface GeneralControlsProps {
   viewerB: any;
   activeViewer: ViewerKey;
   syncEnabled: boolean;
+  syncSuspend?: boolean;
   setSyncEnabled: (v: boolean) => void;
   syncDisabled: boolean;
   sessionMenu?: React.ReactNode;
@@ -65,6 +66,7 @@ const GeneralControls: React.FC<GeneralControlsProps> = ({
   viewerB,
   activeViewer,
   syncEnabled,
+  syncSuspend = false,
   setSyncEnabled,
   syncDisabled,
   sessionMenu,
@@ -91,6 +93,7 @@ const GeneralControls: React.FC<GeneralControlsProps> = ({
       activeViewer={activeViewer}
       disabled={syncDisabled}
       syncEnabled={syncEnabled}
+      suspendSync={syncSuspend}
       setSyncEnabled={setSyncEnabled}
       id={idPrefix ? `${idPrefix}-${syncSelectIdSuffix}` : syncSelectIdSuffix}
     />

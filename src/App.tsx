@@ -36,7 +36,7 @@ import { parseColorFileContent, registerThemeIfNeeded } from './utils/colors';
 import { useFileInput } from './hooks/useFileInput';
 import { useChainState } from './hooks/useChainState';
 import { getAtomDataFromStructureUnits, summarizeAtomCloud } from './utils/data';
-import { applyStructureDimOverlay, clearStructureHighlightOverpaint, getStructureRepresentations, highlightLociOnChain, highlightLociOnResidues, highlightLociOnSubunit, type HighlightDisplayMode } from './utils/structure';
+import { applyStructureDimOverlay, clearStructureHighlightOverpaint, getStructureRepresentations, highlightLociOnChain, highlightLociOnResidues, highlightLociOnSubunit, inspectLociOnChain, inspectLociOnResidues, inspectLociOnSubunit, type HighlightDisplayMode } from './utils/structure';
 import { parseDictionaryFileContent } from './utils/dictionary';
 import { useResidueState } from './hooks/useResidueState';
 import { useSubunitState } from './hooks/useSubunitState';
@@ -163,6 +163,54 @@ interface SessionUiState {
             chain?: boolean;
             residue?: boolean;
             subunit?: boolean;
+        };
+    };
+    inspectByViewer?: {
+        viewerA?: {
+            alignedTo?: {
+                chain?: boolean;
+                residue?: boolean;
+                subunit?: boolean;
+            };
+            aligned?: {
+                chain?: boolean;
+                residue?: boolean;
+                subunit?: boolean;
+            };
+        };
+        viewerB?: {
+            alignedTo?: {
+                chain?: boolean;
+                residue?: boolean;
+                subunit?: boolean;
+            };
+            aligned?: {
+                chain?: boolean;
+                residue?: boolean;
+                subunit?: boolean;
+            };
+        };
+    };
+    visibilityByViewer?: {
+        viewerA?: {
+            alignedTo?: boolean;
+            aligned?: boolean;
+        };
+        viewerB?: {
+            alignedTo?: boolean;
+            aligned?: boolean;
+        };
+    };
+    fogByViewer?: {
+        viewerA?: {
+            enabled: boolean;
+            near: number;
+            far: number;
+        };
+        viewerB?: {
+            enabled: boolean;
+            near: number;
+            far: number;
         };
     };
     syncEnabled?: boolean;
@@ -871,6 +919,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
     const [viewerAReady, setViewerAReady] = useState(false);
     const [viewerBReady, setViewerBReady] = useState(false);
     const [syncEnabled, setSyncEnabled] = useState(false);
+    const [isRestoringSessionCameras, setIsRestoringSessionCameras] = useState(false);
     const [showUniprotAccessionInChainLabelsA, setShowUniprotAccessionInChainLabelsA] = useState(true);
     const [showUniprotAccessionInChainLabelsB, setShowUniprotAccessionInChainLabelsB] = useState(true);
     const [selectionDisplayByMode, setSelectionDisplayByMode] = useState<SelectionDisplayByMode>({
@@ -1456,6 +1505,19 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         if (!plugin) return;
         const ref = (molecule?.presetResult as any)?.model?.cell?.transform?.ref;
         if (!ref) return;
+        const cell = plugin.state.data?.cells?.get?.(ref);
+        const isVisible = cell?.state?.isHidden !== true;
+        if (isVisible === visible) return;
+        await MolPluginCommands.State.ToggleVisibility.apply(plugin, [plugin, { state: plugin.state.data, ref }]);
+        plugin.canvas3d?.requestDraw?.();
+    }, []);
+
+    const setObjectVisibleByRef = useCallback(async (
+        plugin: PluginUIContext | null,
+        ref: string | null | undefined,
+        visible: boolean
+    ): Promise<void> => {
+        if (!plugin || !ref) return;
         const cell = plugin.state.data?.cells?.get?.(ref);
         const isVisible = cell?.state?.isHidden !== true;
         if (isVisible === visible) return;
@@ -2767,6 +2829,123 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
     });
 
     useEffect(() => {
+        type InspectDatasetConfig = {
+            structureRef: string | null;
+            chainId: string;
+            residueIds: string[];
+            residueInsCodes?: Record<string, string | undefined>;
+            subunitChainIds: string[];
+            chainOn: boolean;
+            residueOn: boolean;
+            subunitOn: boolean;
+        };
+
+        const applyInspectForPlugin = (
+            plugin: PluginUIContext | null,
+            datasetConfigs: InspectDatasetConfig[]
+        ) => {
+            if (!plugin) return;
+            plugin.managers.structure?.focus?.clear?.();
+
+            for (const config of datasetConfigs) {
+                if (!config.structureRef) continue;
+
+                const uniqueSubunitChainIds = Array.from(new Set(config.subunitChainIds.filter(Boolean)));
+                if (config.subunitOn && uniqueSubunitChainIds.length > 0) {
+                    inspectLociOnSubunit(plugin, config.structureRef, uniqueSubunitChainIds);
+                }
+
+                if (config.chainOn && config.chainId) {
+                    inspectLociOnChain(plugin, config.structureRef, config.chainId);
+                }
+
+                if (config.residueOn && config.chainId && config.residueIds.length > 0) {
+                    inspectLociOnResidues(
+                        plugin,
+                        config.structureRef,
+                        config.chainId,
+                        config.residueIds,
+                        config.residueInsCodes
+                    );
+                }
+            }
+        };
+
+        applyInspectForPlugin(viewerA.ref.current, [
+            {
+                structureRef: structureRefAAlignedTo,
+                chainId: selectedChainIdAlignedTo,
+                residueIds: selectedResidueIdsAlignedTo,
+                residueInsCodes: selectedResidueInsCodesAlignedTo,
+                subunitChainIds: selectedSubunitChainIdsAlignedTo,
+                chainOn: chainInspectOnAAlignedTo,
+                residueOn: residueInspectOnAAlignedTo,
+                subunitOn: subunitInspectOnAAlignedTo,
+            },
+            {
+                structureRef: structureRefAAligned,
+                chainId: selectedChainIdAligned,
+                residueIds: selectedResidueIdsAligned,
+                residueInsCodes: selectedResidueInsCodesAligned,
+                subunitChainIds: selectedSubunitChainIdsAligned,
+                chainOn: chainInspectOnAAligned,
+                residueOn: residueInspectOnAAligned,
+                subunitOn: subunitInspectOnAAligned,
+            },
+        ]);
+
+        applyInspectForPlugin(viewerB.ref.current, [
+            {
+                structureRef: structureRefBAlignedTo,
+                chainId: selectedChainIdAlignedTo,
+                residueIds: selectedResidueIdsAlignedTo,
+                residueInsCodes: selectedResidueInsCodesAlignedTo,
+                subunitChainIds: selectedSubunitChainIdsAlignedTo,
+                chainOn: chainInspectOnBAlignedTo,
+                residueOn: residueInspectOnBAlignedTo,
+                subunitOn: subunitInspectOnBAlignedTo,
+            },
+            {
+                structureRef: structureRefBAligned,
+                chainId: selectedChainIdAligned,
+                residueIds: selectedResidueIdsAligned,
+                residueInsCodes: selectedResidueInsCodesAligned,
+                subunitChainIds: selectedSubunitChainIdsAligned,
+                chainOn: chainInspectOnBAligned,
+                residueOn: residueInspectOnBAligned,
+                subunitOn: subunitInspectOnBAligned,
+            },
+        ]);
+    }, [
+        chainInspectOnAAlignedTo,
+        chainInspectOnAAligned,
+        chainInspectOnBAlignedTo,
+        chainInspectOnBAligned,
+        residueInspectOnAAlignedTo,
+        residueInspectOnAAligned,
+        residueInspectOnBAlignedTo,
+        residueInspectOnBAligned,
+        subunitInspectOnAAlignedTo,
+        subunitInspectOnAAligned,
+        subunitInspectOnBAlignedTo,
+        subunitInspectOnBAligned,
+        selectedChainIdAlignedTo,
+        selectedChainIdAligned,
+        selectedResidueIdsAlignedTo,
+        selectedResidueIdsAligned,
+        selectedResidueInsCodesAlignedTo,
+        selectedResidueInsCodesAligned,
+        selectedSubunitChainIdsAlignedTo,
+        selectedSubunitChainIdsAligned,
+        structureRefAAlignedTo,
+        structureRefAAligned,
+        structureRefBAlignedTo,
+        structureRefBAligned,
+        viewerA.ref,
+        viewerB.ref,
+    ]);
+
+    useEffect(() => {
         const pending = pendingSessionSelectionsRef.current;
         if (!pending) return;
 
@@ -3972,6 +4151,54 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                     subunit: subunitHighlightOnAligned,
                 },
             },
+            inspectByViewer: {
+                viewerA: {
+                    alignedTo: {
+                        chain: chainInspectOnAAlignedTo,
+                        residue: residueInspectOnAAlignedTo,
+                        subunit: subunitInspectOnAAlignedTo,
+                    },
+                    aligned: {
+                        chain: chainInspectOnAAligned,
+                        residue: residueInspectOnAAligned,
+                        subunit: subunitInspectOnAAligned,
+                    },
+                },
+                viewerB: {
+                    alignedTo: {
+                        chain: chainInspectOnBAlignedTo,
+                        residue: residueInspectOnBAlignedTo,
+                        subunit: subunitInspectOnBAlignedTo,
+                    },
+                    aligned: {
+                        chain: chainInspectOnBAligned,
+                        residue: residueInspectOnBAligned,
+                        subunit: subunitInspectOnBAligned,
+                    },
+                },
+            },
+            visibilityByViewer: {
+                viewerA: {
+                    alignedTo: viewerA.isMoleculeAlignedToVisible,
+                    aligned: viewerA.isMoleculeAlignedVisible,
+                },
+                viewerB: {
+                    alignedTo: viewerB.isMoleculeAlignedToVisible,
+                    aligned: viewerB.isMoleculeAlignedVisible,
+                },
+            },
+            fogByViewer: {
+                viewerA: {
+                    enabled: fogA.enabled,
+                    near: fogA.near,
+                    far: fogA.far,
+                },
+                viewerB: {
+                    enabled: fogB.enabled,
+                    near: fogB.near,
+                    far: fogB.far,
+                },
+            },
             syncEnabled,
             activeViewer,
             cameraSnapshots: {
@@ -4089,6 +4316,54 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                         chain: chainHighlightOnAligned,
                         residue: residueHighlightOnAligned,
                         subunit: subunitHighlightOnAligned,
+                    },
+                },
+                inspectByViewer: {
+                    viewerA: {
+                        alignedTo: {
+                            chain: chainInspectOnAAlignedTo,
+                            residue: residueInspectOnAAlignedTo,
+                            subunit: subunitInspectOnAAlignedTo,
+                        },
+                        aligned: {
+                            chain: chainInspectOnAAligned,
+                            residue: residueInspectOnAAligned,
+                            subunit: subunitInspectOnAAligned,
+                        },
+                    },
+                    viewerB: {
+                        alignedTo: {
+                            chain: chainInspectOnBAlignedTo,
+                            residue: residueInspectOnBAlignedTo,
+                            subunit: subunitInspectOnBAlignedTo,
+                        },
+                        aligned: {
+                            chain: chainInspectOnBAligned,
+                            residue: residueInspectOnBAligned,
+                            subunit: subunitInspectOnBAligned,
+                        },
+                    },
+                },
+                visibilityByViewer: {
+                    viewerA: {
+                        alignedTo: viewerA.isMoleculeAlignedToVisible,
+                        aligned: viewerA.isMoleculeAlignedVisible,
+                    },
+                    viewerB: {
+                        alignedTo: viewerB.isMoleculeAlignedToVisible,
+                        aligned: viewerB.isMoleculeAlignedVisible,
+                    },
+                },
+                fogByViewer: {
+                    viewerA: {
+                        enabled: fogA.enabled,
+                        near: fogA.near,
+                        far: fogA.far,
+                    },
+                    viewerB: {
+                        enabled: fogB.enabled,
+                        near: fogB.near,
+                        far: fogB.far,
                     },
                 },
                 syncEnabled,
@@ -4346,10 +4621,104 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                     setSubunitHighlightOnAligned(uiState.highlights.aligned.subunit);
                 }
             }
+            if (uiState?.inspectByViewer?.viewerA?.alignedTo) {
+                if (typeof uiState.inspectByViewer.viewerA.alignedTo.chain === 'boolean') {
+                    setChainInspectOnAAlignedTo(uiState.inspectByViewer.viewerA.alignedTo.chain);
+                }
+                if (typeof uiState.inspectByViewer.viewerA.alignedTo.residue === 'boolean') {
+                    setResidueInspectOnAAlignedTo(uiState.inspectByViewer.viewerA.alignedTo.residue);
+                }
+                if (typeof uiState.inspectByViewer.viewerA.alignedTo.subunit === 'boolean') {
+                    setSubunitInspectOnAAlignedTo(uiState.inspectByViewer.viewerA.alignedTo.subunit);
+                }
+            }
+            if (uiState?.inspectByViewer?.viewerA?.aligned) {
+                if (typeof uiState.inspectByViewer.viewerA.aligned.chain === 'boolean') {
+                    setChainInspectOnAAligned(uiState.inspectByViewer.viewerA.aligned.chain);
+                }
+                if (typeof uiState.inspectByViewer.viewerA.aligned.residue === 'boolean') {
+                    setResidueInspectOnAAligned(uiState.inspectByViewer.viewerA.aligned.residue);
+                }
+                if (typeof uiState.inspectByViewer.viewerA.aligned.subunit === 'boolean') {
+                    setSubunitInspectOnAAligned(uiState.inspectByViewer.viewerA.aligned.subunit);
+                }
+            }
+            if (uiState?.inspectByViewer?.viewerB?.alignedTo) {
+                if (typeof uiState.inspectByViewer.viewerB.alignedTo.chain === 'boolean') {
+                    setChainInspectOnBAlignedTo(uiState.inspectByViewer.viewerB.alignedTo.chain);
+                }
+                if (typeof uiState.inspectByViewer.viewerB.alignedTo.residue === 'boolean') {
+                    setResidueInspectOnBAlignedTo(uiState.inspectByViewer.viewerB.alignedTo.residue);
+                }
+                if (typeof uiState.inspectByViewer.viewerB.alignedTo.subunit === 'boolean') {
+                    setSubunitInspectOnBAlignedTo(uiState.inspectByViewer.viewerB.alignedTo.subunit);
+                }
+            }
+            if (uiState?.inspectByViewer?.viewerB?.aligned) {
+                if (typeof uiState.inspectByViewer.viewerB.aligned.chain === 'boolean') {
+                    setChainInspectOnBAligned(uiState.inspectByViewer.viewerB.aligned.chain);
+                }
+                if (typeof uiState.inspectByViewer.viewerB.aligned.residue === 'boolean') {
+                    setResidueInspectOnBAligned(uiState.inspectByViewer.viewerB.aligned.residue);
+                }
+                if (typeof uiState.inspectByViewer.viewerB.aligned.subunit === 'boolean') {
+                    setSubunitInspectOnBAligned(uiState.inspectByViewer.viewerB.aligned.subunit);
+                }
+            }
+            if (uiState?.fogByViewer?.viewerA) {
+                const fogUiA = uiState.fogByViewer.viewerA;
+                if (typeof fogUiA.enabled === 'boolean' && Number.isFinite(fogUiA.near) && Number.isFinite(fogUiA.far)) {
+                    setFogA({ enabled: fogUiA.enabled, near: fogUiA.near, far: fogUiA.far });
+                }
+            }
+            if (uiState?.fogByViewer?.viewerB) {
+                const fogUiB = uiState.fogByViewer.viewerB;
+                if (typeof fogUiB.enabled === 'boolean' && Number.isFinite(fogUiB.near) && Number.isFinite(fogUiB.far)) {
+                    setFogB({ enabled: fogUiB.enabled, near: fogUiB.near, far: fogUiB.far });
+                }
+            }
 
-            // Restore per-viewer camera snapshots with sync temporarily disabled so
-            // one viewer snapshot does not immediately overwrite the other.
+            const restoreDatasetVisibilityForViewer = async (
+                plugin: PluginUIContext | null,
+                refs: { alignedTo: string | null; aligned: string | null },
+                persisted: SessionUiState['visibilityByViewer'] extends infer T
+                    ? T extends { viewerA?: infer V }
+                        ? V | undefined
+                        : never
+                    : never,
+                setAlignedToVisible: React.Dispatch<React.SetStateAction<boolean>>,
+                setAlignedVisible: React.Dispatch<React.SetStateAction<boolean>>
+            ) => {
+                if (!plugin || !persisted) return;
+                if (typeof persisted.alignedTo === 'boolean') {
+                    await setObjectVisibleByRef(plugin, refs.alignedTo, persisted.alignedTo);
+                    setAlignedToVisible(persisted.alignedTo);
+                }
+                if (typeof persisted.aligned === 'boolean') {
+                    await setObjectVisibleByRef(plugin, refs.aligned, persisted.aligned);
+                    setAlignedVisible(persisted.aligned);
+                }
+            };
+
+            await restoreDatasetVisibilityForViewer(
+                viewerA.ref.current,
+                { alignedTo: molstarA.structureRefs[AlignedTo] ?? null, aligned: molstarA.structureRefs[Aligned] ?? null },
+                uiState?.visibilityByViewer?.viewerA,
+                viewerA.setIsMoleculeAlignedToVisible,
+                viewerA.setIsMoleculeAlignedVisible
+            );
+            await restoreDatasetVisibilityForViewer(
+                viewerB.ref.current,
+                { alignedTo: molstarB.structureRefs[AlignedTo] ?? null, aligned: molstarB.structureRefs[Aligned] ?? null },
+                uiState?.visibilityByViewer?.viewerB,
+                viewerB.setIsMoleculeAlignedToVisible,
+                viewerB.setIsMoleculeAlignedVisible
+            );
+
+            // Restore per-viewer camera snapshots with sync propagation suspended so
+            // one viewer snapshot cannot overwrite the other while state settles.
             const shouldReEnableSyncAfterRestore = uiState?.syncEnabled === true;
+            setIsRestoringSessionCameras(true);
             setSyncEnabled(false);
             await new Promise(resolve => setTimeout(resolve, 0));
 
@@ -4360,6 +4729,9 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 applySerializableCameraSnapshot(viewerA.ref, uiState.cameraSnapshots.viewerA);
                 applySerializableCameraSnapshot(viewerB.ref, uiState.cameraSnapshots.viewerB);
             }
+
+            await new Promise(resolve => setTimeout(resolve, 0));
+            setIsRestoringSessionCameras(false);
             setSyncEnabled(shouldReEnableSyncAfterRestore);
 
             pendingSessionSelectionsRef.current = uiState?.selections ?? null;
@@ -4438,12 +4810,27 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         setSelectedResidueIdAligned,
         setChainHighlightOnAlignedTo,
         setChainHighlightOnAligned,
+        setChainInspectOnAAlignedTo,
+        setChainInspectOnAAligned,
+        setChainInspectOnBAlignedTo,
+        setChainInspectOnBAligned,
         setResidueHighlightOnAlignedTo,
         setResidueHighlightOnAligned,
+        setResidueInspectOnAAlignedTo,
+        setResidueInspectOnAAligned,
+        setResidueInspectOnBAlignedTo,
+        setResidueInspectOnBAligned,
         setSubunitHighlightOnAlignedTo,
         setSubunitHighlightOnAligned,
+        setSubunitInspectOnAAlignedTo,
+        setSubunitInspectOnAAligned,
+        setSubunitInspectOnBAlignedTo,
+        setSubunitInspectOnBAligned,
+        setFogA,
+        setFogB,
         setClippingA,
         setClippingB,
+        setObjectVisibleByRef,
         setChainFinderQueryAlignedTo,
         setChainFinderQueryAligned,
         setUniprotGeneNames,
@@ -4470,6 +4857,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                         viewerB={viewerB.ref.current}
                         activeViewer={activeViewer}
                         syncEnabled={syncEnabled}
+                        syncSuspend={isRestoringSessionCameras}
                         setSyncEnabled={setSyncEnabled}
                         syncDisabled={!viewerA.isMoleculeAlignedLoaded || !viewerB.isMoleculeAlignedLoaded}
                         sessionMenu={(

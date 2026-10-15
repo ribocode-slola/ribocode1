@@ -145,6 +145,7 @@ interface SyncButtonProps {
     activeViewer: ViewerKey;
     disabled: boolean;
     syncEnabled: boolean;
+    suspendSync?: boolean;
     setSyncEnabled: (enabled: boolean) => void;
     id?: string;
 }
@@ -165,6 +166,7 @@ const SyncButton: React.FC<SyncButtonProps> = ({
     activeViewer,
     disabled,
     syncEnabled,
+    suspendSync = false,
     setSyncEnabled,
     id
 }) => {
@@ -193,7 +195,7 @@ const SyncButton: React.FC<SyncButtonProps> = ({
     };
 
     useEffect(() => {
-        if (!syncEnabled || !viewerA || !viewerB) return;
+        if (!syncEnabled || suspendSync || !viewerA || !viewerB) return;
 
         const sourceViewer = activeViewer === 'A' ? viewerA : viewerB;
         const targetViewer = activeViewer === 'A' ? viewerB : viewerA;
@@ -298,7 +300,7 @@ const SyncButton: React.FC<SyncButtonProps> = ({
                 animationFrameRef.current = null;
             }
         };
-    }, [syncEnabled, viewerA, viewerB, activeViewer]);
+    }, [syncEnabled, suspendSync, viewerA, viewerB, activeViewer]);
 
     return (
         <button

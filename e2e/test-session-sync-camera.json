@@ -1,0 +1,40 @@
+{
+  "viewerA": {
+    "moleculeAlignedTo": {
+      "filename": "4ug0.cif"
+    }
+  },
+  "viewerB": {
+    "moleculeAligned": {
+      "filename": "6xu8.cif"
+    }
+  },
+  "uiState": {
+    "syncEnabled": true,
+    "activeViewer": "A",
+    "clippingByViewer": {
+      "viewerA": {
+        "minNear": 0.74,
+        "clipRadius": 62
+      },
+      "viewerB": {
+        "minNear": 0.89,
+        "clipRadius": 77
+      }
+    },
+    "cameraSnapshots": {
+      "viewerA": {
+        "position": [30, 31, 32],
+        "target": [3, 4, 5],
+        "up": [0, 1, 0],
+        "radius": 55
+      },
+      "viewerB": {
+        "position": [90, 91, 92],
+        "target": [9, 10, 11],
+        "up": [0, 1, 0],
+        "radius": 95
+      }
+    }
+  }
+}

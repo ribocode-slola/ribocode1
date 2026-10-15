@@ -922,6 +922,54 @@ describe('App integration: AlignedTo and Aligned loading', () => {
         subunit: false,
       },
     });
+    expect(session.uiState.inspectByViewer).toEqual({
+      viewerA: {
+        alignedTo: {
+          chain: false,
+          residue: false,
+          subunit: false,
+        },
+        aligned: {
+          chain: false,
+          residue: false,
+          subunit: false,
+        },
+      },
+      viewerB: {
+        alignedTo: {
+          chain: false,
+          residue: false,
+          subunit: false,
+        },
+        aligned: {
+          chain: false,
+          residue: false,
+          subunit: false,
+        },
+      },
+    });
+    expect(session.uiState.visibilityByViewer).toEqual({
+      viewerA: {
+        alignedTo: true,
+        aligned: false,
+      },
+      viewerB: {
+        alignedTo: false,
+        aligned: true,
+      },
+    });
+    expect(session.uiState.fogByViewer).toEqual({
+      viewerA: {
+        enabled: false,
+        near: 0,
+        far: 100,
+      },
+      viewerB: {
+        enabled: false,
+        near: 0,
+        far: 100,
+      },
+    });
     expect(session.uiState.chainFinderQueries).toEqual({ alignedTo: '', aligned: '' });
     expect(session.uiState.colorThemesByMode).toEqual({
       alignedTo: {
@@ -1006,6 +1054,24 @@ describe('App integration: AlignedTo and Aligned loading', () => {
           alignedTo: { subunit: true, chain: true, residue: true },
           aligned: { subunit: true, chain: true, residue: false },
         },
+        inspectByViewer: {
+          viewerA: {
+            alignedTo: { subunit: true, chain: true, residue: true },
+            aligned: { subunit: false, chain: true, residue: false },
+          },
+          viewerB: {
+            alignedTo: { subunit: true, chain: false, residue: true },
+            aligned: { subunit: true, chain: true, residue: false },
+          },
+        },
+        visibilityByViewer: {
+          viewerA: { alignedTo: false, aligned: true },
+          viewerB: { alignedTo: true, aligned: false },
+        },
+        fogByViewer: {
+          viewerA: { enabled: true, near: 0.35, far: 82 },
+          viewerB: { enabled: false, near: 0.1, far: 95 },
+        },
         selectionDisplay: {
           mode: 'halo',
           dimUnselected: true,
@@ -1058,11 +1124,11 @@ describe('App integration: AlignedTo and Aligned loading', () => {
       expect(document.getElementById('generalcontrols-sync-select')).toHaveTextContent('Sync: On');
       expect(document.getElementById('viewer-column-A-alignedto-show-uniprot-accession')).toHaveAttribute('aria-pressed', 'false');
       expect(document.getElementById('viewer-column-B-aligned-show-uniprot-accession')).toHaveAttribute('aria-pressed', 'false');
-      expect(document.getElementById('viewer-column-A-alignedto-highlight-subunit-btn')).toHaveAttribute('aria-pressed', 'true');
-      expect(document.getElementById('viewer-column-A-alignedto-highlight-chain-btn')).toHaveAttribute('aria-pressed', 'true');
-      expect(document.getElementById('viewer-column-A-alignedto-highlight-residue-btn')).toHaveAttribute('aria-pressed', 'true');
-      expect(document.getElementById('viewer-column-B-aligned-highlight-subunit-btn')).toHaveAttribute('aria-pressed', 'true');
-      expect(document.getElementById('viewer-column-B-aligned-highlight-chain-btn')).toHaveAttribute('aria-pressed', 'true');
+      expect(document.getElementById('viewer-column-A-alignedto-highlight-subunit-btn')).toHaveAttribute('aria-pressed', 'false');
+      expect(document.getElementById('viewer-column-A-alignedto-highlight-chain-btn')).toHaveAttribute('aria-pressed', 'false');
+      expect(document.getElementById('viewer-column-A-alignedto-highlight-residue-btn')).toHaveAttribute('aria-pressed', 'false');
+      expect(document.getElementById('viewer-column-B-aligned-highlight-subunit-btn')).toHaveAttribute('aria-pressed', 'false');
+      expect(document.getElementById('viewer-column-B-aligned-highlight-chain-btn')).toHaveAttribute('aria-pressed', 'false');
       expect(document.getElementById('viewer-column-B-aligned-highlight-residue-btn')).toHaveAttribute('aria-pressed', 'false');
       expect((document.getElementById('viewer-column-A-alignedto-selection-display-mode') as HTMLSelectElement).value).toBe('halo');
       expect(document.getElementById('viewer-column-A-alignedto-dim-unselected-toggle-btn')).toHaveAttribute('aria-pressed', 'true');
@@ -1085,6 +1151,24 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     expect(restoredSession.uiState.highlights).toEqual({
       alignedTo: { subunit: true, chain: true, residue: true },
       aligned: { subunit: true, chain: true, residue: false },
+    });
+    expect(restoredSession.uiState.inspectByViewer).toEqual({
+      viewerA: {
+        alignedTo: { subunit: true, chain: true, residue: true },
+        aligned: { subunit: false, chain: true, residue: false },
+      },
+      viewerB: {
+        alignedTo: { subunit: true, chain: false, residue: true },
+        aligned: { subunit: true, chain: true, residue: false },
+      },
+    });
+    expect(restoredSession.uiState.visibilityByViewer).toEqual({
+      viewerA: { alignedTo: false, aligned: true },
+      viewerB: { alignedTo: true, aligned: false },
+    });
+    expect(restoredSession.uiState.fogByViewer).toEqual({
+      viewerA: { enabled: true, near: 0.35, far: 82 },
+      viewerB: { enabled: false, near: 0.1, far: 95 },
     });
     expect(restoredSession.uiState.colorThemesByMode.alignedTo.selectedThemeName).toBe('AlignedTo-custom-theme-test');
     expect(restoredSession.uiState.colorThemesByMode.alignedTo.themes).toEqual([
@@ -1135,6 +1219,73 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     expect(pluginB.canvas3d.camera.state.target).toEqual([4, 5, 6]);
     expect(pluginB.canvas3d.camera.state.up).toEqual([0, 1, 0]);
     expect(pluginB.canvas3d.camera.state.radius).toBe(84);
+  }, 15000);
+
+  it('keeps viewer B camera snapshot stable when loading a session while sync is already on (regression)', async () => {
+    render(<App />);
+    await waitFor(() => expect(screen.getByRole('banner')).toBeInTheDocument());
+
+    const alignedToInput = document.getElementById('viewer-column-A-alignedto-file-input') as HTMLInputElement | null;
+    const alignedInput = document.getElementById('viewer-column-B-aligned-file-input') as HTMLInputElement | null;
+    const alignedLoadBtn = document.getElementById('viewer-column-B-aligned-load-btn') as HTMLButtonElement | null;
+    expect(alignedToInput).toBeInTheDocument();
+    expect(alignedInput).toBeInTheDocument();
+    expect(alignedLoadBtn).toBeInTheDocument();
+
+    fireEvent.change(alignedToInput!, { target: { files: [loadTestFile('4ug0.cif')] } });
+    await waitFor(() => {
+      expect(document.getElementById('viewer-column-B-aligned-load-btn')).not.toBeDisabled();
+    }, { timeout: 5000 });
+
+    fireEvent.change(alignedInput!, { target: { files: [loadTestFile('6xu8.cif')] } });
+    fireEvent.click(alignedLoadBtn!);
+
+    await waitFor(() => {
+      expect(document.getElementById('generalcontrols-sync-select')).not.toBeDisabled();
+    }, { timeout: 5000 });
+
+    const syncButton = document.getElementById('generalcontrols-sync-select') as HTMLButtonElement;
+    fireEvent.click(syncButton);
+    expect(syncButton).toHaveTextContent('Sync: On');
+
+    const onSessionLoaded = (globalThis as any).__onSessionLoaded as ((session: any, files: Record<string, File>) => Promise<void>) | undefined;
+    expect(onSessionLoaded).toBeDefined();
+
+    const session = {
+      viewerA: { moleculeAlignedTo: { filename: '4ug0.cif' } },
+      viewerB: { moleculeAligned: { filename: '6xu8.cif' } },
+      uiState: {
+        syncEnabled: true,
+        cameraSnapshots: {
+          viewerA: { position: [30, 31, 32], target: [3, 4, 5], up: [0, 1, 0], radius: 55 },
+          viewerB: { position: [90, 91, 92], target: [9, 10, 11], up: [0, 1, 0], radius: 95 },
+        },
+      },
+    };
+    const files = {
+      '4ug0.cif': loadTestFile('4ug0.cif'),
+      '6xu8.cif': loadTestFile('6xu8.cif'),
+    };
+
+    const pluginA = (globalThis as any).__mockPluginA;
+    const pluginB = (globalThis as any).__mockPluginB;
+    pluginA.canvas3d.camera.setState.mockClear();
+    pluginB.canvas3d.camera.setState.mockClear();
+
+    await onSessionLoaded!(session, files);
+
+    await waitFor(() => {
+      expect(document.getElementById('generalcontrols-sync-select')).toHaveTextContent('Sync: On');
+    }, { timeout: 5000 });
+
+    expect(pluginA.canvas3d.camera.setState).toHaveBeenCalledTimes(1);
+    expect(pluginB.canvas3d.camera.setState).toHaveBeenCalledTimes(1);
+    expect(pluginA.canvas3d.camera.state.position).toEqual([30, 31, 32]);
+    expect(pluginA.canvas3d.camera.state.target).toEqual([3, 4, 5]);
+    expect(pluginA.canvas3d.camera.state.radius).toBe(55);
+    expect(pluginB.canvas3d.camera.state.position).toEqual([90, 91, 92]);
+    expect(pluginB.canvas3d.camera.state.target).toEqual([9, 10, 11]);
+    expect(pluginB.canvas3d.camera.state.radius).toBe(95);
   });
 
   it('round-trips multiple selected residues in session uiState', async () => {
