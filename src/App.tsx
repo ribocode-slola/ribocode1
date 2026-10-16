@@ -2495,6 +2495,20 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         ) as Record<string, string | undefined>,
         [selectedResidueIdsAligned, residueInfoAligned]
     );
+    const commonResidueIdsAcrossSelectedChains = useMemo(() => {
+        if (!selectedChainIdAlignedTo || !selectedChainIdAligned) return [] as string[];
+        const idsAlignedTo = new Set(residueInfoAlignedTo.residueLabels.keys());
+        const idsAligned = new Set(residueInfoAligned.residueLabels.keys());
+        if (idsAlignedTo.size === 0 || idsAligned.size === 0) return [] as string[];
+        const shared = Array.from(idsAlignedTo).filter((id) => idsAligned.has(id));
+        shared.sort((a, b) => Number(a) - Number(b));
+        return shared;
+    }, [
+        residueInfoAlignedTo.residueLabels,
+        residueInfoAligned.residueLabels,
+        selectedChainIdAlignedTo,
+        selectedChainIdAligned,
+    ]);
     const residueZoomLabelAlignedTo = selectedResidueIdsAlignedTo.length > 1
         ? `${selectedResidueIdsAlignedTo.length} residues`
         : (residueInfoAlignedTo.residueLabels.get(selectedResidueIdAlignedTo)?.name || '');
@@ -5346,6 +5360,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                         inFlight: inFlightUniProtCount,
                                     },
                                     residueInfo: residueInfoAlignedTo,
+                                    residueCommonIds: commonResidueIdsAcrossSelectedChains,
                                     selectedResidueIds: selectedResidueIdsAlignedTo,
                                     setSelectedResidueIds: setSelectedResidueIdsAlignedTo,
                                     residueZoomLabel: residueZoomLabelAlignedTo,
@@ -5440,6 +5455,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                         inFlight: inFlightUniProtCount,
                                     },
                                     residueInfo: residueInfoAligned,
+                                    residueCommonIds: commonResidueIdsAcrossSelectedChains,
                                     selectedResidueIds: selectedResidueIdsAligned,
                                     setSelectedResidueIds: setSelectedResidueIdsAligned,
                                     residueZoomLabel: residueZoomLabelAligned,
@@ -5622,6 +5638,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                         inFlight: inFlightUniProtCount,
                                     },
                                     residueInfo: residueInfoAlignedTo,
+                                    residueCommonIds: commonResidueIdsAcrossSelectedChains,
                                     selectedResidueIds: selectedResidueIdsAlignedTo,
                                     setSelectedResidueIds: setSelectedResidueIdsAlignedTo,
                                     residueZoomLabel: residueZoomLabelAlignedTo,
@@ -5716,6 +5733,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                         inFlight: inFlightUniProtCount,
                                     },
                                     residueInfo: residueInfoAligned,
+                                    residueCommonIds: commonResidueIdsAcrossSelectedChains,
                                     selectedResidueIds: selectedResidueIdsAligned,
                                     setSelectedResidueIds: setSelectedResidueIdsAligned,
                                     residueZoomLabel: residueZoomLabelAligned,

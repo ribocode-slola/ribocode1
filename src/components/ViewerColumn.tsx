@@ -78,6 +78,7 @@ export interface LoadDataRowPropsInput {
 		inFlight: number;
 	};
 	residueInfo: any;
+	residueCommonIds?: string[];
 	selectedResidueIds: string[];
 	setSelectedResidueIds: (val: string[]) => void;
 	residueZoomLabel: string;
@@ -180,6 +181,7 @@ export function getLoadDataRowProps({
 	setShowUniprotAccessionInChainLabels,
 	uniprotLookupStatus,
 	residueInfo,
+	residueCommonIds,
 	selectedResidueIds,
 	setSelectedResidueIds,
 	residueZoomLabel,
@@ -375,6 +377,7 @@ export function getLoadDataRowProps({
 		uniprotLookupStatus,
 		chainSelectDisabled: !isMoleculeAlignedToLoaded,
 		residueInfo,
+		residueCommonIds,
 		selectedResidueIds,
 		onSelectResidueIds: setSelectedResidueIds,
 		residueZoomLabel,
@@ -955,6 +958,7 @@ const ViewerColumn: React.FC<ViewerColumnProps> = ({
 						   onShowUniprotAccessionInChainLabelsChange={activeLoadProps.onShowUniprotAccessionInChainLabelsChange}
 						   uniprotLookupStatus={activeLoadProps.uniprotLookupStatus}
 						   residueInfo={activeLoadProps.residueInfo}
+						   residueCommonIds={activeLoadProps.residueCommonIds}
 						   selectedResidueIds={activeLoadProps.selectedResidueIds}
 						   onSelectResidueIds={activeLoadProps.onSelectResidueIds}
 						   residueSelectDisabled={activeLoadProps.residueSelectDisabled}
