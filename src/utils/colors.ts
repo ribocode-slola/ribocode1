@@ -226,6 +226,33 @@ export function getColourTheme(
 export function createChainColorTheme(
     themeName: string,
     chainColorMap: Map<string, Color>) {
+    const normalizeChainId = (value: unknown): string => String(value ?? '').trim();
+    const normalizedChainColorMap = new Map<string, Color>();
+    chainColorMap.forEach((color, key) => {
+        const trimmed = normalizeChainId(key);
+        if (!trimmed) return;
+        if (!normalizedChainColorMap.has(trimmed)) normalizedChainColorMap.set(trimmed, color);
+        const upper = trimmed.toUpperCase();
+        if (!normalizedChainColorMap.has(upper)) normalizedChainColorMap.set(upper, color);
+        const lower = trimmed.toLowerCase();
+        if (!normalizedChainColorMap.has(lower)) normalizedChainColorMap.set(lower, color);
+    });
+
+    const resolveChainColor = (authAsymId: string, labelAsymId: string): Color | undefined => {
+        const candidates = [normalizeChainId(authAsymId), normalizeChainId(labelAsymId)].filter(Boolean);
+        for (const candidate of candidates) {
+            if (chainColorMap.has(candidate)) return chainColorMap.get(candidate);
+            if (normalizedChainColorMap.has(candidate)) return normalizedChainColorMap.get(candidate);
+            const upper = candidate.toUpperCase();
+            if (chainColorMap.has(upper)) return chainColorMap.get(upper);
+            if (normalizedChainColorMap.has(upper)) return normalizedChainColorMap.get(upper);
+            const lower = candidate.toLowerCase();
+            if (chainColorMap.has(lower)) return chainColorMap.get(lower);
+            if (normalizedChainColorMap.has(lower)) return normalizedChainColorMap.get(lower);
+        }
+        return undefined;
+    };
+
     const theme = (ctx: ThemeDataContext, props: {}) => ({
         granularity: 'group',
         color: (location: StructureElement.Location) => {
@@ -233,8 +260,9 @@ export function createChainColorTheme(
             const { unit, element } = location;
             if (Unit.isAtomic(unit)) {
                 const chainIndex = unit.model.atomicHierarchy.chainAtomSegments.index[element];
-                const asym_id: string = String(unit.model.atomicHierarchy.chains.label_asym_id.value(chainIndex));
-                return chainColorMap.get(asym_id) ?? Color(0xCCCCCC);
+                const authAsymId: string = String(unit.model.atomicHierarchy.chains.auth_asym_id?.value?.(chainIndex) ?? '');
+                const labelAsymId: string = String(unit.model.atomicHierarchy.chains.label_asym_id?.value?.(chainIndex) ?? '');
+                return resolveChainColor(authAsymId, labelAsymId) ?? Color(0xCCCCCC);
             }
             return Color(0xCCCCCC);
         },
