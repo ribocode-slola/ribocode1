@@ -15,6 +15,7 @@ import * as structureUtils from './utils/structure';
 import { vi, beforeAll, beforeEach, afterEach } from 'vitest';
 import { PluginCommands } from 'molstar/lib/mol-plugin/commands';
 import { alignDatasetUsingChains } from 'molstar/lib/extensions/ribocode/utils/geometry';
+import { Vec3 } from 'molstar/lib/mol-math/linear-algebra';
 
 vi.mock('./hooks/useSessionLoadModal', () => ({
   useSessionLoadModal: vi.fn((onSessionLoaded: any) => {
@@ -1608,8 +1609,8 @@ describe('App integration: AlignedTo and Aligned loading', () => {
         0, 1, 0,
         0, 0, 1,
       ],
-      centroidReference: [10, 0, 0],
-      centroid: [0, 0, 0],
+      centroidReference: Vec3.create(10, 0, 0),
+      centroid: Vec3.create(0, 0, 0),
       alignedX: movingXs.map(x => x + 10),
       alignedY: [...movingYs],
       alignedZ: [...movingZs],
