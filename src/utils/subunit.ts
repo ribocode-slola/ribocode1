@@ -37,43 +37,52 @@ export function getSubunitToChainIds(structure: Structure):
         console.warn('No units found in structure.');
         return result;
     }
-    // Define chain ID patterns for ribosome subunits (case-insensitive, starts with letter)
-    const largeSubunitPatterns = [/^L.*/i, /^A.*/i];
-    const smallSubunitPatterns = [/^S.*/i, /^C.*/i];
-    // Iterate over units to classify chain IDs
+    // Explicit L/S-prefixed chain IDs are treated as authoritative when present.
+    const explicitLargePattern = /^L.*/i;
+    const explicitSmallPattern = /^S.*/i;
+    // Legacy fallback for structures that use A/C naming instead of L/S.
+    const fallbackLargePattern = /^A.*/i;
+    const fallbackSmallPattern = /^C.*/i;
+
+    const chainIds = new Set<string>();
+
+    // Collect unique auth chain IDs first so classification can choose the right strategy.
     units.forEach(unit => {
         const chains = unit.model.atomicHierarchy.chains;
         const { auth_asym_id } = chains;
         for (let i = 0; i < chains._rowCount; i++) {
-            const authId = auth_asym_id.value(i);
-            let classified = false;
-            // Debug: print chain ID before classification
-            //console.log(`[Subunit Debug] Processing chain ID: '${authId}'`);
-            // Check against large subunit patterns
-            for (const pattern of largeSubunitPatterns) {
-                if (pattern.test(authId)) {
-                    result.subunitToChainIds.get('Large')!.add(authId);
-                    classified = true;
-                    //console.log(`[Subunit Debug]  → Classified as 'Large' (matched pattern: ${pattern})`);
-                    break;
-                }
-            }
-            if (classified) continue;
-            // Check against small subunit patterns
-            for (const pattern of smallSubunitPatterns) {
-                if (pattern.test(authId)) {
-                    result.subunitToChainIds.get('Small')!.add(authId);
-                    classified = true;
-                    //console.log(`[Subunit Debug]  → Classified as 'Small' (matched pattern: ${pattern})`);
-                    break;
-                }
-            }
-            if (classified) continue;
-            // If not classified, assign to 'Other'
-            result.subunitToChainIds.get('Other')!.add(authId);
-            //console.log(`[Subunit Debug]  → Classified as 'Other'`);
+            chainIds.add(auth_asym_id.value(i));
         }
     });
+
+    const hasExplicitLarge = Array.from(chainIds).some(chainId => explicitLargePattern.test(chainId));
+    const hasExplicitSmall = Array.from(chainIds).some(chainId => explicitSmallPattern.test(chainId));
+    const useExplicitStrategy = hasExplicitLarge || hasExplicitSmall;
+
+    for (const chainId of chainIds) {
+        if (explicitLargePattern.test(chainId)) {
+            result.subunitToChainIds.get('Large')!.add(chainId);
+            continue;
+        }
+        if (explicitSmallPattern.test(chainId)) {
+            result.subunitToChainIds.get('Small')!.add(chainId);
+            continue;
+        }
+
+        if (!useExplicitStrategy) {
+            if (fallbackLargePattern.test(chainId)) {
+                result.subunitToChainIds.get('Large')!.add(chainId);
+                continue;
+            }
+            if (fallbackSmallPattern.test(chainId)) {
+                result.subunitToChainIds.get('Small')!.add(chainId);
+                continue;
+            }
+        }
+
+        result.subunitToChainIds.get('Other')!.add(chainId);
+    }
+
     // Print the final mapping
     console.log('[Subunit Debug] Final subunitToChainIds:', result.subunitToChainIds);
     return result;

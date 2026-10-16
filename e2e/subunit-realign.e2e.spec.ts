@@ -17,11 +17,11 @@ function dataPath(filename: string) {
 async function loadAlignedToAndAligned(page: import('@playwright/test').Page) {
   await page.click('#viewer-column-A-alignedto-load-btn');
   await page.setInputFiles('#viewer-column-A-alignedto-file-input', dataPath('4ug0.cif'));
-  await expect(page.getByRole('button', { name: /(Hide|Show)\s+4UG0/i })).toBeVisible({ timeout: 30000 });
+  await expect(page.locator('#viewer-column-A-alignedto-filename-label')).toContainText(/4ug0\.cif/i, { timeout: 30000 });
 
   await page.click('#viewer-column-B-aligned-load-btn');
   await page.setInputFiles('#viewer-column-B-aligned-file-input', dataPath('6xu8.cif'));
-  await expect(page.getByRole('button', { name: /(Hide|Show)\s+6XU8/i })).toBeVisible({ timeout: 30000 });
+  await expect(page.locator('#viewer-column-B-aligned-filename-label')).toContainText(/6xu8\.cif/i, { timeout: 30000 });
 }
 
 async function selectSubunitWithChains(

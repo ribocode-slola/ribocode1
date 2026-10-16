@@ -52,8 +52,52 @@ describe('getSubunitToChainIds', () => {
         };
         const result = getSubunitToChainIds(structure as any);
         expect(result.subunitToChainIds.get('Large')).toEqual(new Set(['LA']));
-        expect(result.subunitToChainIds.get('Small')).toEqual(new Set(['SB', 'CX']));
-        expect(result.subunitToChainIds.get('Other')).toEqual(new Set(['QZ']));
+        expect(result.subunitToChainIds.get('Small')).toEqual(new Set(['SB']));
+        expect(result.subunitToChainIds.get('Other')).toEqual(new Set(['CX', 'QZ']));
         expect(console.log).toHaveBeenCalledWith('[Subunit Debug] Final subunitToChainIds:', expect.any(Map));
+    });
+
+    it('prioritizes explicit L/S-prefixed chains when present', () => {
+        const structure = {
+            units: [
+                {
+                    model: {
+                        atomicHierarchy: {
+                            chains: {
+                                auth_asym_id: { value: (i: number) => ['L1', 'S1', 'A', 'C', 'X1'][i] },
+                                _rowCount: 5
+                            }
+                        }
+                    }
+                }
+            ]
+        };
+
+        const result = getSubunitToChainIds(structure as any);
+        expect(result.subunitToChainIds.get('Large')).toEqual(new Set(['L1']));
+        expect(result.subunitToChainIds.get('Small')).toEqual(new Set(['S1']));
+        expect(result.subunitToChainIds.get('Other')).toEqual(new Set(['A', 'C', 'X1']));
+    });
+
+    it('uses A/C fallback only when no explicit L/S chains exist', () => {
+        const structure = {
+            units: [
+                {
+                    model: {
+                        atomicHierarchy: {
+                            chains: {
+                                auth_asym_id: { value: (i: number) => ['A', 'C', 'QZ'][i] },
+                                _rowCount: 3
+                            }
+                        }
+                    }
+                }
+            ]
+        };
+
+        const result = getSubunitToChainIds(structure as any);
+        expect(result.subunitToChainIds.get('Large')).toEqual(new Set(['A']));
+        expect(result.subunitToChainIds.get('Small')).toEqual(new Set(['C']));
+        expect(result.subunitToChainIds.get('Other')).toEqual(new Set(['QZ']));
     });
 });
