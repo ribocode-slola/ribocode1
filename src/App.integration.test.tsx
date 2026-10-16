@@ -14,6 +14,8 @@ import App from './App';
 import * as structureUtils from './utils/structure';
 import { vi, beforeAll, beforeEach, afterEach } from 'vitest';
 import { PluginCommands } from 'molstar/lib/mol-plugin/commands';
+import { alignDatasetUsingChains } from 'molstar/lib/extensions/ribocode/utils/geometry';
+import { Vec3 } from 'molstar/lib/mol-math/linear-algebra';
 
 vi.mock('./hooks/useSessionLoadModal', () => ({
   useSessionLoadModal: vi.fn((onSessionLoaded: any) => {
@@ -1587,6 +1589,128 @@ describe('App integration: AlignedTo and Aligned loading', () => {
         expect(Math.abs(first[i] - second[i])).toBeLessThan(1e-10);
       }
     }
+  }, 15000);
+
+  it('persists and reapplies aligned structure transforms after in-place chain realign (regression)', async () => {
+    render(<App />);
+    await waitFor(() => expect(screen.getByRole('banner')).toBeInTheDocument());
+
+    vi.mocked(alignDatasetUsingChains).mockImplementationOnce((
+      _selectedAtomTypes: any,
+      _movingChainId: string,
+      _movingSymbolTypes: string[],
+      _movingChainIds: string[],
+      movingXs: number[],
+      movingYs: number[],
+      movingZs: number[]
+    ) => ({
+      rotmat: [
+        1, 0, 0,
+        0, 1, 0,
+        0, 0, 1,
+      ],
+      centroidReference: Vec3.create(10, 0, 0),
+      centroid: Vec3.create(0, 0, 0),
+      alignedX: movingXs.map(x => x + 10),
+      alignedY: [...movingYs],
+      alignedZ: [...movingZs],
+    }));
+
+    const alignedToInput = document.getElementById('viewer-column-A-alignedto-file-input') as HTMLInputElement;
+    const alignedInput = document.getElementById('viewer-column-B-aligned-file-input') as HTMLInputElement;
+    const alignedLoadBtn = document.getElementById('viewer-column-B-aligned-load-btn') as HTMLButtonElement;
+
+    fireEvent.change(alignedToInput, { target: { files: [loadTestFile('4ug0.cif')] } });
+    await waitFor(() => {
+      expect(document.getElementById('viewer-column-B-aligned-load-btn')).not.toBeDisabled();
+    }, { timeout: 5000 });
+    fireEvent.change(alignedInput, { target: { files: [loadTestFile('6xu8.cif')] } });
+    fireEvent.click(alignedLoadBtn);
+
+    fireEvent.click(document.getElementById('viewer-column-A-select-zoom-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-B-select-zoom-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-A-alignedto-chain-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-B-aligned-chain-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-A-alignedto-select-chain-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-B-aligned-select-chain-controls-toggle-btn') as HTMLButtonElement);
+
+    await waitFor(() => {
+      expect(document.querySelector('[data-testid^="viewer-column-A-chain-table-row-"]')).toBeInTheDocument();
+      expect(document.querySelector('[data-testid^="viewer-column-B-chain-table-row-"]')).toBeInTheDocument();
+    }, { timeout: 5000 });
+
+    fireEvent.click(document.querySelector('[data-testid^="viewer-column-A-chain-table-row-"]') as HTMLTableRowElement);
+    fireEvent.click(document.querySelector('[data-testid^="viewer-column-B-chain-table-row-"]') as HTMLTableRowElement);
+
+    const realignButton = document.getElementById('generalcontrols-realign-btn') as HTMLButtonElement;
+    await waitFor(() => expect(realignButton).not.toBeDisabled(), { timeout: 5000 });
+    fireEvent.click(realignButton);
+    await waitFor(() => expect(realignButton).not.toBeDisabled(), { timeout: 5000 });
+
+    const testApi = (globalThis as any).__ribocodeTestApi as {
+      captureStructureTransformCheckpoint?: (label: string) => any;
+      clearStructureTransformCheckpoints?: () => void;
+    } | undefined;
+    expect(testApi).toBeDefined();
+    expect(testApi?.captureStructureTransformCheckpoint).toEqual(expect.any(Function));
+    testApi?.clearStructureTransformCheckpoints?.();
+    const beforeSaveCheckpoint = testApi?.captureStructureTransformCheckpoint?.('before-save');
+    const beforeSaveViewerBAligned = beforeSaveCheckpoint?.viewerB?.transforms?.aligned;
+    expect(Array.isArray(beforeSaveViewerBAligned)).toBe(true);
+    expect(beforeSaveViewerBAligned).toHaveLength(16);
+
+    const getSessionState = (globalThis as any).__getSessionState as (() => any) | undefined;
+    expect(getSessionState).toBeDefined();
+    const savedSession = getSessionState!();
+    const savedTransform = savedSession?.uiState?.structureTransformsByViewer?.viewerB?.aligned;
+    expect(Array.isArray(savedTransform)).toBe(true);
+    expect(savedTransform).toHaveLength(16);
+    const identity = [
+      1, 0, 0, 0,
+      0, 1, 0, 0,
+      0, 0, 1, 0,
+      0, 0, 0, 1,
+    ];
+    const differsFromIdentity = savedTransform.some((value: number, idx: number) => Math.abs(value - identity[idx]) > 1e-6);
+    expect(differsFromIdentity).toBe(true);
+
+    const pluginB = (globalThis as any).__mockPluginB;
+    const insertedMatrices: number[][] = [];
+    const originalBuild = pluginB.state.data.build;
+    pluginB.state.data.build = vi.fn(() => {
+      const builder = {
+        to: vi.fn(() => builder),
+        update: vi.fn(() => builder),
+        insert: vi.fn((_transformer: any, params: any) => {
+          const matrix = params?.transform?.params?.data;
+          if (matrix && typeof matrix.length === 'number' && matrix.length >= 16) {
+            insertedMatrices.push(Array.from({ length: 16 }, (_v, i) => Number(matrix[i])));
+          }
+          return builder;
+        }),
+      };
+      return builder;
+    });
+
+    const onSessionLoaded = (globalThis as any).__onSessionLoaded as ((session: any, files: Record<string, File>) => Promise<void>) | undefined;
+    expect(onSessionLoaded).toBeDefined();
+    const files = {
+      '4ug0.cif': loadTestFile('4ug0.cif'),
+      '6xu8.cif': loadTestFile('6xu8.cif'),
+    };
+    await onSessionLoaded!(savedSession, files);
+    const afterLoadCheckpoint = testApi?.captureStructureTransformCheckpoint?.('after-load');
+    pluginB.state.data.build = originalBuild;
+
+    expect(insertedMatrices.length).toBeGreaterThan(0);
+    expect(insertedMatrices.some(matrix =>
+      matrix.every((value, idx) => Math.abs(value - savedTransform[idx]) <= 1e-6)
+    )).toBe(true);
+
+    const afterLoadViewerBAligned = afterLoadCheckpoint?.viewerB?.transforms?.aligned;
+    expect(Array.isArray(afterLoadViewerBAligned)).toBe(true);
+    expect(afterLoadViewerBAligned).toHaveLength(16);
+    expect((afterLoadViewerBAligned as number[]).every((value: number, idx: number) => Math.abs(value - (beforeSaveViewerBAligned as number[])[idx]) <= 1e-6)).toBe(true);
   }, 15000);
 
   it('restores saved additional representations on session load (regression)', async () => {

@@ -219,6 +219,16 @@ interface SessionUiState {
         viewerA?: SerializableCameraSnapshot;
         viewerB?: SerializableCameraSnapshot;
     };
+    structureTransformsByViewer?: {
+        viewerA?: {
+            alignedTo?: number[];
+            aligned?: number[];
+        };
+        viewerB?: {
+            alignedTo?: number[];
+            aligned?: number[];
+        };
+    };
     uniprotGeneNames?: UniProtGeneNameCache;
     showUniprotAccessionInChainLabels?: boolean;
     showUniprotAccessionInChainLabelsByViewer?: {
@@ -1119,6 +1129,24 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
 
     // Use a ref to always have the latest alignmentData from AlignedTo
     const alignmentDataRef = useRef<any>(null);
+    const persistedStructureTransformsRef = useRef<Record<string, number[]>>({});
+    const persistedStructureTransformsByModeRef = useRef<{
+        viewerA: { alignedTo?: number[]; aligned?: number[] };
+        viewerB: { alignedTo?: number[]; aligned?: number[] };
+    }>({ viewerA: {}, viewerB: {} });
+    const structureTransformCheckpointsRef = useRef<Record<string, {
+        timestamp: number;
+        viewerA: {
+            stateRefs: { alignedTo: string | null; aligned: string | null };
+            resolvedRefs: { alignedTo: string | null; aligned: string | null };
+            transforms: { alignedTo?: number[]; aligned?: number[] };
+        };
+        viewerB: {
+            stateRefs: { alignedTo: string | null; aligned: string | null };
+            resolvedRefs: { alignedTo: string | null; aligned: string | null };
+            transforms: { alignedTo?: number[]; aligned?: number[] };
+        };
+    }>>({});
     useEffect(() => {
         const alignmentData = viewerA.moleculeAlignedTo?.alignmentData;
         if (alignmentData && Object.keys(alignmentData).length > 0) {
@@ -1414,6 +1442,114 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         copyCameraZoomRadiusBetweenViewers(sourceViewerRef, targetViewerRef);
     }, []);
 
+    const resolveViewerStructureRefs = useCallback((
+        plugin: PluginUIContext | null,
+        refs: Record<string, string | null | undefined>
+    ): { alignedTo: string | null; aligned: string | null } => {
+        const alignedToFromState = refs[AlignedTo] ?? null;
+        const alignedFromState = refs[Aligned] ?? null;
+        if (alignedToFromState || alignedFromState) {
+            return { alignedTo: alignedToFromState, aligned: alignedFromState };
+        }
+
+        const structures = plugin?.managers?.structure?.hierarchy?.current?.structures ?? [];
+        const alignedToFromPlugin = structures[0]?.cell?.transform?.ref ?? null;
+        const alignedFromPlugin = structures[1]?.cell?.transform?.ref ?? null;
+        return { alignedTo: alignedToFromPlugin, aligned: alignedFromPlugin };
+    }, []);
+
+    const getSerializableStructureTransform = useCallback((
+        plugin: PluginUIContext | null,
+        structureRef: string | null | undefined,
+        cachedByMode?: number[]
+    ): number[] | undefined => {
+        if (Array.isArray(cachedByMode) && cachedByMode.length >= 16 && cachedByMode.every(Number.isFinite)) {
+            return cachedByMode.slice(0, 16);
+        }
+
+        if (!structureRef) return undefined;
+
+        const cached = persistedStructureTransformsRef.current[structureRef];
+        if (Array.isArray(cached) && cached.length >= 16 && cached.every(Number.isFinite)) {
+            return cached.slice(0, 16);
+        }
+
+        if (!plugin) return undefined;
+        const structureEntry = plugin.managers.structure.hierarchy.current.structures.find(
+            s => s.cell.transform.ref === structureRef
+        );
+        const matrix = structureEntry?.transform?.cell.obj?.data.coordinateSystem?.matrix ?? Mat4.identity();
+        const serialized = Array.from({ length: 16 }, (_v, i) => Number(matrix[i]));
+        if (serialized.some(value => !Number.isFinite(value))) return undefined;
+        return serialized;
+    }, []);
+
+    const applySerializableStructureTransform = useCallback(async (
+        plugin: PluginUIContext | null,
+        structureRef: string | null | undefined,
+        matrixValues?: number[]
+    ) => {
+        if (!plugin || !structureRef || !Array.isArray(matrixValues) || matrixValues.length < 16) return;
+        const numericValues = matrixValues.slice(0, 16).map(Number);
+        if (numericValues.some(value => !Number.isFinite(value))) return;
+
+        const matrix = Mat4.identity();
+        for (let i = 0; i < 16; i++) {
+            matrix[i] = numericValues[i];
+        }
+        persistedStructureTransformsRef.current[structureRef] = numericValues;
+
+        const existing = plugin.state.data.selectQ(q =>
+            q.byRef(structureRef).subtree().withTransformer(StateTransforms.Model.TransformStructureConformation)
+        )[0];
+        const params = {
+            transform: {
+                name: 'matrix' as const,
+                params: { data: matrix, transpose: false }
+            }
+        };
+        const tree = existing
+            ? plugin.state.data.build().to(existing).update(params)
+            : plugin.state.data.build().to(structureRef)
+                .insert(StateTransforms.Model.TransformStructureConformation, params, { tags: 'ribocode-session-restore-transform' });
+        await plugin.runTask(plugin.state.data.updateTree(tree));
+        plugin.canvas3d?.requestDraw?.();
+    }, []);
+
+    const getStructureTransformDiagnostics = useCallback(() => {
+        const createViewerSnapshot = (
+            plugin: PluginUIContext | null,
+            refs: Record<string, string | null | undefined>,
+            cachedByMode: { alignedTo?: number[]; aligned?: number[] }
+        ) => {
+            const resolvedRefs = resolveViewerStructureRefs(plugin, refs);
+            return {
+                stateRefs: {
+                    alignedTo: refs[AlignedTo] ?? null,
+                    aligned: refs[Aligned] ?? null,
+                },
+                resolvedRefs,
+                transforms: {
+                    alignedTo: getSerializableStructureTransform(plugin, resolvedRefs.alignedTo, cachedByMode.alignedTo),
+                    aligned: getSerializableStructureTransform(plugin, resolvedRefs.aligned, cachedByMode.aligned),
+                },
+            };
+        };
+
+        return {
+            timestamp: Date.now(),
+            viewerA: createViewerSnapshot(viewerA.ref.current, molstarA.structureRefs, persistedStructureTransformsByModeRef.current.viewerA),
+            viewerB: createViewerSnapshot(viewerB.ref.current, molstarB.structureRefs, persistedStructureTransformsByModeRef.current.viewerB),
+        };
+    }, [
+        getSerializableStructureTransform,
+        molstarA.structureRefs,
+        molstarB.structureRefs,
+        resolveViewerStructureRefs,
+        viewerA.ref,
+        viewerB.ref,
+    ]);
+
     useEffect(() => {
         const globalObj = globalThis as any;
         const shouldExposeTestApi = globalObj?.__RIBOCODE_E2E__ === true || import.meta.env.DEV;
@@ -1428,6 +1564,17 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 viewerA: viewerA.ref.current?.canvas3d?.camera?.getSnapshot?.(),
                 viewerB: viewerB.ref.current?.canvas3d?.camera?.getSnapshot?.(),
             }),
+            getStructureTransformDiagnostics,
+            captureStructureTransformCheckpoint: (label: string) => {
+                const key = typeof label === 'string' && label.trim().length > 0 ? label.trim() : 'default';
+                const snapshot = getStructureTransformDiagnostics();
+                structureTransformCheckpointsRef.current[key] = snapshot;
+                return snapshot;
+            },
+            getStructureTransformCheckpoints: () => ({ ...structureTransformCheckpointsRef.current }),
+            clearStructureTransformCheckpoints: () => {
+                structureTransformCheckpointsRef.current = {};
+            },
             setCameraSnapshot: (viewerKey: ViewerKey, snapshot: SerializableCameraSnapshot) => {
                 if (viewerKey === A) {
                     applySerializableCameraSnapshot(viewerA.ref, snapshot);
@@ -1451,7 +1598,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 delete globalObj.__ribocodeTestApi;
             }
         };
-    }, [activeViewer, applySerializableCameraSnapshot, getSerializableCameraSnapshot, syncEnabled, viewerA.ref, viewerB.ref]);
+    }, [activeViewer, applySerializableCameraSnapshot, getSerializableCameraSnapshot, getStructureTransformDiagnostics, syncEnabled, viewerA.ref, viewerB.ref]);
 
     const waitForRepresentationRef = useCallback(async (
         molstar: ReturnType<typeof useMolstarViewer>,
@@ -3145,6 +3292,9 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         lastChainRealignMetricsRef.current = null;
         lastResidueRealignMetricsRef.current = null;
         lastResidueRealignDebugRef.current = { phase: 'idle', timestamp: Date.now() };
+        persistedStructureTransformsRef.current = {};
+        persistedStructureTransformsByModeRef.current = { viewerA: {}, viewerB: {} };
+        structureTransformCheckpointsRef.current = {};
     }, [structureRefAAligned, structureRefBAligned]);
 
     const getStructureCoordinateSystemMatrix = useCallback((
@@ -3193,6 +3343,14 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         const base = realignBaseTransformCacheRef.current[opCacheKey];
         const next = Mat4.mul(Mat4(), base, deltaTransform);
         realignTransformCacheRef.current[opCacheKey] = Mat4.copy(Mat4(), next);
+        const serializedNext = Array.from({ length: 16 }, (_v, i) => Number(next[i]));
+        persistedStructureTransformsRef.current[structureRef] = serializedNext;
+        const isViewerA = plugin === viewerA.ref.current;
+        if (isViewerA) {
+            persistedStructureTransformsByModeRef.current.viewerA.aligned = serializedNext;
+        } else {
+            persistedStructureTransformsByModeRef.current.viewerB.aligned = serializedNext;
+        }
 
         if (ENABLE_REALIGN_DIAGNOSTICS) {
             const step = (realignDiagnosticsCounterRef.current[opKey] ?? 0) + 1;
@@ -3224,7 +3382,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         }
 
         await applyStructureTransformInPlace(plugin, structureRef, next, tag);
-    }, [applyStructureTransformInPlace, getStructureCoordinateSystemMatrix]);
+    }, [applyStructureTransformInPlace, getStructureCoordinateSystemMatrix, viewerA.ref, viewerB.ref]);
 
     // Realign handler using selected chains
     const handleRealignToChains = () => {
@@ -4111,8 +4269,11 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
     }, [loadedColorThemeRowsByName, loadedColorThemes]);
 
     // Session save: use custom hook
-    const handleSaveSession = useSessionSave(() => ({
-        viewerA: {
+    const handleSaveSession = useSessionSave(() => {
+        const resolvedRefsA = resolveViewerStructureRefs(viewerA.ref.current, molstarA.structureRefs);
+        const resolvedRefsB = resolveViewerStructureRefs(viewerB.ref.current, molstarB.structureRefs);
+        return {
+            viewerA: {
             moleculeAlignedTo: viewerA.moleculeAlignedTo
                 ? {
                     filename: viewerA.moleculeAlignedTo.filename,
@@ -4146,7 +4307,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 }
                 : null,
         },
-        uiState: {
+            uiState: {
             zoom: {
                 extraRadius: zoomExtraRadiusA,
                 minRadius: zoomMinRadiusA,
@@ -4239,6 +4400,16 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 viewerA: getSerializableCameraSnapshot(viewerA.ref),
                 viewerB: getSerializableCameraSnapshot(viewerB.ref),
             },
+            structureTransformsByViewer: {
+                viewerA: {
+                    alignedTo: getSerializableStructureTransform(viewerA.ref.current, resolvedRefsA.alignedTo, persistedStructureTransformsByModeRef.current.viewerA.alignedTo),
+                    aligned: getSerializableStructureTransform(viewerA.ref.current, resolvedRefsA.aligned, persistedStructureTransformsByModeRef.current.viewerA.aligned),
+                },
+                viewerB: {
+                    alignedTo: getSerializableStructureTransform(viewerB.ref.current, resolvedRefsB.alignedTo, persistedStructureTransformsByModeRef.current.viewerB.alignedTo),
+                    aligned: getSerializableStructureTransform(viewerB.ref.current, resolvedRefsB.aligned, persistedStructureTransformsByModeRef.current.viewerB.aligned),
+                },
+            },
             uniprotGeneNames,
             showUniprotAccessionInChainLabelsByViewer: {
                 viewerA: showUniprotAccessionInChainLabelsA,
@@ -4276,12 +4447,16 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 },
             },
         } as SessionUiState,
-    }));
+        };
+    });
 
 
     const handleSaveSessionAll = useSessionSaveAll(
-        () => ({
-            viewerA: {
+        () => {
+            const resolvedRefsA = resolveViewerStructureRefs(viewerA.ref.current, molstarA.structureRefs);
+            const resolvedRefsB = resolveViewerStructureRefs(viewerB.ref.current, molstarB.structureRefs);
+            return {
+                viewerA: {
                 moleculeAlignedTo: viewerA.moleculeAlignedTo
                     ? {
                         filename: viewerA.moleculeAlignedTo.filename,
@@ -4313,7 +4488,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                     }
                     : null,
             },
-            uiState: {
+                uiState: {
                 zoom: {
                         extraRadius: zoomExtraRadiusA,
                         minRadius: zoomMinRadiusA,
@@ -4406,6 +4581,16 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                     viewerA: getSerializableCameraSnapshot(viewerA.ref),
                     viewerB: getSerializableCameraSnapshot(viewerB.ref),
                 },
+                structureTransformsByViewer: {
+                    viewerA: {
+                        alignedTo: getSerializableStructureTransform(viewerA.ref.current, resolvedRefsA.alignedTo, persistedStructureTransformsByModeRef.current.viewerA.alignedTo),
+                        aligned: getSerializableStructureTransform(viewerA.ref.current, resolvedRefsA.aligned, persistedStructureTransformsByModeRef.current.viewerA.aligned),
+                    },
+                    viewerB: {
+                        alignedTo: getSerializableStructureTransform(viewerB.ref.current, resolvedRefsB.alignedTo, persistedStructureTransformsByModeRef.current.viewerB.alignedTo),
+                        aligned: getSerializableStructureTransform(viewerB.ref.current, resolvedRefsB.aligned, persistedStructureTransformsByModeRef.current.viewerB.aligned),
+                    },
+                },
                 uniprotGeneNames,
                 showUniprotAccessionInChainLabelsByViewer: {
                     viewerA: showUniprotAccessionInChainLabelsA,
@@ -4443,7 +4628,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                     },
                 },
             } as SessionUiState,
-        }),
+            };
+        },
         () => {
             const embeddedFiles: Record<string, File | null | undefined> = {};
             if (alignedToFile?.name) embeddedFiles[alignedToFile.name] = alignedToFile;
@@ -4734,19 +4920,43 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 }
             };
 
+            const restoredRefsA = resolveViewerStructureRefs(viewerA.ref.current, molstarA.structureRefs);
+            const restoredRefsB = resolveViewerStructureRefs(viewerB.ref.current, molstarB.structureRefs);
+
             await restoreDatasetVisibilityForViewer(
                 viewerA.ref.current,
-                { alignedTo: molstarA.structureRefs[AlignedTo] ?? null, aligned: molstarA.structureRefs[Aligned] ?? null },
+                { alignedTo: restoredRefsA.alignedTo, aligned: restoredRefsA.aligned },
                 uiState?.visibilityByViewer?.viewerA,
                 viewerA.setIsMoleculeAlignedToVisible,
                 viewerA.setIsMoleculeAlignedVisible
             );
             await restoreDatasetVisibilityForViewer(
                 viewerB.ref.current,
-                { alignedTo: molstarB.structureRefs[AlignedTo] ?? null, aligned: molstarB.structureRefs[Aligned] ?? null },
+                { alignedTo: restoredRefsB.alignedTo, aligned: restoredRefsB.aligned },
                 uiState?.visibilityByViewer?.viewerB,
                 viewerB.setIsMoleculeAlignedToVisible,
                 viewerB.setIsMoleculeAlignedVisible
+            );
+
+            await applySerializableStructureTransform(
+                viewerA.ref.current,
+                restoredRefsA.alignedTo,
+                uiState?.structureTransformsByViewer?.viewerA?.alignedTo
+            );
+            await applySerializableStructureTransform(
+                viewerA.ref.current,
+                restoredRefsA.aligned,
+                uiState?.structureTransformsByViewer?.viewerA?.aligned
+            );
+            await applySerializableStructureTransform(
+                viewerB.ref.current,
+                restoredRefsB.alignedTo,
+                uiState?.structureTransformsByViewer?.viewerB?.alignedTo
+            );
+            await applySerializableStructureTransform(
+                viewerB.ref.current,
+                restoredRefsB.aligned,
+                uiState?.structureTransformsByViewer?.viewerB?.aligned
             );
 
             // Restore per-viewer camera snapshots with sync propagation suspended so
@@ -4834,6 +5044,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         loadMoleculeIntoViewers,
         normalizeSessionRepresentation,
         applySerializableCameraSnapshot,
+        applySerializableStructureTransform,
         setSelectedSubunitAlignedTo,
         setSelectedSubunitAligned,
         setSelectedChainIdAlignedTo,
