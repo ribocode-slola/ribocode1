@@ -8,6 +8,7 @@ Welcome to the ribocode1 User Guide!
 - [User Interface](#user-interface)
 - [Chain Selection](#chain-selection)
 - [Sessions](#sessions)
+- [Troubleshooting Before Reporting Issues](#troubleshooting-before-reporting-issues)
 
 
 ## Data and Mol* Acknowledgements
@@ -24,7 +25,7 @@ The UI layout is as follows:
   - Title containing the version with a link to this README.
   - `General Controls`
     - `Session Menu`
-      - For loading and saving sessions.
+      - For loading and saving sessions and troubleshooting reset.
     - `Select Sync`
       - Control for synchronization
     - `Align Subunits`
@@ -287,4 +288,26 @@ Users can save and load a session via the `Session` menu. A `Load` rather than a
 Session `uiState` persists `Residue Zoom` settings, per-dataset `Include UniProt accession in labels` settings, highlight toggle states, and selection display preferences (`Highlight display`, `Dim unselected`, and `Strength`), so visual behavior is restored consistently when a session is loaded.
 
 The `Session` > `Save All` saves all the data and all the UI state into a single file so that this can be shared and reloaded using `Session` > `Load All`.
+
+## Troubleshooting Before Reporting Issues
+
+If you see unexpected behavior (for example unusual alignment/orientation, stale labels, or controls not reflecting recent actions), run:
+
+- `Session > Reset Local Caches`
+
+This performs a local troubleshooting reset for Ribocode in your browser and reloads the app. It clears local browser state used by Ribocode, including:
+
+- local storage/session storage
+- IndexedDB entries
+- service worker registrations
+- cache storage entries
+
+Recommended issue-reporting workflow:
+
+1. Reproduce the problem once.
+2. Run `Session > Reset Local Caches`.
+3. Repeat the same steps.
+4. If the issue still occurs, report it with the exact dataset filenames and steps.
+
+If the issue disappears after reset, include that detail in your report as it helps triage stale-state problems faster.
 ---
