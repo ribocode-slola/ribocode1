@@ -19,6 +19,7 @@ Welcome to the Ribocode Developer Guide!
   - [Updating Existing Components](#updating-existing-components)
 - [Mol* Advanced Controls Toggle](#mol-advanced-controls-toggle)
 - [Re-alignment Implementation Notes](#re-alignment-implementation-notes)
+  - [Cache and State Hygiene](#cache-and-state-hygiene)
 - [Mol*](#mol*)
 - [Highlighting and Selection Colouring](#highlighting-and-selection-colouring)
 - [Documentation](#documentation)
@@ -168,6 +169,29 @@ This keeps default user workflows focused on Ribocode controls while preserving 
 
 Chain-based re-alignment now uses a staged approach in `src/App.tsx`.
 
+### Two-Layer Alignment Model (Important)
+
+Ribocode intentionally uses two related but distinct alignment layers:
+
+- Geometry/frame alignment (coordinate-space):
+  - Applied during load/parse to place structures into a comparable coordinate frame.
+  - This keeps structural operations (selection loci, clipping behavior, fit computations, and session transform restore) numerically consistent across both viewers.
+- View alignment (camera-space):
+  - Applied after user-triggered realign actions so both viewers present the same viewpoint.
+  - This is a UI consistency rule and is independent of whether the fitted atom coordinates are already correct.
+
+Why we keep both layers:
+
+- Geometry-only alignment can still look "wrong" to users if viewer cameras drift apart after sequential actions.
+- Camera-only alignment makes visual parity easy, but can leave structures in different coordinate frames and complicate downstream structural logic.
+- The current design keeps coordinate normalization for robust structural behavior, then enforces camera parity after realign actions for perceptual consistency.
+
+Practical contract for contributors:
+
+- Any action that changes `Aligned` structure transforms (chain/subunit/residue realign; in-place or reload fallback) should explicitly restore viewer camera parity.
+- In current implementation this is done by copying camera A -> B after successful realign apply.
+- If this contract is changed in future, update both this guide and regression tests together.
+
 - Preferred path (in-place):
   - Fit is computed using `alignDatasetUsingChains` from the customized Mol* ribocode geometry utilities.
   - A rigid transform matrix is built from the fitted rotation and derived translation.
@@ -195,6 +219,37 @@ Chain-based re-alignment now uses a staged approach in `src/App.tsx`.
   - Poll frequency is configurable via `VITE_SYNC_POLL_INTERVAL_MS` (default `20`, clamped to `5..100`) in `.env`/`.env.production`.
 - Utility helpers:
   - Re-align pair-key and dedupe helpers are implemented in `src/utils/realignment.ts` (`makeRealignPairKey`, `hasRealignPair`, `addRealignPair`).
+
+### Cache and State Hygiene
+
+Alignment regressions can be obscured by stale state from prior loads if either browser caches or in-memory transform caches are reused between scenarios.
+
+Current policy:
+
+- Do not force a full browser cache flush on every normal app initialization.
+- Do clear internal alignment caches when loading a new dataset pair (AlignedTo or Aligned) so each load starts from a fresh transform baseline.
+- Do provide explicit diagnostics/test hooks for manual and automated cache resets.
+- Provide a user-facing troubleshooting reset (`Session > Reset Local Caches`) so reporters can quickly verify whether issues persist after a clean local state reset.
+
+Why we do not hard-flush all browser caches at startup:
+
+- It can degrade performance by defeating normal browser and service-worker caching.
+- It can interfere with offline/PWA behavior.
+- It can unexpectedly remove persisted local state users may rely on.
+- It does not target the main source of alignment confusion (in-memory transform carryover), so it is broader than necessary.
+
+Recommended practice for debugging and regression tests:
+
+- In E2E setup, perform a hard browser-state reset when validating initial-load parity scenarios:
+  - clear `localStorage` and `sessionStorage`
+  - clear IndexedDB databases
+  - unregister service workers
+  - clear Cache Storage
+- Also clear app-internal alignment caches before taking diagnostics snapshots.
+
+Reference regression test:
+
+- `e2e/initial-load-transform-stability.e2e.spec.ts` validates that a hard cache flush + fresh load yields stable initial aligned transforms across repeated runs.
 
 ## UI Element IDs and `data-testid` Conventions
 
@@ -494,6 +549,7 @@ When alignment internals are changed:
 
 - If the change is in `packages/molstar`, treat it as package-level geometry behavior and validate against the benchmark workflow above.
 - If the change is in `src/App.tsx`, verify both in-place transform behavior and reload-based fallback behavior.
+- Verify camera/viewpoint parity after sequential realign actions (for example chain -> residue and residue -> chain), not just fit metrics.
 - Record any expected behavior changes in `CHANGELOG.md` so regressions are easier to trace.
 
 Next alignment investigation focus:
@@ -722,5 +778,7 @@ If you contribute changes, please submit a Pull Request that includes documentat
 Also, add your details to the list of authors in the header of any source files you modify.
 
 For contribution ideas, bug reports, or feature requests, please visit the [GitHub Issues page](https://github.com/ribocode-slola/ribocode1/issues).
+
+When triaging bug reports for unexpected UI/alignment behavior, ask reporters to run `Session > Reset Local Caches` and retry the same steps before filing (or updating) the issue. This helps quickly separate stale local state problems from reproducible product defects.
 
 For planned future direction and potential contribution areas, also review [ROADMAP.md](./ROADMAP.md).
