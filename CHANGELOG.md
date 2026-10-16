@@ -1,3 +1,11 @@
+## [v0.17.0] - 2026-10-16
+Release summary: this minor release expands residue selection workflows with bulk-select actions, residue-type grouping, invert selection, and shared-residue selection across chains.
+- Added residue quick-selection actions in `src/components/LoadMolecule.tsx`: `Select All`, `Clear`, `Invert`, and `Select Shared`.
+- Added residue-type buckets in `src/components/LoadMolecule.tsx` that display per-type counts (for example `ALA (n)`, `GLY (n)`) and allow add/remove toggling of all residues of a given type.
+- Added shared-residue selection wiring in `src/App.tsx` by computing residue IDs common to the currently selected `AlignedTo` and `Aligned` chains and passing them into per-column residue controls.
+- Threaded new residue bulk-selection props through `src/components/ViewerColumn.tsx` so both columns expose consistent residue-selection behavior.
+- Added focused regression coverage in `src/components/LoadMolecule.test.tsx` validating quick-selection actions, residue-type toggles, and shared-selection behavior.
+
 ## [v0.16.10] - 2026-10-16
 Release summary: this patch release hardens session transform restore reliability after chain realignment and fixes custom colour-theme application for mmCIF chain IDs so mapped chains no longer fall back to grey.
 - Hardened Save/Load transform capture and restore in `src/App.tsx` by resolving structure refs from live Mol* hierarchy when state refs are stale/missing, reducing race-sensitive restore misses after `Align Chains` + `Save All` + `Load All`.

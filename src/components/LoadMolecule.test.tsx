@@ -360,4 +360,41 @@ describe('LoadDataRow', () => {
         fireEvent.change(dimStrength, { target: { value: '70' } });
         expect(onDimUnselectedStrengthChange).toHaveBeenCalledWith(0.7);
     });
+
+    it('supports residue quick actions and residue-type toggles', () => {
+        const onSelectResidueIds = vi.fn();
+        render(
+            <LoadDataRow
+                {...baseProps}
+                isLoaded={true}
+                selectedResidueIds={['1']}
+                onSelectResidueIds={onSelectResidueIds}
+                residueInfo={{
+                    residueLabels: new Map([
+                        ['1', { id: '1', name: 'ALA 1', compId: 'ALA', seqNumber: 1, insCode: '' }],
+                        ['2', { id: '2', name: 'ALA 2', compId: 'ALA', seqNumber: 2, insCode: '' }],
+                        ['3', { id: '3', name: 'GLY 3', compId: 'GLY', seqNumber: 3, insCode: '' }],
+                    ]),
+                    residueToAtomIds: { '1': ['a1'], '2': ['a2'], '3': ['a3'] },
+                }}
+                residueCommonIds={['2', '3']}
+            />
+        );
+
+        fireEvent.click(screen.getByText('Show Residue Controls'));
+        expect(screen.getByText('ALA (2)')).toBeInTheDocument();
+        expect(screen.getByText('GLY (1)')).toBeInTheDocument();
+
+        fireEvent.click(document.getElementById('test-viewer-a-residue-select-all-btn') as HTMLButtonElement);
+        expect(onSelectResidueIds).toHaveBeenLastCalledWith(['1', '2', '3']);
+
+        fireEvent.click(document.getElementById('test-viewer-a-residue-invert-selection-btn') as HTMLButtonElement);
+        expect(onSelectResidueIds).toHaveBeenLastCalledWith(['2', '3']);
+
+        fireEvent.click(document.getElementById('test-viewer-a-residue-select-common-btn') as HTMLButtonElement);
+        expect(onSelectResidueIds).toHaveBeenLastCalledWith(['2', '3']);
+
+        fireEvent.click(document.getElementById('test-viewer-a-residue-type-toggle-ALA-btn') as HTMLButtonElement);
+        expect(onSelectResidueIds).toHaveBeenLastCalledWith(['1', '2']);
+    });
 });

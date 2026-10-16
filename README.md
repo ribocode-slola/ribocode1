@@ -105,8 +105,10 @@ Ribocode is being developed as part of the [Ribocode project](https://ribocode.o
 
 Ribocode project participants and Scientific Advisory Board members are encouraged to provide feedback, in particular describing what can be improved and what additional features are wanted. A good way to provide feedback is to comment on and create [issues](https://github.com/ribocode-slola/ribocode1/issues).
 
+Before filing a bug report for unexpected UI/alignment behaviour, try `Session > Reset Local Caches` and re-test the same workflow. This clears local browser cache/storage used by Ribocode and reloads the app, which helps distinguish stale local state issues from reproducible defects.
 
 Contributions from others are also welcome, please see the [Developer Guide](./DeveloperGuide.md) for more guidance on contributing.
+
 
 ## Acknowledgements
 

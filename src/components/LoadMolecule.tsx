@@ -128,6 +128,7 @@ interface LoadDataRowProps {
         residueLabels: Map<string, ResidueLabelInfo>;
         residueToAtomIds: Record<string, string[]>;
     };
+    residueCommonIds?: string[];
     selectedResidueIds: string[];
     onSelectResidueIds: (ids: string[]) => void;
     residueSelectDisabled: boolean;
@@ -210,6 +211,7 @@ interface LoadDataRowProps {
             residueLabels: Map<string, ResidueLabelInfo>;
             residueToAtomIds: Record<string, string[]>;
         };
+        residueCommonIds?: string[];
         selectedResidueIds: string[];
         onSelectResidueIds: (ids: string[]) => void;
         residueSelectDisabled: boolean;
@@ -273,6 +275,7 @@ interface LoadDataRowProps {
         onShowUniprotAccessionInChainLabelsChange,
         uniprotLookupStatus,
         residueInfo,
+        residueCommonIds = [],
         selectedResidueIds,
         onSelectResidueIds,
         residueSelectDisabled,
@@ -322,6 +325,31 @@ interface LoadDataRowProps {
         const selectedChainLabel = selectedChainId
             ? (effectiveChainLabels.get(selectedChainId) ?? chainInfo.chainLabels.get(selectedChainId) ?? selectedChainId)
             : 'None';
+        const orderedResidueIds = React.useMemo(() => {
+            const orderedEntries = Array.from(residueInfo.residueLabels.entries()).sort(
+                ([, a], [, b]) => a.seqNumber - b.seqNumber || a.insCode.localeCompare(b.insCode)
+            );
+            return orderedEntries.map(([residueId]) => residueId);
+        }, [residueInfo.residueLabels]);
+        const residueTypeBuckets = React.useMemo(() => {
+            const buckets = new Map<string, string[]>();
+            for (const residueId of orderedResidueIds) {
+                const info = residueInfo.residueLabels.get(residueId);
+                const key = String(info?.compId || '?').trim().toUpperCase() || '?';
+                if (!buckets.has(key)) buckets.set(key, []);
+                buckets.get(key)!.push(residueId);
+            }
+            return Array.from(buckets.entries())
+                .map(([type, residueIds]) => ({ type, residueIds, count: residueIds.length }))
+                .sort((a, b) => a.type.localeCompare(b.type));
+        }, [orderedResidueIds, residueInfo.residueLabels]);
+        const orderedSelectionFromSet = React.useCallback((set: Set<string>): string[] => {
+            const ordered: string[] = [];
+            for (const residueId of orderedResidueIds) {
+                if (set.has(residueId)) ordered.push(residueId);
+            }
+            return ordered;
+        }, [orderedResidueIds]);
 
         return (
             <>
@@ -570,6 +598,84 @@ interface LoadDataRowProps {
                         </div>
                         <div className="load-data-control-row" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginLeft: 12 }}>
                             <button
+                                type="button"
+                                className="msp-btn msp-form-control"
+                                id={`${idPrefix}-residue-select-all-btn`}
+                                disabled={residueSelectDisabled || orderedResidueIds.length === 0}
+                                onClick={() => onSelectResidueIds(orderedResidueIds)}
+                            >
+                                Select All
+                            </button>
+                            <button
+                                type="button"
+                                className="msp-btn msp-form-control"
+                                id={`${idPrefix}-residue-clear-selection-btn`}
+                                disabled={residueSelectDisabled || selectedResidueIds.length === 0}
+                                onClick={() => onSelectResidueIds([])}
+                            >
+                                Clear
+                            </button>
+                            <button
+                                type="button"
+                                className="msp-btn msp-form-control"
+                                id={`${idPrefix}-residue-invert-selection-btn`}
+                                disabled={residueSelectDisabled || orderedResidueIds.length === 0}
+                                onClick={() => {
+                                    const selectedSet = new Set(selectedResidueIds);
+                                    const inverted = orderedResidueIds.filter(id => !selectedSet.has(id));
+                                    onSelectResidueIds(inverted);
+                                }}
+                            >
+                                Invert
+                            </button>
+                            <button
+                                type="button"
+                                className="msp-btn msp-form-control"
+                                id={`${idPrefix}-residue-select-common-btn`}
+                                disabled={residueSelectDisabled || residueCommonIds.length === 0}
+                                onClick={() => {
+                                    const available = new Set(orderedResidueIds);
+                                    const common = residueCommonIds.filter(id => available.has(id));
+                                    onSelectResidueIds(common);
+                                }}
+                            >
+                                Select Shared
+                            </button>
+                        </div>
+                        {residueTypeBuckets.length > 0 && (
+                            <div className="load-data-control-row" style={{ marginLeft: 12, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                {residueTypeBuckets.map(({ type, residueIds, count }) => {
+                                    const selectedSet = new Set(selectedResidueIds);
+                                    const allSelected = residueIds.length > 0 && residueIds.every(id => selectedSet.has(id));
+                                    const actionLabel = allSelected ? 'Remove' : 'Add';
+                                    const btnIdSafeType = type.replace(/[^A-Za-z0-9_-]/g, '_');
+                                    return (
+                                        <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                            <span>{`${type} (${count})`}</span>
+                                            <button
+                                                type="button"
+                                                className="msp-btn msp-form-control"
+                                                id={`${idPrefix}-residue-type-toggle-${btnIdSafeType}-btn`}
+                                                disabled={residueSelectDisabled || residueIds.length === 0}
+                                                onClick={() => {
+                                                    const nextSet = new Set(selectedResidueIds);
+                                                    if (allSelected) {
+                                                        residueIds.forEach(id => nextSet.delete(id));
+                                                    } else {
+                                                        residueIds.forEach(id => nextSet.add(id));
+                                                    }
+                                                    onSelectResidueIds(orderedSelectionFromSet(nextSet));
+                                                }}
+                                            >
+                                                {actionLabel}
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                        <div className="load-data-control-row" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginLeft: 12 }}>
+                            <button
                                 onClick={onResidueZoom}
                                 disabled={residueZoomDisabled}
                                 aria-label={`Zoom (${residueZoomLabel})`}
@@ -707,6 +813,7 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
     onShowUniprotAccessionInChainLabelsChange,
     uniprotLookupStatus,
     residueInfo,
+    residueCommonIds,
     selectedResidueIds,
     onSelectResidueIds,
     residueSelectDisabled,
@@ -926,6 +1033,7 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
                         onShowUniprotAccessionInChainLabelsChange={onShowUniprotAccessionInChainLabelsChange}
                         uniprotLookupStatus={uniprotLookupStatus}
                         residueInfo={residueInfo}
+                        residueCommonIds={residueCommonIds}
                         selectedResidueIds={selectedResidueIds}
                         onSelectResidueIds={onSelectResidueIds}
                         residueSelectDisabled={residueSelectDisabled}
