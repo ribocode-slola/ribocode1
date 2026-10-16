@@ -9,7 +9,8 @@
  * @see https://github.com/ribocode-slola/ribocode1
  */
 import { vi } from 'vitest';
-import { getColourTheme } from './colors';
+import { Color } from 'molstar/lib/mol-util/color';
+import { createChainColorTheme, getColourTheme } from './colors';
 
 describe('getColourTheme', () => {
     let originalWarn: any;
@@ -50,5 +51,49 @@ describe('getColourTheme', () => {
             { pdb_chain: 'A', color: '#00FF00' }
         ]);
         expect(theme1).toBe(theme2);
+    });
+});
+
+describe('createChainColorTheme', () => {
+    function makeLocation(authAsymId: string, labelAsymId: string, element = 0): any {
+        return {
+            unit: {
+                kind: 0,
+                model: {
+                    atomicHierarchy: {
+                        chainAtomSegments: { index: [0] },
+                        chains: {
+                            auth_asym_id: { value: (_idx: number) => authAsymId },
+                            label_asym_id: { value: (_idx: number) => labelAsymId },
+                        },
+                    },
+                },
+            },
+            element,
+        };
+    }
+
+    it('prefers auth_asym_id when matching chain colors', () => {
+        const themeName = 'auth-first-theme';
+        const chainColorMap = new Map<string, Color>([['LY', Color.fromHexStyle('#3366FF')]]);
+        const theme = createChainColorTheme(themeName, chainColorMap);
+        const colorFn = theme.factory({} as any, {}).color;
+
+        const location = makeLocation('LY', 'A');
+        const color = colorFn(location);
+
+        expect(color).toBe(Color.fromHexStyle('#3366FF'));
+    });
+
+    it('matches normalized chain IDs (trimmed and case-insensitive)', () => {
+        const themeName = 'normalized-ids-theme';
+        const chainColorMap = new Map<string, Color>([[' ly ', Color.fromHexStyle('#FF8800')]]);
+        const theme = createChainColorTheme(themeName, chainColorMap);
+        const colorFn = theme.factory({} as any, {}).color;
+
+        const location = makeLocation('LY', 'A');
+        const color = colorFn(location);
+
+        expect(color).toBe(Color.fromHexStyle('#FF8800'));
     });
 });
