@@ -13,7 +13,6 @@ This document outlines planned work for upcoming Ribocode versions. It is direct
 
 ## v0.16.x Bug Fixes.
 - Check loading color theme. The example colour theme provided does not produce a colouring as expected: There are only three colours being mapped and there should be many more...
-- Tests are wanted to ensure that highlight and inspect is correct for viewer B when reloading a session.
 
 
 ## v0.17.x Support selection of 2 Chains, residues from each chain, and generally improve residue selection.
