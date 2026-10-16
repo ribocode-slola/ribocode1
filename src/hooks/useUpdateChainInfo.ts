@@ -73,7 +73,8 @@ export function useUpdateChainInfo(
 
       // Build subunit-to-chain mapping from structure chain IDs and keep it aligned
       // with the currently available chain labels.
-      const inferred = getSubunitToChainIds(structureObj).subunitToChainIds;
+      const inferredResult = getSubunitToChainIds(structureObj);
+      const inferred = inferredResult.subunitToChainIds;
       const subunitToChainIds = new Map<string, Set<string>>([
         ['All', new Set<string>()],
         ['Large', new Set<string>()],
@@ -143,6 +144,10 @@ export function useUpdateChainInfo(
       });
 
       if (process.env.NODE_ENV !== 'test') {
+        const globalObj = globalThis as any;
+        globalObj.__ribocodeSubunitInference = globalObj.__ribocodeSubunitInference ?? {};
+        globalObj.__ribocodeSubunitInference[label ?? 'unknown'] = inferredResult.confidence;
+
         const mappedAccessions = chainToUniprot.size;
         const labelsWithAccession = mappedAccessions > 0
           ? Array.from(chainToUniprot.entries()).filter(([chainId, accession]) => {

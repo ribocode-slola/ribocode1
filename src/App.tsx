@@ -1550,6 +1550,75 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         viewerB.ref,
     ]);
 
+    const clearInternalAlignmentCaches = useCallback(() => {
+        realignTransformCacheRef.current = {};
+        realignBaseTransformCacheRef.current = {};
+        realignDiagnosticsCounterRef.current = {};
+        lastChainRealignMetricsRef.current = null;
+        lastResidueRealignMetricsRef.current = null;
+        lastResidueRealignDebugRef.current = { phase: 'idle', timestamp: Date.now() };
+        persistedStructureTransformsRef.current = {};
+        persistedStructureTransformsByModeRef.current = { viewerA: {}, viewerB: {} };
+        structureTransformCheckpointsRef.current = {};
+    }, []);
+
+    const hardResetLocalCachesAndReload = useCallback(async () => {
+        clearInternalAlignmentCaches();
+
+        try {
+            localStorage.clear();
+        } catch (err) {
+            console.warn('[Cache Reset] localStorage clear failed.', err);
+        }
+        try {
+            sessionStorage.clear();
+        } catch (err) {
+            console.warn('[Cache Reset] sessionStorage clear failed.', err);
+        }
+
+        try {
+            const indexedDbWithDatabases = indexedDB as IDBFactory & {
+                databases?: () => Promise<Array<{ name?: string }>>;
+            };
+            const dbs = await indexedDbWithDatabases.databases?.();
+            if (Array.isArray(dbs)) {
+                await Promise.all(
+                    dbs
+                        .map(db => db?.name)
+                        .filter((name): name is string => !!name)
+                        .map(name => new Promise<void>((resolve) => {
+                            const req = indexedDB.deleteDatabase(name);
+                            req.onsuccess = () => resolve();
+                            req.onerror = () => resolve();
+                            req.onblocked = () => resolve();
+                        }))
+                );
+            }
+        } catch (err) {
+            console.warn('[Cache Reset] IndexedDB reset failed.', err);
+        }
+
+        try {
+            const registrations = await navigator.serviceWorker?.getRegistrations?.();
+            if (Array.isArray(registrations)) {
+                await Promise.all(registrations.map(registration => registration.unregister()));
+            }
+        } catch (err) {
+            console.warn('[Cache Reset] Service worker unregister failed.', err);
+        }
+
+        try {
+            const keys = await caches?.keys?.();
+            if (Array.isArray(keys)) {
+                await Promise.all(keys.map(key => caches.delete(key)));
+            }
+        } catch (err) {
+            console.warn('[Cache Reset] Cache Storage reset failed.', err);
+        }
+
+        window.location.reload();
+    }, [clearInternalAlignmentCaches]);
+
     useEffect(() => {
         const globalObj = globalThis as any;
         const shouldExposeTestApi = globalObj?.__RIBOCODE_E2E__ === true || import.meta.env.DEV;
@@ -1591,6 +1660,30 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 residue: lastResidueRealignMetricsRef.current,
             }),
             getLastResidueRealignDebug: () => lastResidueRealignDebugRef.current,
+            clearInternalAlignmentCaches,
+            getSubunitDiagnostics: () => ({
+                alignedTo: {
+                    selectedSubunit: selectedSubunitAlignedTo,
+                    selectedChainIds: getSelectedSubunitChainIds(
+                        subunitToChainIdsAlignedTo as unknown as Map<string, Set<string>>,
+                        selectedSubunitAlignedTo
+                    ).slice().sort(),
+                    subunitToChainIds: Object.fromEntries(
+                        Array.from(subunitToChainIdsAlignedTo.entries()).map(([subunit, ids]) => [subunit, Array.from(ids).sort()])
+                    ),
+                },
+                aligned: {
+                    selectedSubunit: selectedSubunitAligned,
+                    selectedChainIds: getSelectedSubunitChainIds(
+                        subunitToChainIdsAligned as unknown as Map<string, Set<string>>,
+                        selectedSubunitAligned
+                    ).slice().sort(),
+                    subunitToChainIds: Object.fromEntries(
+                        Array.from(subunitToChainIdsAligned.entries()).map(([subunit, ids]) => [subunit, Array.from(ids).sort()])
+                    ),
+                },
+                confidence: (globalThis as any).__ribocodeSubunitInference ?? {},
+            }),
         };
 
         return () => {
@@ -1598,7 +1691,20 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 delete globalObj.__ribocodeTestApi;
             }
         };
-    }, [activeViewer, applySerializableCameraSnapshot, getSerializableCameraSnapshot, getStructureTransformDiagnostics, syncEnabled, viewerA.ref, viewerB.ref]);
+    }, [
+        activeViewer,
+        applySerializableCameraSnapshot,
+        getSerializableCameraSnapshot,
+        getStructureTransformDiagnostics,
+        clearInternalAlignmentCaches,
+        selectedSubunitAlignedTo,
+        selectedSubunitAligned,
+        subunitToChainIdsAlignedTo,
+        subunitToChainIdsAligned,
+        syncEnabled,
+        viewerA.ref,
+        viewerB.ref,
+    ]);
 
     const waitForRepresentationRef = useCallback(async (
         molstar: ReturnType<typeof useMolstarViewer>,
@@ -1798,6 +1904,17 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 // Already loaded, skip
                 return viewerA.moleculeAlignedTo as LoadedMolecule | undefined;
             }
+            // Loading a new reference dataset establishes a new baseline; clear
+            // any previously accumulated in-place realign cache state.
+            realignTransformCacheRef.current = {};
+            realignBaseTransformCacheRef.current = {};
+            realignDiagnosticsCounterRef.current = {};
+            lastChainRealignMetricsRef.current = null;
+            lastResidueRealignMetricsRef.current = null;
+            lastResidueRealignDebugRef.current = { phase: 'idle', timestamp: Date.now() };
+            persistedStructureTransformsRef.current = {};
+            persistedStructureTransformsByModeRef.current = { viewerA: {}, viewerB: {} };
+            structureTransformCheckpointsRef.current = {};
             setAlignedToFile(file);
             setAlignedToFilename(file.name);
             if (expectedAlignedToFilename) setExpectedAlignedToFilename(null);
@@ -1874,6 +1991,16 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 // Already loaded, skip
                 return viewerA.moleculeAligned as LoadedMolecule | undefined;
             }
+            // A newly loaded aligned dataset must start from a clean in-place transform baseline.
+            realignTransformCacheRef.current = {};
+            realignBaseTransformCacheRef.current = {};
+            realignDiagnosticsCounterRef.current = {};
+            lastChainRealignMetricsRef.current = null;
+            lastResidueRealignMetricsRef.current = null;
+            lastResidueRealignDebugRef.current = { phase: 'idle', timestamp: Date.now() };
+            persistedStructureTransformsRef.current = {};
+            persistedStructureTransformsByModeRef.current = { viewerA: {}, viewerB: {} };
+            structureTransformCheckpointsRef.current = {};
             setAlignedFile(file);
             setAlignedFilename(file.name);
             const alignData = alignmentData ?? viewerA.moleculeAlignedTo?.alignmentData;
@@ -3344,19 +3471,22 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         const opKey = diagnostics
             ? `${diagnostics.operation}:${diagnostics.from}->${diagnostics.to}`
             : `unknown:${cacheKey}`;
-        const opCacheKey = `${cacheKey}:${opKey}`;
+        const structureCacheKey = `${cacheKey}:structure`;
 
-        const previousApplied = realignTransformCacheRef.current[opCacheKey]
-            ? Mat4.copy(Mat4(), realignTransformCacheRef.current[opCacheKey])
+        const previousApplied = realignTransformCacheRef.current[structureCacheKey]
+            ? Mat4.copy(Mat4(), realignTransformCacheRef.current[structureCacheKey])
             : undefined;
 
         const current = getStructureCoordinateSystemMatrix(plugin, structureRef);
-        if (!realignBaseTransformCacheRef.current[opCacheKey]) {
-            realignBaseTransformCacheRef.current[opCacheKey] = Mat4.copy(Mat4(), current);
+        if (!realignBaseTransformCacheRef.current[structureCacheKey]) {
+            // Capture the original structure frame once per loaded structure.
+            // Every re-align operation is then applied relative to this base to
+            // avoid cross-operation transform stacking (e.g. chain -> residue).
+            realignBaseTransformCacheRef.current[structureCacheKey] = Mat4.copy(Mat4(), current);
         }
-        const base = realignBaseTransformCacheRef.current[opCacheKey];
+        const base = realignBaseTransformCacheRef.current[structureCacheKey];
         const next = Mat4.mul(Mat4(), base, deltaTransform);
-        realignTransformCacheRef.current[opCacheKey] = Mat4.copy(Mat4(), next);
+        realignTransformCacheRef.current[structureCacheKey] = Mat4.copy(Mat4(), next);
         const serializedNext = Array.from({ length: 16 }, (_v, i) => Number(next[i]));
         persistedStructureTransformsRef.current[structureRef] = serializedNext;
         const isViewerA = plugin === viewerA.ref.current;
@@ -3375,7 +3505,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 opKey,
                 step,
                 cacheKey,
-                opCacheKey,
+                structureCacheKey,
                 sourceCurrentTransform: source,
                 structureRef,
                 tag,
@@ -3921,7 +4051,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                     try {
                         const appliedInPlace = await applyInPlaceRealign();
                         if (appliedInPlace) {
-                            await subunitZoomBAligned.handleButtonClick();
+                            copyCameraZoomRadius(viewerA.ref, viewerB.ref);
                             console.log('[Re-align Subunit] Applied in-place transform to existing aligned structures.');
                             return;
                         }
@@ -3938,6 +4068,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                         return;
                     }
                     pluginB.canvas3d?.requestDraw?.();
+                    copyCameraZoomRadius(viewerA.ref, viewerB.ref);
                     console.log('[Re-align Subunit] Applied reload-based fallback realign.');
                 });
             })();
@@ -4230,7 +4361,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                     try {
                         const appliedInPlace = await applyInPlaceRealign();
                         if (appliedInPlace) {
-                            await residueZoomBAligned.handleButtonClick();
+                            copyCameraZoomRadius(viewerA.ref, viewerB.ref);
                             console.log('[Re-align Residue] Applied in-place transform to existing aligned structures.');
                             return;
                         }
@@ -4247,6 +4378,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                         return;
                     }
                     pluginBAsync.canvas3d?.requestDraw?.();
+                    copyCameraZoomRadius(viewerA.ref, viewerB.ref);
                     console.log('[Re-align Residue] Applied reload-based fallback realign.');
                 });
             })();
@@ -5236,6 +5368,35 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                         style={{ padding: '8px 16px', cursor: 'pointer', borderBottom: '1px solid #eee' }}
                                     >
                                         Load All
+                                    </div>
+                                    <div
+                                        className="session-menu-item"
+                                        onClick={() => {
+                                            if (confirm('Troubleshooting reset: this will clear local Ribocode browser cache/storage and reload the page. Use this before filing a bug to check if the issue persists. Continue?')) {
+                                                void hardResetLocalCachesAndReload();
+                                            } else {
+                                                const dropdown = document.getElementById('session-menu-dropdown');
+                                                if (dropdown) dropdown.style.display = 'none';
+                                            }
+                                        }}
+                                        tabIndex={0}
+                                        onKeyDown={e => {
+                                            if (e.key === 'Enter') {
+                                                if (confirm('Troubleshooting reset: this will clear local Ribocode browser cache/storage and reload the page. Use this before filing a bug to check if the issue persists. Continue?')) {
+                                                    void hardResetLocalCachesAndReload();
+                                                } else {
+                                                    document.getElementById('session-menu-dropdown')!.style.display = 'none';
+                                                }
+                                            }
+                                        }}
+                                        style={{
+                                            padding: '8px 16px',
+                                            cursor: 'pointer',
+                                            borderTop: '1px solid #eee',
+                                            borderBottom: '1px solid #eee'
+                                        }}
+                                    >
+                                        Reset Local Caches
                                     </div>
                                     <div
                                         className="session-menu-item"

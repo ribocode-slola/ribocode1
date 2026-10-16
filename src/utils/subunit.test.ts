@@ -44,7 +44,16 @@ describe('getSubunitToChainIds', () => {
                             chains: {
                                 auth_asym_id: { value: (i: number) => ['LA', 'SB', 'CX', 'QZ'][i] },
                                 _rowCount: 4
-                            }
+                            },
+                        },
+                        sourceData: {
+                            data: {
+                                db: {
+                                    entity: {
+                                        _rowCount: 0,
+                                    },
+                                },
+                            },
                         }
                     }
                 }
@@ -54,6 +63,7 @@ describe('getSubunitToChainIds', () => {
         expect(result.subunitToChainIds.get('Large')).toEqual(new Set(['LA']));
         expect(result.subunitToChainIds.get('Small')).toEqual(new Set(['SB']));
         expect(result.subunitToChainIds.get('Other')).toEqual(new Set(['CX', 'QZ']));
+        expect(result.confidence.level).toBe('medium');
         expect(console.log).toHaveBeenCalledWith('[Subunit Debug] Final subunitToChainIds:', expect.any(Map));
     });
 
@@ -99,5 +109,81 @@ describe('getSubunitToChainIds', () => {
         expect(result.subunitToChainIds.get('Large')).toEqual(new Set(['A']));
         expect(result.subunitToChainIds.get('Small')).toEqual(new Set(['C']));
         expect(result.subunitToChainIds.get('Other')).toEqual(new Set(['QZ']));
+        expect(result.confidence.level).toBe('medium');
+    });
+
+    it('prefers entity description metadata over chain-prefix heuristics when available', () => {
+        const structure = {
+            units: [
+                {
+                    model: {
+                        atomicHierarchy: {
+                            chains: {
+                                _rowCount: 3,
+                                auth_asym_id: { value: (i: number) => ['A', 'C', 'X1'][i] },
+                                label_asym_id: { value: (i: number) => ['A', 'C', 'X1'][i] },
+                                label_entity_id: { value: (i: number) => ['1', '2', '3'][i] },
+                            },
+                        },
+                        sourceData: {
+                            data: {
+                                db: {
+                                    entity: {
+                                        _rowCount: 3,
+                                        id: { value: (i: number) => ['1', '2', '3'][i] },
+                                        pdbx_description: { value: (i: number) => [
+                                            '50S ribosomal protein L22',
+                                            '30S ribosomal protein S2',
+                                            'ATPase accessory protein',
+                                        ][i] },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            ],
+        };
+
+        const result = getSubunitToChainIds(structure as any);
+        expect(result.subunitToChainIds.get('Large')).toEqual(new Set(['A']));
+        expect(result.subunitToChainIds.get('Small')).toEqual(new Set(['C']));
+        expect(result.subunitToChainIds.get('Other')).toEqual(new Set(['X1']));
+        expect(result.confidence.level).toBe('high');
+        expect(result.confidence.metrics.descriptionClassifiedCount).toBe(2);
+    });
+
+    it('marks mixed sparse L/S datasets as low confidence', () => {
+        const structure = {
+            units: [
+                {
+                    model: {
+                        atomicHierarchy: {
+                            chains: {
+                                _rowCount: 6,
+                                auth_asym_id: { value: (i: number) => ['L', 'S', 'A', 'B', 'X', 'Y'][i] },
+                                label_asym_id: { value: (i: number) => ['L', 'S', 'A', 'B', 'X', 'Y'][i] },
+                            },
+                        },
+                        sourceData: {
+                            data: {
+                                db: {
+                                    entity: {
+                                        _rowCount: 0,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            ],
+        };
+
+        const result = getSubunitToChainIds(structure as any);
+        expect(result.subunitToChainIds.get('Large')).toEqual(new Set(['L']));
+        expect(result.subunitToChainIds.get('Small')).toEqual(new Set(['S']));
+        expect(result.subunitToChainIds.get('Other')).toEqual(new Set(['A', 'B', 'X', 'Y']));
+        expect(result.confidence.level).toBe('low');
+        expect(result.confidence.metrics.otherCount).toBe(4);
     });
 });

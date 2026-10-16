@@ -41,6 +41,65 @@ type ResidueRealignDebugStatus = {
   timestamp: number;
 };
 
+type Snapshot = {
+  position: [number, number, number];
+  target: [number, number, number];
+  up: [number, number, number];
+  radius: number;
+};
+
+function normalizeVec3(value: any): [number, number, number] | undefined {
+  if (!value) return undefined;
+  if (Array.isArray(value) && value.length >= 3) {
+    const x = Number(value[0]);
+    const y = Number(value[1]);
+    const z = Number(value[2]);
+    if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z)) return [x, y, z];
+  }
+  if (typeof value === 'object') {
+    const x = Number((value as any).x ?? (value as any)[0]);
+    const y = Number((value as any).y ?? (value as any)[1]);
+    const z = Number((value as any).z ?? (value as any)[2]);
+    if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z)) return [x, y, z];
+  }
+  return undefined;
+}
+
+function normalizeSnapshot(value: any): Snapshot | undefined {
+  if (!value) return undefined;
+  const position = normalizeVec3(value.position);
+  const target = normalizeVec3(value.target);
+  const up = normalizeVec3(value.up);
+  const radius = Number(value.radius);
+  if (!position || !target || !up || !Number.isFinite(radius)) return undefined;
+  return { position, target, up, radius };
+}
+
+async function readCameraSnapshots(page: Page): Promise<{ viewerA?: Snapshot; viewerB?: Snapshot }> {
+  const data = await page.evaluate(() => {
+    const api = (window as any).__ribocodeTestApi;
+    return {
+      serialized: api?.getCameraSnapshots?.(),
+      raw: api?.getRawCameraSnapshots?.(),
+    };
+  });
+
+  return {
+    viewerA: normalizeSnapshot(data?.serialized?.viewerA) ?? normalizeSnapshot(data?.raw?.viewerA),
+    viewerB: normalizeSnapshot(data?.serialized?.viewerB) ?? normalizeSnapshot(data?.raw?.viewerB),
+  };
+}
+
+function maxSnapshotDelta(a: Snapshot, b: Snapshot): number {
+  const values = [
+    ...a.position.map((v, i) => Math.abs(v - b.position[i])),
+    ...a.target.map((v, i) => Math.abs(v - b.target[i])),
+    ...a.up.map((v, i) => Math.abs(v - b.up[i])),
+    Math.abs(a.radius - b.radius),
+  ];
+  return Math.max(...values);
+}
+
 async function loadDatasets(page: Page, alignedTo: string, aligned: string) {
   await page.click('#viewer-column-A-alignedto-load-btn');
   await page.setInputFiles('#viewer-column-A-alignedto-file-input', dataPath(alignedTo));
@@ -99,6 +158,19 @@ async function getAllResidueValues(page: Page, selector: string): Promise<string
       .map((option) => option.value)
       .filter((value) => value && value.length > 0);
   }, selector);
+}
+
+async function getSharedResidueValues(
+  page: Page,
+  alignedToSelector: string,
+  alignedSelector: string
+): Promise<string[]> {
+  const [alignedToValues, alignedValues] = await Promise.all([
+    getAllResidueValues(page, alignedToSelector),
+    getAllResidueValues(page, alignedSelector),
+  ]);
+  const alignedSet = new Set(alignedValues);
+  return alignedToValues.filter((value) => alignedSet.has(value));
 }
 
 async function getResidueValuesByAuthRange(page: Page, selector: string, start: number, end: number): Promise<string[]> {
@@ -271,4 +343,54 @@ test('Align Residues on 7WTT chain w and AF-Q13895 chain A for auth 23..30', asy
   expect(residueMetrics.atomPairCount).toBeGreaterThan(0);
   expect(residueMetrics.meanPairDistanceAfter).toBeLessThan(residueMetrics.meanPairDistanceBefore);
   expect(residueMetrics.improvementRatio).toBeGreaterThan(1);
+});
+
+test('residue realign restores A/B camera parity after prior chain realign', async ({ page }) => {
+  test.setTimeout(120000);
+
+  await page.goto('http://localhost:5173/');
+  await loadDatasets(page, '6XU6.cif', '6xu8.cif');
+  await openChainControls(page);
+
+  await clickChainRow(page, 'A', 'CU');
+  await clickChainRow(page, 'B', 'CU');
+  await openResidueControls(page);
+
+  const chainRealignBtn = page.locator('#generalcontrols-realign-btn');
+  await expect(chainRealignBtn).toBeEnabled();
+  await chainRealignBtn.click();
+  await expect(chainRealignBtn).toBeEnabled({ timeout: 20000 });
+
+  // Intentionally diverge viewer B camera from viewer A.
+  await page.locator('#viewer-column-B').getByRole('button', { name: 'Reset Zoom' }).click();
+  await page.waitForTimeout(300);
+
+  const sharedResidues = await getSharedResidueValues(
+    page,
+    '#viewer-column-A-alignedto-residue-select',
+    '#viewer-column-B-aligned-residue-select'
+  );
+  expect(sharedResidues.length).toBeGreaterThan(0);
+
+  const selectedResidue = sharedResidues[0];
+  await page.selectOption('#viewer-column-A-alignedto-residue-select', [selectedResidue]);
+  await page.selectOption('#viewer-column-B-aligned-residue-select', [selectedResidue]);
+
+  const residueRealignBtn = page.locator('#generalcontrols-realign-residue-btn');
+  await expect(residueRealignBtn).toBeEnabled();
+  await residueRealignBtn.click();
+
+  await waitForResidueMetricsOrThrow(
+    page,
+    (metrics) => metrics.alignedToChainId === 'CU'
+      && metrics.alignedChainId === 'CU'
+      && Number.isFinite(metrics.rmsd)
+      && Number.isFinite(metrics.improvementRatio)
+  );
+
+  await page.waitForTimeout(300);
+  const snapshots = await readCameraSnapshots(page);
+  if (snapshots.viewerA && snapshots.viewerB) {
+    expect(maxSnapshotDelta(snapshots.viewerA, snapshots.viewerB)).toBeLessThan(1e-4);
+  }
 });

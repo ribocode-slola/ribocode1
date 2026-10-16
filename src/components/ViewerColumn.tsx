@@ -981,7 +981,6 @@ const ViewerColumn: React.FC<ViewerColumnProps> = ({
 						   onDimUnselectedChange={activeLoadProps.onDimUnselectedChange}
 						   dimUnselectedStrength={activeLoadProps.dimUnselectedStrength}
 						   onDimUnselectedStrengthChange={activeLoadProps.onDimUnselectedStrengthChange}
-						   chainFinderChainLabels={chainTableProps.chainLabels || new Map<string, string>()}
 						   chainFinderSelectedChainId={chainTableProps.selectedChainId}
 						   chainFinderOnSelectChainId={chainTableProps.onSelectChainId || (() => {})}
 						   chainFinderTitle={chainTableProps.title}
