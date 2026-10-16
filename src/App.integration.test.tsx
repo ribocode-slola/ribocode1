@@ -1647,6 +1647,18 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     fireEvent.click(realignButton);
     await waitFor(() => expect(realignButton).not.toBeDisabled(), { timeout: 5000 });
 
+    const testApi = (globalThis as any).__ribocodeTestApi as {
+      captureStructureTransformCheckpoint?: (label: string) => any;
+      clearStructureTransformCheckpoints?: () => void;
+    } | undefined;
+    expect(testApi).toBeDefined();
+    expect(testApi?.captureStructureTransformCheckpoint).toEqual(expect.any(Function));
+    testApi?.clearStructureTransformCheckpoints?.();
+    const beforeSaveCheckpoint = testApi?.captureStructureTransformCheckpoint?.('before-save');
+    const beforeSaveViewerBAligned = beforeSaveCheckpoint?.viewerB?.transforms?.aligned;
+    expect(Array.isArray(beforeSaveViewerBAligned)).toBe(true);
+    expect(beforeSaveViewerBAligned).toHaveLength(16);
+
     const getSessionState = (globalThis as any).__getSessionState as (() => any) | undefined;
     expect(getSessionState).toBeDefined();
     const savedSession = getSessionState!();
@@ -1687,12 +1699,18 @@ describe('App integration: AlignedTo and Aligned loading', () => {
       '6xu8.cif': loadTestFile('6xu8.cif'),
     };
     await onSessionLoaded!(savedSession, files);
+    const afterLoadCheckpoint = testApi?.captureStructureTransformCheckpoint?.('after-load');
     pluginB.state.data.build = originalBuild;
 
     expect(insertedMatrices.length).toBeGreaterThan(0);
     expect(insertedMatrices.some(matrix =>
       matrix.every((value, idx) => Math.abs(value - savedTransform[idx]) <= 1e-6)
     )).toBe(true);
+
+    const afterLoadViewerBAligned = afterLoadCheckpoint?.viewerB?.transforms?.aligned;
+    expect(Array.isArray(afterLoadViewerBAligned)).toBe(true);
+    expect(afterLoadViewerBAligned).toHaveLength(16);
+    expect((afterLoadViewerBAligned as number[]).every((value: number, idx: number) => Math.abs(value - (beforeSaveViewerBAligned as number[])[idx]) <= 1e-6)).toBe(true);
   }, 15000);
 
   it('restores saved additional representations on session load (regression)', async () => {
