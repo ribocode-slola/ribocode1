@@ -1,9 +1,18 @@
+## [v0.16.9] - 2026-10-16
+Release summary: this patch release fixes viewer camera/placement drift after `Align Chains` followed by `Save All` and `Load All` by persisting aligned-structure transforms in session state and restoring them before camera snapshots.
+- Fixed session round-trip placement drift in `src/App.tsx` by persisting per-viewer structure transform matrices for `AlignedTo` and `Aligned` datasets in session `uiState`.
+- Fixed session load restore ordering in `src/App.tsx` so saved structure transforms are applied before camera snapshot restore, keeping camera target/position consistent with restored aligned geometry.
+- Added integration regression coverage in `src/App.integration.test.tsx` for in-place chain realign + session save/load transform persistence.
+- Added end-to-end regression coverage in `e2e/session-load-all-chain-realign-camera.e2e.spec.ts` for `Align Chains -> Save All -> Load All` camera stability in viewer B.
+
 ## [v0.16.8] - 2026-10-15
-Release summary: this patch release hardens session-load camera restore ordering when sync is enabled and adds regression coverage for the reported Viewer B camera mismatch risk.
+Release summary: this patch release hardens session-load camera restore ordering when sync is enabled, and fixes inspect mirroring so hidden datasets do not show inspect focus in the opposite viewer.
 - Fixed session-load camera restore sequencing in `src/App.tsx` by suspending sync propagation while per-viewer camera snapshots are applied, then re-enabling sync after restore settles.
 - Added a sync-suspension guard to `src/components/buttons/Sync.tsx` and wired it through `src/components/GeneralControls.tsx` so camera propagation cannot run during session camera restoration.
 - Added deterministic integration regression coverage in `src/App.integration.test.tsx` for loading sessions with sync already on while preserving distinct viewer camera snapshots.
 - Added end-to-end regression coverage in `e2e/session-load-sync-camera-order.e2e.spec.ts` with fixture `e2e/test-session-sync-camera.json`.
+- Fixed inspect synchronization in `src/App.tsx` and `src/utils/viewerHelpers.ts` so chain/residue/subunit inspect toggles only mirror to the opposite viewer when that dataset is currently visible there.
+- Added integration regression coverage in `src/App.integration.test.tsx` for hidden-opposite viewer inspect toggles, plus helper-level validation in `src/utils/viewerHelpers.test.ts`.
 
 ## [v0.16.7] - 2026-10-14
 Release summary: this patch release aligns Highlight/Inspect control state with per-viewer molecule visibility, clears stale inspect focus when datasets are hidden, and hardens E2E startup against stale local dev servers.
