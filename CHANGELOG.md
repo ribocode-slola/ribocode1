@@ -1,3 +1,11 @@
+## [v0.16.10] - 2026-10-16
+Release summary: this patch release hardens session transform restore reliability after chain realignment and fixes custom colour-theme application for mmCIF chain IDs so mapped chains no longer fall back to grey.
+- Hardened Save/Load transform capture and restore in `src/App.tsx` by resolving structure refs from live Mol* hierarchy when state refs are stale/missing, reducing race-sensitive restore misses after `Align Chains` + `Save All` + `Load All`.
+- Added temporary transform checkpoint diagnostics on `__ribocodeTestApi` in `src/App.tsx` to capture effective per-viewer structure transforms before save and after load for regression/debug visibility.
+- Added integration regression assertions in `src/App.integration.test.tsx` to verify pre-save and post-load effective transform parity in the in-place chain realign session round-trip flow.
+- Fixed custom chain colour-theme lookup in `src/utils/colors.ts` to prefer `auth_asym_id` with fallback to `label_asym_id`, with normalized chain-id matching (trim/case-insensitive) to avoid unintended grey fallback.
+- Added focused unit regression coverage in `src/utils/colors.test.ts` for auth-vs-label chain ID matching and normalized key handling in custom theme application.
+
 ## [v0.16.9] - 2026-10-16
 Release summary: this patch release fixes viewer camera/placement drift after `Align Chains` followed by `Save All` and `Load All` by persisting aligned-structure transforms in session state and restoring them before camera snapshots.
 - Fixed session round-trip placement drift in `src/App.tsx` by persisting per-viewer structure transform matrices for `AlignedTo` and `Aligned` datasets in session `uiState`.
