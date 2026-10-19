@@ -14,12 +14,8 @@ This document outlines planned work for upcoming Ribocode versions. It is direct
 ## Planned Versions
 
 
-### v0.17.x Bug Fixes.
+### v0.18.x Bug Fixes.
 - ...
-
-
-### v0.18.x Support selection of 2 Chains and residues from each of these. 
-Currently users can only select a single chain and then only select residues from that chain. This version is to support selection of 2 chains and the selected residues from each chain. These selections should be used for zoom and alignments. 
 
 
 ### v0.19.x Support residue type colour themes.
