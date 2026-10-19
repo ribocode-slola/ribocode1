@@ -35,7 +35,8 @@ export function useUpdateResidueInfo(
   setResidueInfo: React.Dispatch<React.SetStateAction<{ residueLabels: Map<string, ResidueLabelInfo>; residueToAtomIds: Record<string, string[]> }>>,
     selectedResidueIds: string[],
     setSelectedResidueIds: (ids: string[]) => void,
-  label?: string
+  label?: string,
+    defaultSelectionMode: 'first' | 'all' | 'none' = 'first'
 ) {
   // Use a ref so we can read the latest selectedResidueIds inside the effect
   // without adding it to the dependency array (which would cause infinite loops).
@@ -109,12 +110,22 @@ export function useUpdateResidueInfo(
         if (validIds.length > 0) {
           setSelectedResidueIds(validIds);
         } else if (residueLabels.size > 0) {
-          setSelectedResidueIds([Array.from(residueLabels.keys())[0] as string]);
+          if (defaultSelectionMode === 'all') {
+            setSelectedResidueIds(Array.from(residueLabels.keys()));
+          } else if (defaultSelectionMode === 'first') {
+            setSelectedResidueIds([Array.from(residueLabels.keys())[0] as string]);
+          } else {
+            setSelectedResidueIds([]);
+          }
         } else {
           setSelectedResidueIds([]);
         }
       } else if (validIds.length === 0 && residueLabels.size > 0) {
-        setSelectedResidueIds([Array.from(residueLabels.keys())[0] as string]);
+        if (defaultSelectionMode === 'all') {
+          setSelectedResidueIds(Array.from(residueLabels.keys()));
+        } else if (defaultSelectionMode === 'first') {
+          setSelectedResidueIds([Array.from(residueLabels.keys())[0] as string]);
+        }
       }
       // Debug logging disabled to avoid console spam; uncomment if needed:
       // if (label) console.log(`[useUpdateResidueInfo][${label}] residueLabels:`, residueLabels);
@@ -124,5 +135,5 @@ export function useUpdateResidueInfo(
     }
   // selectedResidueIds intentionally omitted — accessed via ref to avoid loops
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewerRef, structureRef, molstar, selectedChainId, setResidueInfo, setSelectedResidueIds, label]);
+  }, [viewerRef, structureRef, molstar, selectedChainId, setResidueInfo, setSelectedResidueIds, label, defaultSelectionMode]);
 }

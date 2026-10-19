@@ -290,6 +290,7 @@ describe('ViewerColumn', () => {
         fireEvent.click(document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-select-zoom-controls-toggle-btn`) as HTMLElement);
         fireEvent.click(document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-alignedto-subunit-controls-toggle-btn`) as HTMLElement);
         fireEvent.click(document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-alignedto-chain-controls-toggle-btn`) as HTMLElement);
+        fireEvent.click(document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-alignedto-select-chain-controls-toggle-btn`) as HTMLElement);
         fireEvent.click(document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-alignedto-residue-controls-toggle-btn`) as HTMLElement);
 
         fireEvent.click(document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-alignedto-inspect-subunit-btn`) as HTMLElement);

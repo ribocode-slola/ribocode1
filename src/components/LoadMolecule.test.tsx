@@ -111,7 +111,7 @@ describe('LoadDataRow', () => {
         render(<LoadDataRow {...baseProps} isLoaded={true} />);
         fireEvent.click(screen.getByText('Show Subunit Controls'));
         fireEvent.click(screen.getByText('Show Chain Controls'));
-        fireEvent.click(screen.getByText('Show Select Controls'));
+        fireEvent.click(screen.getByText('Show Select Chain 1'));
         fireEvent.click(screen.getByText('Show Residue Controls'));
         expect(screen.getByText('Chain A')).toBeInTheDocument();
         expect(screen.getByText('Residue 1')).toBeInTheDocument();
@@ -124,10 +124,10 @@ describe('LoadDataRow', () => {
         expect(document.getElementById('test-viewer-a-selected-chain-label')).toBeInTheDocument();
         expect(document.getElementById('test-viewer-a-chain-table-container')).toBeNull();
 
-        fireEvent.click(screen.getByText('Show Select Controls'));
+        fireEvent.click(screen.getByText('Show Select Chain 1'));
         expect(document.getElementById('test-viewer-a-chain-table-container')).toBeInTheDocument();
 
-        fireEvent.click(screen.getByText('Hide Select Controls'));
+        fireEvent.click(screen.getByText('Hide Select Chain 1'));
         expect(document.getElementById('test-viewer-a-selected-chain-label')).toBeInTheDocument();
         expect(document.getElementById('test-viewer-a-chain-table-container')).toBeNull();
         expect(document.getElementById('test-viewer-a-show-uniprot-accession')).toBeNull();
@@ -209,7 +209,6 @@ describe('LoadDataRow', () => {
 
         const subunitToggleIndex = findRowIndex('Show Subunit Controls');
         const chainToggleIndex = findRowIndex('Show Chain Controls');
-        const residueToggleIndex = findRowIndex('Show Residue Controls');
         const visibilityToggleIndex = findRowIndex('Show Visibility Controls');
         const repControlsToggleIndex = findRowIndex('Show Representation Controls');
 
@@ -217,7 +216,6 @@ describe('LoadDataRow', () => {
         expect(visibilityToggleIndex).toBeGreaterThan(repControlsToggleIndex);
         expect(subunitToggleIndex).toBeGreaterThan(repControlsToggleIndex);
         expect(chainToggleIndex).toBeGreaterThan(subunitToggleIndex);
-        expect(residueToggleIndex).toBeGreaterThan(chainToggleIndex);
 
         fireEvent.click(screen.getByText('Show Representation Controls'));
         expect(screen.getByText('Hide Representation Controls')).toBeInTheDocument();
@@ -233,6 +231,8 @@ describe('LoadDataRow', () => {
                 selectedChainId=""
             />
         );
+        fireEvent.click(getByText('Show Chain Controls'));
+        fireEvent.click(getByText('Show Select Chain 1'));
         expect((getByText('Show Residue Controls') as HTMLButtonElement).disabled).toBe(true);
     });
 
@@ -259,7 +259,7 @@ describe('LoadDataRow', () => {
         render(<LoadDataRow {...baseProps} isLoaded={true} />);
         fireEvent.click(screen.getByText('Show Subunit Controls'));
         fireEvent.click(screen.getByText('Show Chain Controls'));
-        fireEvent.click(screen.getByText('Show Select Controls'));
+        fireEvent.click(screen.getByText('Show Select Chain 1'));
         fireEvent.click(screen.getByText('Show Residue Controls'));
         fireEvent.click(document.getElementById('test-viewer-a-zoom-subunit-btn') as HTMLButtonElement);
         fireEvent.click(document.getElementById('test-viewer-a-highlight-subunit-btn') as HTMLButtonElement);
@@ -309,7 +309,7 @@ describe('LoadDataRow', () => {
 
         fireEvent.click(screen.getByText('Show Subunit Controls'));
         fireEvent.click(screen.getByText('Show Chain Controls'));
-        fireEvent.click(screen.getByText('Show Select Controls'));
+        fireEvent.click(screen.getByText('Show Select Chain 1'));
         fireEvent.click(screen.getByText('Show Residue Controls'));
 
         expect(document.getElementById('test-viewer-a-inspect-subunit-btn')).toHaveTextContent('Inspect: On');
@@ -381,6 +381,8 @@ describe('LoadDataRow', () => {
             />
         );
 
+        fireEvent.click(screen.getByText('Show Chain Controls'));
+        fireEvent.click(screen.getByText('Show Select Chain 1'));
         fireEvent.click(screen.getByText('Show Residue Controls'));
         expect(screen.getByText('ALA (2)')).toBeInTheDocument();
         expect(screen.getByText('GLY (1)')).toBeInTheDocument();
@@ -396,5 +398,56 @@ describe('LoadDataRow', () => {
 
         fireEvent.click(document.getElementById('test-viewer-a-residue-type-toggle-ALA-btn') as HTMLButtonElement);
         expect(onSelectResidueIds).toHaveBeenLastCalledWith(['1', '2']);
+    });
+
+    it('supports independent chain-2 controls and combined zoom', () => {
+        const onSelectChainId2 = vi.fn();
+        const onChainZoom2 = vi.fn();
+        const onCombinedSelectionZoom = vi.fn();
+        const onSelectResidueIds2 = vi.fn();
+        const onResidueZoom2 = vi.fn();
+
+        render(
+            <LoadDataRow
+                {...baseProps}
+                isLoaded={true}
+                selectedChainId2="B"
+                onSelectChainId2={onSelectChainId2}
+                onChainZoom2={onChainZoom2}
+                chainZoomDisabled2={false}
+                onCombinedSelectionZoom={onCombinedSelectionZoom}
+                combinedSelectionZoomDisabled={false}
+                residueInfo2={{
+                    residueLabels: new Map([
+                        ['10', { id: '10', name: 'Residue 10', compId: 'GLY', seqNumber: 10, insCode: '' }],
+                    ]),
+                    residueToAtomIds: { '10': ['a10'] },
+                }}
+                selectedResidueIds2={['10']}
+                onSelectResidueIds2={onSelectResidueIds2}
+                residueCommonIds2={['10']}
+                residueZoomLabel2="Residue 10"
+                onResidueZoom2={onResidueZoom2}
+                residueZoomDisabled2={false}
+            />
+        );
+
+        fireEvent.click(screen.getByText('Show Chain Controls'));
+        fireEvent.click(screen.getByText('Show Select Chain 2'));
+        fireEvent.click(document.querySelector('[data-testid="test-viewer-a-chain2-chain-table-row-B"]') as HTMLTableRowElement);
+        expect(onSelectChainId2).toHaveBeenCalledWith('B');
+
+        fireEvent.click(document.getElementById('test-viewer-a-zoom-chain2-btn') as HTMLButtonElement);
+        expect(onChainZoom2).toHaveBeenCalled();
+
+        fireEvent.click(document.getElementById('test-viewer-a-zoom-combined-selection-btn') as HTMLButtonElement);
+        expect(onCombinedSelectionZoom).toHaveBeenCalled();
+
+        fireEvent.click(screen.getAllByText('Show Residue Controls')[0]);
+        fireEvent.click(document.getElementById('test-viewer-a-zoom-residue2-btn') as HTMLButtonElement);
+        expect(onResidueZoom2).toHaveBeenCalled();
+
+        fireEvent.click(document.getElementById('test-viewer-a-residue2-select-common-btn') as HTMLButtonElement);
+        expect(onSelectResidueIds2).toHaveBeenCalled();
     });
 });

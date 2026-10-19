@@ -54,20 +54,24 @@ test('AlignedTo highlight controls remain active across chain/subunit/residue to
   await expect(page.locator('#viewer-column-A-alignedto-highlight-chain-btn')).toHaveAttribute('aria-pressed', 'true');
 
   // Select residues and enable residue highlighting.
-  await expect(page.locator('#viewer-column-A-alignedto-residue-select')).toBeEnabled({ timeout: 10000 });
-  await page.selectOption('#viewer-column-A-alignedto-residue-select', [{ index: 0 }]);
+  await expect(page.locator('#viewer-column-A-alignedto-residue-select-all-btn')).toBeEnabled({ timeout: 10000 });
+  await page.click('#viewer-column-A-alignedto-residue-select-all-btn');
   await expect(page.locator('#viewer-column-A-alignedto-highlight-residue-btn')).toBeEnabled({ timeout: 10000 });
 
-  await page.click('#viewer-column-A-alignedto-highlight-residue-btn');
+  // Chain and residue highlight controls mirror the same mode-level highlight state.
   await expect(page.locator('#viewer-column-A-alignedto-highlight-residue-btn')).toHaveAttribute('aria-pressed', 'true');
-
-  // Other highlight modes should remain on after residue toggle.
   await expect(page.locator('#viewer-column-A-alignedto-highlight-chain-btn')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('#viewer-column-A-alignedto-highlight-subunit-btn')).toHaveAttribute('aria-pressed', 'true');
 
-  // Turn chain highlight off and verify subunit/residue states remain on.
-  await page.click('#viewer-column-A-alignedto-highlight-chain-btn');
+  // Toggling residue highlight off should also turn chain highlight off, while subunit remains independent.
+  await page.click('#viewer-column-A-alignedto-highlight-residue-btn');
+  await expect(page.locator('#viewer-column-A-alignedto-highlight-residue-btn')).toHaveAttribute('aria-pressed', 'false');
   await expect(page.locator('#viewer-column-A-alignedto-highlight-chain-btn')).toHaveAttribute('aria-pressed', 'false');
   await expect(page.locator('#viewer-column-A-alignedto-highlight-subunit-btn')).toHaveAttribute('aria-pressed', 'true');
+
+  // Turning chain highlight back on should restore residue highlight state as well.
+  await page.click('#viewer-column-A-alignedto-highlight-chain-btn');
+  await expect(page.locator('#viewer-column-A-alignedto-highlight-chain-btn')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('#viewer-column-A-alignedto-highlight-residue-btn')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#viewer-column-A-alignedto-highlight-subunit-btn')).toHaveAttribute('aria-pressed', 'true');
 });

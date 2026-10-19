@@ -1,3 +1,13 @@
+## [v0.18.0] - 2026-10-19
+Release summary: this minor release adds true two-chain/two-residue-slot alignment behavior, refines chain/residue controls, and strengthens regression coverage for highlight and realignment workflows.
+- Added two-slot chain selection behavior in `src/App.tsx`, `src/components/LoadMolecule.tsx`, and `src/components/ViewerColumn.tsx`, including optional chain-2 selection, chain-2 clear action, and nested per-slot controls.
+- Updated chain and residue realignment in `src/App.tsx` so alignment uses all selected slot pairs when available (slot 1 + slot 2), rather than slot 1 only.
+- Updated `Align Chains` labeling to show all selected chain codes when multiple slot pairs are selected, with label wiring in `src/App.tsx` and `src/components/GeneralControls.tsx`.
+- Fixed and clarified mirrored highlight behavior across chain/residue/subunit controls for `AlignedTo`, with deterministic behavior checks in `e2e/highlight-mirror-state.e2e.spec.ts`.
+- Added end-to-end regression coverage for combined two-chain highlighting in `e2e/combined-highlight-two-chains.e2e.spec.ts`.
+- Added end-to-end regression coverage for multi-slot chain/residue realignment metrics in `e2e/multi-slot-realign-metrics.e2e.spec.ts`.
+- Added focused test coverage updates in `src/components/GeneralControls.test.tsx` and `src/App.integration.test.tsx` for multi-selection summary and alignment behavior.
+
 ## [v0.17.0] - 2026-10-16
 Release summary: this minor release expands residue selection workflows with bulk-select actions, residue-type grouping, invert selection, and shared-residue selection across chains.
 - Added residue quick-selection actions in `src/components/LoadMolecule.tsx`: `Select All`, `Clear`, `Invert`, and `Select Shared`.
