@@ -119,6 +119,8 @@ From the Ribocode root directory:
 
 * `npm install`
   - Installs all dependencies.
+* `npm --workspace packages/molstar install`
+  - Installs Mol* workspace dependencies (useful for first-time setup and after Mol* dependency updates).
 * `npm --workspace packages/molstar run build:lib`
   - Builds the `packages/molstar/lib` output that Ribocode imports from.
   - Run this at least once after cloning Mol* and again after any Mol* source changes.
