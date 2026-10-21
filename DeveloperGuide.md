@@ -71,7 +71,7 @@ npm test
 
 ## Setup
 
-You will need [Git](https://git-scm.com/) to clone the repository and [Node](https://nodejs.org/). It is recommended to use Node version 24.11.0 or later. With these installed you can make a start by forking https://github.com/ribocode-slola/ribocode1 and then cloning the fork locally.
+You will need [Git](https://git-scm.com/) to clone the repository and [Node](https://nodejs.org/). It is recommended to use Node version 24.11.0 or later. With these installed you can make a start by forking https://github.com/ribocode-slola/ribocode1 and https://github.com/ribocode-slola/molstar, and then cloning both forks locally.
 
 If you are a member of the Ribocode project and want help getting set up with a development environment or help contributing via a `pull request`, please let it be known.
 
@@ -79,9 +79,35 @@ If you are a member of the Ribocode project and want help getting set up with a 
 ### Recommended set up
 
 1. Fork the Ribocode repository.
-2. Clone the fork into a local directory (Ribocode root).
-3. Change to the `packages` directory.
-4. Clone [Ribocode Mol*](https://github.com/ribocode-slola/molstar) into `packages`.
+2. Fork [Ribocode Mol*](https://github.com/ribocode-slola/molstar).
+3. Clone your Ribocode fork into a local directory (Ribocode root).
+4. Clone your Mol* fork into `packages/molstar` inside the Ribocode root.
+5. In `packages/molstar`, add the Ribocode Mol* repository as `upstream`.
+6. Build Mol* library outputs before running Ribocode.
+
+Example commands:
+
+```sh
+# Clone Ribocode
+git clone https://github.com/<your-github-user>/ribocode1.git
+cd ribocode1
+
+# Clone your Mol* fork to the expected local path
+mkdir -p packages
+git clone https://github.com/<your-github-user>/molstar.git packages/molstar
+
+# Track the canonical Ribocode Mol* repo
+cd packages/molstar
+git remote add upstream https://github.com/ribocode-slola/molstar.git
+
+# Install and build the Mol* lib output consumed by Ribocode
+npm install
+npm run build:lib
+
+# Back to Ribocode root
+cd ../..
+npm install
+```
 
 
 ### Build and run locally
@@ -93,6 +119,10 @@ From the Ribocode root directory:
 
 * `npm install`
   - Installs all dependencies.
+* `npm --workspace packages/molstar run build:lib`
+  - Builds the `packages/molstar/lib` output that Ribocode imports from.
+  - Run this at least once after cloning Mol* and again after any Mol* source changes.
+  - Equivalent from within `packages/molstar`: `npm run build:lib`.
 * `npm run dev`
   - Starts the Vite development server using settings from `.env` (base path is `/`).
   - Visit the local URL shown in the terminal (usually http://localhost:5173/).
@@ -288,6 +318,13 @@ If you add a new modal, file input, or dynamic UI element, ensure it has a `data
 ## Mol*
 
 Ribocode depends upon a customised version of [Mol*](https://github.com/molstar/molstar) - [Ribocode Mol*](https://github.com/ribocode-slola/molstar). This is currently Mol* Version 5.4.2 with some files added for Ribocode that might be generally useful for Mol*. These are being contributed via [Mol* Pull Request #1726](https://github.com/molstar/molstar/pull/1726), but if this does not happen, they will be folded back into Ribocode to make it easier to build on later versions of Mol*.
+
+Important local wiring details:
+
+- Ribocode resolves `molstar` imports to `packages/molstar` via `vite.config.js` aliasing.
+- Ribocode imports from `molstar/lib/...`, so the local `packages/molstar/lib` tree must exist.
+- The Mol* repository keeps `lib/` out of Git; generate it locally with `npm run build:lib` in `packages/molstar`.
+- If you edit files under `packages/molstar/src`, rebuild Mol* (`npm run build:lib`) before re-testing Ribocode.
 
 ## Highlighting and Selection Colouring
 
