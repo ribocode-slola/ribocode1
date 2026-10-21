@@ -61,15 +61,35 @@ export interface LoadDataRowPropsInput {
 	chainInfo: any;
 	selectedChainId: any;
 	setSelectedChainId: (val: any) => void;
+	selectedChainId2?: any;
+	setSelectedChainId2?: (val: any) => void;
+	clearSelectedChainId2?: () => void;
 	chainZoomLabel: string;
+	chainZoomLabel2?: string;
 	onChainHighlight: () => void;
 	chainHighlightOn?: boolean;
 	chainHighlightDisabled: boolean;
 	onChainInspect: () => void;
 	chainInspectOn?: boolean;
 	chainInspectDisabled: boolean;
+	onChainHighlight2?: () => void;
+	chainHighlightOn2?: boolean;
+	chainHighlightDisabled2?: boolean;
+	onChainInspect2?: () => void;
+	chainInspectOn2?: boolean;
+	chainInspectDisabled2?: boolean;
 	onChainZoom: () => void;
+	onChainZoom2?: () => void;
 	chainZoomDisabled: boolean;
+	chainZoomDisabled2?: boolean;
+	onCombinedSelectionZoom?: () => void;
+	combinedSelectionZoomDisabled?: boolean;
+	onCombinedSelectionHighlight?: () => void;
+	combinedSelectionHighlightOn?: boolean;
+	combinedSelectionHighlightDisabled?: boolean;
+	onCombinedSelectionInspect?: () => void;
+	combinedSelectionInspectOn?: boolean;
+	combinedSelectionInspectDisabled?: boolean;
 	showUniprotAccessionInChainLabels?: boolean;
 	setShowUniprotAccessionInChainLabels?: (val: boolean) => void;
 	uniprotLookupStatus?: {
@@ -81,15 +101,28 @@ export interface LoadDataRowPropsInput {
 	residueCommonIds?: string[];
 	selectedResidueIds: string[];
 	setSelectedResidueIds: (val: string[]) => void;
+	residueInfo2?: any;
+	residueCommonIds2?: string[];
+	selectedResidueIds2?: string[];
+	setSelectedResidueIds2?: (val: string[]) => void;
 	residueZoomLabel: string;
+	residueZoomLabel2?: string;
 	onResidueHighlight: () => void;
 	residueHighlightOn?: boolean;
 	residueHighlightDisabled: boolean;
 	onResidueInspect: () => void;
 	residueInspectOn?: boolean;
 	residueInspectDisabled: boolean;
+	onResidueHighlight2?: () => void;
+	residueHighlightOn2?: boolean;
+	residueHighlightDisabled2?: boolean;
+	onResidueInspect2?: () => void;
+	residueInspectOn2?: boolean;
+	residueInspectDisabled2?: boolean;
 	onResidueZoom: () => void;
+	onResidueZoom2?: () => void;
 	residueZoomDisabled: boolean;
+	residueZoomDisabled2?: boolean;
 	zoomExtraRadius: number;
 	setZoomExtraRadius: (val: number) => void;
 	zoomMinRadius: number;
@@ -168,15 +201,35 @@ export function getLoadDataRowProps({
 	chainInfo,
 	selectedChainId,
 	setSelectedChainId,
+	selectedChainId2,
+	setSelectedChainId2,
+	clearSelectedChainId2,
 	chainZoomLabel,
+	chainZoomLabel2,
 	onChainHighlight,
 	chainHighlightOn,
 	chainHighlightDisabled,
 	onChainInspect,
 	chainInspectOn,
 	chainInspectDisabled,
+	onChainHighlight2,
+	chainHighlightOn2,
+	chainHighlightDisabled2,
+	onChainInspect2,
+	chainInspectOn2,
+	chainInspectDisabled2,
 	onChainZoom,
+	onChainZoom2,
 	chainZoomDisabled,
+	chainZoomDisabled2,
+	onCombinedSelectionZoom,
+	combinedSelectionZoomDisabled,
+	onCombinedSelectionHighlight,
+	combinedSelectionHighlightOn,
+	combinedSelectionHighlightDisabled,
+	onCombinedSelectionInspect,
+	combinedSelectionInspectOn,
+	combinedSelectionInspectDisabled,
 	showUniprotAccessionInChainLabels,
 	setShowUniprotAccessionInChainLabels,
 	uniprotLookupStatus,
@@ -184,15 +237,28 @@ export function getLoadDataRowProps({
 	residueCommonIds,
 	selectedResidueIds,
 	setSelectedResidueIds,
+	residueInfo2,
+	residueCommonIds2,
+	selectedResidueIds2,
+	setSelectedResidueIds2,
 	residueZoomLabel,
+	residueZoomLabel2,
 	onResidueHighlight,
 	residueHighlightOn,
 	residueHighlightDisabled,
 	onResidueInspect,
 	residueInspectOn,
 	residueInspectDisabled,
+	onResidueHighlight2,
+	residueHighlightOn2,
+	residueHighlightDisabled2,
+	onResidueInspect2,
+	residueInspectOn2,
+	residueInspectDisabled2,
 	onResidueZoom,
+	onResidueZoom2,
 	residueZoomDisabled,
+	residueZoomDisabled2,
 	zoomExtraRadius,
 	setZoomExtraRadius,
 	zoomMinRadius,
@@ -363,15 +429,35 @@ export function getLoadDataRowProps({
 		chainInfo,
 		selectedChainId,
 		onSelectChainId: setSelectedChainId,
+		selectedChainId2,
+		onSelectChainId2: setSelectedChainId2,
+		onClearChainId2: clearSelectedChainId2,
 		chainZoomLabel,
+		chainZoomLabel2,
 		onChainHighlight,
 		chainHighlightOn,
 		chainHighlightDisabled,
 		onChainInspect,
 		chainInspectOn,
 		chainInspectDisabled,
+		onChainHighlight2,
+		chainHighlightOn2,
+		chainHighlightDisabled2,
+		onChainInspect2,
+		chainInspectOn2,
+		chainInspectDisabled2,
 		onChainZoom,
+		onChainZoom2,
 		chainZoomDisabled,
+		chainZoomDisabled2,
+		onCombinedSelectionZoom,
+		combinedSelectionZoomDisabled,
+		onCombinedSelectionHighlight,
+		combinedSelectionHighlightOn,
+		combinedSelectionHighlightDisabled,
+		onCombinedSelectionInspect,
+		combinedSelectionInspectOn,
+		combinedSelectionInspectDisabled,
 		showUniprotAccessionInChainLabels,
 		onShowUniprotAccessionInChainLabelsChange: setShowUniprotAccessionInChainLabels,
 		uniprotLookupStatus,
@@ -380,15 +466,28 @@ export function getLoadDataRowProps({
 		residueCommonIds,
 		selectedResidueIds,
 		onSelectResidueIds: setSelectedResidueIds,
+		residueInfo2,
+		residueCommonIds2,
+		selectedResidueIds2,
+		onSelectResidueIds2: setSelectedResidueIds2,
 		residueZoomLabel,
+		residueZoomLabel2,
 		onResidueHighlight,
 		residueHighlightOn,
 		residueHighlightDisabled,
 		onResidueInspect,
 		residueInspectOn,
 		residueInspectDisabled,
+		onResidueHighlight2,
+		residueHighlightOn2,
+		residueHighlightDisabled2,
+		onResidueInspect2,
+		residueInspectOn2,
+		residueInspectDisabled2,
 		onResidueZoom,
+		onResidueZoom2,
 		residueZoomDisabled,
+		residueZoomDisabled2,
 		zoomExtraRadius,
 		onZoomExtraRadiusChange: setZoomExtraRadius,
 		zoomMinRadius,
@@ -944,16 +1043,36 @@ const ViewerColumn: React.FC<ViewerColumnProps> = ({
 						   chainInfo={activeLoadProps.chainInfo}
 						   selectedChainId={activeLoadProps.selectedChainId}
 						   onSelectChainId={activeLoadProps.onSelectChainId}
+						   selectedChainId2={activeLoadProps.selectedChainId2}
+						   onSelectChainId2={activeLoadProps.onSelectChainId2}
+						   onClearChainId2={activeLoadProps.onClearChainId2}
 						   chainSelectDisabled={activeLoadProps.chainSelectDisabled}
 						   chainZoomLabel={activeLoadProps.chainZoomLabel}
+						   chainZoomLabel2={activeLoadProps.chainZoomLabel2}
 						   onChainHighlight={activeLoadProps.onChainHighlight}
 						   chainHighlightOn={activeLoadProps.chainHighlightOn}
 						   chainHighlightDisabled={activeLoadProps.chainHighlightDisabled}
 						   onChainInspect={activeLoadProps.onChainInspect}
 						   chainInspectOn={activeLoadProps.chainInspectOn}
 						   chainInspectDisabled={activeLoadProps.chainInspectDisabled}
+						   onChainHighlight2={activeLoadProps.onChainHighlight2}
+						   chainHighlightOn2={activeLoadProps.chainHighlightOn2}
+						   chainHighlightDisabled2={activeLoadProps.chainHighlightDisabled2}
+						   onChainInspect2={activeLoadProps.onChainInspect2}
+						   chainInspectOn2={activeLoadProps.chainInspectOn2}
+						   chainInspectDisabled2={activeLoadProps.chainInspectDisabled2}
 						   onChainZoom={activeLoadProps.onChainZoom}
+						   onChainZoom2={activeLoadProps.onChainZoom2}
 						   chainZoomDisabled={activeLoadProps.chainZoomDisabled}
+						   chainZoomDisabled2={activeLoadProps.chainZoomDisabled2}
+						   onCombinedSelectionZoom={activeLoadProps.onCombinedSelectionZoom}
+						   combinedSelectionZoomDisabled={activeLoadProps.combinedSelectionZoomDisabled}
+						   onCombinedSelectionHighlight={activeLoadProps.onCombinedSelectionHighlight}
+						   combinedSelectionHighlightOn={activeLoadProps.combinedSelectionHighlightOn}
+						   combinedSelectionHighlightDisabled={activeLoadProps.combinedSelectionHighlightDisabled}
+						   onCombinedSelectionInspect={activeLoadProps.onCombinedSelectionInspect}
+						   combinedSelectionInspectOn={activeLoadProps.combinedSelectionInspectOn}
+						   combinedSelectionInspectDisabled={activeLoadProps.combinedSelectionInspectDisabled}
 						   showUniprotAccessionInChainLabels={activeLoadProps.showUniprotAccessionInChainLabels}
 						   onShowUniprotAccessionInChainLabelsChange={activeLoadProps.onShowUniprotAccessionInChainLabelsChange}
 						   uniprotLookupStatus={activeLoadProps.uniprotLookupStatus}
@@ -961,16 +1080,29 @@ const ViewerColumn: React.FC<ViewerColumnProps> = ({
 						   residueCommonIds={activeLoadProps.residueCommonIds}
 						   selectedResidueIds={activeLoadProps.selectedResidueIds}
 						   onSelectResidueIds={activeLoadProps.onSelectResidueIds}
+						   residueInfo2={activeLoadProps.residueInfo2}
+						   residueCommonIds2={activeLoadProps.residueCommonIds2}
+						   selectedResidueIds2={activeLoadProps.selectedResidueIds2}
+						   onSelectResidueIds2={activeLoadProps.onSelectResidueIds2}
 						   residueSelectDisabled={activeLoadProps.residueSelectDisabled}
 						   residueZoomLabel={activeLoadProps.residueZoomLabel}
+						   residueZoomLabel2={activeLoadProps.residueZoomLabel2}
 						   onResidueHighlight={activeLoadProps.onResidueHighlight}
 						   residueHighlightOn={activeLoadProps.residueHighlightOn}
 						   residueHighlightDisabled={activeLoadProps.residueHighlightDisabled}
 						   onResidueInspect={activeLoadProps.onResidueInspect}
 						   residueInspectOn={activeLoadProps.residueInspectOn}
 						   residueInspectDisabled={activeLoadProps.residueInspectDisabled}
+						   onResidueHighlight2={activeLoadProps.onResidueHighlight2}
+						   residueHighlightOn2={activeLoadProps.residueHighlightOn2}
+						   residueHighlightDisabled2={activeLoadProps.residueHighlightDisabled2}
+						   onResidueInspect2={activeLoadProps.onResidueInspect2}
+						   residueInspectOn2={activeLoadProps.residueInspectOn2}
+						   residueInspectDisabled2={activeLoadProps.residueInspectDisabled2}
 						   onResidueZoom={activeLoadProps.onResidueZoom}
+						   onResidueZoom2={activeLoadProps.onResidueZoom2}
 						   residueZoomDisabled={activeLoadProps.residueZoomDisabled}
+						   residueZoomDisabled2={activeLoadProps.residueZoomDisabled2}
 						   zoomExtraRadius={activeLoadProps.zoomExtraRadius}
 						   onZoomExtraRadiusChange={activeLoadProps.onZoomExtraRadiusChange}
 						   zoomMinRadius={activeLoadProps.zoomMinRadius}

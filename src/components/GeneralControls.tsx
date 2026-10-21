@@ -42,6 +42,7 @@ interface GeneralControlsProps {
   sessionMenu?: React.ReactNode;
   selectedChainIdAlignedTo: string;
   selectedChainIdAligned: string;
+  chainRealignSummary?: string;
   realignmentExists: boolean;
   handleRealignToChains: () => void;
   canRealignToResidues: boolean;
@@ -72,6 +73,7 @@ const GeneralControls: React.FC<GeneralControlsProps> = ({
   sessionMenu,
   selectedChainIdAlignedTo,
   selectedChainIdAligned,
+  chainRealignSummary,
   realignmentExists,
   handleRealignToChains,
   canRealignToResidues,
@@ -115,8 +117,8 @@ const GeneralControls: React.FC<GeneralControlsProps> = ({
     >
       {selectedChainIdAlignedTo && selectedChainIdAligned
         ? realignmentExists
-          ? `Already aligned chains: ${selectedChainIdAlignedTo} → ${selectedChainIdAligned}`
-          : `Align Chains: ${selectedChainIdAlignedTo} → ${selectedChainIdAligned}`
+          ? `Already aligned chains: ${chainRealignSummary ?? `${selectedChainIdAlignedTo} → ${selectedChainIdAligned}`}`
+          : `Align Chains: ${chainRealignSummary ?? `${selectedChainIdAlignedTo} → ${selectedChainIdAligned}`}`
         : 'Align Chains'}
     </button>
     <button

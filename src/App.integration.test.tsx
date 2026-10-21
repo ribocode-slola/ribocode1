@@ -696,6 +696,7 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     expect(toggle).toBeInTheDocument();
     fireEvent.click(toggle!);
     fireEvent.click(document.getElementById('viewer-column-A-alignedto-chain-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-A-alignedto-select-chain-controls-toggle-btn') as HTMLButtonElement);
 
     await waitFor(() => {
       const zoomChainButtons = Array.from(
@@ -778,6 +779,8 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     await onSessionLoaded!(session, files);
 
     fireEvent.click(document.getElementById('viewer-column-A-select-zoom-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-A-alignedto-chain-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-A-alignedto-select-chain-controls-toggle-btn') as HTMLButtonElement);
     fireEvent.click(document.getElementById('viewer-column-A-alignedto-residue-controls-toggle-btn') as HTMLButtonElement);
 
     const alignedToInspectResidueBtnId = 'viewer-column-A-alignedto-inspect-residue-btn';
@@ -845,8 +848,8 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     fireEvent.click(alignedToFirstChainRow as HTMLTableRowElement);
     fireEvent.click(alignedFirstChainRow as HTMLTableRowElement);
 
-    const inspectChains = vi.mocked(structureUtils.inspectLociOnChain);
-    inspectChains.mockClear();
+    const inspectResidues = vi.mocked(structureUtils.inspectLociOnResidues);
+    inspectResidues.mockClear();
 
     const pluginA = (globalThis as any).__mockPluginA;
     const pluginB = (globalThis as any).__mockPluginB;
@@ -863,23 +866,28 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     expect(viewerACol).toBeInTheDocument();
     expect(viewerBCol).toBeInTheDocument();
 
-    const inspectBAligned = document.getElementById('viewer-column-B-aligned-inspect-chain-btn') as HTMLButtonElement | null;
+    fireEvent.click(document.getElementById('viewer-column-A-alignedto-residue-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-B-aligned-residue-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-A-alignedto-residue-select-all-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-B-aligned-residue-select-all-btn') as HTMLButtonElement);
+
+    const inspectBAligned = document.getElementById('viewer-column-B-aligned-inspect-residue-btn') as HTMLButtonElement | null;
     expect(inspectBAligned).toBeInTheDocument();
     expect(inspectBAligned).not.toBeDisabled();
     fireEvent.click(inspectBAligned!);
 
-    expect(inspectChains).toHaveBeenCalled();
-    expect(inspectChains.mock.calls.some(args => args[3] === pluginA)).toBe(false);
+    expect(inspectResidues).toHaveBeenCalled();
+    expect(inspectResidues.mock.calls.some(args => args[5] === pluginA)).toBe(false);
 
-    inspectChains.mockClear();
+    inspectResidues.mockClear();
 
-    const inspectAAlignedTo = document.getElementById('viewer-column-A-alignedto-inspect-chain-btn') as HTMLButtonElement | null;
+    const inspectAAlignedTo = document.getElementById('viewer-column-A-alignedto-inspect-residue-btn') as HTMLButtonElement | null;
     expect(inspectAAlignedTo).toBeInTheDocument();
     expect(inspectAAlignedTo).not.toBeDisabled();
     fireEvent.click(inspectAAlignedTo!);
 
-    expect(inspectChains).toHaveBeenCalled();
-    expect(inspectChains.mock.calls.some(args => args[3] === pluginB)).toBe(false);
+    expect(inspectResidues).toHaveBeenCalled();
+    expect(inspectResidues.mock.calls.some(args => args[5] === pluginB)).toBe(false);
   });
 
   it('passes alignment data when loading Aligned (regression)', async () => {

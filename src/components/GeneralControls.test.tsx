@@ -29,6 +29,7 @@ describe('GeneralControls', () => {
       syncDisabled: false,
       selectedChainIdAlignedTo: A,
       selectedChainIdAligned: B,
+      chainRealignSummary: 'A, C -> B, D',
       realignmentExists: false,
       handleRealignToChains,
       canRealignToResidues: true,
@@ -53,7 +54,7 @@ describe('GeneralControls', () => {
     expect(setSyncEnabled).toHaveBeenCalledWith(true);
 
     // Test realign button
-    const realignBtn = getByRole('button', { name: /Align Chains:/i });
+    const realignBtn = getByRole('button', { name: /Align Chains: A, C -> B, D/i });
     fireEvent.click(realignBtn);
     expect(handleRealignToChains).toHaveBeenCalled();
     expect(realignBtn).not.toBeDisabled();
