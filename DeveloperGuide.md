@@ -5,7 +5,7 @@ Welcome to the Ribocode Developer Guide!
 
 ## Table of Contents
 
-- [Quick Start](#quick-start)
+- [Quick Test](#quick-test)
 - [Setup](#setup)
   - [Recommended set up](#recommended-set-up)
   - [Build and run locally](#build-and-run-locally)
@@ -46,13 +46,17 @@ Welcome to the Ribocode Developer Guide!
 - [Contributing](#contributing)
 
 
-## Quick Start
-
-For experienced developers:
+## Quick Test
 
 ```sh
 git clone https://github.com/ribocode-slola/ribocode1.git
 cd ribocode1
+mkdir -p packages
+git clone https://github.com/ribocode-slola/molstar.git packages/molstar
+cd packages/molstar
+npm install
+npm run build:lib
+cd ../..
 npm install
 npm run dev
 # Visit http://localhost:5173/
@@ -71,7 +75,9 @@ npm test
 
 ## Setup
 
-You will need [Git](https://git-scm.com/) to clone the repository and [Node](https://nodejs.org/). It is recommended to use Node version 24.11.0 or later. With these installed you can make a start by forking https://github.com/ribocode-slola/ribocode1 and https://github.com/ribocode-slola/molstar, and then cloning both forks locally.
+You will need [Git](https://git-scm.com/) to clone the repository and [Node](https://nodejs.org/). It is recommended to use Node version 24.11.0 or later.
+
+Please also fork https://github.com/ribocode-slola/ribocode1 and https://github.com/ribocode-slola/molstar, and then clone and use your forks of the ribocode-slola forks.
 
 If you are a member of the Ribocode project and want help getting set up with a development environment or help contributing via a `pull request`, please let it be known.
 
@@ -137,7 +143,7 @@ From the Ribocode root directory:
   - Output is placed in the `dist/` directory.
 * `npm run preview`
   - Serves the production build locally for testing (simulates deployment).
-  - Visit the local preview URL (usually http://localhost:4173/ribocode1/).
+  - Visit the local preview URL (usually http://localhost:5173/ribocode1/).
 
 #### Notes on Environment Files
 
