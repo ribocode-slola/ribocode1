@@ -39,6 +39,12 @@ export interface LoadDataRowPropsInput {
 	setRepresentationType: (val: any) => void;
 	colorsFile: any;
 	isMoleculeColoursLoaded: boolean;
+	colorMode?: 'chain' | 'residue-type';
+	onColorModeChange?: (mode: 'chain' | 'residue-type') => void;
+	selectedChainColor?: string;
+	onSelectedChainColorChange?: (color: string) => void;
+	onSaveColorTheme?: () => void;
+	saveColorThemeDisabled?: boolean;
 	colorThemeOptions?: Array<{ value: string; label: string }>;
 	selectedColorThemeName?: string;
 	setSelectedColorThemeName?: (themeName: string) => void;
@@ -59,6 +65,8 @@ export interface LoadDataRowPropsInput {
 	subunitZoomDisabled: boolean;
 	subunitToChainIds: any;
 	chainInfo: any;
+	chainColorsById?: Map<string, string>;
+	onChainColorChange?: (chainId: string, color: string) => void;
 	selectedChainId: any;
 	setSelectedChainId: (val: any) => void;
 	selectedChainId2?: any;
@@ -179,6 +187,12 @@ export function getLoadDataRowProps({
 	setRepresentationType,
 	colorsFile,
 	isMoleculeColoursLoaded,
+	colorMode,
+	onColorModeChange,
+	selectedChainColor,
+	onSelectedChainColorChange,
+	onSaveColorTheme,
+	saveColorThemeDisabled,
 	colorThemeOptions,
 	selectedColorThemeName,
 	setSelectedColorThemeName,
@@ -199,6 +213,8 @@ export function getLoadDataRowProps({
 	subunitZoomDisabled,
 	subunitToChainIds,
 	chainInfo,
+	chainColorsById,
+	onChainColorChange,
 	selectedChainId,
 	setSelectedChainId,
 	selectedChainId2,
@@ -344,6 +360,12 @@ export function getLoadDataRowProps({
 		),
 		onAddColorsClick: colorsFile.handleButtonClick,
 			addColorsDisabled: Aligned === 'AlignedTo' ? !isMoleculeAlignedToLoaded : !isMoleculeAlignedLoaded,
+			colorMode,
+			onColorModeChange,
+			selectedChainColor,
+			onSelectedChainColorChange,
+			onSaveColorTheme,
+			saveColorThemeDisabled,
 		colorThemeOptions,
 		selectedColorThemeName,
 		onSelectedColorThemeNameChange: setSelectedColorThemeName,
@@ -427,6 +449,8 @@ export function getLoadDataRowProps({
 		subunitZoomDisabled,
 		subunitSelectDisabled: !isMoleculeAlignedToLoaded,
 		chainInfo,
+		chainColorsById,
+		onChainColorChange,
 		selectedChainId,
 		onSelectChainId: setSelectedChainId,
 		selectedChainId2,

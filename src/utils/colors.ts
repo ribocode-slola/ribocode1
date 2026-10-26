@@ -10,15 +10,155 @@
  * @see https://github.com/ribocode-slola/ribocode1
  */
 import { Color } from 'molstar/lib/mol-util/color';
-import { Unit, StructureElement } from 'molstar/lib/mol-model/structure';
+import { Unit, StructureElement, Bond } from 'molstar/lib/mol-model/structure';
 import { ThemeDataContext } from 'molstar/lib/mol-theme/theme';
 //import { ColorType } from 'molstar/lib/mol-geo/geometry/color-data';
 import { ColorTheme } from 'molstar/lib/mol-theme/color';
 import { ChainIdColorThemeParams } from 'molstar/lib/mol-theme/color/chain-id';
+import { ChainIdColorTheme, ChainIdColorThemeProvider } from 'molstar/lib/mol-theme/color/chain-id';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 
 // Define a type for the data structure
 export type Data = Record<string, string>;
+export type ParsedColorThemeKind = 'chain' | 'residue-type';
+
+const CHAIN_KEYS = new Set(['chain', 'chain_id', 'pdb_chain', 'auth_asym_id', 'label_asym_id', 'asym_id']);
+const RESIDUE_KEYS = new Set(['residue_type', 'residue', 'residue_name', 'comp_id', 'label_comp_id']);
+const COLOR_KEYS = new Set(['color', 'colour']);
+const HEX_COLOR_PATTERN = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+
+function normalizeKeyToken(token: string): string {
+    return token.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_');
+}
+
+function isValidHexColor(value: string): boolean {
+    return HEX_COLOR_PATTERN.test(value.trim());
+}
+
+function normalizeHexColor(value: string): string {
+    return value.trim().toUpperCase();
+}
+
+function splitLineByDelimiter(line: string, delimiter: 'comma' | 'tab' | 'whitespace'): string[] {
+    if (delimiter === 'comma') {
+        return line.split(',').map(part => part.trim());
+    }
+    if (delimiter === 'tab') {
+        return line.split('\t').map(part => part.trim());
+    }
+    return line.split(/\s+/).map(part => part.trim());
+}
+
+function detectDelimiter(line: string): 'comma' | 'tab' | 'whitespace' {
+    if (line.includes(',')) return 'comma';
+    if (line.includes('\t')) return 'tab';
+    return 'whitespace';
+}
+
+function normalizeThemeKey(value: string, kind: ParsedColorThemeKind): string {
+    const trimmed = value.trim();
+    return kind === 'residue-type' ? trimmed.toUpperCase() : trimmed;
+}
+
+function parseDelimitedColorRows(text: string, fileName: string): Data[] {
+    const rawLines = text
+        .replace(/^\uFEFF/, '')
+        .split(/\r?\n/)
+        .map(line => line.trim())
+        .filter(line => line.length > 0 && !line.startsWith('#'));
+
+    if (rawLines.length === 0) return [];
+
+    const delimiter = detectDelimiter(rawLines[0]);
+    const firstTokens = splitLineByDelimiter(rawLines[0], delimiter).filter(Boolean);
+    const normalizedHeader = firstTokens.map(normalizeKeyToken);
+
+    const chainIdx = normalizedHeader.findIndex(token => CHAIN_KEYS.has(token));
+    const residueIdx = normalizedHeader.findIndex(token => RESIDUE_KEYS.has(token));
+    const colorIdx = normalizedHeader.findIndex(token => COLOR_KEYS.has(token));
+    const hasHeader = colorIdx >= 0 && (chainIdx >= 0 || residueIdx >= 0);
+
+    let kind: ParsedColorThemeKind = residueIdx >= 0 ? 'residue-type' : 'chain';
+    let keyColumnIndex = kind === 'residue-type' ? residueIdx : chainIdx;
+    let startLineIndex = 0;
+
+    if (hasHeader) {
+        startLineIndex = 1;
+    } else {
+        const normalizedName = fileName.toLowerCase();
+        kind = normalizedName.includes('residue') ? 'residue-type' : 'chain';
+        keyColumnIndex = 0;
+    }
+
+    const resolvedColorColumnIndex = hasHeader ? colorIdx : 1;
+    if (keyColumnIndex < 0 || resolvedColorColumnIndex < 0) return [];
+
+    const rows: Data[] = [];
+    for (let i = startLineIndex; i < rawLines.length; i++) {
+        const parts = splitLineByDelimiter(rawLines[i], delimiter).filter(Boolean);
+        if (parts.length <= Math.max(keyColumnIndex, resolvedColorColumnIndex)) continue;
+        const key = normalizeThemeKey(parts[keyColumnIndex], kind);
+        const color = normalizeHexColor(parts[resolvedColorColumnIndex]);
+        if (!key || !isValidHexColor(color)) continue;
+
+        if (kind === 'chain') {
+            rows.push({ pdb_chain: key, color });
+        } else {
+            rows.push({ residue_type: key, color });
+        }
+    }
+    return rows;
+}
+
+function parseJsonColorRows(text: string): Data[] {
+    const data = JSON.parse(text);
+    const rows: Data[] = [];
+
+    const pushRow = (kind: ParsedColorThemeKind, key: string, color: string) => {
+        const normalizedKey = normalizeThemeKey(String(key ?? ''), kind);
+        const normalizedColor = normalizeHexColor(String(color ?? ''));
+        if (!normalizedKey || !isValidHexColor(normalizedColor)) return;
+        if (kind === 'chain') rows.push({ pdb_chain: normalizedKey, color: normalizedColor });
+        else rows.push({ residue_type: normalizedKey, color: normalizedColor });
+    };
+
+    if (Array.isArray(data)) {
+        data.forEach((item: any) => {
+            if (!item || typeof item !== 'object') return;
+            const color = item.color ?? item.colour;
+            if (!color) return;
+            const residue = item.residue_type ?? item.residue ?? item.residue_name ?? item.comp_id ?? item.label_comp_id;
+            if (residue) {
+                pushRow('residue-type', residue, color);
+                return;
+            }
+            const chain = item.pdb_chain ?? item.chain ?? item.chain_id ?? item.auth_asym_id ?? item.label_asym_id ?? item.asym_id;
+            if (chain) {
+                pushRow('chain', chain, color);
+            }
+        });
+        return rows;
+    }
+
+    if (data && typeof data === 'object') {
+        Object.entries(data).forEach(([key, color]) => {
+            pushRow('chain', key, String(color));
+        });
+    }
+    return rows;
+}
+
+export function inferColorThemeKind(rows: Array<Record<string, string>>): ParsedColorThemeKind | null {
+    if (!rows.length) return null;
+    let chainCount = 0;
+    let residueCount = 0;
+    rows.forEach((row) => {
+        if (typeof row.pdb_chain === 'string' && row.pdb_chain.trim()) chainCount += 1;
+        if (typeof row.residue_type === 'string' && row.residue_type.trim()) residueCount += 1;
+    });
+    if (!chainCount && !residueCount) return null;
+    return residueCount > chainCount ? 'residue-type' : 'chain';
+}
 
 /**
  * Read a JSON file and return a promise that resolves to a Map object.
@@ -28,35 +168,8 @@ export type Data = Record<string, string>;
  * color is a hex color code (e.g. #FF0000)
  */
 export async function readJSONFile(file: File): Promise<Data[]> {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            try {
-                const text = event.target?.result as string;
-                const data = JSON.parse(text);
-                //let transformedData: SimpleData[];
-                let transformedData: Data[];
-                if (Array.isArray(data)) {
-                    transformedData = data.map((item: any) => ({
-                        pdb_chain: item.pdb_chain,
-                        color: item.color
-                    }));
-                } else {
-                    // Handle object format: { "4ug0_LY": "#FF0000", ... }
-                    transformedData = Object.entries(data).map(
-                        ([pdb_chain, color]) => ({
-                            pdb_chain,
-                            color: color as string
-                        }));
-                }
-                resolve(transformedData);
-            } catch (error) {
-                reject(error);
-            }
-        };
-        reader.onerror = (error) => reject(error);
-        reader.readAsText(file);
-    });
+    const text = await file.text();
+    return parseJsonColorRows(text);
 }
 
 /**
@@ -71,49 +184,8 @@ export async function readJSONFile(file: File): Promise<Data[]> {
  * color is a hex color code (e.g. #FF0000)
  */
 export async function readFile(file: File): Promise<Data[]> {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            console.log('Started parsing file:', file.name);
-            const text = event.target?.result as string;
-            const lines = text.split('\n');
-            const data: Data[] = [];
-            if (lines.length > 0) {
-                const header = lines[0];
-                console.log('Filename:', file.name);
-                console.log('Header:', header);
-            }
-            const numLines = lines.length;
-            console.log('Total lines in file:', numLines);
-            const nprint = Math.max(1, Math.floor(numLines / 4));
-            for (let i = 1; i < numLines; i++) {
-                const line = lines[i].trim();
-                // if (i % nprint === 0) {
-                //     console.log(`Parsing line ${i}: ${line}`);
-                // }
-                if (!line) continue;
-                const parts = line.split(/\s+/);
-                if (parts.length < 4) continue; // skip malformed lines
-                const [pdb_name, RP_name, , colorStr] = parts;
-                const [pdb_id, pdb_chain] = pdb_name.split('_');
-                if (!pdb_id || !pdb_chain) continue; // skip malformed pdb_name
-                data.push({
-                    pdb_name,
-                    RP_name,
-                    color: colorStr,
-                    pdb_id,
-                    pdb_chain
-                });
-                if (i % nprint === 0) {
-                    console.log(`Parsed line ${i}: pdb_name=${pdb_name}, RP_name=${RP_name}, color=${colorStr}, pdb_id=${pdb_id}, pdb_chain=${pdb_chain}`);
-                }
-            }
-            console.log('Finished parsing file. Total entries:', data.length);
-            resolve(data);
-        };
-        reader.onerror = (error) => reject(error);
-        reader.readAsText(file);
-    });
+    const text = await file.text();
+    return parseDelimitedColorRows(text, file.name);
 }
 
 /**
@@ -159,11 +231,12 @@ export function loadColorTheme(file: File): Promise<ChainIdColorThemeParams> {
  * @returns Promise resolving to an array of Data objects.
  */
 export async function parseColorFileContent(text: string, file: File): Promise<Data[]> {
+    const sourceText = text && text.trim().length > 0 ? text : await file.text();
     const ext = file.name.split('.').pop()?.toLowerCase();
     if (ext === 'json') {
-        return await readJSONFile(file);
+        return parseJsonColorRows(sourceText);
     } else {
-        return await readFile(file);
+        return parseDelimitedColorRows(sourceText, file.name);
     }
 }
 
@@ -253,7 +326,9 @@ export function createChainColorTheme(
         return undefined;
     };
 
-    const theme = (ctx: ThemeDataContext, props: {}) => ({
+    const theme = (ctx: ThemeDataContext, props: {}) => {
+        const fallbackChainIdTheme = ChainIdColorTheme(ctx, ChainIdColorThemeProvider.defaultValues as any);
+        return ({
         granularity: 'group',
         color: (location: StructureElement.Location) => {
             //console.log('Color function called for:', location);
@@ -262,18 +337,72 @@ export function createChainColorTheme(
                 const chainIndex = unit.model.atomicHierarchy.chainAtomSegments.index[element];
                 const authAsymId: string = String(unit.model.atomicHierarchy.chains.auth_asym_id?.value?.(chainIndex) ?? '');
                 const labelAsymId: string = String(unit.model.atomicHierarchy.chains.label_asym_id?.value?.(chainIndex) ?? '');
-                return resolveChainColor(authAsymId, labelAsymId) ?? Color(0xCCCCCC);
+                const resolved = resolveChainColor(authAsymId, labelAsymId);
+                return resolved ?? fallbackChainIdTheme.color(location as any);
             }
-            return Color(0xCCCCCC);
+            return fallbackChainIdTheme.color(location as any);
         },
         props: {},
         description: 'Colors chains according to a custom map.'
     });
+    };
     // Return the ColorTheme object
     return {
         name: themeName,
         label: themeName,
         category: ColorTheme.Category.Chain,
+        factory: theme,
+        getParams: () => ({}),
+        defaultValues: {},
+        isApplicable: () => true,
+    };
+}
+
+/**
+ * Creates a custom residue-type color theme based on a provided residue code to color map.
+ */
+export function createResidueTypeColorTheme(
+    themeName: string,
+    residueTypeColorMap: Map<string, Color>) {
+    const normalizeResidueType = (value: unknown): string => String(value ?? '').trim().toUpperCase();
+    const normalizedResidueColorMap = new Map<string, Color>();
+    residueTypeColorMap.forEach((color, key) => {
+        const normalized = normalizeResidueType(key);
+        if (!normalized) return;
+        if (!normalizedResidueColorMap.has(normalized)) {
+            normalizedResidueColorMap.set(normalized, color);
+        }
+    });
+
+    const resolveResidueColor = (residueType: string): Color | undefined => {
+        const normalized = normalizeResidueType(residueType);
+        if (!normalized) return undefined;
+        if (residueTypeColorMap.has(normalized)) return residueTypeColorMap.get(normalized);
+        return normalizedResidueColorMap.get(normalized);
+    };
+
+    const unknownResidueColor = Color(0xFF00FF);
+    const theme = (_ctx: ThemeDataContext, _props: {}) => ({
+        granularity: 'group',
+        color: (location: any) => {
+            if (StructureElement.Location.is(location) && Unit.isAtomic(location.unit)) {
+                const compId = String(location.unit.model.atomicHierarchy.atoms.label_comp_id.value(location.element) ?? '');
+                return resolveResidueColor(compId) ?? unknownResidueColor;
+            }
+            if (Bond.isLocation(location) && Unit.isAtomic(location.aUnit)) {
+                const compId = String(location.aUnit.model.atomicHierarchy.atoms.label_comp_id.value(location.aUnit.elements[location.aIndex]) ?? '');
+                return resolveResidueColor(compId) ?? unknownResidueColor;
+            }
+            return unknownResidueColor;
+        },
+        props: {},
+        description: 'Colors residues according to a custom residue-type map.'
+    });
+
+    return {
+        name: themeName,
+        label: themeName,
+        category: ColorTheme.Category.Residue,
         factory: theme,
         getParams: () => ({}),
         defaultValues: {},
@@ -291,7 +420,8 @@ export function createChainColorTheme(
 export function registerThemeIfNeeded(
     plugin: PluginUIContext,
     themeName: string,
-    chainColorMaps: Map<string, Map<string, Color>>
+    chainColorMaps: Map<string, Map<string, Color>>,
+    residueTypeColorMaps?: Map<string, Map<string, Color>>
 ) {
     if (!plugin) return;
     // Get color theme registry.
@@ -307,9 +437,17 @@ export function registerThemeIfNeeded(
         colorThemeRegistry.remove(existingTheme);
         console.log(`Removed old ${themeName} theme.`);
     }
-    // Add the new theme.
-    colorThemeRegistry.add(
-        createChainColorTheme(themeName, chainColorMaps.get(themeName)!) as any
-    );
+    const chainMap = chainColorMaps.get(themeName);
+    const residueMap = residueTypeColorMaps?.get(themeName);
+    const provider = residueMap
+        ? createResidueTypeColorTheme(themeName, residueMap)
+        : chainMap
+            ? createChainColorTheme(themeName, chainMap)
+            : null;
+    if (!provider) {
+        console.warn(`No custom color map found for theme ${themeName}.`);
+        return;
+    }
+    colorThemeRegistry.add(provider as any);
     console.log(`Registered ${themeName} theme.`);
 }

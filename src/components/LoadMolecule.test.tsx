@@ -29,6 +29,10 @@ describe('LoadDataRow', () => {
         addColorsDisabled: false,
         colorsInputRef: { current: null },
         onColorsFileChange: vi.fn(),
+        colorMode: 'chain' as const,
+        onColorModeChange: vi.fn(),
+        selectedChainColor: '#3366FF',
+        onSelectedChainColorChange: vi.fn(),
         subunitToChainIds: new Map([
             ['All', new Set(['A', 'B'])],
             ['Large', new Set()],
@@ -117,6 +121,35 @@ describe('LoadDataRow', () => {
         expect(screen.getByText('Residue 1')).toBeInTheDocument();
     });
 
+    it('shows residue type counts in representation controls when residue-type mode is active', () => {
+        render(
+            <LoadDataRow
+                {...baseProps}
+                isLoaded={true}
+                colorMode="residue-type"
+                residueInfo={{
+                    residueLabels: new Map([
+                        ['1', { id: '1', name: 'ALA 1', compId: 'ALA', seqNumber: 1, insCode: '' }],
+                        ['2', { id: '2', name: 'GLY 2', compId: 'GLY', seqNumber: 2, insCode: '' }],
+                    ]),
+                    residueToAtomIds: { '1': ['a1'], '2': ['a2'] }
+                }}
+                residueInfo2={{
+                    residueLabels: new Map([
+                        ['10', { id: '10', name: 'ALA 10', compId: 'ALA', seqNumber: 10, insCode: '' }],
+                    ]),
+                    residueToAtomIds: { '10': ['b1'] }
+                }}
+            />
+        );
+
+        fireEvent.click(screen.getByText('Show Representation Controls'));
+
+        expect(screen.getByText('Residue Types (all chains in loaded dataset)')).toBeInTheDocument();
+        expect(screen.getAllByText('ALA (2)').length).toBeGreaterThanOrEqual(1);
+        expect(screen.getAllByText('GLY (1)').length).toBeGreaterThanOrEqual(1);
+    });
+
     it('keeps selected chain actions outside Select subsection', () => {
         render(<LoadDataRow {...baseProps} isLoaded={true} />);
 
@@ -164,6 +197,66 @@ describe('LoadDataRow', () => {
 
         fireEvent.change(select, { target: { value: 'aligned-custom-1' } });
         expect(onSelectedColorThemeNameChange).toHaveBeenCalledWith('aligned-custom-1');
+    });
+
+    it('supports representation colouring mode toggle and selected chain colour picker', () => {
+        const onColorModeChange = vi.fn();
+        const onSelectedChainColorChange = vi.fn();
+        render(
+            <LoadDataRow
+                {...baseProps}
+                isLoaded={true}
+                colorMode="chain"
+                onColorModeChange={onColorModeChange}
+                selectedChainColor="#3366FF"
+                onSelectedChainColorChange={onSelectedChainColorChange}
+            />
+        );
+
+        fireEvent.click(screen.getByText('Show Representation Controls'));
+
+        const modeSelect = document.getElementById('test-viewer-a-color-mode-select') as HTMLSelectElement;
+        expect(modeSelect).toBeInTheDocument();
+        expect(modeSelect.value).toBe('chain');
+        fireEvent.change(modeSelect, { target: { value: 'residue-type' } });
+        expect(onColorModeChange).toHaveBeenCalledWith('residue-type');
+
+        const selectedChainColor = document.getElementById('test-viewer-a-selected-chain-color') as HTMLInputElement;
+        expect(selectedChainColor).toBeInTheDocument();
+        expect(selectedChainColor.value.toLowerCase()).toBe('#3366ff');
+        fireEvent.change(selectedChainColor, { target: { value: '#ff8800' } });
+        expect(onSelectedChainColorChange).not.toHaveBeenCalled();
+        const applyButton = document.getElementById('test-viewer-a-selected-chain-color-apply-btn') as HTMLButtonElement;
+        expect(applyButton).toBeInTheDocument();
+        expect(applyButton.disabled).toBe(false);
+        fireEvent.click(applyButton);
+        expect(onSelectedChainColorChange).toHaveBeenCalledWith('#ff8800');
+    });
+
+    it('calls onSaveColorTheme when save theme button is clicked', () => {
+        const onSaveColorTheme = vi.fn();
+        render(
+            <LoadDataRow
+                {...baseProps}
+                isLoaded={true}
+                colorThemeOptions={[
+                    { value: 'default', label: 'Default' },
+                    { value: 'aligned-custom-1', label: 'Custom 1' },
+                ]}
+                selectedColorThemeName="aligned-custom-1"
+                onSelectedColorThemeNameChange={vi.fn()}
+                onSaveColorTheme={onSaveColorTheme}
+                saveColorThemeDisabled={false}
+            />
+        );
+
+        fireEvent.click(screen.getByText('Show Representation Controls'));
+
+        const saveButton = document.getElementById('test-viewer-a-save-colour-theme-btn') as HTMLButtonElement;
+        expect(saveButton).toBeInTheDocument();
+        expect(saveButton.disabled).toBe(false);
+        fireEvent.click(saveButton);
+        expect(onSaveColorTheme).toHaveBeenCalled();
     });
 
     it('calls onRemoveColorTheme when remove theme button is clicked', () => {
@@ -384,8 +477,8 @@ describe('LoadDataRow', () => {
         fireEvent.click(screen.getByText('Show Chain Controls'));
         fireEvent.click(screen.getByText('Show Select Chain 1'));
         fireEvent.click(screen.getByText('Show Residue Controls'));
-        expect(screen.getByText('ALA (2)')).toBeInTheDocument();
-        expect(screen.getByText('GLY (1)')).toBeInTheDocument();
+        expect(screen.getAllByText('ALA (2)').length).toBeGreaterThanOrEqual(1);
+        expect(screen.getAllByText('GLY (1)').length).toBeGreaterThanOrEqual(1);
 
         fireEvent.click(document.getElementById('test-viewer-a-residue-select-all-btn') as HTMLButtonElement);
         expect(onSelectResidueIds).toHaveBeenLastCalledWith(['1', '2', '3']);

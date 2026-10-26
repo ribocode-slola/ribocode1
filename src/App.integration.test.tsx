@@ -707,6 +707,86 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     }, { timeout: 5000 });
   });
 
+  it('applies selected chain colour edits to active chain-id representation (default chain-id theme)', async () => {
+    (globalThis as any).__mockStructureRepsByRef = {
+      'mock-ref-0': [
+        {
+          type: 'cartoon',
+          colorTheme: {
+            name: 'chain-id',
+            params: {
+              palette: {
+                params: {
+                  list: {
+                    colors: [
+                      ['A', '#112233'],
+                      ['B', '#445566'],
+                    ],
+                  },
+                },
+              },
+            },
+          },
+          visible: true,
+          repRef: 'mock-rep-0',
+        },
+      ],
+    };
+
+    render(<App />);
+
+    const alignedToInput = document.getElementById('viewer-column-A-alignedto-file-input') as HTMLInputElement | null;
+    expect(alignedToInput).toBeInTheDocument();
+    fireEvent.change(alignedToInput!, { target: { files: [loadTestFile('4ug0.cif')] } });
+
+    await waitFor(() => {
+      expect(document.getElementById('viewer-column-A-alignedto-representation-controls-toggle-btn')).toBeInTheDocument();
+    }, { timeout: 5000 });
+
+    fireEvent.click(document.getElementById('viewer-column-A-alignedto-representation-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-A-select-zoom-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-A-alignedto-chain-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-A-alignedto-select-chain-controls-toggle-btn') as HTMLButtonElement);
+
+    const firstChainRow = await waitFor(() => {
+      const row = document.querySelector('[data-testid^="viewer-column-A-chain-table-row-"]') as HTMLTableRowElement | null;
+      expect(row).toBeInTheDocument();
+      return row as HTMLTableRowElement;
+    }, { timeout: 5000 });
+    fireEvent.click(firstChainRow);
+
+    await waitFor(() => {
+      const selectedLabel = document.getElementById('viewer-column-A-alignedto-selected-chain-label');
+      expect(selectedLabel).toBeInTheDocument();
+      expect(selectedLabel?.textContent).not.toContain('Selected: None');
+    }, { timeout: 5000 });
+
+    const selectedChainColorInput = document.getElementById('viewer-column-A-alignedto-selected-chain-color') as HTMLInputElement | null;
+    expect(selectedChainColorInput).toBeInTheDocument();
+    const selectedChainColorApplyButton = document.getElementById('viewer-column-A-alignedto-selected-chain-color-apply-btn') as HTMLButtonElement | null;
+    expect(selectedChainColorApplyButton).toBeInTheDocument();
+    const pluginA = (globalThis as any).__mockPluginA;
+    const pluginB = (globalThis as any).__mockPluginB;
+    const runTaskCountBefore = (pluginA?.runTask?.mock?.calls?.length ?? 0) + (pluginB?.runTask?.mock?.calls?.length ?? 0);
+
+    fireEvent.change(selectedChainColorInput!, { target: { value: '#ff8800' } });
+    fireEvent.click(selectedChainColorApplyButton!);
+
+    await waitFor(() => {
+      const runTaskCountAfterFirstApply = (pluginA?.runTask?.mock?.calls?.length ?? 0) + (pluginB?.runTask?.mock?.calls?.length ?? 0);
+      expect(runTaskCountAfterFirstApply).toBeGreaterThan(runTaskCountBefore);
+    }, { timeout: 5000 });
+
+    const runTaskCountAfterFirstApply = (pluginA?.runTask?.mock?.calls?.length ?? 0) + (pluginB?.runTask?.mock?.calls?.length ?? 0);
+    fireEvent.change(selectedChainColorInput!, { target: { value: '#22aaee' } });
+    fireEvent.click(selectedChainColorApplyButton!);
+
+    await waitFor(() => {
+      const runTaskCountAfterSecondApply = (pluginA?.runTask?.mock?.calls?.length ?? 0) + (pluginB?.runTask?.mock?.calls?.length ?? 0);
+      expect(runTaskCountAfterSecondApply).toBeGreaterThan(runTaskCountAfterFirstApply);
+    }, { timeout: 5000 });
+  }, 15000);
+
   it('keeps Viewer A and Viewer B visibility toggles independent', async () => {
     render(<App />);
 

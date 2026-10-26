@@ -6,8 +6,9 @@ Welcome to the ribocode1 User Guide!
 
 - [Data and Mol* Acknowledgements](#data-and-mol-acknowledgements)
 - [User Interface](#user-interface)
-- [Chain Selection Enrichment](#chain-selection-enrichment)
+- [Chain Selection](#chain-selection)
 - [Sessions](#sessions)
+- [Troubleshooting Before Reporting Issues](#troubleshooting-before-reporting-issues)
 
 
 ## Data and Mol* Acknowledgements
@@ -24,15 +25,15 @@ The UI layout is as follows:
   - Title containing the version with a link to this README.
   - `General Controls`
     - `Session Menu`
-      - For loading and saving sessions.
+      - For loading and saving sessions and troubleshooting reset.
     - `Select Sync`
       - Control for synchronization
     - `Align Subunits`
-      - Control for aliging using selected subunits. 
+      - Control for aligning using selected subunits. 
     - `Align Chains`
-      - Control for aliging using selected chains.
+      - Control for aligning using selected chains.
     - `Align Residues`
-      - Control for aliging using selected residues.
+      - Control for aligning using selected residues.
   - Column `A`
     - `Mol* Viewer A`
       - `3D Canvas`
@@ -40,36 +41,59 @@ The UI layout is as follows:
       - Components (representation toggles) for:
         - `AlignedTo`
         - `Aligned`
+      - Per-representation controls (visibility, opacity, remove) are shown on compact rows below the main molecule visibility control.
     - `Load AlignedTo`
-      - Button for loading the dataset to align to. Once loaded this is replaced with the name of the AignedTo data.
-    - `Add Representation` control (enabled after AlignedTo data load)
-    - `Load Colours` button (enabled after AlignedTo data load)
-    - `Show Clipping controls`
-      - Button (collapsed by default)
-      - `Min Near` `Reset`
-      - `Clip Radius` `Reset`
-    - `Show Select and Zoom Controls`
-      - Button (collapsed by default)
+      - Button for loading the dataset to align to. Once loaded this is replaced with the name of the AlignedTo data.
+    - `Representation Controls`
+      - Hidden by default.
+      - `Add Representation`
+        - Enabled after AlignedTo data load.
+        - Allows users to add a new representation.
+      - `Colour Theme`
+        - Enabled after AlignedTo data load.
+        - Allows users to choose, load and remove custom colour themes via the selection dropdown, `Load Colours` and `Remove Theme` buttons.
+        - Custom themes loaded here are available in both `AlignedTo` and `Aligned` colour theme selectors.
+        - `Remove Theme` is blocked if the selected theme is currently used by any representation in either viewer.
+    - `Clipping controls`
+      - Hidden by default.
+      - Allows users to modify clipping in Mol* viewer.
+      - `Min Near` controls and syncs with the Mol* Min Near setting. This has a `Reset` to reset to the Mol* default for the current zoom.
+      - `Clip Radius` controls and syncs with the Mol* Clip Radius setting. This has a `Reset` to reset to the Mol* default for the current zoom.
+    - `Select and Zoom Controls`
+      - Hidden by default.
+      - Allows users to select parts of the AlignedTo data, zoom to it, highlight it and show details of it.
+      - `Visibility Controls`
+        - Hidden by default.
+        - Includes:
+          - `Zoom extraRadius` and `minRadius`.
+          - `Highlight display` (`Highlight (halo)`, `Colour overlay`, `Hybrid`).
+          - `Dim unselected` with adjustable `Strength`.
       - `Subunit Controls`
-        - Button (collapsed by default)
-        - `Select Subunit`
-        - `Zoom` `Highlight` `Inspect`
+        - Hidden by default.
+        - For subunit selection, zoom, highlight and inspection via:
+          - `Select`
+          - `Zoom` `Highlight` `Inspect`
       - `Chain Controls`
-        - Button (collapsed by default)
-        - Selected chain label
+        - Hidden by default.
+        - `Selected`
+          - Shows the currently selected chain label.
+        - For chain selection, zoom, highlight and inspection via:
         - `Zoom` `Highlight` `Inspect`
-        - `Select Chain Control`
-        - Button (collapsed by default)
-          - `Include Uniprot accession in chain labels`
-          - Button (on by default)
+        - `Select Controls`
+          - Hidden by default.
+          - `Include Uniprot accession in labels`
+            - Allows users to choose whether or not to include Uniprot accession in labels.
           - Uniprot cache summary
+            - A summary of Uniprot data caching.
       - `Residue Controls`
-        - Button (collapsed by default)
-        - Disabled until a chain is selected
-        - `Select Residues`
-        - `Zoom` `Highlight` `Inspect`
+        - Hidden by default.
+        - Disabled until a chain is selected.
+        - For residue selection, zoom, highlight and inspection via:
+          - `Select`
+          - `Zoom` `Highlight` `Inspect`
     - `Show Advanced Mol* Controls` button (collapsed by default)
-      - Includes Sequence, Left Panel, Structure Tools, and Log sections
+      - Includes Sequence, Left Panel, Structure Tools, and Log sections.
+      - After toggling an additional menu appears in the Mol* viewer to access more functionality from there.
   - Column `B`
     - `Mol* Viewer B`
       - `3D Canvas`
@@ -77,36 +101,60 @@ The UI layout is as follows:
       - Components (representation toggles) for:
         - `Aligned`
         - `AlignedTo`
+      - Per-representation controls (visibility, opacity, remove) are shown on compact rows below the main molecule visibility control.
     - `Load Aligned`
-      - Button for loading the dataset to align. Once loaded this is replaced with the name of the Aigned data.
-    - `Add Representation` control (enabled after Aligned data load)
-    - `Load Colours` button (enabled after Aligned data load)
-    - `Show Clipping controls`
-      - Button (collapsed by default)
-      - `Min Near` `Reset`
-      - `Clip Radius` `Reset`
-    - `Show Select and Zoom Controls`
-      - Button (collapsed by default)
+      - Button for loading the dataset to align. Once loaded this is replaced with the name of the Aligned data.
+      - Button disabled until AlignedTo data load.
+    - `Representation Controls`
+      - Hidden by default.
+      - `Add Representation`
+        - Enabled after Aligned data load.
+        - Allows users to add a new representation.
+      - `Colour Theme`
+        - Enabled after Aligned data load.
+        - Allows users to choose, load and remove custom colour themes via the selection dropdown, `Load Colours` and `Remove Theme` buttons.
+        - Custom themes loaded here are available in both `Aligned` and `AlignedTo` colour theme selectors.
+        - `Remove Theme` is blocked if the selected theme is currently used by any representation in either viewer.
+    - `Clipping controls`
+      - Hidden by default.
+      - Allows users to modify clipping in Mol* viewer.
+      - `Min Near` controls and syncs with the Mol* Min Near setting. This has a `Reset` to reset to the Mol* default for the current zoom.
+      - `Clip Radius` controls and syncs with the Mol* Clip Radius setting. This has a `Reset` to reset to the Mol* default for the current zoom.
+    - `Select and Zoom Controls`
+      - Hidden by default.
+      - Allows users to select parts of the Aligned data, zoom to it, highlight it and show details of it.
+      - `Visibility Controls`
+        - Hidden by default.
+        - Includes:
+          - `Zoom extraRadius` and `minRadius`.
+          - `Highlight display` (`Highlight (halo)`, `Colour overlay`, `Hybrid`).
+          - `Dim unselected` with adjustable `Strength`.
       - `Subunit Controls`
-        - Button (collapsed by default)
-        - `Select Subunit`
-        - `Zoom` `Highlight` `Inspect`
+        - Hidden by default.
+        - For subunit selection, zoom, highlight and inspection via:
+          - `Select`
+          - `Zoom` `Highlight` `Inspect`
       - `Chain Controls`
-        - Button (collapsed by default)
-        - Selected chain label
+        - Hidden by default.
+        - `Selected`
+          - Shows the currently selected chain label.
+        - For chain selection, zoom, highlight and inspection via:
         - `Zoom` `Highlight` `Inspect`
-        - `Select Chain Control`
-        - Button (collapsed by default)
-          - `Include Uniprot accession in chain labels`
-          - Button (on by default)
+        - `Select Controls`
+          - Hidden by default.
+          - `Include Uniprot accession in labels`
+            - Allows users to choose whether or not to include Uniprot accession in labels.
           - Uniprot cache summary
+            - A summary of Uniprot data caching.
       - `Residue Controls`
-        - Button (collapsed by default)
-        - Disabled until a chain is selected
-        - `Select Residues`
-        - `Zoom` `Highlight` `Inspect`
+        - Hidden by default.
+        - Disabled until a chain is selected.
+        - For residue selection, zoom, highlight and inspection via:
+          - `Select`
+          - `Zoom` `Highlight` `Inspect`
     - `Show Advanced Mol* Controls` button (collapsed by default)
-      - Includes Sequence, Left Panel, Structure Tools, and Log sections
+      - Includes Sequence, Left Panel, Structure Tools, and Log sections.
+      - After toggling an additional menu appears in the Mol* viewer to access more functionality from there.
 ```
 +-------------------------------------------------------------+
 |      RiboCode Mol* Viewer Version (README | User Guide)     |
@@ -131,23 +179,31 @@ The UI layout is as follows:
 | Aligned                      | Aligned                      |
 | --------                     | --------                     |
 | Load AlignedTo               | Load Aligned                 |
-| Add Representation           | Add Representation           |
-| Load Colours                 | Load Colours                 |
 | --------                     | --------                     |
-| Clipping                     | Clipping                     |
-|   Min Near                   |   Min Near                   |
-|   Clip Radius                |   Clip Radius                |
+| Representation Controls      | Representation Controls      |
+|  Add Representation          |  Add Representation          |
+|  Colour Theme                |  Colour Theme                |
+| --------                     | --------                     |
+| Clipping Controls            | Clipping Controls            |
+|  Min Near                    |  Min Near                    |
+|  Clip Radius                 |  Clip Radius                 |
 | ------------------------     | ------------------------     |
 | Select and Zoom Controls     | Select and Zoom Controls     |
-|  Zoom extra | Zoom min       |  Zoom extra | Zoom min       |
-|    Radius   |  Radius        |    Radius   |  Radius        |
-|  Subunit                     |  Subunit                     |
+|  Visibility Controls         |  Visibility Controls         |
+|   Zoom extra/min Radius      |   Zoom extra/min Radius      |
+|   Highlight display          |   Highlight display          |
+|   Dim unselected             |   Dim unselected             |
+|  Subunit Controls            |  Subunit Controls            |
 |   Select                     |   Select                     |
 |   Zoom Highlight Inspect     |   Zoom Highlight Inspect     |
-|  Chain                       |  Chain                       |
-|   Selected Chain Label       |   Selected Chain Label       |
+|  Chain Controls              |  Chain Controls              |
+|   Selected                   |   Selected                   |
 |   Zoom Highlight Inspect     |   Zoom Highlight Inspect     |
-|  Residue                     |  Residue                     |
+|   Select Chain Control       |   Select Chain Control       |
+|    Include UniProt | Uniprot |    Include UniProt | Uniprot |
+|    accession in    | cache   |    accession in    | cache   |
+|    labels          |         |    labels          |         |
+|  Residue Controls            |  Residue Controls            |
 |   Select                     |   Select                     |
 |   Zoom Highlight Inspect     |   Zoom Highlight Inspect     |
 | ---------------------------  | ---------------------------  |
@@ -158,12 +214,12 @@ The UI layout is as follows:
 
 ## Chain Selection
 
-When structure data are loaded, Ribocode enriches chain labels used in the `Select Chain` tables for each dataset (`AlignedTo` or `Aligned`). Users can use the search box to quickly find chains by any part of the label, including:
+When data are loaded, Ribocode enriches chain labels used in the `Select` tables for each dataset (`AlignedTo` or `Aligned`). Users can use the search box to quickly find chains by any part of the label, including:
   - label chain ID (e.g., `ZB`),
   - auth chain ID (e.g., `auth CU`),
   - UniProt accession,
   - RP family name,
-  - molecule description (e.g., `L22-like`).
+  - molecule description (e.g., `L22`).
 
 Selecting a chain is done by selecting a row in the table.
 
@@ -181,7 +237,7 @@ Example enriched label:
 
 ### UniProt toggle behavior
 
-- `Include UniProt accession in chain labels` controls whether accession codes are shown in chain label text.
+- `Include UniProt accession in labels` controls whether accession codes are shown in chain label text.
 - There is a control for each of `AlignedTo` and `Aligned` which can be configured independently.
 - Each chain section also displays UniProt cache progress (`cached`, `pending`, `in-flight`).
 - The per-dataset toggle state is saved and restored as part of session `uiState`.
@@ -194,32 +250,60 @@ A user starting from scratch starts a session by loading a dataset in [CIF](http
 When the `AlignedTo` dataset is loaded several things happen:
   - The `Sync` control becomes actionable.
   - The `Load AlignedTo` button is replaced by the name of the dataset loaded.
-  - The Select and Zoom Controls become actionable.
+  - The `AlignedTo` Select and Zoom Controls become actionable.
   - The `Load Aligned` button becomes actionable.
   - The `MoleculeUI` for `AlignedTo` in both columns populates and becomes actionable.
   - A default `cartoon` style 3D visual representation of the dataset appears in `Viewer A`.
-  - In `Viewer B`, the loaded `AlignedTo` dataset is hidden by default. Use the `AlignedTo` visibility (eye) button to show it.
+  - In `Viewer B`, the loaded `AlignedTo` dataset is hidden by default.
+    - Users can action the `AlignedTo` visibility (eye) button to toggle visibility.
 
 Next, the user can do several things:
   - Additional representations can be added via the `+` button in the `Add Representation` component. Initially this is set to add a `spacefill` representation, but other representation types can be selected.
   - Representation can be removed from the `MoleculeUI` components using the `x` buttons.
-  - Custom colours for `AlignedTo` representations can be loaded from file via the actionable `Load Colours` button.
-  - The 3D representation of the dataset in `Viewer A` can be rotated/zoomed.
+  - Custom colour themes can be loaded from file via the actionable `Load Colours` button and then selected in either column.
+  - The 3D representation of the dataset in `Viewer A` can be rotated, zoomed and panned using mouse controls as normal with a Mol* viewer.
   - An `Aligned` dataset can be loaded via the `Load Aligned` button.
-  - Subunit, chain and residues can be selected, highlighted and inspected.
+  - Subunits and chains can be selected and once selected more things can be done...
+
+### Colour File Format
+
+`Load Colours` now supports simple two-column themes.
+
+- Chain theme format:
+
+```csv
+chain,color
+LY,#3366FF
+e,#FF8800
+```
+
+- Residue-type theme format:
+
+```csv
+residue_type,color
+ALA,#8CFF8C
+LYS,#4747B8
+G,#32CD32
+```
+
+- Supported file extensions: `.csv`, `.tsv`, `.txt`, `.json`.
+- Header aliases are accepted:
+  - chain: `chain`, `chain_id`, `pdb_chain`, `auth_asym_id`, `label_asym_id`
+  - residue type: `residue_type`, `residue`, `residue_name`, `comp_id`
+  - color: `color` or `colour`
+- Legacy multi-column mapping files (for example `mapping_with_colour_animal.txt`) are not a target format for current colour loading.
   
 * As an `Aligned` dataset is loaded, it's atom positions are centralized and aligned with the centralized `AlignedTo` atom positions using an algorithm.
 * In `Viewer A`, the loaded `Aligned` dataset is hidden by default. Use the `Aligned` visibility (eye) button in `MoleculeUI` to show it.
-* If a chain is selected, residue slection from that chain is supported and the `Zoom`, `Highlight` and `Inspect` controls become actionable for the chain.
-* Residue labels in `Select Residues` follow Mol* style: `code number [auth n]` (for example `GLY 70 [auth 70]`, `A 12 [auth 12]`).
+* If a chain is selected, residue selection from that chain is supported and the `Zoom`, `Highlight` and `Inspect` controls become actionable for the chain.
+* Residue labels in `Select` follow Mol* style: `code number [auth n]` (for example `GLY 70 [auth 70]`, `A 12 [auth 12]`).
 * If a residue is selected then residue `Zoom`, `Highlight` and `Inspect` controls become actionable.
-* If chains are selected for both `AlignedTo` and `Aligned` molecules, the `Align Chains` button can be actioned to apply chain-based re-alignment.
-* After chain re-alignment, the `Aligned` viewer camera is matched to the `AlignedTo` viewer camera (zoom, pan target, and orientation) so both viewers show the same viewpoint.
+* If chains are selected for both `AlignedTo` and `Aligned` molecules, the `Align Chains` button can be actioned to apply chain-based re-alignment. If actioned, the `Aligned` viewer camera is set to match with the `AlignedTo` viewer camera (zoom, pan target, and orientation) so both viewers show the same viewpoint respectively.
 
 ### Re-align implementation note
 
 - Chain re-alignment now prefers an in-place transform of the currently loaded aligned structures for faster iteration.
-- Console diagnostics for re-alignment include fit-quality metrics (`movingSelectedAtomCount`, `referenceSelectedAtomCount`, `atomPairCount`, and `rmsd`) are available when debug flags are enabled.
+- Console diagnostics for re-alignment include fit-quality metrics (`movingSelectedAtomCount`, `referenceSelectedAtomCount`, `atomPairCount`, and `rmsd`). These can be examined when debug flags are enabled.
 
 Ribosome data can be downloaded from the [RCSB Protein Data Bank](https://www.rcsb.org/pages/about-us/index) in CIF format. Two datasets which align well are: [4ug0](https://files.rcsb.org/download/4UG0.cif); and [6xu8](https://files.rcsb.org/download/6XU8.cif).
 
@@ -227,9 +311,31 @@ Synchronization is `Off` by default. If selected to be `On`, camera changes (rot
 
 Please refer to the [Mol* viewer Documentation](https://molstar.org/viewer-docs/) for details of the Mol* UI. In each Ribocode `Molstar Container`, the `Mol* 3D Canvas` is always visible and the additional Mol* panels (`Sequence Panel`, `Main Menu`, `Control Panel`, `Log Panel`) are hidden by default so as not to clutter the UI. Use the `Show Advanced Mol* Controls` button in a column to expand those hidden by default panels for advanced usage, and use `Hide Advanced Mol* Controls` to collapse them again. The Mol* viewer style is adapted so that the UI fits in a column of 600 pixels in width.
 
-For convenience, users can save and load a session via the Session Menu. Loading a session does not load the data. For security reasons data loading is a manual process, but once the `AlignedTo` and `Aligned` data are selected, the representations are recreated and the loaded session should be in the same state as when the session was saved.
+Users can save and load a session via the `Session` menu. A `Load` rather than a `Load all` does not load the data. For security reasons data loading is a manual process, but once the `AlignedTo` and `Aligned` data are selected, the representations are recreated and the loaded session should be in the same state as when the session was saved.
 
-Session `uiState` persists `Residue Zoom` settings and per-dataset `Include UniProt accession in chain labels` settings, so chain label formatting and residue zoom behavior are restored consistently when a session is loaded.
+Session `uiState` persists `Residue Zoom` settings, per-dataset `Include UniProt accession in labels` settings, highlight toggle states, and selection display preferences (`Highlight display`, `Dim unselected`, and `Strength`), so visual behavior is restored consistently when a session is loaded.
 
-The `Session` > `Save All` saves all the data and all the UI state so that this can be reloaded using `Session` > `Load All`.
+The `Session` > `Save All` saves all the data and all the UI state into a single file so that this can be shared and reloaded using `Session` > `Load All`.
+
+## Troubleshooting Before Reporting Issues
+
+If you see unexpected behavior (for example unusual alignment/orientation, stale labels, or controls not reflecting recent actions), run:
+
+- `Session > Reset Local Caches`
+
+This performs a local troubleshooting reset for Ribocode in your browser and reloads the app. It clears local browser state used by Ribocode, including:
+
+- local storage/session storage
+- IndexedDB entries
+- service worker registrations
+- cache storage entries
+
+Recommended issue-reporting workflow:
+
+1. Reproduce the problem once.
+2. Run `Session > Reset Local Caches`.
+3. Repeat the same steps.
+4. If the issue still occurs, report it with the exact dataset filenames and steps.
+
+If the issue disappears after reset, include that detail in your report as it helps triage stale-state problems faster.
 ---

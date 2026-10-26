@@ -83,6 +83,12 @@ interface LoadDataRowProps {
     addColorsDisabled: boolean;
     colorsInputRef: React.RefObject<HTMLInputElement | null>;
     onColorsFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    colorMode?: 'chain' | 'residue-type';
+    onColorModeChange?: (mode: 'chain' | 'residue-type') => void;
+    selectedChainColor?: string;
+    onSelectedChainColorChange?: (color: string) => void;
+    onSaveColorTheme?: () => void;
+    saveColorThemeDisabled?: boolean;
     colorThemeOptions?: Array<{ value: string; label: string }>;
     selectedColorThemeName?: string;
     onSelectedColorThemeNameChange?: (themeName: string) => void;
@@ -104,6 +110,8 @@ interface LoadDataRowProps {
     subunitZoomDisabled: boolean;
     // Chain
     chainInfo: { chainLabels: Map<string, string>; };
+    chainColorsById?: Map<string, string>;
+    onChainColorChange?: (chainId: string, color: string) => void;
     selectedChainId: string;
     onSelectChainId: (id: string) => void;
     selectedChainId2?: string;
@@ -223,6 +231,9 @@ interface LoadDataRowProps {
         onSubunitZoom: () => void;
         subunitZoomDisabled: boolean;
         chainInfo: { chainLabels: Map<string, string>; };
+        chainColorsById?: Map<string, string>;
+        onChainColorChange?: (chainId: string, color: string) => void;
+        colorMode?: 'chain' | 'residue-type';
         selectedChainId: string;
         onSelectChainId: (id: string) => void;
         selectedChainId2?: string;
@@ -330,6 +341,9 @@ interface LoadDataRowProps {
         onSubunitZoom,
         subunitZoomDisabled,
         chainInfo,
+        chainColorsById,
+        onChainColorChange,
+        colorMode = 'chain',
         selectedChainId,
         onSelectChainId,
         selectedChainId2 = '',
@@ -479,6 +493,21 @@ interface LoadDataRowProps {
                 .map(([type, residueIds]) => ({ type, residueIds, count: residueIds.length }))
                 .sort((a, b) => a.type.localeCompare(b.type));
         }, [orderedResidueIds, residueInfo.residueLabels]);
+        const allResidueTypeCounts = React.useMemo(() => {
+            const counts = new Map<string, number>();
+            const addFrom = (info?: { residueLabels: Map<string, ResidueLabelInfo> }) => {
+                if (!info) return;
+                for (const [, residue] of info.residueLabels.entries()) {
+                    const type = String(residue.compId || '?').trim().toUpperCase() || '?';
+                    counts.set(type, (counts.get(type) ?? 0) + 1);
+                }
+            };
+            addFrom(residueInfo);
+            addFrom(residueInfo2);
+            return Array.from(counts.entries())
+                .map(([type, count]) => ({ type, count }))
+                .sort((a, b) => a.type.localeCompare(b.type));
+        }, [residueInfo, residueInfo2]);
         const residueTypeBuckets2 = React.useMemo(() => {
             const residueLabels = residueInfo2?.residueLabels;
             if (!residueLabels) return [] as Array<{ type: string; residueIds: string[]; count: number }>;
@@ -1131,6 +1160,12 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
     addColorsDisabled,
     colorsInputRef,
     onColorsFileChange,
+    colorMode = 'chain',
+    onColorModeChange = () => {},
+    selectedChainColor = '#cccccc',
+    onSelectedChainColorChange = () => {},
+    onSaveColorTheme,
+    saveColorThemeDisabled = false,
     colorThemeOptions,
     selectedColorThemeName,
     onSelectedColorThemeNameChange,
@@ -1217,6 +1252,25 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
     idPrefix
 }) => {
     const [showRepresentationControls, setShowRepresentationControls] = React.useState(false);
+    const [selectedChainColorDraft, setSelectedChainColorDraft] = React.useState(selectedChainColor);
+    React.useEffect(() => {
+        setSelectedChainColorDraft(selectedChainColor);
+    }, [selectedChainColor, selectedChainId, colorMode]);
+    const allResidueTypeCounts = React.useMemo(() => {
+        const counts = new Map<string, number>();
+        const addFrom = (info?: { residueLabels: Map<string, ResidueLabelInfo> }) => {
+            if (!info) return;
+            for (const [, residue] of info.residueLabels.entries()) {
+                const type = String(residue.compId || '?').trim().toUpperCase() || '?';
+                counts.set(type, (counts.get(type) ?? 0) + 1);
+            }
+        };
+        addFrom(residueInfo);
+        addFrom(residueInfo2);
+        return Array.from(counts.entries())
+            .map(([type, count]) => ({ type, count }))
+            .sort((a, b) => a.type.localeCompare(b.type));
+    }, [residueInfo, residueInfo2]);
 
     return (
 
@@ -1344,6 +1398,16 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
                         >
                             Remove Theme
                         </button>
+                        <button
+                            type="button"
+                            onClick={onSaveColorTheme}
+                            disabled={saveColorThemeDisabled || !onSaveColorTheme}
+                            aria-label="Save Colour Theme"
+                            className="msp-btn msp-form-control"
+                            id={`${idPrefix}-save-colour-theme-btn`}
+                        >
+                            Save Theme
+                        </button>
                     </>
                 ) : (
                 <button
@@ -1368,6 +1432,54 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
                 />
             </div>
             )}
+            {showRepresentationControls && (
+            <div className="load-data-control-row" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <label htmlFor={`${idPrefix}-color-mode-select`}>Colouring Mode:</label>
+                <select
+                    id={`${idPrefix}-color-mode-select`}
+                    value={colorMode}
+                    onChange={e => onColorModeChange(e.target.value as 'chain' | 'residue-type')}
+                    className="msp-select msp-form-control"
+                >
+                    <option value="chain">Chain</option>
+                    <option value="residue-type">Residue Type</option>
+                </select>
+                {colorMode === 'chain' && selectedChainId && (
+                    <>
+                        <label htmlFor={`${idPrefix}-selected-chain-color`}>Selected chain colour:</label>
+                        <input
+                            id={`${idPrefix}-selected-chain-color`}
+                            type="color"
+                            value={selectedChainColorDraft}
+                            onChange={e => {
+                                const value = e.target.value;
+                                setSelectedChainColorDraft(value);
+                            }}
+                            aria-label="Selected chain colour"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => onSelectedChainColorChange(selectedChainColorDraft)}
+                            className="msp-btn msp-form-control"
+                            id={`${idPrefix}-selected-chain-color-apply-btn`}
+                            disabled={selectedChainColorDraft.toUpperCase() === selectedChainColor.toUpperCase()}
+                        >
+                            Apply
+                        </button>
+                    </>
+                )}
+            </div>
+            )}
+            {showRepresentationControls && colorMode === 'residue-type' && allResidueTypeCounts.length > 0 && (
+                <div className="load-data-control-row" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <strong>Residue Types (all chains in loaded dataset)</strong>
+                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                        {allResidueTypeCounts.map(({ type, count }) => (
+                            <span key={`${type}-${count}`}>{`${type} (${count})`}</span>
+                        ))}
+                    </div>
+                </div>
+            )}
             {showSelectZoomControls && (
                     <SelectZoomControls
                         subunitToChainIds={subunitToChainIds}
@@ -1384,6 +1496,7 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
                         onSubunitZoom={onSubunitZoom}
                         subunitZoomDisabled={subunitZoomDisabled}
                         chainInfo={chainInfo}
+                        colorMode={colorMode}
                         selectedChainId={selectedChainId}
                         onSelectChainId={onSelectChainId}
                         selectedChainId2={selectedChainId2}
