@@ -1,3 +1,152 @@
+## [v0.20.0] - 2026-10-27
+Release summary: this minor release splits Representation Controls colour-theme management into separate Chain Theme and Residue Theme workflows, with independent save/load/selection persistence and new round-trip regression coverage.
+- Split Representation Controls colour-theme UI in `src/components/LoadMolecule.tsx` into separate `Chain Theme` and `Residue Theme` sections, each with dedicated theme dropdown, load, remove, and save actions.
+- Extended viewer prop wiring in `src/components/ViewerColumn.tsx` to pass separate chain/residue theme controls and file inputs while preserving compatibility with existing single-theme call paths.
+- Added separate per-mode selected theme state in `src/App.tsx` (`selectedChainThemeName` and `selectedResidueThemeName` semantics) and immediate representation theme application when either selector changes.
+- Added separate colour-theme file loading routes in `src/App.tsx` for chain and residue themes with theme-kind validation (`chain` vs `residue_type`) to prevent cross-kind uploads.
+- Extended session `uiState.colorThemesByMode` persistence/restore in `src/App.tsx` to include `selectedChainThemeName` and `selectedResidueThemeName` (while keeping `selectedThemeName` for backward compatibility).
+- Added residue-theme CSV export support in `src/App.tsx` (`residue_type,color`) alongside existing chain-theme export.
+- Replaced single selected-chain colour editing with a searchable per-chain `Chain Colours` editor in `src/components/LoadMolecule.tsx`, with per-row swatch draft/apply controls aligned to chain-selector UX.
+- Added Playwright regression coverage in `e2e/session-load-all-separate-theme-selectors.e2e.spec.ts` to verify `Save All`/`Load All` restores separate chain and residue theme selections.
+- Updated integration coverage in `src/App.integration.test.tsx` for split chain/residue colour-load controls and expanded saved-session colour-theme state assertions.
+- Updated component and integration tests in `src/components/LoadMolecule.test.tsx` and `src/App.integration.test.tsx` to validate searchable per-chain colour editing behavior.
+
+## [v0.19.0] - 2026-10-26
+Release summary: this minor release fixes session reload fidelity for selected-chain colour state so control selection and rendered chain colouring restore identically, and adds stronger regression coverage for session round-trips.
+- Fixed a session round-trip mismatch where selected-chain colour controls and rendered chain colours could diverge after load; custom theme selection and applied chain colouring now restore in parity.
+- Fixed session `uiState` selection persistence/restore for second chain slot state (`chainId2`, `residueId2`, `residueIds2`) so `Save` and `Load` match `Save All` behavior.
+- Added integration regression coverage in `src/App.integration.test.tsx` for Select Chain 2 session round-tripping.
+- Added end-to-end regression coverage in `e2e/session-load-all-chain2-selections.e2e.spec.ts` for `Save All`/`Load All` restoration of chain and residue selections across both viewers.
+- Hardened sync/session-load E2E stability in `e2e/session-load-sync-camera-order.e2e.spec.ts` by waiting for sync readiness before asserting `Sync: On`.
+- Reduced duplicate session E2E setup logic by introducing shared helpers in `e2e/helpers/session-load.ts` and reusing them in session-load specs.
+
+## [v0.18.0] - 2026-10-19
+Release summary: this minor release adds true two-chain/two-residue-slot alignment behavior, refines chain/residue controls, and strengthens regression coverage for highlight and realignment workflows.
+- Added two-slot chain selection behavior in `src/App.tsx`, `src/components/LoadMolecule.tsx`, and `src/components/ViewerColumn.tsx`, including optional chain-2 selection, chain-2 clear action, and nested per-slot controls.
+- Updated chain and residue realignment in `src/App.tsx` so alignment uses all selected slot pairs when available (slot 1 + slot 2), rather than slot 1 only.
+- Updated `Align Chains` labeling to show all selected chain codes when multiple slot pairs are selected, with label wiring in `src/App.tsx` and `src/components/GeneralControls.tsx`.
+- Fixed and clarified mirrored highlight behavior across chain/residue/subunit controls for `AlignedTo`, with deterministic behavior checks in `e2e/highlight-mirror-state.e2e.spec.ts`.
+- Added end-to-end regression coverage for combined two-chain highlighting in `e2e/combined-highlight-two-chains.e2e.spec.ts`.
+- Added end-to-end regression coverage for multi-slot chain/residue realignment metrics in `e2e/multi-slot-realign-metrics.e2e.spec.ts`.
+- Added focused test coverage updates in `src/components/GeneralControls.test.tsx` and `src/App.integration.test.tsx` for multi-selection summary and alignment behavior.
+
+## [v0.17.0] - 2026-10-16
+Release summary: this minor release expands residue selection workflows with bulk-select actions, residue-type grouping, invert selection, and shared-residue selection across chains.
+- Added residue quick-selection actions in `src/components/LoadMolecule.tsx`: `Select All`, `Clear`, `Invert`, and `Select Shared`.
+- Added residue-type buckets in `src/components/LoadMolecule.tsx` that display per-type counts (for example `ALA (n)`, `GLY (n)`) and allow add/remove toggling of all residues of a given type.
+- Added shared-residue selection wiring in `src/App.tsx` by computing residue IDs common to the currently selected `AlignedTo` and `Aligned` chains and passing them into per-column residue controls.
+- Threaded new residue bulk-selection props through `src/components/ViewerColumn.tsx` so both columns expose consistent residue-selection behavior.
+- Added focused regression coverage in `src/components/LoadMolecule.test.tsx` validating quick-selection actions, residue-type toggles, and shared-selection behavior.
+
+## [v0.16.10] - 2026-10-16
+Release summary: this patch release hardens session transform restore reliability after chain realignment and fixes custom colour-theme application for mmCIF chain IDs so mapped chains no longer fall back to grey.
+- Hardened Save/Load transform capture and restore in `src/App.tsx` by resolving structure refs from live Mol* hierarchy when state refs are stale/missing, reducing race-sensitive restore misses after `Align Chains` + `Save All` + `Load All`.
+- Added temporary transform checkpoint diagnostics on `__ribocodeTestApi` in `src/App.tsx` to capture effective per-viewer structure transforms before save and after load for regression/debug visibility.
+- Added integration regression assertions in `src/App.integration.test.tsx` to verify pre-save and post-load effective transform parity in the in-place chain realign session round-trip flow.
+- Fixed custom chain colour-theme lookup in `src/utils/colors.ts` to prefer `auth_asym_id` with fallback to `label_asym_id`, with normalized chain-id matching (trim/case-insensitive) to avoid unintended grey fallback.
+- Added focused unit regression coverage in `src/utils/colors.test.ts` for auth-vs-label chain ID matching and normalized key handling in custom theme application.
+
+## [v0.16.9] - 2026-10-16
+Release summary: this patch release fixes viewer camera/placement drift after `Align Chains` followed by `Save All` and `Load All` by persisting aligned-structure transforms in session state and restoring them before camera snapshots.
+- Fixed session round-trip placement drift in `src/App.tsx` by persisting per-viewer structure transform matrices for `AlignedTo` and `Aligned` datasets in session `uiState`.
+- Fixed session load restore ordering in `src/App.tsx` so saved structure transforms are applied before camera snapshot restore, keeping camera target/position consistent with restored aligned geometry.
+- Added integration regression coverage in `src/App.integration.test.tsx` for in-place chain realign + session save/load transform persistence.
+- Added end-to-end regression coverage in `e2e/session-load-all-chain-realign-camera.e2e.spec.ts` for `Align Chains -> Save All -> Load All` camera stability in viewer B.
+
+## [v0.16.8] - 2026-10-15
+Release summary: this patch release hardens session-load camera restore ordering when sync is enabled, and fixes inspect mirroring so hidden datasets do not show inspect focus in the opposite viewer.
+- Fixed session-load camera restore sequencing in `src/App.tsx` by suspending sync propagation while per-viewer camera snapshots are applied, then re-enabling sync after restore settles.
+- Added a sync-suspension guard to `src/components/buttons/Sync.tsx` and wired it through `src/components/GeneralControls.tsx` so camera propagation cannot run during session camera restoration.
+- Added deterministic integration regression coverage in `src/App.integration.test.tsx` for loading sessions with sync already on while preserving distinct viewer camera snapshots.
+- Added end-to-end regression coverage in `e2e/session-load-sync-camera-order.e2e.spec.ts` with fixture `e2e/test-session-sync-camera.json`.
+- Fixed inspect synchronization in `src/App.tsx` and `src/utils/viewerHelpers.ts` so chain/residue/subunit inspect toggles only mirror to the opposite viewer when that dataset is currently visible there.
+- Added integration regression coverage in `src/App.integration.test.tsx` for hidden-opposite viewer inspect toggles, plus helper-level validation in `src/utils/viewerHelpers.test.ts`.
+
+## [v0.16.7] - 2026-10-14
+Release summary: this patch release aligns Highlight/Inspect control state with per-viewer molecule visibility, clears stale inspect focus when datasets are hidden, and hardens E2E startup against stale local dev servers.
+- Updated visibility semantics in `src/App.tsx` so Highlight/Inspect controls show `Off` and are disabled when the corresponding dataset is hidden in that viewer.
+- Updated dataset-visibility toggles in `src/App.tsx` so hiding/showing a dataset no longer mutates residue/chain/subunit inspect toggle state.
+- Fixed inspect-control wiring in `src/App.tsx` so each viewer row uses inspect handlers/state for its own dataset (not the other dataset in the same column), preventing cross-dataset residue inspect/detail changes.
+- Updated molecule visibility UI semantics in `src/components/Molecule.tsx` so overall dataset visibility reflects dataset state directly and can remain visible even when all representations are hidden.
+- Kept `Dim unselected` behavior selection-driven (not highlight-toggle-driven), preserving dimming when a valid chain/residue/subunit selection exists.
+- Hardened Playwright local test startup in `playwright.config.ts` by setting `webServer.reuseExistingServer` to `false`, avoiding stale listener reuse that caused `page.goto` abort failures.
+- Re-validated behavior with full Playwright E2E coverage (`18 passed`).
+
+## [v0.16.6] - 2026-10-14
+Release summary: this patch release fixes `Dim unselected` behavior so dimming remains active whenever a selection exists, even if highlight toggles are off.
+- Fixed selection-display dimming logic in `src/App.tsx` so `Dim unselected` is gated by selection presence (chain/residue/subunit selection), not by highlight toggle state.
+- Added and exported a deterministic selection predicate helper (`hasSelectionForDisplayDim`) in `src/App.tsx` to make dimming behavior explicit and testable.
+- Added focused unit regression coverage in `src/App.test.tsx` for dim-selection gating across chain, residue, and subunit selection cases, plus no-selection negative cases.
+- Verified targeted app/unit/integration suites for this behavior path remain green.
+
+## [v0.16.4] - 2026-10-14
+Release summary: this patch release strengthens regression detection for residue realignment by adding fast low-level tests that catch residue atom-extraction failures before end-to-end runs.
+- Added focused unit regression coverage in `src/App.test.tsx` for residue atom extraction used by residue realignment.
+- Added a guard test to ensure selected residue atom IDs are preserved and not dropped by chain-id mismatch behavior.
+- Exported the residue atom-extraction helper from `src/App.tsx` to enable direct low-level validation.
+- Verified the new low-level checks alongside the targeted residue realignment E2E suite (`e2e/residue-realign.e2e.spec.ts`).
+
+## [v0.16.3] - 2026-10-14
+Release summary: this patch release fixes a residue-realignment regression where valid residue selections could produce no usable atom set, and adds focused regression coverage to keep this workflow stable.
+- Fixed residue realignment atom extraction so selected residues consistently produce finite coordinate sets for alignment.
+- Fixed residue chain-id lookup to support both auth and label asym identifiers when deriving residue mappings.
+- Added focused Playwright E2E coverage in `e2e/residue-realign.e2e.spec.ts` for:
+	- full-chain residue realign consistency against chain realign on `6XU6`/`6XU8` (`CU->CU`), and
+	- targeted auth-range residue realign (`23..30`) for `7WTT` chain `w` to `AF-Q13895-F1-model_v6` chain `A`.
+- Added residue realignment debug exposure via test API to make regressions fail fast with actionable diagnostics instead of opaque timeouts.
+
+## [v0.16.2] - 2026-10-14
+Release summary: this patch release improves alignment compatibility and reliability, and fixes visibility/camera behavior for default-hidden dual-viewer workflows.
+- Added benchmark E2E coverage for chain-specific CU->CU alignment metrics on `6XU6`/`6XU8` to guard against fit-quality regressions.
+- Added an alignment diagnostics E2E benchmark for the weaker `7WTT`/`7WTZ` `e->e` case to track non-ideal but expected behavior.
+- Added ADR documentation for alignment quality gates and ownership split in `decisions/ADR-0001-alignment-quality-gates.md`, with guide/roadmap references.
+- Fixed Viewer B reveal behavior for default-hidden structures by stabilizing camera framing/reset flow after visibility changes.
+- Updated general molecule visibility controls so they reflect aggregate representation visibility and toggle all representations on/off.
+- Fixed trajectory alignment fallback for datasets without phosphorus atoms by selecting a best shared atom type when the requested selector yields no atoms (for example protein-only `CA` datasets).
+- Added regression coverage in `src/utils/alignmentGeometry.test.ts` to ensure default selector alignment no longer throws when only shared non-`P` atom types are present.
+
+## [v0.16.1] - 2026-10-13
+Release summary: this patch release restores expected chain realignment behavior for 6XU6/6XU8-style workflows.
+- Fixed a chain realignment regression by reverting rigid-transform translation behavior in `packages/molstar/src/extensions/ribocode/utils/geometry.ts` to the prior stable coordinate path.
+
+## [v0.16.0] - 2026-10-13
+Release summary: this minor release improves chain-label correctness for mmCIF files where auth and label chain IDs collide, and adds focused regression coverage to keep chain search behavior reliable.
+- Fixed chain label molecule-name mapping precedence so auth-chain mappings from `_pdbx_poly_seq_scheme` override colliding label-chain keys when needed.
+- Fixed incorrect molecule-description carry-over in auth/label collision cases (for example, preventing chain `G` inheriting chain `e` `S30` description in `7WTT`-style mappings).
+- Added regression coverage in `src/utils/uniprot.test.ts` for auth/label chain-ID collision handling during chain-to-molecule parsing.
+- Added regression coverage in `src/utils/chain.test.ts` to verify final enriched labels remain correct for both chains in collision scenarios (`eS30` on auth `e`, `eS6` on auth `G`).
+- Added chain-table search regression coverage in `src/components/ChainSelectionTable.test.tsx` to ensure `s30` matches only the intended chain label.
+- Updated `src/utils/viewerHelpers.test.ts` highlight-on assertions to align with the explicit highlight display-mode argument (`overlay`) used by current helper signatures.
+
+## [v0.15.0] - 2026-10-13
+Release summary: this minor release improves highlight readability and reliability by introducing ordered multi-style highlighting, custom default highlight colours, and session persistence for highlight toggle state.
+- Added per-representation opacity sliders in molecule controls so each representation can be faded in or out independently.
+- Updated dataset highlight behavior to use shared mirrored state across viewers, so toggling highlight for a dataset applies consistently to both viewers.
+- Fixed highlight desynchronization across chain/subunit/residue interactions by replacing incremental clear/apply logic with deterministic full reconciliation from current state.
+- Updated default highlight visual style with distinct colours for each highlight type and explicit render ordering so subunit highlights apply first, then chain, then residues.
+- Updated highlight rendering internals to serialize overpaint updates and avoid race conditions during rapid toggles.
+- Added a selection display-mode control (`Highlight (halo)`, `Colour overlay`, `Hybrid`) and optional `Dim unselected` controls with adjustable strength.
+- Persisted and restored selection display preferences in session `uiState` (`mode`, `dimUnselected`, `dimStrength`) with integration regression coverage.
+- Fixed ViewerColumn pass-through wiring for selection-display controls so active panel interactions update app state correctly.
+- Fixed add-representation camera behavior under sync by snapshotting and restoring both viewer cameras after representation creation.
+- Fixed chain realignment translation behavior by applying centroid-aware rigid transforms consistently in Mol* geometry alignment.
+- Updated Chain controls wording from `Selected Chain` to `Selected` for clearer, consistent terminology.
+- Updated molecule representation-row layout to render representation controls on separate rows with compact spacing/indent for improved readability when multiple representations exist.
+- Hardened E2E selector timing for aligned/alignedto file-load button independence under parallel test load.
+- Added session save/load support for highlight toggle state (`chain`, `residue`, `subunit`) for both `AlignedTo` and `Aligned` datasets.
+- Added regression coverage across unit/integration/E2E tests, including highlight interaction stability and session highlight-state persistence/round-tripping.
+- Added [ROADMAP.md](./ROADMAP.md) to document planned future version themes and likely contribution areas.
+- Updated `DeveloperGuide.md` to link developers to both roadmap direction and GitHub issues when choosing what to contribute.
+
+## [v0.14.0] - 2026-10-09
+Release summary: this minor release introduces a per-mode colour theme manager so users can keep multiple loaded themes available, choose the active theme for new representations, and safely manage theme lifecycle.
+- Added a new `Colour Theme` selector for each load panel, with options for the default theme plus all loaded themes for that mode (`AlignedTo`/`Aligned`).
+- Updated `Load Colours` behavior so each uploaded theme is added to a persistent in-session selection list instead of replacing the only available custom theme.
+- Added `Remove Theme` support with guardrails: `Default` cannot be removed, and in-use themes are protected from removal until representations using them are switched.
+- Updated representation creation so new representations always use the currently selected colour theme for the active mode.
+- Extended session `uiState` save/load to persist and restore loaded colour themes (including parsed rows) and per-mode selected theme.
+- Added regression coverage for colour-theme selector interactions, remove-theme behavior, selected-theme application during representation add, and session round-tripping.
+
 ## [v0.13.0] - 2026-10-08
 Release summary: this minor release standardizes `Select and Zoom` control UX across subunit/chain/residue flows, clarifies chain-label controls, and improves selector/test stability.
 - Updated `Re-align` to chains so sync is temporarily disabled while realignment runs, then restored to its prior enabled state.

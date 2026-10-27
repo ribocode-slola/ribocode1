@@ -1,3 +1,28 @@
+## [v0.20.0] - 2026-10-27
+Release summary: this minor release splits Representation Controls colour-theme management into separate Chain Theme and Residue Theme workflows, with independent save/load/selection persistence and new round-trip regression coverage.
+- Split Representation Controls colour-theme UI in `src/components/LoadMolecule.tsx` into separate `Chain Theme` and `Residue Theme` sections, each with dedicated theme dropdown, load, remove, and save actions.
+- Extended viewer prop wiring in `src/components/ViewerColumn.tsx` to pass separate chain/residue theme controls and file inputs while preserving compatibility with existing single-theme call paths.
+- Added separate per-mode selected theme state in `src/App.tsx` (`selectedChainThemeName` and `selectedResidueThemeName` semantics) and immediate representation theme application when either selector changes.
+- Added separate colour-theme file loading routes in `src/App.tsx` for chain and residue themes with theme-kind validation (`chain` vs `residue_type`) to prevent cross-kind uploads.
+- Extended session `uiState.colorThemesByMode` persistence/restore in `src/App.tsx` to include `selectedChainThemeName` and `selectedResidueThemeName` (while keeping `selectedThemeName` for backward compatibility).
+- Added residue-theme CSV export support in `src/App.tsx` (`residue_type,color`) alongside existing chain-theme export.
+- Replaced single selected-chain colour editing with a searchable per-chain `Chain Colours` editor in `src/components/LoadMolecule.tsx`, with per-row swatch draft/apply controls aligned to chain-selector UX.
+- Added Playwright regression coverage in `e2e/session-load-all-separate-theme-selectors.e2e.spec.ts` to verify `Save All`/`Load All` restores separate chain and residue theme selections.
+- Updated integration coverage in `src/App.integration.test.tsx` for split chain/residue colour-load controls and expanded saved-session colour-theme state assertions.
+- Updated component and integration tests in `src/components/LoadMolecule.test.tsx` and `src/App.integration.test.tsx` to validate searchable per-chain colour editing behavior.
+- Updated the Mol* submodule in `packages/molstar` to upstream tag `v5.13.1` (gitlink `a4e9cc79415213263090ee47bf380d2a33e0118e`) and refreshed dependency lock state in `package-lock.json` for reproducible installs.
+- Added dual Playwright execution modes for this upgrade cycle: strict mode in `npm run test:e2e` (requires a free local dev port) and reuse mode in `npm run test:e2e:reuse` for running against an already-started dev server.
+- Updated six chain-colour/session E2E specs under `e2e/` to align selectors and interaction flow with the searchable per-chain editor introduced alongside the Mol* `v5.13.1` transition.
+
+## [v0.19.0] - 2026-10-26
+Release summary: this minor release fixes session reload fidelity for selected-chain colour state so control selection and rendered chain colouring restore identically, and adds stronger regression coverage for session round-trips.
+- Fixed a session round-trip mismatch where selected-chain colour controls and rendered chain colours could diverge after load; custom theme selection and applied chain colouring now restore in parity.
+- Fixed session `uiState` selection persistence/restore for second chain slot state (`chainId2`, `residueId2`, `residueIds2`) so `Save` and `Load` match `Save All` behavior.
+- Added integration regression coverage in `src/App.integration.test.tsx` for Select Chain 2 session round-tripping.
+- Added end-to-end regression coverage in `e2e/session-load-all-chain2-selections.e2e.spec.ts` for `Save All`/`Load All` restoration of chain and residue selections across both viewers.
+- Hardened sync/session-load E2E stability in `e2e/session-load-sync-camera-order.e2e.spec.ts` by waiting for sync readiness before asserting `Sync: On`.
+- Reduced duplicate session E2E setup logic by introducing shared helpers in `e2e/helpers/session-load.ts` and reusing them in session-load specs.
+
 ## [v0.18.0] - 2026-10-19
 Release summary: this minor release adds true two-chain/two-residue-slot alignment behavior, refines chain/residue controls, and strengthens regression coverage for highlight and realignment workflows.
 - Added two-slot chain selection behavior in `src/App.tsx`, `src/components/LoadMolecule.tsx`, and `src/components/ViewerColumn.tsx`, including optional chain-2 selection, chain-2 clear action, and nested per-slot controls.

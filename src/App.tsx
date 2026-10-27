@@ -32,7 +32,7 @@ import ViewerColumn , {
 import TwoColumnsContainer from './components/TwoColumnsContainer';
 import AppHeader from './components/AppHeader';
 import { AlignedTo, Aligned, ReAligned } from './constants/ribocode';
-import { parseColorFileContent, registerThemeIfNeeded } from './utils/colors';
+import { inferColorThemeKind, parseColorFileContent, registerThemeIfNeeded } from './utils/colors';
 import { useFileInput } from './hooks/useFileInput';
 import { useChainState } from './hooks/useChainState';
 import { getAtomDataFromStructureUnits, summarizeAtomCloud } from './utils/data';
@@ -49,11 +49,12 @@ import { Asset } from 'molstar/lib/mol-util/assets';
 import { useViewerState } from './hooks/useViewerState';
 import { alignDatasetUsingChains } from 'molstar/lib/extensions/ribocode/utils/geometry';
 import { Color } from 'molstar/lib/mol-util/color';
+import { ChainIdColorTheme, ChainIdColorThemeProvider } from 'molstar/lib/mol-theme/color/chain-id';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 import { AlignmentData } from 'molstar/lib/extensions/ribocode/types';
 import { StateTransforms } from 'molstar/lib/mol-plugin-state/transforms';
 import { Mat4, Vec3 } from 'molstar/lib/mol-math/linear-algebra';
-import { StructureElement, StructureProperties } from 'molstar/lib/mol-model/structure';
+import { StructureElement, StructureProperties, Unit } from 'molstar/lib/mol-model/structure';
 import type { LoadedMolecule, ViewerKey, MoleculeMode } from './types/ribocode';
 import { A, B } from './constants/ribocode';
 import { makeFogSetters, makeClippingSetters, makeZoomHandler, makeChainHighlightToggleHandler, makeResidueHighlightToggleHandler, makeSubunitHighlightToggleHandler, makeChainInspectToggleHandler, makeResidueInspectToggleHandler, makeSubunitInspectToggleHandler } from './utils/viewerHelpers';
@@ -248,10 +249,14 @@ interface SessionUiState {
     colorThemesByMode?: {
         alignedTo?: {
             selectedThemeName?: string;
+            selectedChainThemeName?: string;
+            selectedResidueThemeName?: string;
             themes?: Array<{ value: string; label: string; rows: Array<Record<string, string>> }>;
         };
         aligned?: {
             selectedThemeName?: string;
+            selectedChainThemeName?: string;
+            selectedResidueThemeName?: string;
             themes?: Array<{ value: string; label: string; rows: Array<Record<string, string>> }>;
         };
     };
@@ -275,6 +280,7 @@ interface SessionUiState {
 }
 
 type ColorThemeMode = 'AlignedTo' | 'Aligned';
+type RepresentationColorMode = 'chain' | 'residue-type';
 
 interface SelectionDisplaySettings {
     mode: HighlightDisplayMode;
@@ -295,6 +301,10 @@ interface PersistedColorTheme extends LoadedColorThemeOption {
 
 const DEFAULT_COLOR_THEME_NAME = 'default';
 const DEFAULT_COLOR_THEME_LABEL = 'Default';
+const EDITABLE_CHAIN_THEME_BY_MODE: Record<ColorThemeMode, string> = {
+    AlignedTo: 'AlignedTo-custom-chain-colors',
+    Aligned: 'Aligned-custom-chain-colors',
+};
 
 const UNIPROT_CACHE_STORAGE_KEY = 'ribocode-uniprot-gene-cache-v1';
 const ENABLE_IN_PLACE_CHAIN_REALIGN = true;
@@ -418,6 +428,18 @@ function chooseBestSharedElementSelector(
         selector: fallback,
         mode: 'fallback-default-types',
     };
+}
+
+function downloadTextFile(filename: string, content: string, mimeType = 'text/plain;charset=utf-8'): void {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
 }
 
 function getColumnStringValue(column: any, index: number): string {
@@ -1173,53 +1195,529 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
     const alignmentFile = useFileInput<Array<Record<string, string>>>(parseDictionaryFileContent, []);
     const [isMoleculeAlignedToColoursLoaded, setIsMoleculeAlignedToColoursLoaded] = useState(false);
     const [isMoleculeAlignedColoursLoaded, setIsMoleculeAlignedColoursLoaded] = useState(false);
-    const colorsAlignedToInputRef = useRef<HTMLInputElement>(null);
-    const colorsAlignedInputRef = useRef<HTMLInputElement>(null);
+    const chainColorsAlignedToInputRef = useRef<HTMLInputElement>(null);
+    const chainColorsAlignedInputRef = useRef<HTMLInputElement>(null);
+    const residueColorsAlignedToInputRef = useRef<HTMLInputElement>(null);
+    const residueColorsAlignedInputRef = useRef<HTMLInputElement>(null);
     const [loadedColorThemes, setLoadedColorThemes] = useState<LoadedColorThemeOption[]>([
         { value: DEFAULT_COLOR_THEME_NAME, label: DEFAULT_COLOR_THEME_LABEL },
     ]);
+    const colorThemeRevisionRef = useRef(0);
+    const nextColorThemeRevision = useCallback((): number => {
+        colorThemeRevisionRef.current += 1;
+        return colorThemeRevisionRef.current;
+    }, []);
     const [selectedColorThemeByMode, setSelectedColorThemeByMode] = useState<Record<ColorThemeMode, string>>({
         AlignedTo: DEFAULT_COLOR_THEME_NAME,
         Aligned: DEFAULT_COLOR_THEME_NAME,
     });
+    const [selectedResidueThemeByMode, setSelectedResidueThemeByMode] = useState<Record<ColorThemeMode, string>>({
+        AlignedTo: DEFAULT_COLOR_THEME_NAME,
+        Aligned: DEFAULT_COLOR_THEME_NAME,
+    });
+    const [colorModeByMode, setColorModeByMode] = useState<Record<ColorThemeMode, RepresentationColorMode>>({
+        AlignedTo: 'chain',
+        Aligned: 'chain',
+    });
     const [loadedColorThemeRowsByName, setLoadedColorThemeRowsByName] = useState<Record<string, Array<Record<string, string>>>>({});
-    // Chain color map state.
+    // Custom color map state.
     const [chainColorMaps] = useState<Map<string, Map<string, Color>>>(new Map());
+    const [residueTypeColorMaps] = useState<Map<string, Map<string, Color>>>(new Map());
     const registerLoadedColorTheme = useCallback((themeName: string, rows: Array<Record<string, string>>) => {
+        const themeKind = inferColorThemeKind(rows);
+        if (!themeKind) {
+            console.warn(`[ColorTheme] Could not infer theme kind for ${themeName}.`);
+            return;
+        }
         const themeChainColorMap = new Map<string, Color>();
+        const themeResidueTypeColorMap = new Map<string, Color>();
         rows.forEach(row => {
-            if (row.pdb_chain && row.color) {
-                try {
-                    themeChainColorMap.set(row.pdb_chain, Color.fromHexStyle(row.color));
-                } catch {
-                    // Ignore invalid rows and keep valid entries.
+            if (!row.color) return;
+            try {
+                const color = Color.fromHexStyle(row.color);
+                if (themeKind === 'chain' && row.pdb_chain) {
+                    themeChainColorMap.set(row.pdb_chain, color);
                 }
+                if (themeKind === 'residue-type' && row.residue_type) {
+                    themeResidueTypeColorMap.set(row.residue_type, color);
+                }
+            } catch {
+                // Ignore invalid rows and keep valid entries.
             }
         });
-        chainColorMaps.set(themeName, themeChainColorMap);
+        if (themeKind === 'chain') {
+            chainColorMaps.set(themeName, themeChainColorMap);
+            residueTypeColorMaps.delete(themeName);
+        } else {
+            residueTypeColorMaps.set(themeName, themeResidueTypeColorMap);
+            chainColorMaps.delete(themeName);
+        }
         const safeRegisterTheme = (plugin: PluginUIContext | null) => {
             const registry = (plugin as any)?.representation?.structure?.themes?.colorThemeRegistry;
             if (!plugin || !registry) return;
-            registerThemeIfNeeded(plugin, themeName, chainColorMaps);
+            registerThemeIfNeeded(plugin, themeName, chainColorMaps, residueTypeColorMaps);
         };
         safeRegisterTheme(viewerA.ref.current);
         safeRegisterTheme(viewerB.ref.current);
-    }, [chainColorMaps, viewerA.ref, viewerB.ref]);
+    }, [chainColorMaps, residueTypeColorMaps, viewerA.ref, viewerB.ref]);
 
-    const handleLoadColorThemeClick = useCallback((mode: ColorThemeMode) => {
-        if (mode === AlignedTo) {
-            colorsAlignedToInputRef.current?.click();
-        } else {
-            colorsAlignedInputRef.current?.click();
+    const getThemeRowsByName = useCallback((themeName: string): Array<Record<string, string>> => {
+        return loadedColorThemeRowsByName[themeName] ?? [];
+    }, [loadedColorThemeRowsByName]);
+
+    const getThemeKindByName = useCallback((themeName: string): 'chain' | 'residue-type' | null => {
+        if (!themeName || themeName === DEFAULT_COLOR_THEME_NAME) return 'chain';
+        return inferColorThemeKind(getThemeRowsByName(themeName));
+    }, [getThemeRowsByName]);
+
+    const chainThemeOptions = useMemo(() => {
+        const options = loadedColorThemes.filter(option => {
+            if (option.value === DEFAULT_COLOR_THEME_NAME) return true;
+            return getThemeKindByName(option.value) === 'chain';
+        });
+        return options.length > 0 ? options : [{ value: DEFAULT_COLOR_THEME_NAME, label: DEFAULT_COLOR_THEME_LABEL }];
+    }, [getThemeKindByName, loadedColorThemes]);
+
+    const residueThemeOptions = useMemo(() => {
+        const options = loadedColorThemes.filter(option => {
+            if (option.value === DEFAULT_COLOR_THEME_NAME) return true;
+            return getThemeKindByName(option.value) === 'residue-type';
+        });
+        return options.length > 0 ? options : [{ value: DEFAULT_COLOR_THEME_NAME, label: DEFAULT_COLOR_THEME_LABEL }];
+    }, [getThemeKindByName, loadedColorThemes]);
+
+    const getChainColorsByThemeName = useCallback((themeName: string): Map<string, string> => {
+        const rows = getThemeRowsByName(themeName);
+        const map = new Map<string, string>();
+        rows.forEach((row) => {
+            if (row.pdb_chain && row.color) {
+                map.set(row.pdb_chain, row.color);
+            }
+        });
+        return map;
+    }, [getThemeRowsByName]);
+
+    const getResidueTypeColorsByThemeName = useCallback((themeName: string): Map<string, string> => {
+        const rows = getThemeRowsByName(themeName);
+        const map = new Map<string, string>();
+        rows.forEach((row) => {
+            const residueType = String(row.residue_type ?? '').trim().toUpperCase();
+            const color = normalizeThemeColor(row.color);
+            if (!residueType || !color) return;
+            map.set(residueType, color);
+        });
+        return map;
+    }, [getThemeRowsByName]);
+
+    const getCurrentColorThemeNameForMode = useCallback((mode: ColorThemeMode): string => {
+        const structureRefs: Array<{ plugin: PluginUIContext | null; structureRef?: string | null }> = mode === 'AlignedTo'
+            ? [
+                { plugin: viewerA.ref.current, structureRef: molstarA.structureRefs[AlignedTo] },
+                { plugin: viewerB.ref.current, structureRef: molstarB.structureRefs[AlignedTo] },
+            ]
+            : [
+                { plugin: viewerA.ref.current, structureRef: molstarA.structureRefs[Aligned] },
+                { plugin: viewerB.ref.current, structureRef: molstarB.structureRefs[Aligned] },
+            ];
+        for (const { plugin, structureRef } of structureRefs) {
+            if (!plugin || !structureRef) continue;
+            const reps = getStructureRepresentations(plugin, structureRef);
+            for (const rep of reps) {
+                const theme = rep.colorTheme as any;
+                const themeName = typeof theme === 'string' ? theme : theme?.name;
+                if (typeof themeName === 'string' && themeName) {
+                    return themeName;
+                }
+            }
         }
-    }, [colorsAlignedInputRef, colorsAlignedToInputRef]);
+        return selectedColorThemeByMode[mode] ?? DEFAULT_COLOR_THEME_NAME;
+    }, [molstarA.structureRefs, molstarB.structureRefs, selectedColorThemeByMode, viewerA.ref, viewerB.ref]);
 
-    const handleColorThemeFileChange = useCallback(async (mode: ColorThemeMode, e: React.ChangeEvent<HTMLInputElement>) => {
+    const applyColorThemeNameToModeRepresentations = useCallback(async (
+        mode: ColorThemeMode,
+        themeName: string,
+        paramsOverride?: Record<string, unknown>
+    ) => {
+        const structureRefs: Array<{ plugin: PluginUIContext | null; structureRef?: string | null }> = mode === 'AlignedTo'
+            ? [
+                { plugin: viewerA.ref.current, structureRef: molstarA.structureRefs[AlignedTo] },
+                { plugin: viewerB.ref.current, structureRef: molstarB.structureRefs[AlignedTo] },
+            ]
+            : [
+                { plugin: viewerA.ref.current, structureRef: molstarA.structureRefs[Aligned] },
+                { plugin: viewerB.ref.current, structureRef: molstarB.structureRefs[Aligned] },
+            ];
+
+        await Promise.all(structureRefs.map(async ({ plugin, structureRef }) => {
+            if (!plugin || !structureRef) return;
+            const reps = getStructureRepresentations(plugin, structureRef);
+            for (const rep of reps) {
+                const currentTheme = rep.colorTheme as any;
+                const currentThemeName = typeof currentTheme === 'string' ? currentTheme : currentTheme?.name;
+
+                // Rebinding away from and back to the same provider avoids occasional no-op updates
+                // when rapidly applying new params to an already-selected custom theme.
+                if (currentThemeName === themeName && themeName !== 'chain-id') {
+                    const resetTree = plugin.state.data.build().to(rep.repRef).update((old: any) => ({
+                        ...old,
+                        colorTheme: { name: 'chain-id', params: {} },
+                    }));
+                    await plugin.runTask(plugin.state.data.updateTree(resetTree));
+                }
+
+                const applyTree = plugin.state.data.build().to(rep.repRef).update((old: any) => ({
+                    ...old,
+                    colorTheme: { name: themeName, params: paramsOverride ?? {} },
+                }));
+                await plugin.runTask(plugin.state.data.updateTree(applyTree));
+            }
+            plugin.canvas3d?.requestDraw?.();
+        }));
+    }, [molstarA.structureRefs, molstarB.structureRefs, viewerA.ref, viewerB.ref]);
+
+    const normalizeThemeColor = (value: unknown): string | null => {
+        if (typeof value === 'string') {
+            const normalized = value.trim().toUpperCase();
+            return /^#(?:[0-9A-F]{3}|[0-9A-F]{6})$/.test(normalized) ? normalized : null;
+        }
+        if (typeof value === 'number' && Number.isFinite(value)) {
+            const hex = `#${Math.max(0, Math.min(0xFFFFFF, Math.floor(value))).toString(16).padStart(6, '0').toUpperCase()}`;
+            return hex;
+        }
+        return null;
+    };
+
+    const getChainColorsFromActiveChainIdTheme = useCallback((mode: ColorThemeMode): Map<string, string> => {
+        const structureRefs: Array<{ plugin: PluginUIContext | null; structureRef?: string | null }> = mode === 'AlignedTo'
+            ? [
+                { plugin: viewerA.ref.current, structureRef: molstarA.structureRefs[AlignedTo] },
+                { plugin: viewerB.ref.current, structureRef: molstarB.structureRefs[AlignedTo] },
+            ]
+            : [
+                { plugin: viewerA.ref.current, structureRef: molstarA.structureRefs[Aligned] },
+                { plugin: viewerB.ref.current, structureRef: molstarB.structureRefs[Aligned] },
+            ];
+
+        const map = new Map<string, string>();
+        for (const { plugin, structureRef } of structureRefs) {
+            if (!plugin || !structureRef) continue;
+            const reps = getStructureRepresentations(plugin, structureRef);
+            for (const rep of reps) {
+                const theme = rep.colorTheme as any;
+                const themeName = typeof theme === 'string' ? theme : theme?.name;
+                if (themeName !== 'chain-id') continue;
+                const entries = theme?.params?.palette?.params?.list?.colors;
+                if (!Array.isArray(entries)) continue;
+                for (const entry of entries) {
+                    if (!Array.isArray(entry) || entry.length < 2) continue;
+                    const chain = String(entry[0] ?? '').trim();
+                    const color = normalizeThemeColor(entry[1]);
+                    if (!chain || !color) continue;
+                    map.set(chain, color);
+                    map.set(chain.toUpperCase(), color);
+                }
+            }
+        }
+        return map;
+    }, [molstarA.structureRefs, molstarB.structureRefs, viewerA.ref, viewerB.ref]);
+
+    const getChainColorsFromChainIdProvider = useCallback((mode: ColorThemeMode): Map<string, string> => {
+        const structureRefs: Array<{ plugin: PluginUIContext | null; structureRef?: string | null }> = mode === 'AlignedTo'
+            ? [
+                { plugin: viewerA.ref.current, structureRef: molstarA.structureRefs[AlignedTo] },
+                { plugin: viewerB.ref.current, structureRef: molstarB.structureRefs[AlignedTo] },
+            ]
+            : [
+                { plugin: viewerA.ref.current, structureRef: molstarA.structureRefs[Aligned] },
+                { plugin: viewerB.ref.current, structureRef: molstarB.structureRefs[Aligned] },
+            ];
+
+        const map = new Map<string, string>();
+        for (const { plugin, structureRef } of structureRefs) {
+            if (!plugin || !structureRef) continue;
+            const structureData = plugin.managers.structure.hierarchy.current.structures.find(
+                s => s.cell.transform.ref === structureRef
+            )?.cell.obj?.data;
+            if (!structureData) continue;
+
+            try {
+                const chainIdTheme = ChainIdColorTheme({ structure: structureData } as any, ChainIdColorThemeProvider.defaultValues as any);
+                const location = StructureElement.Location.create(structureData);
+                for (const unit of structureData.units) {
+                    if (!unit?.elements?.length) continue;
+                    for (let elementIndex = 0; elementIndex < unit.elements.length; elementIndex++) {
+                        const element = unit.elements[elementIndex];
+                        location.unit = unit;
+                        location.element = element;
+                        const auth = String(StructureProperties.chain.auth_asym_id(location) ?? '').trim();
+                        const label = String(StructureProperties.chain.label_asym_id(location) ?? '').trim();
+                        const resolved = normalizeThemeColor(chainIdTheme.color(location, false));
+                        if (!resolved) continue;
+                        if (auth) {
+                            map.set(auth, resolved);
+                            map.set(auth.toUpperCase(), resolved);
+                        }
+                        if (label) {
+                            map.set(label, resolved);
+                            map.set(label.toUpperCase(), resolved);
+                        }
+                    }
+                }
+            } catch {
+                // Ignore fallback color extraction failures and keep other sources.
+            }
+        }
+        return map;
+    }, [molstarA.structureRefs, molstarB.structureRefs, viewerA.ref, viewerB.ref]);
+
+    const getEquivalentChainIdsForMode = useCallback((mode: ColorThemeMode, chainId: string): string[] => {
+        const normalizedSelectedChainId = String(chainId ?? '').trim();
+        if (!normalizedSelectedChainId) return [];
+        const selectedUpper = normalizedSelectedChainId.toUpperCase();
+        const aliases = new Set<string>([normalizedSelectedChainId, selectedUpper]);
+
+        const structureRefs: Array<{ plugin: PluginUIContext | null; structureRef?: string | null }> = mode === 'AlignedTo'
+            ? [
+                { plugin: viewerA.ref.current, structureRef: molstarA.structureRefs[AlignedTo] },
+                { plugin: viewerB.ref.current, structureRef: molstarB.structureRefs[AlignedTo] },
+            ]
+            : [
+                { plugin: viewerA.ref.current, structureRef: molstarA.structureRefs[Aligned] },
+                { plugin: viewerB.ref.current, structureRef: molstarB.structureRefs[Aligned] },
+            ];
+
+        for (const { plugin, structureRef } of structureRefs) {
+            if (!plugin || !structureRef) continue;
+            const structureData = plugin.managers.structure.hierarchy.current.structures.find(
+                s => s.cell.transform.ref === structureRef
+            )?.cell.obj?.data;
+            if (!structureData) continue;
+
+            try {
+                const location = StructureElement.Location.create(structureData);
+                for (const unit of structureData.units ?? []) {
+                    if (!unit?.elements?.length) continue;
+                    for (let elementIndex = 0; elementIndex < unit.elements.length; elementIndex++) {
+                        const element = unit.elements[elementIndex];
+                        location.unit = unit;
+                        location.element = element;
+                        const auth = String(StructureProperties.chain.auth_asym_id(location) ?? '').trim();
+                        const label = String(StructureProperties.chain.label_asym_id(location) ?? '').trim();
+                        const authUpper = auth.toUpperCase();
+                        const labelUpper = label.toUpperCase();
+                        const matches = auth === normalizedSelectedChainId
+                            || label === normalizedSelectedChainId
+                            || authUpper === selectedUpper
+                            || labelUpper === selectedUpper;
+                        if (!matches) continue;
+                        if (auth) {
+                            aliases.add(auth);
+                            aliases.add(authUpper);
+                        }
+                        if (label) {
+                            aliases.add(label);
+                            aliases.add(labelUpper);
+                        }
+                    }
+                }
+            } catch {
+                // Best-effort alias expansion; keep basic aliases on failure.
+            }
+        }
+
+        return Array.from(aliases).filter(Boolean);
+    }, [molstarA.structureRefs, molstarB.structureRefs, viewerA.ref, viewerB.ref]);
+
+    const updateChainColorInTheme = useCallback((themeName: string, chainId: string, color: string, mode?: ColorThemeMode) => {
+        if (!themeName) return;
+        if (!chainId || !color) return;
+        const normalizedChainId = chainId.trim().toUpperCase();
+        const normalizedColor = color.trim().toUpperCase();
+        if (!/^#(?:[0-9A-F]{3}|[0-9A-F]{6})$/.test(normalizedColor)) return;
+
+        if (themeName === DEFAULT_COLOR_THEME_NAME || themeName === 'chain-id') {
+            const targetMode = mode ?? 'AlignedTo';
+            const chainAliases = getEquivalentChainIdsForMode(targetMode, chainId);
+            const editableThemeName = EDITABLE_CHAIN_THEME_BY_MODE[targetMode];
+            const existingMap = getChainColorsFromActiveChainIdTheme(targetMode);
+            const existingRows = getThemeRowsByName(editableThemeName);
+            existingRows.forEach((row) => {
+                const chain = String(row.pdb_chain ?? '').trim();
+                const resolved = normalizeThemeColor(row.color);
+                if (chain && resolved) {
+                    existingMap.set(chain, resolved);
+                    existingMap.set(chain.toUpperCase(), resolved);
+                }
+            });
+            for (const alias of chainAliases) {
+                const trimmedAlias = alias.trim();
+                if (!trimmedAlias) continue;
+                existingMap.set(trimmedAlias, normalizedColor);
+                existingMap.set(trimmedAlias.toUpperCase(), normalizedColor);
+            }
+            const currentRows = Array.from(existingMap.entries())
+                .filter(([id]) => !!id && id === id.toUpperCase())
+                .map(([pdb_chain, color]) => ({ pdb_chain, color }));
+            const updatedRows = [...currentRows];
+            const keysToUpdate = new Set(chainAliases.map(alias => alias.trim().toUpperCase()).filter(Boolean));
+            keysToUpdate.add(normalizedChainId);
+            keysToUpdate.forEach((aliasKey) => {
+                const idx = updatedRows.findIndex(row => String(row.pdb_chain ?? '').trim().toUpperCase() === aliasKey);
+                if (idx >= 0) {
+                    updatedRows[idx] = { ...updatedRows[idx], color: normalizedColor };
+                } else {
+                    updatedRows.push({ pdb_chain: aliasKey, color: normalizedColor });
+                }
+            });
+
+            if (!keysToUpdate.has(normalizedChainId)) {
+                updatedRows.push({ pdb_chain: normalizedChainId, color: normalizedColor });
+            }
+
+            registerLoadedColorTheme(editableThemeName, updatedRows);
+            setLoadedColorThemes(prev => {
+                if (prev.some(option => option.value === editableThemeName)) return prev;
+                return [...prev, { value: editableThemeName, label: editableThemeName }];
+            });
+            setLoadedColorThemeRowsByName(prev => ({
+                ...prev,
+                [editableThemeName]: updatedRows,
+            }));
+            setSelectedColorThemeByMode(prev => ({
+                ...prev,
+                [targetMode]: editableThemeName,
+            }));
+
+            void applyColorThemeNameToModeRepresentations(targetMode, editableThemeName, {
+                __themeRevision: nextColorThemeRevision(),
+            });
+            return;
+        }
+
+        const currentRows = getThemeRowsByName(themeName);
+        const updatedRows = [...currentRows];
+        const targetModeForAlias: ColorThemeMode | null = mode
+            ?? (selectedColorThemeByMode.AlignedTo === themeName
+                ? 'AlignedTo'
+                : selectedColorThemeByMode.Aligned === themeName
+                    ? 'Aligned'
+                    : null);
+        const aliasKeys = new Set<string>([normalizedChainId]);
+        if (targetModeForAlias) {
+            getEquivalentChainIdsForMode(targetModeForAlias, chainId)
+                .map(alias => alias.trim().toUpperCase())
+                .filter(Boolean)
+                .forEach(alias => aliasKeys.add(alias));
+        }
+
+        aliasKeys.forEach((aliasKey) => {
+            const idx = updatedRows.findIndex(row => String(row.pdb_chain ?? '').trim().toUpperCase() === aliasKey);
+            if (idx >= 0) {
+                updatedRows[idx] = { ...updatedRows[idx], color: normalizedColor };
+            } else {
+                updatedRows.push({ pdb_chain: aliasKey, color: normalizedColor });
+            }
+        });
+
+        if (!aliasKeys.has(normalizedChainId)) {
+            updatedRows.push({ pdb_chain: normalizedChainId, color: normalizedColor });
+        }
+        registerLoadedColorTheme(themeName, updatedRows);
+        setLoadedColorThemeRowsByName(prev => ({
+            ...prev,
+            [themeName]: updatedRows,
+        }));
+
+        const targetMode: ColorThemeMode | null = mode
+            ?? (selectedColorThemeByMode.AlignedTo === themeName
+                ? 'AlignedTo'
+                : selectedColorThemeByMode.Aligned === themeName
+                    ? 'Aligned'
+                    : null);
+        if (targetMode) {
+            void applyColorThemeNameToModeRepresentations(targetMode, themeName, {
+                __themeRevision: nextColorThemeRevision(),
+            });
+        }
+    }, [
+        applyColorThemeNameToModeRepresentations,
+        getEquivalentChainIdsForMode,
+        getChainColorsFromActiveChainIdTheme,
+        getThemeRowsByName,
+        nextColorThemeRevision,
+        registerLoadedColorTheme,
+        selectedColorThemeByMode,
+    ]);
+
+    const updateResidueTypeColorInTheme = useCallback((themeName: string, residueType: string, color: string, mode?: ColorThemeMode) => {
+        if (!themeName || !residueType || !color) return;
+        const normalizedResidueType = residueType.trim().toUpperCase();
+        const normalizedColor = color.trim().toUpperCase();
+        if (!normalizedResidueType) return;
+        if (!/^#(?:[0-9A-F]{3}|[0-9A-F]{6})$/.test(normalizedColor)) return;
+
+        const targetMode = mode ?? 'AlignedTo';
+        const editableThemeName = (themeName === DEFAULT_COLOR_THEME_NAME || themeName === 'chain-id')
+            ? `residue-type-custom-${targetMode.toLowerCase()}`
+            : themeName;
+        const currentRows = getThemeRowsByName(editableThemeName);
+        const updatedRows = [...currentRows];
+        const idx = updatedRows.findIndex(row => String(row.residue_type ?? '').trim().toUpperCase() === normalizedResidueType);
+        if (idx >= 0) {
+            updatedRows[idx] = { ...updatedRows[idx], residue_type: normalizedResidueType, color: normalizedColor };
+        } else {
+            updatedRows.push({ residue_type: normalizedResidueType, color: normalizedColor });
+        }
+
+        registerLoadedColorTheme(editableThemeName, updatedRows);
+        setLoadedColorThemeRowsByName(prev => ({
+            ...prev,
+            [editableThemeName]: updatedRows,
+        }));
+        setLoadedColorThemes(prev => {
+            if (prev.some(option => option.value === editableThemeName)) return prev;
+            return [...prev, { value: editableThemeName, label: editableThemeName }];
+        });
+        setSelectedResidueThemeByMode(prev => ({
+            ...prev,
+            [targetMode]: editableThemeName,
+        }));
+
+        void applyColorThemeNameToModeRepresentations(targetMode, editableThemeName, {
+            __themeRevision: nextColorThemeRevision(),
+        });
+    }, [
+        applyColorThemeNameToModeRepresentations,
+        getThemeRowsByName,
+        nextColorThemeRevision,
+        registerLoadedColorTheme,
+    ]);
+
+    const handleLoadColorThemeClick = useCallback((mode: ColorThemeMode, kind: 'chain' | 'residue-type') => {
+        if (mode === AlignedTo) {
+            if (kind === 'chain') chainColorsAlignedToInputRef.current?.click();
+            else residueColorsAlignedToInputRef.current?.click();
+        } else {
+            if (kind === 'chain') chainColorsAlignedInputRef.current?.click();
+            else residueColorsAlignedInputRef.current?.click();
+        }
+    }, [chainColorsAlignedInputRef, chainColorsAlignedToInputRef, residueColorsAlignedInputRef, residueColorsAlignedToInputRef]);
+
+    const handleColorThemeFileChange = useCallback(async (mode: ColorThemeMode, expectedKind: 'chain' | 'residue-type', e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
         try {
             const parsedRows = await parseColorFileContent('', file);
-            const uniqueThemeName = `custom-chain-colors-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+            const parsedKind = inferColorThemeKind(parsedRows);
+            if (!parsedKind) {
+                alert('Could not parse colour file. Use a simple 2-column file with header: "chain,color" or "residue_type,color".');
+                return;
+            }
+            if (parsedKind !== expectedKind) {
+                alert(`Loaded file looks like a ${parsedKind} theme, but this control expects a ${expectedKind} theme.`);
+                return;
+            }
+            const uniqueThemeName = `custom-colors-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
             const label = file.name.replace(/\.[^.]+$/, '');
             registerLoadedColorTheme(uniqueThemeName, parsedRows);
             setLoadedColorThemeRowsByName(prev => ({
@@ -1227,7 +1725,11 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 [uniqueThemeName]: parsedRows,
             }));
             setLoadedColorThemes(prev => [...prev, { value: uniqueThemeName, label }]);
-            setSelectedColorThemeByMode(prev => ({ ...prev, [mode]: uniqueThemeName }));
+            if (expectedKind === 'chain') {
+                setSelectedColorThemeByMode(prev => ({ ...prev, [mode]: uniqueThemeName }));
+            } else {
+                setSelectedResidueThemeByMode(prev => ({ ...prev, [mode]: uniqueThemeName }));
+            }
             setIsMoleculeAlignedToColoursLoaded(true);
             setIsMoleculeAlignedColoursLoaded(true);
         } catch (err) {
@@ -1257,8 +1759,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         });
     }, [molstarA.structureRefs, molstarB.structureRefs, viewerA.ref, viewerB.ref]);
 
-    const handleRemoveSelectedColorTheme = useCallback((mode: ColorThemeMode) => {
-        const selectedName = selectedColorThemeByMode[mode];
+    const handleRemoveSelectedColorTheme = useCallback((mode: ColorThemeMode, kind: 'chain' | 'residue-type') => {
+        const selectedName = kind === 'chain' ? selectedColorThemeByMode[mode] : selectedResidueThemeByMode[mode];
         if (selectedName === DEFAULT_COLOR_THEME_NAME) return;
         if (isThemeInUse(selectedName)) {
             alert('This colour theme is currently used by one or more representations across the viewers. Switch those representations to another theme before removing it.');
@@ -1273,29 +1775,57 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 Aligned: prev.Aligned === selectedName ? DEFAULT_COLOR_THEME_NAME : prev.Aligned,
             };
         });
+        setSelectedResidueThemeByMode(prev => ({
+            ...prev,
+            AlignedTo: prev.AlignedTo === selectedName ? DEFAULT_COLOR_THEME_NAME : prev.AlignedTo,
+            Aligned: prev.Aligned === selectedName ? DEFAULT_COLOR_THEME_NAME : prev.Aligned,
+        }));
         setIsMoleculeAlignedToColoursLoaded(remainingLoadedThemeCount > 0);
         setIsMoleculeAlignedColoursLoaded(remainingLoadedThemeCount > 0);
         setLoadedColorThemeRowsByName(prev => {
             const next = { ...prev };
             delete next[selectedName];
+            if (!next[DEFAULT_COLOR_THEME_NAME]) next[DEFAULT_COLOR_THEME_NAME] = [];
             return next;
         });
         chainColorMaps.delete(selectedName);
-    }, [chainColorMaps, isThemeInUse, loadedColorThemes, selectedColorThemeByMode]);
+        residueTypeColorMaps.delete(selectedName);
+    }, [chainColorMaps, residueTypeColorMaps, isThemeInUse, loadedColorThemes, selectedColorThemeByMode, selectedResidueThemeByMode]);
 
-    const colorsAlignedToFile = useMemo(() => ({
-        inputRef: colorsAlignedToInputRef,
-        handleButtonClick: () => handleLoadColorThemeClick('AlignedTo'),
+    const chainColorsAlignedToFile = useMemo(() => ({
+        inputRef: chainColorsAlignedToInputRef,
+        handleButtonClick: () => handleLoadColorThemeClick('AlignedTo', 'chain'),
         handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => {
-            void handleColorThemeFileChange('AlignedTo', e);
+            void handleColorThemeFileChange('AlignedTo', 'chain', e);
         },
     }), [handleColorThemeFileChange, handleLoadColorThemeClick]);
 
-    const colorsAlignedFile = useMemo(() => ({
-        inputRef: colorsAlignedInputRef,
-        handleButtonClick: () => handleLoadColorThemeClick('Aligned'),
+    const residueColorsAlignedToFile = useMemo(() => ({
+        inputRef: residueColorsAlignedToInputRef,
+        handleButtonClick: () => handleLoadColorThemeClick('AlignedTo', 'residue-type'),
         handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => {
-            void handleColorThemeFileChange('Aligned', e);
+            void handleColorThemeFileChange('AlignedTo', 'residue-type', e);
+        },
+    }), [handleColorThemeFileChange, handleLoadColorThemeClick]);
+
+    const selectedAlignedToThemeName = selectedColorThemeByMode.AlignedTo;
+    const selectedAlignedThemeName = selectedColorThemeByMode.Aligned;
+    const selectedAlignedToResidueThemeName = selectedResidueThemeByMode.AlignedTo;
+    const selectedAlignedResidueThemeName = selectedResidueThemeByMode.Aligned;
+
+    const chainColorsAlignedFile = useMemo(() => ({
+        inputRef: chainColorsAlignedInputRef,
+        handleButtonClick: () => handleLoadColorThemeClick('Aligned', 'chain'),
+        handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+            void handleColorThemeFileChange('Aligned', 'chain', e);
+        },
+    }), [handleColorThemeFileChange, handleLoadColorThemeClick]);
+
+    const residueColorsAlignedFile = useMemo(() => ({
+        inputRef: residueColorsAlignedInputRef,
+        handleButtonClick: () => handleLoadColorThemeClick('Aligned', 'residue-type'),
+        handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+            void handleColorThemeFileChange('Aligned', 'residue-type', e);
         },
     }), [handleColorThemeFileChange, handleLoadColorThemeClick]);
     // Realigned molecule structure/representation refs
@@ -1364,6 +1894,239 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         setSelectedResidueIds: setSelectedResidueIdsAligned2,
         selectedResidueId: selectedResidueIdAligned2,
     } = useResidueState();
+
+    const getChainColorMapForDefaultTheme = useCallback((mode: ColorThemeMode): Map<string, string> => {
+        const selectedChainId = mode === 'AlignedTo' ? selectedChainIdAlignedTo : selectedChainIdAligned;
+        const chainInfo = mode === 'AlignedTo' ? chainInfoAlignedTo : chainInfoAligned;
+        const rows = getThemeRowsByName(DEFAULT_COLOR_THEME_NAME);
+        const activeMap = getChainColorsFromActiveChainIdTheme(mode);
+        if (activeMap.size === 0) {
+            const providerMap = getChainColorsFromChainIdProvider(mode);
+            for (const [chainId, color] of providerMap.entries()) {
+                activeMap.set(chainId, color);
+            }
+        }
+        const map = new Map<string, string>();
+        for (const [chainId, color] of activeMap.entries()) {
+            map.set(chainId, color);
+        }
+        rows.forEach((row) => {
+            if (!row.pdb_chain || !row.color) return;
+            const color = normalizeThemeColor(row.color);
+            if (!color) return;
+            map.set(row.pdb_chain, color);
+            map.set(row.pdb_chain.toUpperCase(), color);
+        });
+        if (selectedChainId) {
+            if (!map.has(selectedChainId) && !map.has(selectedChainId.toUpperCase())) {
+                map.set(selectedChainId, '#cccccc');
+            }
+        }
+        for (const chainId of chainInfo.chainLabels.keys()) {
+            if (!map.has(chainId) && !map.has(chainId.toUpperCase())) map.set(chainId, '#cccccc');
+        }
+        return map;
+    }, [
+        chainInfoAligned,
+        chainInfoAlignedTo,
+        getChainColorsFromChainIdProvider,
+        getChainColorsFromActiveChainIdTheme,
+        getThemeRowsByName,
+        selectedChainIdAligned,
+        selectedChainIdAlignedTo,
+    ]);
+
+    const chainColorsByMode = {
+        AlignedTo: (() => {
+            const selectedTheme = selectedColorThemeByMode.AlignedTo;
+            const selectedRows = getThemeRowsByName(selectedTheme);
+            const activeTheme = selectedTheme !== DEFAULT_COLOR_THEME_NAME && selectedRows.length > 0
+                ? selectedTheme
+                : getCurrentColorThemeNameForMode('AlignedTo');
+            const merged = getChainColorMapForDefaultTheme('AlignedTo');
+            if (activeTheme === DEFAULT_COLOR_THEME_NAME || activeTheme === 'chain-id') {
+                return merged;
+            }
+            const loadedThemeRows = getThemeRowsByName(activeTheme);
+            if (loadedThemeRows.length === 0) return merged;
+            for (const [chainId, color] of getChainColorsByThemeName(activeTheme).entries()) {
+                merged.set(chainId, color);
+                merged.set(chainId.toUpperCase(), color);
+            }
+            return merged;
+        })(),
+        Aligned: (() => {
+            const selectedTheme = selectedColorThemeByMode.Aligned;
+            const selectedRows = getThemeRowsByName(selectedTheme);
+            const activeTheme = selectedTheme !== DEFAULT_COLOR_THEME_NAME && selectedRows.length > 0
+                ? selectedTheme
+                : getCurrentColorThemeNameForMode('Aligned');
+            const merged = getChainColorMapForDefaultTheme('Aligned');
+            if (activeTheme === DEFAULT_COLOR_THEME_NAME || activeTheme === 'chain-id') {
+                return merged;
+            }
+            const loadedThemeRows = getThemeRowsByName(activeTheme);
+            if (loadedThemeRows.length === 0) return merged;
+            for (const [chainId, color] of getChainColorsByThemeName(activeTheme).entries()) {
+                merged.set(chainId, color);
+                merged.set(chainId.toUpperCase(), color);
+            }
+            return merged;
+        })(),
+    };
+
+    const residueTypeColorsByMode = {
+        AlignedTo: getResidueTypeColorsByThemeName(selectedResidueThemeByMode.AlignedTo),
+        Aligned: getResidueTypeColorsByThemeName(selectedResidueThemeByMode.Aligned),
+    };
+
+    const getResidueTypeCountsForMode = useCallback((mode: ColorThemeMode): Array<{ type: string; count: number }> => {
+        const structureRefs: Array<{ plugin: PluginUIContext | null; structureRef?: string | null }> = mode === 'AlignedTo'
+            ? [
+                { plugin: viewerA.ref.current, structureRef: molstarA.structureRefs[AlignedTo] },
+                { plugin: viewerB.ref.current, structureRef: molstarB.structureRefs[AlignedTo] },
+            ]
+            : [
+                { plugin: viewerA.ref.current, structureRef: molstarA.structureRefs[Aligned] },
+                { plugin: viewerB.ref.current, structureRef: molstarB.structureRefs[Aligned] },
+            ];
+
+        let structureData: any = null;
+        for (const { plugin, structureRef } of structureRefs) {
+            if (!plugin || !structureRef) continue;
+            const candidate = plugin.managers.structure.hierarchy.current.structures.find(
+                s => s.cell.transform.ref === structureRef
+            )?.cell.obj?.data;
+            if (candidate) {
+                structureData = candidate;
+                break;
+            }
+        }
+        if (!structureData) return [];
+
+        const counts = new Map<string, number>();
+        const seenResidues = new Set<string>();
+        for (const unit of structureData.units ?? []) {
+            if (!unit?.elements?.length || !Unit.isAtomic(unit)) continue;
+            for (let elementIndex = 0; elementIndex < unit.elements.length; elementIndex++) {
+                const element = unit.elements[elementIndex];
+                const residueIndex = unit.model.atomicHierarchy.residueAtomSegments.index[element];
+                const residueKey = `${unit.id}:${residueIndex}`;
+                if (seenResidues.has(residueKey)) continue;
+                seenResidues.add(residueKey);
+                const residueType = String(unit.model.atomicHierarchy.atoms.label_comp_id.value(element) ?? '').trim().toUpperCase() || '?';
+                counts.set(residueType, (counts.get(residueType) ?? 0) + 1);
+            }
+        }
+
+        return Array.from(counts.entries())
+            .map(([type, count]) => ({ type, count }))
+            .sort((a, b) => a.type.localeCompare(b.type));
+    }, [molstarA.structureRefs, molstarB.structureRefs, viewerA.ref, viewerB.ref]);
+
+    const residueTypeCountsByMode = {
+        AlignedTo: getResidueTypeCountsForMode('AlignedTo'),
+        Aligned: getResidueTypeCountsForMode('Aligned'),
+    };
+
+    const getExportableChainThemeRowsForMode = useCallback((mode: ColorThemeMode): Array<{ chain: string; color: string }> => {
+        const themeName = getCurrentColorThemeNameForMode(mode);
+        const candidateRows = getThemeRowsByName(themeName);
+        const map = getChainColorMapForDefaultTheme(mode);
+        const candidateKind = inferColorThemeKind(candidateRows);
+        if (candidateKind === 'chain' && candidateRows.length > 0) {
+            for (const row of candidateRows) {
+                const chain = String(row.pdb_chain ?? '').trim().toUpperCase();
+                const color = normalizeThemeColor(row.color);
+                if (!chain || !color) continue;
+                map.set(chain, color);
+            }
+        }
+        const chainLabels = mode === 'AlignedTo' ? chainInfoAlignedTo.chainLabels : chainInfoAligned.chainLabels;
+        const orderedChainIds = chainLabels.size > 0
+            ? Array.from(chainLabels.keys())
+            : Array.from(map.keys()).filter(chain => chain === chain.toUpperCase());
+
+        const normalizedByChain = new Map<string, string>();
+        orderedChainIds
+            .map(chain => {
+                const resolved = map.get(chain) ?? map.get(chain.toUpperCase());
+                return {
+                    chain: chain.toUpperCase(),
+                    color: normalizeThemeColor(resolved) ?? '',
+                };
+            })
+            .filter(row => !!row.chain && !!row.color)
+            .forEach(row => normalizedByChain.set(row.chain, row.color));
+
+        return Array.from(normalizedByChain.entries())
+            .map(([chain, color]) => ({ chain, color }))
+            .sort((a, b) => a.chain.localeCompare(b.chain));
+    }, [
+        chainInfoAligned.chainLabels,
+        chainInfoAlignedTo.chainLabels,
+        getChainColorMapForDefaultTheme,
+        getCurrentColorThemeNameForMode,
+        getThemeRowsByName,
+        normalizeThemeColor,
+    ]);
+
+    const handleSaveColorThemeForMode = useCallback((mode: ColorThemeMode) => {
+        const rows = getExportableChainThemeRowsForMode(mode);
+        if (rows.length === 0) {
+            alert('No chain colours are available to save yet.');
+            return;
+        }
+
+        const themeName = getCurrentColorThemeNameForMode(mode);
+        const safeThemeName = themeName.replace(/[^a-zA-Z0-9._-]+/g, '-');
+        const csvRows = ['chain,color', ...rows.map(row => `${row.chain},${row.color}`)];
+        downloadTextFile(
+            `ribocode-${mode.toLowerCase()}-${safeThemeName || 'theme'}-${Date.now()}.csv`,
+            `${csvRows.join('\n')}\n`,
+            'text/csv;charset=utf-8'
+        );
+    }, [getCurrentColorThemeNameForMode, getExportableChainThemeRowsForMode]);
+
+    const handleSaveResidueThemeForMode = useCallback((mode: ColorThemeMode) => {
+        const themeName = selectedResidueThemeByMode[mode] ?? DEFAULT_COLOR_THEME_NAME;
+        const rows = getThemeRowsByName(themeName);
+        const kind = inferColorThemeKind(rows);
+        if (kind !== 'residue-type') {
+            alert('No residue-type colour theme is selected for this dataset.');
+            return;
+        }
+        const normalizedRows = rows
+            .map((row) => ({
+                residue_type: String(row.residue_type ?? '').trim().toUpperCase(),
+                color: normalizeThemeColor(row.color) ?? '',
+            }))
+            .filter(row => !!row.residue_type && !!row.color)
+            .sort((a, b) => a.residue_type.localeCompare(b.residue_type));
+        if (normalizedRows.length === 0) {
+            alert('No residue-type colours are available to save yet.');
+            return;
+        }
+
+        const safeThemeName = themeName.replace(/[^a-zA-Z0-9._-]+/g, '-');
+        const csvRows = ['residue_type,color', ...normalizedRows.map(row => `${row.residue_type},${row.color}`)];
+        downloadTextFile(
+            `ribocode-${mode.toLowerCase()}-${safeThemeName || 'residue-theme'}-${Date.now()}.csv`,
+            `${csvRows.join('\n')}\n`,
+            'text/csv;charset=utf-8'
+        );
+    }, [getThemeRowsByName, selectedResidueThemeByMode]);
+
+    const handleSelectThemeForMode = useCallback((mode: ColorThemeMode, kind: 'chain' | 'residue-type', themeName: string) => {
+        if (kind === 'chain') {
+            setSelectedColorThemeByMode(prev => ({ ...prev, [mode]: themeName }));
+        } else {
+            setSelectedResidueThemeByMode(prev => ({ ...prev, [mode]: themeName }));
+        }
+        void applyColorThemeNameToModeRepresentations(mode, themeName, {
+            __themeRevision: nextColorThemeRevision(),
+        });
+    }, [applyColorThemeNameToModeRepresentations, nextColorThemeRevision]);
 
     const handleSelectChainIdAlignedTo = useCallback((chainId: string) => {
         setSelectedChainIdAlignedTo(chainId);
@@ -2472,7 +3235,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         const safeRegisterTheme = (plugin: PluginUIContext | null, themeName: string) => {
             const registry = (plugin as any)?.representation?.structure?.themes?.colorThemeRegistry;
             if (!plugin || !registry) return;
-            registerThemeIfNeeded(plugin, themeName, chainColorMaps);
+            registerThemeIfNeeded(plugin, themeName, chainColorMaps, residueTypeColorMaps);
         };
         const allLoadedThemeNames = loadedColorThemes
             .map((option: LoadedColorThemeOption) => option.value)
@@ -2481,7 +3244,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             safeRegisterTheme(viewerA.ref.current, themeName);
             safeRegisterTheme(viewerB.ref.current, themeName);
         });
-    }, [loadedColorThemes, chainColorMaps, viewerA.ref, viewerB.ref, viewerAReady, viewerBReady]);
+    }, [loadedColorThemes, chainColorMaps, residueTypeColorMaps, viewerA.ref, viewerB.ref, viewerAReady, viewerBReady]);
 
     // Custom hooks for updating chain info and subunit-to-chain mapping for both viewers.
     useUpdateChainInfo(
@@ -3761,10 +4524,24 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 alignedToDone = false;
             }
         }
+        if (pending.alignedTo?.chainId2) {
+            if (chainInfoAlignedTo.chainLabels.has(pending.alignedTo.chainId2)) {
+                setSelectedChainIdAlignedTo2(pending.alignedTo.chainId2);
+            } else {
+                alignedToDone = false;
+            }
+        }
 
         if (pending.aligned?.chainId) {
             if (chainInfoAligned.chainLabels.has(pending.aligned.chainId)) {
                 setSelectedChainIdAligned(pending.aligned.chainId);
+            } else {
+                alignedDone = false;
+            }
+        }
+        if (pending.aligned?.chainId2) {
+            if (chainInfoAligned.chainLabels.has(pending.aligned.chainId2)) {
+                setSelectedChainIdAligned2(pending.aligned.chainId2);
             } else {
                 alignedDone = false;
             }
@@ -3781,6 +4558,17 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             }
         }
 
+        const pendingAlignedToResidueIds2 = Array.isArray(pending.alignedTo?.residueIds2)
+            ? pending.alignedTo!.residueIds2!.filter(id => residueInfoAlignedTo2.residueLabels.has(id))
+            : [];
+        if (pendingAlignedToResidueIds2.length > 0) {
+            setSelectedResidueIdsAlignedTo2(pendingAlignedToResidueIds2);
+        } else if (pending.alignedTo?.residueId2 && residueInfoAlignedTo2.residueLabels.size > 0) {
+            if (residueInfoAlignedTo2.residueLabels.has(pending.alignedTo.residueId2)) {
+                setSelectedResidueIdsAlignedTo2([pending.alignedTo.residueId2]);
+            }
+        }
+
         const pendingAlignedResidueIds = Array.isArray(pending.aligned?.residueIds)
             ? pending.aligned!.residueIds!.filter(id => residueInfoAligned.residueLabels.has(id))
             : [];
@@ -3789,6 +4577,17 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         } else if (pending.aligned?.residueId && residueInfoAligned.residueLabels.size > 0) {
             if (residueInfoAligned.residueLabels.has(pending.aligned.residueId)) {
                 setSelectedResidueIdAligned(pending.aligned.residueId);
+            }
+        }
+
+        const pendingAlignedResidueIds2 = Array.isArray(pending.aligned?.residueIds2)
+            ? pending.aligned!.residueIds2!.filter(id => residueInfoAligned2.residueLabels.has(id))
+            : [];
+        if (pendingAlignedResidueIds2.length > 0) {
+            setSelectedResidueIdsAligned2(pendingAlignedResidueIds2);
+        } else if (pending.aligned?.residueId2 && residueInfoAligned2.residueLabels.size > 0) {
+            if (residueInfoAligned2.residueLabels.has(pending.aligned.residueId2)) {
+                setSelectedResidueIdsAligned2([pending.aligned.residueId2]);
             }
         }
 
@@ -3801,11 +4600,17 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         residueInfoAlignedTo.residueLabels,
         residueInfoAligned.residueLabels,
         setSelectedChainIdAlignedTo,
+        setSelectedChainIdAlignedTo2,
         setSelectedChainIdAligned,
+        setSelectedChainIdAligned2,
         setSelectedResidueIdsAlignedTo,
+        setSelectedResidueIdsAlignedTo2,
         setSelectedResidueIdsAligned,
+        setSelectedResidueIdsAligned2,
         setSelectedResidueIdAlignedTo,
         setSelectedResidueIdAligned,
+        residueInfoAlignedTo2.residueLabels,
+        residueInfoAligned2.residueLabels,
     ]);
 
     // Unified robust delete handler for any representation
@@ -5053,14 +5858,20 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 alignedTo: {
                     subunit: selectedSubunitAlignedTo,
                     chainId: selectedChainIdAlignedTo,
+                    chainId2: selectedChainIdAlignedTo2,
                     residueId: selectedResidueIdAlignedTo,
+                    residueId2: selectedResidueIdAlignedTo2,
                     residueIds: selectedResidueIdsAlignedTo,
+                    residueIds2: selectedResidueIdsAlignedTo2,
                 },
                 aligned: {
                     subunit: selectedSubunitAligned,
                     chainId: selectedChainIdAligned,
+                    chainId2: selectedChainIdAligned2,
                     residueId: selectedResidueIdAligned,
+                    residueId2: selectedResidueIdAligned2,
                     residueIds: selectedResidueIdsAligned,
+                    residueIds2: selectedResidueIdsAligned2,
                 },
             },
             highlights: {
@@ -5151,10 +5962,14 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             colorThemesByMode: {
                 alignedTo: {
                     selectedThemeName: selectedColorThemeByMode.AlignedTo,
+                    selectedChainThemeName: selectedColorThemeByMode.AlignedTo,
+                    selectedResidueThemeName: selectedResidueThemeByMode.AlignedTo,
                     themes: buildPersistedColorThemes(),
                 },
                 aligned: {
                     selectedThemeName: selectedColorThemeByMode.Aligned,
+                    selectedChainThemeName: selectedColorThemeByMode.Aligned,
+                    selectedResidueThemeName: selectedResidueThemeByMode.Aligned,
                     themes: buildPersistedColorThemes(),
                 },
             },
@@ -5338,10 +6153,14 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 colorThemesByMode: {
                     alignedTo: {
                         selectedThemeName: selectedColorThemeByMode.AlignedTo,
+                        selectedChainThemeName: selectedColorThemeByMode.AlignedTo,
+                        selectedResidueThemeName: selectedResidueThemeByMode.AlignedTo,
                         themes: buildPersistedColorThemes(),
                     },
                     aligned: {
                         selectedThemeName: selectedColorThemeByMode.Aligned,
+                        selectedChainThemeName: selectedColorThemeByMode.Aligned,
+                        selectedResidueThemeName: selectedResidueThemeByMode.Aligned,
                         themes: buildPersistedColorThemes(),
                     },
                 },
@@ -5423,6 +6242,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         // Try to get the files by filename
         const alignedToFile = (alignedToFilename && files[alignedToFilename]) || (altAlignedToFilename && files[altAlignedToFilename]);
         const alignedFile = (alignedFilename && files[alignedFilename]) || (altAlignedFilename && files[altAlignedFilename]);
+        const restoredSelectedThemeByMode: Partial<Record<ColorThemeMode, string>> = {};
 
         let loadedAny = false;
         try {
@@ -5484,27 +6304,54 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
 
                 setLoadedColorThemes(options);
 
+                // Register loaded themes immediately so downstream session-restore
+                // theme application can resolve providers deterministically.
+                mergedThemes.forEach(theme => {
+                    registerLoadedColorTheme(theme.value, theme.rows);
+                });
+
                 setLoadedColorThemeRowsByName(prev => {
                     const next = { ...prev };
                     mergedThemes.forEach(theme => {
                         next[theme.value] = theme.rows;
-                        registerLoadedColorTheme(theme.value, theme.rows);
                     });
                     return next;
                 });
 
-                const alignedToSelectedCandidate = uiState.colorThemesByMode.alignedTo?.selectedThemeName;
-                const alignedSelectedCandidate = uiState.colorThemesByMode.aligned?.selectedThemeName;
+                const alignedToSelectedChainCandidate = uiState.colorThemesByMode.alignedTo?.selectedChainThemeName
+                    ?? uiState.colorThemesByMode.alignedTo?.selectedThemeName;
+                const alignedSelectedChainCandidate = uiState.colorThemesByMode.aligned?.selectedChainThemeName
+                    ?? uiState.colorThemesByMode.aligned?.selectedThemeName;
+                const alignedToSelectedResidueCandidate = uiState.colorThemesByMode.alignedTo?.selectedResidueThemeName;
+                const alignedSelectedResidueCandidate = uiState.colorThemesByMode.aligned?.selectedResidueThemeName;
+
+                const restoredAlignedToThemeName = options.some(option => option.value === alignedToSelectedChainCandidate)
+                    ? alignedToSelectedChainCandidate!
+                    : DEFAULT_COLOR_THEME_NAME;
+                const restoredAlignedThemeName = options.some(option => option.value === alignedSelectedChainCandidate)
+                    ? alignedSelectedChainCandidate!
+                    : DEFAULT_COLOR_THEME_NAME;
+
+                const restoredAlignedToResidueThemeName = options.some(option => option.value === alignedToSelectedResidueCandidate)
+                    ? alignedToSelectedResidueCandidate!
+                    : DEFAULT_COLOR_THEME_NAME;
+                const restoredAlignedResidueThemeName = options.some(option => option.value === alignedSelectedResidueCandidate)
+                    ? alignedSelectedResidueCandidate!
+                    : DEFAULT_COLOR_THEME_NAME;
 
                 setSelectedColorThemeByMode(prev => ({
                     ...prev,
-                    AlignedTo: options.some(option => option.value === alignedToSelectedCandidate)
-                        ? alignedToSelectedCandidate!
-                        : DEFAULT_COLOR_THEME_NAME,
-                    Aligned: options.some(option => option.value === alignedSelectedCandidate)
-                        ? alignedSelectedCandidate!
-                        : DEFAULT_COLOR_THEME_NAME,
+                    AlignedTo: restoredAlignedToThemeName,
+                    Aligned: restoredAlignedThemeName,
                 }));
+                setSelectedResidueThemeByMode(prev => ({
+                    ...prev,
+                    AlignedTo: restoredAlignedToResidueThemeName,
+                    Aligned: restoredAlignedResidueThemeName,
+                }));
+
+                restoredSelectedThemeByMode.AlignedTo = restoredAlignedToThemeName;
+                restoredSelectedThemeByMode.Aligned = restoredAlignedThemeName;
 
                 const hasCustomThemes = mergedThemes.length > 0;
                 setIsMoleculeAlignedToColoursLoaded(hasCustomThemes);
@@ -5539,19 +6386,31 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             if (uiState?.selections?.alignedTo) {
                 if (typeof uiState.selections.alignedTo.subunit === 'string') setSelectedSubunitAlignedTo(uiState.selections.alignedTo.subunit as any);
                 if (typeof uiState.selections.alignedTo.chainId === 'string') setSelectedChainIdAlignedTo(uiState.selections.alignedTo.chainId);
+                if (typeof uiState.selections.alignedTo.chainId2 === 'string') setSelectedChainIdAlignedTo2(uiState.selections.alignedTo.chainId2);
                 if (Array.isArray((uiState.selections.alignedTo as any).residueIds)) {
                     setSelectedResidueIdsAlignedTo((uiState.selections.alignedTo as any).residueIds.filter((id: unknown) => typeof id === 'string'));
                 } else if (typeof uiState.selections.alignedTo.residueId === 'string') {
                     setSelectedResidueIdAlignedTo(uiState.selections.alignedTo.residueId);
                 }
+                if (Array.isArray((uiState.selections.alignedTo as any).residueIds2)) {
+                    setSelectedResidueIdsAlignedTo2((uiState.selections.alignedTo as any).residueIds2.filter((id: unknown) => typeof id === 'string'));
+                } else if (typeof (uiState.selections.alignedTo as any).residueId2 === 'string') {
+                    setSelectedResidueIdsAlignedTo2([(uiState.selections.alignedTo as any).residueId2]);
+                }
             }
             if (uiState?.selections?.aligned) {
                 if (typeof uiState.selections.aligned.subunit === 'string') setSelectedSubunitAligned(uiState.selections.aligned.subunit as any);
                 if (typeof uiState.selections.aligned.chainId === 'string') setSelectedChainIdAligned(uiState.selections.aligned.chainId);
+                if (typeof uiState.selections.aligned.chainId2 === 'string') setSelectedChainIdAligned2(uiState.selections.aligned.chainId2);
                 if (Array.isArray((uiState.selections.aligned as any).residueIds)) {
                     setSelectedResidueIdsAligned((uiState.selections.aligned as any).residueIds.filter((id: unknown) => typeof id === 'string'));
                 } else if (typeof uiState.selections.aligned.residueId === 'string') {
                     setSelectedResidueIdAligned(uiState.selections.aligned.residueId);
+                }
+                if (Array.isArray((uiState.selections.aligned as any).residueIds2)) {
+                    setSelectedResidueIdsAligned2((uiState.selections.aligned as any).residueIds2.filter((id: unknown) => typeof id === 'string'));
+                } else if (typeof (uiState.selections.aligned as any).residueId2 === 'string') {
+                    setSelectedResidueIdsAligned2([(uiState.selections.aligned as any).residueId2]);
                 }
             }
             if (uiState?.highlights?.alignedTo) {
@@ -5769,6 +6628,19 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 }
             }
 
+            // Re-apply restored selected custom themes after structure refs and
+            // other session state are restored to avoid load-order mismatches.
+            if (restoredSelectedThemeByMode.AlignedTo && restoredSelectedThemeByMode.AlignedTo !== DEFAULT_COLOR_THEME_NAME) {
+                await applyColorThemeNameToModeRepresentations('AlignedTo', restoredSelectedThemeByMode.AlignedTo, {
+                    __themeRevision: nextColorThemeRevision(),
+                });
+            }
+            if (restoredSelectedThemeByMode.Aligned && restoredSelectedThemeByMode.Aligned !== DEFAULT_COLOR_THEME_NAME) {
+                await applyColorThemeNameToModeRepresentations('Aligned', restoredSelectedThemeByMode.Aligned, {
+                    __themeRevision: nextColorThemeRevision(),
+                });
+            }
+
             if (!loadedAny) {
                 alert('Session loaded, but could not automatically reload datasets. Please reload the required files manually.');
             }
@@ -5783,9 +6655,13 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         setSelectedSubunitAlignedTo,
         setSelectedSubunitAligned,
         setSelectedChainIdAlignedTo,
+        setSelectedChainIdAlignedTo2,
         setSelectedChainIdAligned,
+        setSelectedChainIdAligned2,
         setSelectedResidueIdsAlignedTo,
+        setSelectedResidueIdsAlignedTo2,
         setSelectedResidueIdsAligned,
+        setSelectedResidueIdsAligned2,
         setSelectedResidueIdAlignedTo,
         setSelectedResidueIdAligned,
         setChainHighlightOnAlignedTo,
@@ -5819,6 +6695,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         setSelectionDisplayModeFor,
         setDimUnselectedFor,
         setDimUnselectedStrengthFor,
+        applyColorThemeNameToModeRepresentations,
+        nextColorThemeRevision,
     ]);
 
     // Initialize session load modal with the callback
@@ -6067,14 +6945,39 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     otherViewerReady: viewerBReady,
                                     representationType: representationTypeAlignedTo,
                                     setRepresentationType: setRepresentationTypeAlignedTo,
-                                    colorsFile: colorsAlignedToFile,
+                                    colorsFile: chainColorsAlignedToFile,
+                                    chainColorsFile: chainColorsAlignedToFile,
+                                    residueColorsFile: residueColorsAlignedToFile,
                                     isMoleculeColoursLoaded: isMoleculeAlignedToColoursLoaded,
-                                    colorThemeOptions: loadedColorThemes,
+                                    colorMode: colorModeByMode.AlignedTo,
+                                    onColorModeChange: (mode: RepresentationColorMode) => setColorModeByMode(prev => ({ ...prev, AlignedTo: mode })),
+                                    residueTypeColorsById: residueTypeColorsByMode.AlignedTo,
+                                    residueTypeCounts: residueTypeCountsByMode.AlignedTo,
+                                    onResidueTypeColorChange: (residueType: string, color: string) => updateResidueTypeColorInTheme(selectedResidueThemeByMode.AlignedTo, residueType, color, 'AlignedTo'),
+                                    onSaveColorTheme: () => handleSaveColorThemeForMode('AlignedTo'),
+                                    saveColorThemeDisabled: !selectedChainIdAlignedTo,
+                                    colorThemeOptions: chainThemeOptions,
                                     selectedColorThemeName: selectedColorThemeByMode.AlignedTo,
-                                    setSelectedColorThemeName: (themeName: string) => setSelectedColorThemeByMode(prev => ({ ...prev, AlignedTo: themeName })),
-                                    onRemoveColorTheme: () => handleRemoveSelectedColorTheme('AlignedTo'),
+                                    setSelectedColorThemeName: (themeName: string) => handleSelectThemeForMode('AlignedTo', 'chain', themeName),
+                                    onRemoveColorTheme: () => handleRemoveSelectedColorTheme('AlignedTo', 'chain'),
                                     removeColorThemeDisabled: selectedColorThemeByMode.AlignedTo === DEFAULT_COLOR_THEME_NAME
                                         || isThemeInUse(selectedColorThemeByMode.AlignedTo),
+                                    chainThemeOptions,
+                                    selectedChainThemeName: selectedColorThemeByMode.AlignedTo,
+                                    setSelectedChainThemeName: (themeName: string) => handleSelectThemeForMode('AlignedTo', 'chain', themeName),
+                                    onSaveChainTheme: () => handleSaveColorThemeForMode('AlignedTo'),
+                                    saveChainThemeDisabled: false,
+                                    onRemoveChainTheme: () => handleRemoveSelectedColorTheme('AlignedTo', 'chain'),
+                                    removeChainThemeDisabled: selectedColorThemeByMode.AlignedTo === DEFAULT_COLOR_THEME_NAME
+                                        || isThemeInUse(selectedColorThemeByMode.AlignedTo),
+                                    residueThemeOptions,
+                                    selectedResidueThemeName: selectedResidueThemeByMode.AlignedTo,
+                                    setSelectedResidueThemeName: (themeName: string) => handleSelectThemeForMode('AlignedTo', 'residue-type', themeName),
+                                    onSaveResidueTheme: () => handleSaveResidueThemeForMode('AlignedTo'),
+                                    saveResidueThemeDisabled: selectedResidueThemeByMode.AlignedTo === DEFAULT_COLOR_THEME_NAME && residueTypeColorsByMode.AlignedTo.size === 0,
+                                    onRemoveResidueTheme: () => handleRemoveSelectedColorTheme('AlignedTo', 'residue-type'),
+                                    removeResidueThemeDisabled: selectedResidueThemeByMode.AlignedTo === DEFAULT_COLOR_THEME_NAME
+                                        || isThemeInUse(selectedResidueThemeByMode.AlignedTo),
                                     structureRef: structureRefAAlignedTo,
                                     otherStructureRef: structureRefBAlignedTo,
                                     selectedSubunit: selectedSubunitAlignedTo,
@@ -6090,6 +6993,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     subunitZoomDisabled: selectedSubunitChainIdsAlignedTo.length === 0,
                                     subunitToChainIds: subunitToChainIdsAlignedTo,
                                     chainInfo: chainInfoAlignedTo,
+                                    chainColorsById: chainColorsByMode.AlignedTo,
+                                    onChainColorChange: (chainId: string, color: string) => updateChainColorInTheme(getCurrentColorThemeNameForMode('AlignedTo'), chainId, color),
                                     selectedChainId: selectedChainIdAlignedTo,
                                     setSelectedChainId: handleSelectChainIdAlignedTo,
                                     selectedChainId2: selectedChainIdAlignedTo2,
@@ -6197,14 +7102,39 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     otherViewerReady: viewerBReady,
                                     representationType: representationTypeAligned,
                                     setRepresentationType: setRepresentationTypeAligned,
-                                    colorsFile: colorsAlignedFile,
+                                    colorsFile: chainColorsAlignedFile,
+                                    chainColorsFile: chainColorsAlignedFile,
+                                    residueColorsFile: residueColorsAlignedFile,
                                     isMoleculeColoursLoaded: isMoleculeAlignedColoursLoaded,
-                                    colorThemeOptions: loadedColorThemes,
+                                    colorMode: colorModeByMode.Aligned,
+                                    onColorModeChange: (mode: RepresentationColorMode) => setColorModeByMode(prev => ({ ...prev, Aligned: mode })),
+                                    residueTypeColorsById: residueTypeColorsByMode.Aligned,
+                                    residueTypeCounts: residueTypeCountsByMode.Aligned,
+                                    onResidueTypeColorChange: (residueType: string, color: string) => updateResidueTypeColorInTheme(selectedResidueThemeByMode.Aligned, residueType, color, 'Aligned'),
+                                    onSaveColorTheme: () => handleSaveColorThemeForMode('Aligned'),
+                                    saveColorThemeDisabled: !selectedChainIdAligned,
+                                    colorThemeOptions: chainThemeOptions,
                                     selectedColorThemeName: selectedColorThemeByMode.Aligned,
-                                    setSelectedColorThemeName: (themeName: string) => setSelectedColorThemeByMode(prev => ({ ...prev, Aligned: themeName })),
-                                    onRemoveColorTheme: () => handleRemoveSelectedColorTheme('Aligned'),
+                                    setSelectedColorThemeName: (themeName: string) => handleSelectThemeForMode('Aligned', 'chain', themeName),
+                                    onRemoveColorTheme: () => handleRemoveSelectedColorTheme('Aligned', 'chain'),
                                     removeColorThemeDisabled: selectedColorThemeByMode.Aligned === DEFAULT_COLOR_THEME_NAME
                                         || isThemeInUse(selectedColorThemeByMode.Aligned),
+                                    chainThemeOptions,
+                                    selectedChainThemeName: selectedColorThemeByMode.Aligned,
+                                    setSelectedChainThemeName: (themeName: string) => handleSelectThemeForMode('Aligned', 'chain', themeName),
+                                    onSaveChainTheme: () => handleSaveColorThemeForMode('Aligned'),
+                                    saveChainThemeDisabled: false,
+                                    onRemoveChainTheme: () => handleRemoveSelectedColorTheme('Aligned', 'chain'),
+                                    removeChainThemeDisabled: selectedColorThemeByMode.Aligned === DEFAULT_COLOR_THEME_NAME
+                                        || isThemeInUse(selectedColorThemeByMode.Aligned),
+                                    residueThemeOptions,
+                                    selectedResidueThemeName: selectedResidueThemeByMode.Aligned,
+                                    setSelectedResidueThemeName: (themeName: string) => handleSelectThemeForMode('Aligned', 'residue-type', themeName),
+                                    onSaveResidueTheme: () => handleSaveResidueThemeForMode('Aligned'),
+                                    saveResidueThemeDisabled: selectedResidueThemeByMode.Aligned === DEFAULT_COLOR_THEME_NAME && residueTypeColorsByMode.Aligned.size === 0,
+                                    onRemoveResidueTheme: () => handleRemoveSelectedColorTheme('Aligned', 'residue-type'),
+                                    removeResidueThemeDisabled: selectedResidueThemeByMode.Aligned === DEFAULT_COLOR_THEME_NAME
+                                        || isThemeInUse(selectedResidueThemeByMode.Aligned),
                                     structureRef: structureRefAAligned,
                                     otherStructureRef: structureRefBAligned,
                                     selectedSubunit: selectedSubunitAligned,
@@ -6220,6 +7150,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     subunitZoomDisabled: selectedSubunitChainIdsAligned.length === 0,
                                     subunitToChainIds: subunitToChainIdsAligned,
                                     chainInfo: chainInfoAligned,
+                                    chainColorsById: chainColorsByMode.Aligned,
+                                    onChainColorChange: (chainId: string, color: string) => updateChainColorInTheme(getCurrentColorThemeNameForMode('Aligned'), chainId, color),
                                     selectedChainId: selectedChainIdAligned,
                                     setSelectedChainId: handleSelectChainIdAligned,
                                     selectedChainId2: selectedChainIdAligned2,
@@ -6415,14 +7347,39 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     otherViewerReady: viewerAReady,
                                     representationType: representationTypeAlignedTo,
                                     setRepresentationType: setRepresentationTypeAlignedTo,
-                                    colorsFile: colorsAlignedToFile,
+                                    colorsFile: chainColorsAlignedToFile,
+                                    chainColorsFile: chainColorsAlignedToFile,
+                                    residueColorsFile: residueColorsAlignedToFile,
                                     isMoleculeColoursLoaded: isMoleculeAlignedToColoursLoaded,
-                                    colorThemeOptions: loadedColorThemes,
+                                    colorMode: colorModeByMode.AlignedTo,
+                                    onColorModeChange: (mode: RepresentationColorMode) => setColorModeByMode(prev => ({ ...prev, AlignedTo: mode })),
+                                    residueTypeColorsById: residueTypeColorsByMode.AlignedTo,
+                                    residueTypeCounts: residueTypeCountsByMode.AlignedTo,
+                                    onResidueTypeColorChange: (residueType: string, color: string) => updateResidueTypeColorInTheme(selectedResidueThemeByMode.AlignedTo, residueType, color, 'AlignedTo'),
+                                    onSaveColorTheme: () => handleSaveColorThemeForMode('AlignedTo'),
+                                    saveColorThemeDisabled: !selectedChainIdAlignedTo,
+                                    colorThemeOptions: chainThemeOptions,
                                     selectedColorThemeName: selectedColorThemeByMode.AlignedTo,
-                                    setSelectedColorThemeName: (themeName: string) => setSelectedColorThemeByMode(prev => ({ ...prev, AlignedTo: themeName })),
-                                    onRemoveColorTheme: () => handleRemoveSelectedColorTheme('AlignedTo'),
+                                    setSelectedColorThemeName: (themeName: string) => handleSelectThemeForMode('AlignedTo', 'chain', themeName),
+                                    onRemoveColorTheme: () => handleRemoveSelectedColorTheme('AlignedTo', 'chain'),
                                     removeColorThemeDisabled: selectedColorThemeByMode.AlignedTo === DEFAULT_COLOR_THEME_NAME
                                         || isThemeInUse(selectedColorThemeByMode.AlignedTo),
+                                    chainThemeOptions,
+                                    selectedChainThemeName: selectedColorThemeByMode.AlignedTo,
+                                    setSelectedChainThemeName: (themeName: string) => handleSelectThemeForMode('AlignedTo', 'chain', themeName),
+                                    onSaveChainTheme: () => handleSaveColorThemeForMode('AlignedTo'),
+                                    saveChainThemeDisabled: false,
+                                    onRemoveChainTheme: () => handleRemoveSelectedColorTheme('AlignedTo', 'chain'),
+                                    removeChainThemeDisabled: selectedColorThemeByMode.AlignedTo === DEFAULT_COLOR_THEME_NAME
+                                        || isThemeInUse(selectedColorThemeByMode.AlignedTo),
+                                    residueThemeOptions,
+                                    selectedResidueThemeName: selectedResidueThemeByMode.AlignedTo,
+                                    setSelectedResidueThemeName: (themeName: string) => handleSelectThemeForMode('AlignedTo', 'residue-type', themeName),
+                                    onSaveResidueTheme: () => handleSaveResidueThemeForMode('AlignedTo'),
+                                    saveResidueThemeDisabled: selectedResidueThemeByMode.AlignedTo === DEFAULT_COLOR_THEME_NAME && residueTypeColorsByMode.AlignedTo.size === 0,
+                                    onRemoveResidueTheme: () => handleRemoveSelectedColorTheme('AlignedTo', 'residue-type'),
+                                    removeResidueThemeDisabled: selectedResidueThemeByMode.AlignedTo === DEFAULT_COLOR_THEME_NAME
+                                        || isThemeInUse(selectedResidueThemeByMode.AlignedTo),
                                     structureRef: structureRefBAlignedTo,
                                     otherStructureRef: structureRefAAlignedTo,
                                     selectedSubunit: selectedSubunitAlignedTo,
@@ -6438,6 +7395,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     subunitZoomDisabled: selectedSubunitChainIdsAlignedTo.length === 0,
                                     subunitToChainIds: subunitToChainIdsAlignedTo,
                                     chainInfo: chainInfoAlignedTo,
+                                    chainColorsById: chainColorsByMode.AlignedTo,
+                                    onChainColorChange: (chainId: string, color: string) => updateChainColorInTheme(getCurrentColorThemeNameForMode('AlignedTo'), chainId, color),
                                     selectedChainId: selectedChainIdAlignedTo,
                                     setSelectedChainId: handleSelectChainIdAlignedTo,
                                     selectedChainId2: selectedChainIdAlignedTo2,
@@ -6545,14 +7504,39 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     otherViewerReady: viewerAReady,
                                     representationType: representationTypeAligned,
                                     setRepresentationType: setRepresentationTypeAligned,
-                                    colorsFile: colorsAlignedFile,
+                                    colorsFile: chainColorsAlignedFile,
+                                    chainColorsFile: chainColorsAlignedFile,
+                                    residueColorsFile: residueColorsAlignedFile,
                                     isMoleculeColoursLoaded: isMoleculeAlignedColoursLoaded,
-                                    colorThemeOptions: loadedColorThemes,
+                                    colorMode: colorModeByMode.Aligned,
+                                    onColorModeChange: (mode: RepresentationColorMode) => setColorModeByMode(prev => ({ ...prev, Aligned: mode })),
+                                    residueTypeColorsById: residueTypeColorsByMode.Aligned,
+                                    residueTypeCounts: residueTypeCountsByMode.Aligned,
+                                    onResidueTypeColorChange: (residueType: string, color: string) => updateResidueTypeColorInTheme(selectedResidueThemeByMode.Aligned, residueType, color, 'Aligned'),
+                                    onSaveColorTheme: () => handleSaveColorThemeForMode('Aligned'),
+                                    saveColorThemeDisabled: !selectedChainIdAligned,
+                                    colorThemeOptions: chainThemeOptions,
                                     selectedColorThemeName: selectedColorThemeByMode.Aligned,
-                                    setSelectedColorThemeName: (themeName: string) => setSelectedColorThemeByMode(prev => ({ ...prev, Aligned: themeName })),
-                                    onRemoveColorTheme: () => handleRemoveSelectedColorTheme('Aligned'),
+                                    setSelectedColorThemeName: (themeName: string) => handleSelectThemeForMode('Aligned', 'chain', themeName),
+                                    onRemoveColorTheme: () => handleRemoveSelectedColorTheme('Aligned', 'chain'),
                                     removeColorThemeDisabled: selectedColorThemeByMode.Aligned === DEFAULT_COLOR_THEME_NAME
                                         || isThemeInUse(selectedColorThemeByMode.Aligned),
+                                    chainThemeOptions,
+                                    selectedChainThemeName: selectedColorThemeByMode.Aligned,
+                                    setSelectedChainThemeName: (themeName: string) => handleSelectThemeForMode('Aligned', 'chain', themeName),
+                                    onSaveChainTheme: () => handleSaveColorThemeForMode('Aligned'),
+                                    saveChainThemeDisabled: false,
+                                    onRemoveChainTheme: () => handleRemoveSelectedColorTheme('Aligned', 'chain'),
+                                    removeChainThemeDisabled: selectedColorThemeByMode.Aligned === DEFAULT_COLOR_THEME_NAME
+                                        || isThemeInUse(selectedColorThemeByMode.Aligned),
+                                    residueThemeOptions,
+                                    selectedResidueThemeName: selectedResidueThemeByMode.Aligned,
+                                    setSelectedResidueThemeName: (themeName: string) => handleSelectThemeForMode('Aligned', 'residue-type', themeName),
+                                    onSaveResidueTheme: () => handleSaveResidueThemeForMode('Aligned'),
+                                    saveResidueThemeDisabled: selectedResidueThemeByMode.Aligned === DEFAULT_COLOR_THEME_NAME && residueTypeColorsByMode.Aligned.size === 0,
+                                    onRemoveResidueTheme: () => handleRemoveSelectedColorTheme('Aligned', 'residue-type'),
+                                    removeResidueThemeDisabled: selectedResidueThemeByMode.Aligned === DEFAULT_COLOR_THEME_NAME
+                                        || isThemeInUse(selectedResidueThemeByMode.Aligned),
                                     structureRef: structureRefBAligned,
                                     otherStructureRef: structureRefAAligned,
                                     selectedSubunit: selectedSubunitAligned,
@@ -6568,6 +7552,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     subunitZoomDisabled: selectedSubunitChainIdsAligned.length === 0,
                                     subunitToChainIds: subunitToChainIdsAligned,
                                     chainInfo: chainInfoAligned,
+                                    chainColorsById: chainColorsByMode.Aligned,
+                                    onChainColorChange: (chainId: string, color: string) => updateChainColorInTheme(getCurrentColorThemeNameForMode('Aligned'), chainId, color),
                                     selectedChainId: selectedChainIdAligned,
                                     setSelectedChainId: handleSelectChainIdAligned,
                                     selectedChainId2: selectedChainIdAligned2,

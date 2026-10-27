@@ -37,13 +37,36 @@ export interface LoadDataRowPropsInput {
 	otherViewerReady: boolean;
 	representationType: any;
 	setRepresentationType: (val: any) => void;
-	colorsFile: any;
+	colorsFile?: any;
+	chainColorsFile?: any;
+	residueColorsFile?: any;
 	isMoleculeColoursLoaded: boolean;
+	colorMode?: 'chain' | 'residue-type';
+	onColorModeChange?: (mode: 'chain' | 'residue-type') => void;
+	residueTypeColorsById?: Map<string, string>;
+	residueTypeCounts?: Array<{ type: string; count: number }>;
+	onResidueTypeColorChange?: (residueType: string, color: string) => void;
+	onSaveColorTheme?: () => void;
+	saveColorThemeDisabled?: boolean;
 	colorThemeOptions?: Array<{ value: string; label: string }>;
 	selectedColorThemeName?: string;
 	setSelectedColorThemeName?: (themeName: string) => void;
 	onRemoveColorTheme?: () => void;
 	removeColorThemeDisabled?: boolean;
+	onSaveChainTheme?: () => void;
+	saveChainThemeDisabled?: boolean;
+	chainThemeOptions?: Array<{ value: string; label: string }>;
+	selectedChainThemeName?: string;
+	setSelectedChainThemeName?: (themeName: string) => void;
+	onRemoveChainTheme?: () => void;
+	removeChainThemeDisabled?: boolean;
+	onSaveResidueTheme?: () => void;
+	saveResidueThemeDisabled?: boolean;
+	residueThemeOptions?: Array<{ value: string; label: string }>;
+	selectedResidueThemeName?: string;
+	setSelectedResidueThemeName?: (themeName: string) => void;
+	onRemoveResidueTheme?: () => void;
+	removeResidueThemeDisabled?: boolean;
 	structureRef: any;
 	otherStructureRef: any;
 	selectedSubunit: any;
@@ -59,6 +82,8 @@ export interface LoadDataRowPropsInput {
 	subunitZoomDisabled: boolean;
 	subunitToChainIds: any;
 	chainInfo: any;
+	chainColorsById?: Map<string, string>;
+	onChainColorChange?: (chainId: string, color: string) => void;
 	selectedChainId: any;
 	setSelectedChainId: (val: any) => void;
 	selectedChainId2?: any;
@@ -178,12 +203,35 @@ export function getLoadDataRowProps({
 	representationType,
 	setRepresentationType,
 	colorsFile,
+	chainColorsFile,
+	residueColorsFile,
 	isMoleculeColoursLoaded,
+	colorMode,
+	onColorModeChange,
+	residueTypeColorsById,
+	residueTypeCounts,
+	onResidueTypeColorChange,
+	onSaveColorTheme,
+	saveColorThemeDisabled,
 	colorThemeOptions,
 	selectedColorThemeName,
 	setSelectedColorThemeName,
 	onRemoveColorTheme,
 	removeColorThemeDisabled,
+	onSaveChainTheme,
+	saveChainThemeDisabled,
+	chainThemeOptions,
+	selectedChainThemeName,
+	setSelectedChainThemeName,
+	onRemoveChainTheme,
+	removeChainThemeDisabled,
+	onSaveResidueTheme,
+	saveResidueThemeDisabled,
+	residueThemeOptions,
+	selectedResidueThemeName,
+	setSelectedResidueThemeName,
+	onRemoveResidueTheme,
+	removeResidueThemeDisabled,
 	structureRef,
 	otherStructureRef,
 	selectedSubunit,
@@ -199,6 +247,8 @@ export function getLoadDataRowProps({
 	subunitZoomDisabled,
 	subunitToChainIds,
 	chainInfo,
+	chainColorsById,
+	onChainColorChange,
 	selectedChainId,
 	setSelectedChainId,
 	selectedChainId2,
@@ -342,15 +392,45 @@ export function getLoadDataRowProps({
 				disabled={Aligned === 'AlignedTo' ? !isMoleculeAlignedToLoaded : !isMoleculeAlignedLoaded}
 			/>
 		),
-		onAddColorsClick: colorsFile.handleButtonClick,
+		onAddColorsClick: colorsFile?.handleButtonClick,
+		onLoadChainColorsClick: (chainColorsFile ?? colorsFile)?.handleButtonClick,
+		onChainColorsFileChange: (chainColorsFile ?? colorsFile)?.handleFileChange,
+		chainColorsInputRef: (chainColorsFile ?? colorsFile)?.inputRef,
+		onLoadResidueColorsClick: (residueColorsFile ?? colorsFile)?.handleButtonClick,
+		onResidueColorsFileChange: (residueColorsFile ?? colorsFile)?.handleFileChange,
+		residueColorsInputRef: (residueColorsFile ?? colorsFile)?.inputRef,
 			addColorsDisabled: Aligned === 'AlignedTo' ? !isMoleculeAlignedToLoaded : !isMoleculeAlignedLoaded,
+			colorMode,
+			onColorModeChange,
+			residueTypeColorsById,
+			residueTypeCounts,
+			onResidueTypeColorChange,
+			onSaveColorTheme,
+			saveColorThemeDisabled,
 		colorThemeOptions,
 		selectedColorThemeName,
 		onSelectedColorThemeNameChange: setSelectedColorThemeName,
 		onRemoveColorTheme,
 		removeColorThemeDisabled,
+		onSaveChainTheme,
+		saveChainThemeDisabled,
+		chainThemeOptions,
+		selectedChainThemeName,
+		onSelectedChainThemeNameChange: setSelectedChainThemeName,
+		onRemoveChainTheme,
+		removeChainThemeDisabled,
+		onSaveResidueTheme,
+		saveResidueThemeDisabled,
+		residueThemeOptions,
+		selectedResidueThemeName,
+		onSelectedResidueThemeNameChange: setSelectedResidueThemeName,
+		onRemoveResidueTheme,
+		removeResidueThemeDisabled,
 		onAddRepresentationClick: async () => {
-			const colorThemeName = selectedColorThemeName || (isMoleculeColoursLoaded ? Aligned + '-custom-chain-colors' : 'default');
+			const selectedThemeByMode = colorMode === 'residue-type'
+				? selectedResidueThemeName
+				: selectedChainThemeName ?? selectedColorThemeName;
+			const colorThemeName = selectedThemeByMode || (isMoleculeColoursLoaded ? Aligned + '-custom-chain-colors' : 'default');
 			const colorTheme = { name: colorThemeName, params: {} };
 			const repId = (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
 			const thisCameraBefore = captureCameraSnapshot(molstar);
@@ -412,8 +492,8 @@ export function getLoadDataRowProps({
 			restoreCameraSnapshot(otherCameraBefore);
 		},
 		addRepresentationDisabled: Aligned === 'AlignedTo' ? (!isMoleculeAlignedToLoaded || !representationType) : (!isMoleculeAlignedLoaded || !representationType),
-		colorsInputRef: colorsFile.inputRef,
-		onColorsFileChange: colorsFile.handleFileChange,
+		colorsInputRef: colorsFile?.inputRef,
+		onColorsFileChange: colorsFile?.handleFileChange,
 		selectedSubunit,
 		onSelectSubunit: setSelectedSubunit,
 		subunitZoomLabel,
@@ -427,6 +507,8 @@ export function getLoadDataRowProps({
 		subunitZoomDisabled,
 		subunitSelectDisabled: !isMoleculeAlignedToLoaded,
 		chainInfo,
+		chainColorsById,
+		onChainColorChange,
 		selectedChainId,
 		onSelectChainId: setSelectedChainId,
 		selectedChainId2,
