@@ -21,6 +21,7 @@ Welcome to the Ribocode Developer Guide!
 - [Re-alignment Implementation Notes](#re-alignment-implementation-notes)
   - [Cache and State Hygiene](#cache-and-state-hygiene)
 - [Mol*](#mol*)
+- [Mol* Submodule Workflow](#mol-submodule-workflow)
 - [Highlighting and Selection Colouring](#highlighting-and-selection-colouring)
 - [Documentation](#documentation)
   - [How to Generate Documentation](#how-to-generate-documentation)
@@ -80,6 +81,11 @@ You will need [Git](https://git-scm.com/) to clone the repository and [Node](htt
 
 Please also fork https://github.com/ribocode-slola/ribocode1 and https://github.com/ribocode-slola/molstar, and then clone and use your forks of the ribocode-slola forks.
 
+Note on submodule URL policy:
+- The repository-tracked `.gitmodules` must point to the canonical Ribocode Mol* repository (`https://github.com/ribocode-slola/molstar`).
+- Do not commit personal-fork URLs in `.gitmodules`.
+- Use local submodule remotes to push to your fork.
+
 If you are a member of the Ribocode project and want help getting set up with a development environment or help contributing via a `pull request`, please let it be known.
 
 
@@ -115,6 +121,47 @@ npm run build:lib
 cd ../..
 npm install
 ```
+
+## Mol* Submodule Workflow
+
+Ribocode tracks Mol* as a git submodule at `packages/molstar`.
+
+- Repository default (`.gitmodules`):
+  - `url = https://github.com/ribocode-slola/molstar`
+- Developer push target:
+  - Configure your local `origin` in `packages/molstar` to your own fork.
+- Upstream sync target:
+  - Keep `upstream` set to `https://github.com/ribocode-slola/molstar`.
+
+Recommended one-time local setup:
+
+```sh
+# Initialize/update submodule using canonical URL from .gitmodules
+git submodule sync --recursive
+git submodule update --init --recursive
+
+# In submodule, set your fork as origin (push target)
+cd packages/molstar
+git remote set-url origin https://github.com/<your-github-user>/molstar.git
+
+# Ensure canonical repo is available as upstream (pull/rebase target)
+git remote add upstream https://github.com/ribocode-slola/molstar.git 2>/dev/null || true
+git fetch upstream
+```
+
+Daily update pattern:
+
+```sh
+cd packages/molstar
+git fetch upstream
+git checkout main
+git rebase upstream/main
+git push origin main
+```
+
+Important:
+- Avoid editing `.gitmodules` for personal workflow changes.
+- If `.gitmodules` changes in a PR, verify it still points to the canonical Ribocode Mol* URL.
 
 
 ### Build and run locally
