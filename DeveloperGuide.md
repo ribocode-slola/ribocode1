@@ -720,25 +720,31 @@ npx playwright install
 
 ### Running E2E Tests
 
-and E2E tests with:
-
 **Note:** Playwright E2E tests and unit/integration tests (run with Vitest) should be run separately. E2E tests require a real browser and dev server, are slower, and have different dependencies and environments than fast, isolated unit/integration tests. Keeping them separate ensures clarity, speed, and easier debugging.
 
 **Summary:**
-- Start the dev server with `npm run dev` for local development.
 - Run all unit/integration tests with `npm test`.
-- Run all E2E tests with `npm run test:e2e` (the dev server is auto-started by Playwright if needed).
+- Run all E2E tests in strict mode with `npm run test:e2e`.
+- Run all E2E tests while reusing an already-running dev server with `npm run test:e2e:reuse`.
+
+Playwright is configured with a `webServer` entry and starts `npm run dev` on port `5173`.
+- `npm run test:e2e` uses strict mode (`reuseExistingServer: false`) and fails if `5173` is already in use.
+- `npm run test:e2e:reuse` sets `PW_E2E_REUSE_SERVER=1` and reuses an existing dev server on `5173`.
 
 - To run all E2E tests:
   ```sh
   npm run test:e2e
+  # reuse a running dev server (useful during local development)
+  npm run test:e2e:reuse
   # or
   npx playwright test
   ```
 - To run a specific E2E test file:
-  **Good news!** Playwright is now configured to automatically start the Vite dev server using its `webServer` setting. You do **not** need to manually start the dev server before running E2E tests—just run the E2E test command and Playwright will handle it for you.
-  npm run test:e2e:single -- e2e/session-load.e2e.spec.ts
-  **Tip:** You can automate dev server startup by adding a `webServer` section to `playwright.config.ts`. See [Playwright webServer docs](https://playwright.dev/docs/test-advanced#launching-a-development-web-server-during-the-tests) for details.
+  ```sh
+  npm run test:e2e -- e2e/session-load.e2e.spec.ts
+  # or (reuse mode)
+  npm run test:e2e:reuse -- e2e/session-load.e2e.spec.ts
+  # or
   npx playwright test e2e/session-load.e2e.spec.ts
   ```
 - To open the interactive Playwright Test UI:
@@ -752,8 +758,9 @@ and E2E tests with:
 
 The following scripts are available in `package.json`:
 
-- `test:e2e` – Run all Playwright E2E tests
-- `test:e2e:single` – Run a single E2E test file (pass the file as an argument)
+- `test:e2e` – Run all Playwright E2E tests (strict server mode)
+- `test:e2e:reuse` – Run all Playwright E2E tests while reusing an existing dev server on port `5173`
+- `test:e2e:session` – Run the session-load E2E spec (`e2e/session-load.e2e.spec.ts`)
 - `test:e2e:ui` – Open the Playwright Test UI
 
 
