@@ -45,6 +45,15 @@ async function saveThemeCsv(page: Page): Promise<Map<string, string>> {
   return map;
 }
 
+async function setChainColorDraft(page: Page, chainId: string, color: string) {
+  await page.locator(`#viewer-column-A-alignedto-chain-color-${chainId}`).evaluate((element, value) => {
+    const input = element as HTMLInputElement;
+    input.value = value as string;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  }, color);
+}
+
 test('LU chain supports two successive Apply actions using user-style color input interactions', async ({ page }) => {
   test.setTimeout(120000);
 
@@ -52,8 +61,8 @@ test('LU chain supports two successive Apply actions using user-style color inpu
   await openControls(page);
   await selectLuChain(page);
 
-  const colorInput = page.locator('#viewer-column-A-alignedto-selected-chain-color');
-  const applyButton = page.locator('#viewer-column-A-alignedto-selected-chain-color-apply-btn');
+  const colorInput = page.locator('#viewer-column-A-alignedto-chain-color-LU');
+  const applyButton = page.locator('#viewer-column-A-alignedto-chain-color-LU-apply-btn');
 
   await expect(colorInput).toBeVisible();
   await expect(applyButton).toBeVisible();
@@ -61,15 +70,18 @@ test('LU chain supports two successive Apply actions using user-style color inpu
   const initial = (await colorInput.inputValue()).toUpperCase();
   expect(initial).not.toBe('#CCCCCC');
 
-  await colorInput.fill('#11aa33');
-  await expect(colorInput).toHaveValue('#11aa33');
+  const firstColor = initial === '#11AA33' ? '#CC4411' : '#11AA33';
+  const secondColor = firstColor === '#CC4411' ? '#3366CC' : '#CC4411';
+
+  await setChainColorDraft(page, 'LU', firstColor);
+  await expect(colorInput).toHaveValue(firstColor.toLowerCase());
   await applyButton.click();
   const afterFirst = await saveThemeCsv(page);
-  expect(afterFirst.get('LU')).toBe('#11AA33');
+  expect(afterFirst.get('LU')).toBe(firstColor);
 
-  await colorInput.fill('#cc4411');
-  await expect(colorInput).toHaveValue('#cc4411');
+  await setChainColorDraft(page, 'LU', secondColor);
+  await expect(colorInput).toHaveValue(secondColor.toLowerCase());
   await applyButton.click();
   const afterSecond = await saveThemeCsv(page);
-  expect(afterSecond.get('LU')).toBe('#CC4411');
+  expect(afterSecond.get('LU')).toBe(secondColor);
 });

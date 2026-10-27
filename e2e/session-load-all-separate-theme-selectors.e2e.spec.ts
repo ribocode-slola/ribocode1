@@ -20,10 +20,10 @@ async function openRepresentationControls(page: Page) {
     await expect(toggle).toBeVisible({ timeout: 20000 });
   }
 
-  const chainThemeSelect = page.locator('#viewer-column-A-alignedto-chain-colour-theme-select');
-  if (!(await chainThemeSelect.isVisible())) {
+  const colorModeSelect = page.locator('#viewer-column-A-alignedto-color-mode-select');
+  if (!(await colorModeSelect.isVisible())) {
     await toggle.click();
-    await expect(chainThemeSelect).toBeVisible({ timeout: 20000 });
+    await expect(colorModeSelect).toBeVisible({ timeout: 20000 });
   }
 }
 
@@ -42,6 +42,9 @@ async function uploadChainTheme(page: Page) {
 }
 
 async function uploadResidueTheme(page: Page) {
+  await page.selectOption('#viewer-column-A-alignedto-color-mode-select', 'residue-type');
+  await expect(page.locator('#viewer-column-A-alignedto-residue-colours-file-input')).toBeAttached({ timeout: 10000 });
+
   const content = ['residue_type,color', 'ALA,#CC5500', 'GLY,#0088AA'].join('\n');
   await page.setInputFiles('#viewer-column-A-alignedto-residue-colours-file-input', {
     name: 'residue-theme-e2e.csv',
@@ -85,7 +88,13 @@ test('Save All/Load All restores separate chain and residue theme selections', a
   await uploadChainTheme(page);
   await uploadResidueTheme(page);
 
+  await page.selectOption('#viewer-column-A-alignedto-color-mode-select', 'chain');
+  await expect(page.locator('#viewer-column-A-alignedto-chain-colour-theme-select')).toBeVisible({ timeout: 10000 });
+
   const chainThemeValueBefore = await page.locator('#viewer-column-A-alignedto-chain-colour-theme-select').inputValue();
+
+  await page.selectOption('#viewer-column-A-alignedto-color-mode-select', 'residue-type');
+  await expect(page.locator('#viewer-column-A-alignedto-residue-colour-theme-select')).toBeVisible({ timeout: 10000 });
   const residueThemeValueBefore = await page.locator('#viewer-column-A-alignedto-residue-colour-theme-select').inputValue();
 
   expect(chainThemeValueBefore).not.toBe('default');
@@ -100,8 +109,11 @@ test('Save All/Load All restores separate chain and residue theme selections', a
   await loadAllFromSession(page, saved.path);
   await openRepresentationControls(page);
 
+  await page.selectOption('#viewer-column-A-alignedto-color-mode-select', 'chain');
   await expect.poll(async () => page.locator('#viewer-column-A-alignedto-chain-colour-theme-select').inputValue(), { timeout: 20000 })
     .toBe(chainThemeValueBefore);
+
+  await page.selectOption('#viewer-column-A-alignedto-color-mode-select', 'residue-type');
   await expect.poll(async () => page.locator('#viewer-column-A-alignedto-residue-colour-theme-select').inputValue(), { timeout: 20000 })
     .toBe(residueThemeValueBefore);
 });

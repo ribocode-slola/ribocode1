@@ -29,8 +29,8 @@ async function openAlignedToControls(page: Page) {
   }
 }
 
-async function ensureSelectedChainColorControlVisible(page: Page) {
-  const selectedChainColor = page.locator('#viewer-column-A-alignedto-selected-chain-color');
+async function ensureSelectedChainColorControlVisible(page: Page, chainId: string) {
+  const selectedChainColor = page.locator(`#viewer-column-A-alignedto-chain-color-${chainId}`);
   if (await selectedChainColor.isVisible()) return;
   await page.click('#viewer-column-A-alignedto-representation-controls-toggle-btn');
   await expect(selectedChainColor).toBeVisible({ timeout: 20000 });
@@ -55,14 +55,14 @@ async function selectTargetChain(page: Page): Promise<string> {
   return selectedChain;
 }
 
-async function setSelectedChainColor(page: Page, color: string) {
-  await page.locator('#viewer-column-A-alignedto-selected-chain-color').evaluate((element, value) => {
+async function setSelectedChainColor(page: Page, chainId: string, color: string) {
+  await page.locator(`#viewer-column-A-alignedto-chain-color-${chainId}`).evaluate((element, value) => {
     const input = element as HTMLInputElement;
     input.value = value as string;
     input.dispatchEvent(new Event('input', { bubbles: true }));
     input.dispatchEvent(new Event('change', { bubbles: true }));
   }, color);
-  await page.click('#viewer-column-A-alignedto-selected-chain-color-apply-btn');
+  await page.click(`#viewer-column-A-alignedto-chain-color-${chainId}-apply-btn`);
 }
 
 async function saveThemeCsv(page: Page): Promise<Map<string, string>> {
@@ -110,10 +110,10 @@ test('Save All and Load All preserves selected-chain colour and rendered theme f
   await openAlignedToControls(page);
 
   const selectedChain = await selectTargetChain(page);
-  await ensureSelectedChainColorControlVisible(page);
+  await ensureSelectedChainColorControlVisible(page, selectedChain);
   const chosenColor = '#12AB34';
 
-  await setSelectedChainColor(page, chosenColor);
+  await setSelectedChainColor(page, selectedChain, chosenColor);
   const beforeSaveTheme = await saveThemeCsv(page);
   expect(beforeSaveTheme.get(selectedChain)).toBe(chosenColor);
 
@@ -122,10 +122,10 @@ test('Save All and Load All preserves selected-chain colour and rendered theme f
 
   await openAlignedToControls(page);
   await expect(page.locator('#viewer-column-A-alignedto-selected-chain-label')).toContainText(selectedChain, { timeout: 15000 });
-  await ensureSelectedChainColorControlVisible(page);
+  await ensureSelectedChainColorControlVisible(page, selectedChain);
 
   await expect.poll(async () => {
-    const value = await page.locator('#viewer-column-A-alignedto-selected-chain-color').inputValue();
+    const value = await page.locator(`#viewer-column-A-alignedto-chain-color-${selectedChain}`).inputValue();
     return value.toUpperCase();
   }, { timeout: 20000 }).toBe(chosenColor);
 
