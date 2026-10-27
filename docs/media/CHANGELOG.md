@@ -1,3 +1,12 @@
+## [v0.19.0] - 2026-10-26
+Release summary: this minor release fixes session reload fidelity for selected-chain colour state so control selection and rendered chain colouring restore identically, and adds stronger regression coverage for session round-trips.
+- Fixed a session round-trip mismatch where selected-chain colour controls and rendered chain colours could diverge after load; custom theme selection and applied chain colouring now restore in parity.
+- Fixed session `uiState` selection persistence/restore for second chain slot state (`chainId2`, `residueId2`, `residueIds2`) so `Save` and `Load` match `Save All` behavior.
+- Added integration regression coverage in `src/App.integration.test.tsx` for Select Chain 2 session round-tripping.
+- Added end-to-end regression coverage in `e2e/session-load-all-chain2-selections.e2e.spec.ts` for `Save All`/`Load All` restoration of chain and residue selections across both viewers.
+- Hardened sync/session-load E2E stability in `e2e/session-load-sync-camera-order.e2e.spec.ts` by waiting for sync readiness before asserting `Sync: On`.
+- Reduced duplicate session E2E setup logic by introducing shared helpers in `e2e/helpers/session-load.ts` and reusing them in session-load specs.
+
 ## [v0.18.0] - 2026-10-19
 Release summary: this minor release adds true two-chain/two-residue-slot alignment behavior, refines chain/residue controls, and strengthens regression coverage for highlight and realignment workflows.
 - Added two-slot chain selection behavior in `src/App.tsx`, `src/components/LoadMolecule.tsx`, and `src/components/ViewerColumn.tsx`, including optional chain-2 selection, chain-2 clear action, and nested per-slot controls.
