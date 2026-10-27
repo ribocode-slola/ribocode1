@@ -6,12 +6,12 @@
 .pnp.js
 
 # testing
-/coverage
 /test-results
 
 # production
 /build
 /dist
+/docs
 
 # misc
 .DS_Store
