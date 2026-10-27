@@ -1196,6 +1196,11 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
     const [loadedColorThemes, setLoadedColorThemes] = useState<LoadedColorThemeOption[]>([
         { value: DEFAULT_COLOR_THEME_NAME, label: DEFAULT_COLOR_THEME_LABEL },
     ]);
+    const colorThemeRevisionRef = useRef(0);
+    const nextColorThemeRevision = useCallback((): number => {
+        colorThemeRevisionRef.current += 1;
+        return colorThemeRevisionRef.current;
+    }, []);
     const [selectedColorThemeByMode, setSelectedColorThemeByMode] = useState<Record<ColorThemeMode, string>>({
         AlignedTo: DEFAULT_COLOR_THEME_NAME,
         Aligned: DEFAULT_COLOR_THEME_NAME,
@@ -1304,11 +1309,24 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             if (!plugin || !structureRef) return;
             const reps = getStructureRepresentations(plugin, structureRef);
             for (const rep of reps) {
-                const tree = plugin.state.data.build().to(rep.repRef).update((old: any) => ({
+                const currentTheme = rep.colorTheme as any;
+                const currentThemeName = typeof currentTheme === 'string' ? currentTheme : currentTheme?.name;
+
+                // Rebinding away from and back to the same provider avoids occasional no-op updates
+                // when rapidly applying new params to an already-selected custom theme.
+                if (currentThemeName === themeName && themeName !== 'chain-id') {
+                    const resetTree = plugin.state.data.build().to(rep.repRef).update((old: any) => ({
+                        ...old,
+                        colorTheme: { name: 'chain-id', params: {} },
+                    }));
+                    await plugin.runTask(plugin.state.data.updateTree(resetTree));
+                }
+
+                const applyTree = plugin.state.data.build().to(rep.repRef).update((old: any) => ({
                     ...old,
                     colorTheme: { name: themeName, params: paramsOverride ?? {} },
                 }));
-                await plugin.runTask(plugin.state.data.updateTree(tree));
+                await plugin.runTask(plugin.state.data.updateTree(applyTree));
             }
             plugin.canvas3d?.requestDraw?.();
         }));
@@ -1360,6 +1378,113 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         return map;
     }, [molstarA.structureRefs, molstarB.structureRefs, viewerA.ref, viewerB.ref]);
 
+    const getChainColorsFromChainIdProvider = useCallback((mode: ColorThemeMode): Map<string, string> => {
+        const structureRefs: Array<{ plugin: PluginUIContext | null; structureRef?: string | null }> = mode === 'AlignedTo'
+            ? [
+                { plugin: viewerA.ref.current, structureRef: molstarA.structureRefs[AlignedTo] },
+                { plugin: viewerB.ref.current, structureRef: molstarB.structureRefs[AlignedTo] },
+            ]
+            : [
+                { plugin: viewerA.ref.current, structureRef: molstarA.structureRefs[Aligned] },
+                { plugin: viewerB.ref.current, structureRef: molstarB.structureRefs[Aligned] },
+            ];
+
+        const map = new Map<string, string>();
+        for (const { plugin, structureRef } of structureRefs) {
+            if (!plugin || !structureRef) continue;
+            const structureData = plugin.managers.structure.hierarchy.current.structures.find(
+                s => s.cell.transform.ref === structureRef
+            )?.cell.obj?.data;
+            if (!structureData) continue;
+
+            try {
+                const chainIdTheme = ChainIdColorTheme({ structure: structureData } as any, ChainIdColorThemeProvider.defaultValues as any);
+                const location = StructureElement.Location.create(structureData);
+                for (const unit of structureData.units) {
+                    if (!unit?.elements?.length) continue;
+                    for (let elementIndex = 0; elementIndex < unit.elements.length; elementIndex++) {
+                        const element = unit.elements[elementIndex];
+                        location.unit = unit;
+                        location.element = element;
+                        const auth = String(StructureProperties.chain.auth_asym_id(location) ?? '').trim();
+                        const label = String(StructureProperties.chain.label_asym_id(location) ?? '').trim();
+                        const resolved = normalizeThemeColor(chainIdTheme.color(location, false));
+                        if (!resolved) continue;
+                        if (auth) {
+                            map.set(auth, resolved);
+                            map.set(auth.toUpperCase(), resolved);
+                        }
+                        if (label) {
+                            map.set(label, resolved);
+                            map.set(label.toUpperCase(), resolved);
+                        }
+                    }
+                }
+            } catch {
+                // Ignore fallback color extraction failures and keep other sources.
+            }
+        }
+        return map;
+    }, [molstarA.structureRefs, molstarB.structureRefs, viewerA.ref, viewerB.ref]);
+
+    const getEquivalentChainIdsForMode = useCallback((mode: ColorThemeMode, chainId: string): string[] => {
+        const normalizedSelectedChainId = String(chainId ?? '').trim();
+        if (!normalizedSelectedChainId) return [];
+        const selectedUpper = normalizedSelectedChainId.toUpperCase();
+        const aliases = new Set<string>([normalizedSelectedChainId, selectedUpper]);
+
+        const structureRefs: Array<{ plugin: PluginUIContext | null; structureRef?: string | null }> = mode === 'AlignedTo'
+            ? [
+                { plugin: viewerA.ref.current, structureRef: molstarA.structureRefs[AlignedTo] },
+                { plugin: viewerB.ref.current, structureRef: molstarB.structureRefs[AlignedTo] },
+            ]
+            : [
+                { plugin: viewerA.ref.current, structureRef: molstarA.structureRefs[Aligned] },
+                { plugin: viewerB.ref.current, structureRef: molstarB.structureRefs[Aligned] },
+            ];
+
+        for (const { plugin, structureRef } of structureRefs) {
+            if (!plugin || !structureRef) continue;
+            const structureData = plugin.managers.structure.hierarchy.current.structures.find(
+                s => s.cell.transform.ref === structureRef
+            )?.cell.obj?.data;
+            if (!structureData) continue;
+
+            try {
+                const location = StructureElement.Location.create(structureData);
+                for (const unit of structureData.units ?? []) {
+                    if (!unit?.elements?.length) continue;
+                    for (let elementIndex = 0; elementIndex < unit.elements.length; elementIndex++) {
+                        const element = unit.elements[elementIndex];
+                        location.unit = unit;
+                        location.element = element;
+                        const auth = String(StructureProperties.chain.auth_asym_id(location) ?? '').trim();
+                        const label = String(StructureProperties.chain.label_asym_id(location) ?? '').trim();
+                        const authUpper = auth.toUpperCase();
+                        const labelUpper = label.toUpperCase();
+                        const matches = auth === normalizedSelectedChainId
+                            || label === normalizedSelectedChainId
+                            || authUpper === selectedUpper
+                            || labelUpper === selectedUpper;
+                        if (!matches) continue;
+                        if (auth) {
+                            aliases.add(auth);
+                            aliases.add(authUpper);
+                        }
+                        if (label) {
+                            aliases.add(label);
+                            aliases.add(labelUpper);
+                        }
+                    }
+                }
+            } catch {
+                // Best-effort alias expansion; keep basic aliases on failure.
+            }
+        }
+
+        return Array.from(aliases).filter(Boolean);
+    }, [molstarA.structureRefs, molstarB.structureRefs, viewerA.ref, viewerB.ref]);
+
     const updateChainColorInTheme = useCallback((themeName: string, chainId: string, color: string, mode?: ColorThemeMode) => {
         if (!themeName) return;
         if (!chainId || !color) return;
@@ -1369,6 +1494,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
 
         if (themeName === DEFAULT_COLOR_THEME_NAME || themeName === 'chain-id') {
             const targetMode = mode ?? 'AlignedTo';
+            const chainAliases = getEquivalentChainIdsForMode(targetMode, chainId);
             const editableThemeName = EDITABLE_CHAIN_THEME_BY_MODE[targetMode];
             const existingMap = getChainColorsFromActiveChainIdTheme(targetMode);
             const existingRows = getThemeRowsByName(editableThemeName);
@@ -1380,14 +1506,28 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                     existingMap.set(chain.toUpperCase(), resolved);
                 }
             });
+            for (const alias of chainAliases) {
+                const trimmedAlias = alias.trim();
+                if (!trimmedAlias) continue;
+                existingMap.set(trimmedAlias, normalizedColor);
+                existingMap.set(trimmedAlias.toUpperCase(), normalizedColor);
+            }
             const currentRows = Array.from(existingMap.entries())
                 .filter(([id]) => !!id && id === id.toUpperCase())
                 .map(([pdb_chain, color]) => ({ pdb_chain, color }));
             const updatedRows = [...currentRows];
-            const idx = updatedRows.findIndex(row => String(row.pdb_chain ?? '').trim().toUpperCase() === normalizedChainId);
-            if (idx >= 0) {
-                updatedRows[idx] = { ...updatedRows[idx], color: normalizedColor };
-            } else {
+            const keysToUpdate = new Set(chainAliases.map(alias => alias.trim().toUpperCase()).filter(Boolean));
+            keysToUpdate.add(normalizedChainId);
+            keysToUpdate.forEach((aliasKey) => {
+                const idx = updatedRows.findIndex(row => String(row.pdb_chain ?? '').trim().toUpperCase() === aliasKey);
+                if (idx >= 0) {
+                    updatedRows[idx] = { ...updatedRows[idx], color: normalizedColor };
+                } else {
+                    updatedRows.push({ pdb_chain: aliasKey, color: normalizedColor });
+                }
+            });
+
+            if (!keysToUpdate.has(normalizedChainId)) {
                 updatedRows.push({ pdb_chain: normalizedChainId, color: normalizedColor });
             }
 
@@ -1406,17 +1546,37 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             }));
 
             void applyColorThemeNameToModeRepresentations(targetMode, editableThemeName, {
-                __themeRevision: Date.now(),
+                __themeRevision: nextColorThemeRevision(),
             });
             return;
         }
 
         const currentRows = getThemeRowsByName(themeName);
         const updatedRows = [...currentRows];
-        const idx = updatedRows.findIndex(row => String(row.pdb_chain ?? '').trim().toUpperCase() === normalizedChainId);
-        if (idx >= 0) {
-            updatedRows[idx] = { ...updatedRows[idx], color: normalizedColor };
-        } else {
+        const targetModeForAlias: ColorThemeMode | null = mode
+            ?? (selectedColorThemeByMode.AlignedTo === themeName
+                ? 'AlignedTo'
+                : selectedColorThemeByMode.Aligned === themeName
+                    ? 'Aligned'
+                    : null);
+        const aliasKeys = new Set<string>([normalizedChainId]);
+        if (targetModeForAlias) {
+            getEquivalentChainIdsForMode(targetModeForAlias, chainId)
+                .map(alias => alias.trim().toUpperCase())
+                .filter(Boolean)
+                .forEach(alias => aliasKeys.add(alias));
+        }
+
+        aliasKeys.forEach((aliasKey) => {
+            const idx = updatedRows.findIndex(row => String(row.pdb_chain ?? '').trim().toUpperCase() === aliasKey);
+            if (idx >= 0) {
+                updatedRows[idx] = { ...updatedRows[idx], color: normalizedColor };
+            } else {
+                updatedRows.push({ pdb_chain: aliasKey, color: normalizedColor });
+            }
+        });
+
+        if (!aliasKeys.has(normalizedChainId)) {
             updatedRows.push({ pdb_chain: normalizedChainId, color: normalizedColor });
         }
         registerLoadedColorTheme(themeName, updatedRows);
@@ -1433,13 +1593,15 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                     : null);
         if (targetMode) {
             void applyColorThemeNameToModeRepresentations(targetMode, themeName, {
-                __themeRevision: Date.now(),
+                __themeRevision: nextColorThemeRevision(),
             });
         }
     }, [
         applyColorThemeNameToModeRepresentations,
+        getEquivalentChainIdsForMode,
         getChainColorsFromActiveChainIdTheme,
         getThemeRowsByName,
+        nextColorThemeRevision,
         registerLoadedColorTheme,
         selectedColorThemeByMode,
     ]);
@@ -1618,6 +1780,12 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         const chainInfo = mode === 'AlignedTo' ? chainInfoAlignedTo : chainInfoAligned;
         const rows = getThemeRowsByName(DEFAULT_COLOR_THEME_NAME);
         const activeMap = getChainColorsFromActiveChainIdTheme(mode);
+        if (activeMap.size === 0) {
+            const providerMap = getChainColorsFromChainIdProvider(mode);
+            for (const [chainId, color] of providerMap.entries()) {
+                activeMap.set(chainId, color);
+            }
+        }
         const map = new Map<string, string>();
         for (const [chainId, color] of activeMap.entries()) {
             map.set(chainId, color);
@@ -1641,6 +1809,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
     }, [
         chainInfoAligned,
         chainInfoAlignedTo,
+        getChainColorsFromChainIdProvider,
         getChainColorsFromActiveChainIdTheme,
         getThemeRowsByName,
         selectedChainIdAligned,
@@ -1649,7 +1818,11 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
 
     const chainColorsByMode = {
         AlignedTo: (() => {
-            const activeTheme = getCurrentColorThemeNameForMode('AlignedTo');
+            const selectedTheme = selectedColorThemeByMode.AlignedTo;
+            const selectedRows = getThemeRowsByName(selectedTheme);
+            const activeTheme = selectedTheme !== DEFAULT_COLOR_THEME_NAME && selectedRows.length > 0
+                ? selectedTheme
+                : getCurrentColorThemeNameForMode('AlignedTo');
             const merged = getChainColorMapForDefaultTheme('AlignedTo');
             if (activeTheme === DEFAULT_COLOR_THEME_NAME || activeTheme === 'chain-id') {
                 return merged;
@@ -1663,7 +1836,11 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             return merged;
         })(),
         Aligned: (() => {
-            const activeTheme = getCurrentColorThemeNameForMode('Aligned');
+            const selectedTheme = selectedColorThemeByMode.Aligned;
+            const selectedRows = getThemeRowsByName(selectedTheme);
+            const activeTheme = selectedTheme !== DEFAULT_COLOR_THEME_NAME && selectedRows.length > 0
+                ? selectedTheme
+                : getCurrentColorThemeNameForMode('Aligned');
             const merged = getChainColorMapForDefaultTheme('Aligned');
             if (activeTheme === DEFAULT_COLOR_THEME_NAME || activeTheme === 'chain-id') {
                 return merged;
@@ -1685,6 +1862,12 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         const map = mode === 'AlignedTo' ? chainColorsByMode.AlignedTo : chainColorsByMode.Aligned;
         const direct = map.get(normalizedSelectedChainId) ?? map.get(selectedUpper);
         if (direct && direct.toUpperCase() !== '#CCCCCC') return direct;
+
+        const aliases = getEquivalentChainIdsForMode(mode, normalizedSelectedChainId);
+        for (const alias of aliases) {
+            const aliasColor = map.get(alias) ?? map.get(alias.toUpperCase());
+            if (aliasColor && aliasColor.toUpperCase() !== '#CCCCCC') return aliasColor;
+        }
 
         const structureRefs: Array<{ plugin: PluginUIContext | null; structureRef?: string | null }> = mode === 'AlignedTo'
             ? [
@@ -1734,6 +1917,10 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         }
 
         const live = getChainColorsFromActiveChainIdTheme(mode);
+        for (const alias of aliases) {
+            const aliasColor = live.get(alias) ?? live.get(alias.toUpperCase());
+            if (aliasColor) return aliasColor;
+        }
         return live.get(normalizedSelectedChainId) ?? live.get(selectedUpper) ?? direct ?? '#cccccc';
     };
 
@@ -4197,10 +4384,24 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 alignedToDone = false;
             }
         }
+        if (pending.alignedTo?.chainId2) {
+            if (chainInfoAlignedTo.chainLabels.has(pending.alignedTo.chainId2)) {
+                setSelectedChainIdAlignedTo2(pending.alignedTo.chainId2);
+            } else {
+                alignedToDone = false;
+            }
+        }
 
         if (pending.aligned?.chainId) {
             if (chainInfoAligned.chainLabels.has(pending.aligned.chainId)) {
                 setSelectedChainIdAligned(pending.aligned.chainId);
+            } else {
+                alignedDone = false;
+            }
+        }
+        if (pending.aligned?.chainId2) {
+            if (chainInfoAligned.chainLabels.has(pending.aligned.chainId2)) {
+                setSelectedChainIdAligned2(pending.aligned.chainId2);
             } else {
                 alignedDone = false;
             }
@@ -4217,6 +4418,17 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             }
         }
 
+        const pendingAlignedToResidueIds2 = Array.isArray(pending.alignedTo?.residueIds2)
+            ? pending.alignedTo!.residueIds2!.filter(id => residueInfoAlignedTo2.residueLabels.has(id))
+            : [];
+        if (pendingAlignedToResidueIds2.length > 0) {
+            setSelectedResidueIdsAlignedTo2(pendingAlignedToResidueIds2);
+        } else if (pending.alignedTo?.residueId2 && residueInfoAlignedTo2.residueLabels.size > 0) {
+            if (residueInfoAlignedTo2.residueLabels.has(pending.alignedTo.residueId2)) {
+                setSelectedResidueIdsAlignedTo2([pending.alignedTo.residueId2]);
+            }
+        }
+
         const pendingAlignedResidueIds = Array.isArray(pending.aligned?.residueIds)
             ? pending.aligned!.residueIds!.filter(id => residueInfoAligned.residueLabels.has(id))
             : [];
@@ -4225,6 +4437,17 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         } else if (pending.aligned?.residueId && residueInfoAligned.residueLabels.size > 0) {
             if (residueInfoAligned.residueLabels.has(pending.aligned.residueId)) {
                 setSelectedResidueIdAligned(pending.aligned.residueId);
+            }
+        }
+
+        const pendingAlignedResidueIds2 = Array.isArray(pending.aligned?.residueIds2)
+            ? pending.aligned!.residueIds2!.filter(id => residueInfoAligned2.residueLabels.has(id))
+            : [];
+        if (pendingAlignedResidueIds2.length > 0) {
+            setSelectedResidueIdsAligned2(pendingAlignedResidueIds2);
+        } else if (pending.aligned?.residueId2 && residueInfoAligned2.residueLabels.size > 0) {
+            if (residueInfoAligned2.residueLabels.has(pending.aligned.residueId2)) {
+                setSelectedResidueIdsAligned2([pending.aligned.residueId2]);
             }
         }
 
@@ -4237,11 +4460,17 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         residueInfoAlignedTo.residueLabels,
         residueInfoAligned.residueLabels,
         setSelectedChainIdAlignedTo,
+        setSelectedChainIdAlignedTo2,
         setSelectedChainIdAligned,
+        setSelectedChainIdAligned2,
         setSelectedResidueIdsAlignedTo,
+        setSelectedResidueIdsAlignedTo2,
         setSelectedResidueIdsAligned,
+        setSelectedResidueIdsAligned2,
         setSelectedResidueIdAlignedTo,
         setSelectedResidueIdAligned,
+        residueInfoAlignedTo2.residueLabels,
+        residueInfoAligned2.residueLabels,
     ]);
 
     // Unified robust delete handler for any representation
@@ -5489,14 +5718,20 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 alignedTo: {
                     subunit: selectedSubunitAlignedTo,
                     chainId: selectedChainIdAlignedTo,
+                    chainId2: selectedChainIdAlignedTo2,
                     residueId: selectedResidueIdAlignedTo,
+                    residueId2: selectedResidueIdAlignedTo2,
                     residueIds: selectedResidueIdsAlignedTo,
+                    residueIds2: selectedResidueIdsAlignedTo2,
                 },
                 aligned: {
                     subunit: selectedSubunitAligned,
                     chainId: selectedChainIdAligned,
+                    chainId2: selectedChainIdAligned2,
                     residueId: selectedResidueIdAligned,
+                    residueId2: selectedResidueIdAligned2,
                     residueIds: selectedResidueIdsAligned,
+                    residueIds2: selectedResidueIdsAligned2,
                 },
             },
             highlights: {
@@ -5859,6 +6094,7 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         // Try to get the files by filename
         const alignedToFile = (alignedToFilename && files[alignedToFilename]) || (altAlignedToFilename && files[altAlignedToFilename]);
         const alignedFile = (alignedFilename && files[alignedFilename]) || (altAlignedFilename && files[altAlignedFilename]);
+        const restoredSelectedThemeByMode: Partial<Record<ColorThemeMode, string>> = {};
 
         let loadedAny = false;
         try {
@@ -5920,11 +6156,16 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
 
                 setLoadedColorThemes(options);
 
+                // Register loaded themes immediately so downstream session-restore
+                // theme application can resolve providers deterministically.
+                mergedThemes.forEach(theme => {
+                    registerLoadedColorTheme(theme.value, theme.rows);
+                });
+
                 setLoadedColorThemeRowsByName(prev => {
                     const next = { ...prev };
                     mergedThemes.forEach(theme => {
                         next[theme.value] = theme.rows;
-                        registerLoadedColorTheme(theme.value, theme.rows);
                     });
                     return next;
                 });
@@ -5932,15 +6173,21 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 const alignedToSelectedCandidate = uiState.colorThemesByMode.alignedTo?.selectedThemeName;
                 const alignedSelectedCandidate = uiState.colorThemesByMode.aligned?.selectedThemeName;
 
+                const restoredAlignedToThemeName = options.some(option => option.value === alignedToSelectedCandidate)
+                    ? alignedToSelectedCandidate!
+                    : DEFAULT_COLOR_THEME_NAME;
+                const restoredAlignedThemeName = options.some(option => option.value === alignedSelectedCandidate)
+                    ? alignedSelectedCandidate!
+                    : DEFAULT_COLOR_THEME_NAME;
+
                 setSelectedColorThemeByMode(prev => ({
                     ...prev,
-                    AlignedTo: options.some(option => option.value === alignedToSelectedCandidate)
-                        ? alignedToSelectedCandidate!
-                        : DEFAULT_COLOR_THEME_NAME,
-                    Aligned: options.some(option => option.value === alignedSelectedCandidate)
-                        ? alignedSelectedCandidate!
-                        : DEFAULT_COLOR_THEME_NAME,
+                    AlignedTo: restoredAlignedToThemeName,
+                    Aligned: restoredAlignedThemeName,
                 }));
+
+                restoredSelectedThemeByMode.AlignedTo = restoredAlignedToThemeName;
+                restoredSelectedThemeByMode.Aligned = restoredAlignedThemeName;
 
                 const hasCustomThemes = mergedThemes.length > 0;
                 setIsMoleculeAlignedToColoursLoaded(hasCustomThemes);
@@ -5975,19 +6222,31 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             if (uiState?.selections?.alignedTo) {
                 if (typeof uiState.selections.alignedTo.subunit === 'string') setSelectedSubunitAlignedTo(uiState.selections.alignedTo.subunit as any);
                 if (typeof uiState.selections.alignedTo.chainId === 'string') setSelectedChainIdAlignedTo(uiState.selections.alignedTo.chainId);
+                if (typeof uiState.selections.alignedTo.chainId2 === 'string') setSelectedChainIdAlignedTo2(uiState.selections.alignedTo.chainId2);
                 if (Array.isArray((uiState.selections.alignedTo as any).residueIds)) {
                     setSelectedResidueIdsAlignedTo((uiState.selections.alignedTo as any).residueIds.filter((id: unknown) => typeof id === 'string'));
                 } else if (typeof uiState.selections.alignedTo.residueId === 'string') {
                     setSelectedResidueIdAlignedTo(uiState.selections.alignedTo.residueId);
                 }
+                if (Array.isArray((uiState.selections.alignedTo as any).residueIds2)) {
+                    setSelectedResidueIdsAlignedTo2((uiState.selections.alignedTo as any).residueIds2.filter((id: unknown) => typeof id === 'string'));
+                } else if (typeof (uiState.selections.alignedTo as any).residueId2 === 'string') {
+                    setSelectedResidueIdsAlignedTo2([(uiState.selections.alignedTo as any).residueId2]);
+                }
             }
             if (uiState?.selections?.aligned) {
                 if (typeof uiState.selections.aligned.subunit === 'string') setSelectedSubunitAligned(uiState.selections.aligned.subunit as any);
                 if (typeof uiState.selections.aligned.chainId === 'string') setSelectedChainIdAligned(uiState.selections.aligned.chainId);
+                if (typeof uiState.selections.aligned.chainId2 === 'string') setSelectedChainIdAligned2(uiState.selections.aligned.chainId2);
                 if (Array.isArray((uiState.selections.aligned as any).residueIds)) {
                     setSelectedResidueIdsAligned((uiState.selections.aligned as any).residueIds.filter((id: unknown) => typeof id === 'string'));
                 } else if (typeof uiState.selections.aligned.residueId === 'string') {
                     setSelectedResidueIdAligned(uiState.selections.aligned.residueId);
+                }
+                if (Array.isArray((uiState.selections.aligned as any).residueIds2)) {
+                    setSelectedResidueIdsAligned2((uiState.selections.aligned as any).residueIds2.filter((id: unknown) => typeof id === 'string'));
+                } else if (typeof (uiState.selections.aligned as any).residueId2 === 'string') {
+                    setSelectedResidueIdsAligned2([(uiState.selections.aligned as any).residueId2]);
                 }
             }
             if (uiState?.highlights?.alignedTo) {
@@ -6205,6 +6464,19 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 }
             }
 
+            // Re-apply restored selected custom themes after structure refs and
+            // other session state are restored to avoid load-order mismatches.
+            if (restoredSelectedThemeByMode.AlignedTo && restoredSelectedThemeByMode.AlignedTo !== DEFAULT_COLOR_THEME_NAME) {
+                await applyColorThemeNameToModeRepresentations('AlignedTo', restoredSelectedThemeByMode.AlignedTo, {
+                    __themeRevision: nextColorThemeRevision(),
+                });
+            }
+            if (restoredSelectedThemeByMode.Aligned && restoredSelectedThemeByMode.Aligned !== DEFAULT_COLOR_THEME_NAME) {
+                await applyColorThemeNameToModeRepresentations('Aligned', restoredSelectedThemeByMode.Aligned, {
+                    __themeRevision: nextColorThemeRevision(),
+                });
+            }
+
             if (!loadedAny) {
                 alert('Session loaded, but could not automatically reload datasets. Please reload the required files manually.');
             }
@@ -6219,9 +6491,13 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         setSelectedSubunitAlignedTo,
         setSelectedSubunitAligned,
         setSelectedChainIdAlignedTo,
+        setSelectedChainIdAlignedTo2,
         setSelectedChainIdAligned,
+        setSelectedChainIdAligned2,
         setSelectedResidueIdsAlignedTo,
+        setSelectedResidueIdsAlignedTo2,
         setSelectedResidueIdsAligned,
+        setSelectedResidueIdsAligned2,
         setSelectedResidueIdAlignedTo,
         setSelectedResidueIdAligned,
         setChainHighlightOnAlignedTo,
@@ -6255,6 +6531,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         setSelectionDisplayModeFor,
         setDimUnselectedFor,
         setDimUnselectedStrengthFor,
+        applyColorThemeNameToModeRepresentations,
+        nextColorThemeRevision,
     ]);
 
     // Initialize session load modal with the callback

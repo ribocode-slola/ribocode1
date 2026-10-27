@@ -95,4 +95,9 @@ test('saving baseline and modified theme only changes selected chain color', asy
 
   expect(changedChains).toEqual([selectedChain]);
   expect(modified.get(selectedChain)).toBe(updatedColor);
+
+  const nonSelectedGreys = [...modified.entries()]
+    .filter(([chain]) => chain !== selectedChain)
+    .filter(([, color]) => color.toUpperCase() === '#CCCCCC' || color.toUpperCase() === '#FAFAFA');
+  expect(nonSelectedGreys.length).toBe(0);
 });

@@ -1,6 +1,5 @@
 import { test, expect } from '@playwright/test';
-import path from 'path';
-import type { Page } from '@playwright/test';
+import { loadSessionAndRequiredFiles } from './helpers/session-load';
 
 test.use({
   launchOptions: {
@@ -11,42 +10,6 @@ test.use({
     ],
   },
 });
-
-function dataPath(filename: string) {
-  return path.resolve(__dirname, '../data/input', filename);
-}
-
-async function waitForSessionMenuReady(page: Page) {
-  await expect(page.locator('#session-menu-btn')).toBeVisible({ timeout: 45000 });
-}
-
-async function loadSessionAndRequiredFiles(page: Page, sessionFixtureFile: string) {
-  await waitForSessionMenuReady(page);
-  await page.click('#session-menu-btn');
-  await page.waitForSelector('#session-menu-dropdown', { state: 'visible' });
-  await page.waitForTimeout(200);
-  await page.click('#session-menu-dropdown .session-menu-item:text-is("Load")');
-
-  const sessionFilePath = path.resolve(__dirname, sessionFixtureFile);
-  await page.setInputFiles('#session-menu-file-input', sessionFilePath);
-
-  await expect(page.getByText('Load Session: Select Required Files')).toBeVisible();
-  await expect(page.getByText('4ug0.cif')).toBeVisible();
-  await expect(page.getByText('6xu8.cif')).toBeVisible();
-
-  const fileInputs = await page.$$('[data-testid^="session-load-modal-file-input-"]');
-  for (const input of fileInputs) {
-    const label = await input.evaluate((el: HTMLInputElement) => el.parentElement?.textContent || '');
-    if (label.includes('4ug0.cif')) {
-      await input.setInputFiles(dataPath('4ug0.cif'));
-    } else if (label.includes('6xu8.cif')) {
-      await input.setInputFiles(dataPath('6xu8.cif'));
-    }
-  }
-
-  await expect(page.getByTestId('session-load-modal-load-btn')).toBeEnabled();
-  await page.getByTestId('session-load-modal-load-btn').click();
-}
 
 type Snapshot = {
   position: [number, number, number];
@@ -146,7 +109,14 @@ test('session load keeps viewer B camera snapshot stable when sync is restored',
 
   await expect(page.locator('#viewer-column-A-molstar-container')).toBeVisible();
   await expect(page.locator('#viewer-column-B-molstar-container')).toBeVisible();
-  await expect(page.locator('#generalcontrols-sync-select')).toHaveText('Sync: On', { timeout: 10000 });
+
+  await expect.poll(async () => {
+    const syncState = await page.evaluate(() => (window as any).__ribocodeTestApi?.getSyncState?.());
+    return syncState?.syncEnabled === true;
+  }, { timeout: 30000 }).toBe(true);
+
+  await expect(page.locator('#generalcontrols-sync-select')).toBeEnabled({ timeout: 30000 });
+  await expect(page.locator('#generalcontrols-sync-select')).toHaveText('Sync: On', { timeout: 30000 });
 
   const syncState = await page.evaluate(() => (window as any).__ribocodeTestApi?.getSyncState?.());
   expect(syncState?.syncEnabled).toBe(true);

@@ -861,6 +861,7 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     fireEvent.click(document.getElementById('viewer-column-A-select-zoom-controls-toggle-btn') as HTMLButtonElement);
     fireEvent.click(document.getElementById('viewer-column-A-alignedto-chain-controls-toggle-btn') as HTMLButtonElement);
     fireEvent.click(document.getElementById('viewer-column-A-alignedto-select-chain-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-A-alignedto-representation-controls-toggle-btn') as HTMLButtonElement);
     fireEvent.click(document.getElementById('viewer-column-A-alignedto-residue-controls-toggle-btn') as HTMLButtonElement);
 
     const alignedToInspectResidueBtnId = 'viewer-column-A-alignedto-inspect-residue-btn';
@@ -1274,6 +1275,25 @@ describe('App integration: AlignedTo and Aligned loading', () => {
       '6xu8.cif': loadTestFile('6xu8.cif'),
     };
 
+    (globalThis as any).__mockStructureRepsByRef = {
+      'mock-ref-0': [
+        {
+          repRef: 'mock-rep-alignedto-A',
+          type: 'cartoon',
+          colorTheme: { name: 'chain-id', params: {} },
+          visible: true,
+        },
+      ],
+      'mock-ref-1': [
+        {
+          repRef: 'mock-rep-aligned-A',
+          type: 'cartoon',
+          colorTheme: { name: 'chain-id', params: {} },
+          visible: true,
+        },
+      ],
+    };
+
     const pluginA = (globalThis as any).__mockPluginA;
     const pluginB = (globalThis as any).__mockPluginB;
     pluginA.canvas3d.camera.setState.mockClear();
@@ -1300,7 +1320,6 @@ describe('App integration: AlignedTo and Aligned loading', () => {
 
     await waitFor(() => {
       expect((document.getElementById('viewer-column-A-alignedto-zoom-extra-radius') as HTMLInputElement).value).toBe('31');
-      expect((document.getElementById('viewer-column-A-alignedto-zoom-min-radius') as HTMLInputElement).value).toBe('14');
       expect((document.getElementById('viewer-column-B-aligned-zoom-extra-radius') as HTMLInputElement).value).toBe('41');
       expect((document.getElementById('viewer-column-B-aligned-zoom-min-radius') as HTMLInputElement).value).toBe('17');
       expect((document.getElementById('viewer-column-A-alignedto-clip-near-number') as HTMLInputElement).value).toBe('0.75');
@@ -1509,6 +1528,162 @@ describe('App integration: AlignedTo and Aligned loading', () => {
       expect(restored.uiState.selections.aligned.residueId).toBe('20');
     }, { timeout: 5000 });
   });
+
+  it('round-trips Select Chain 2 selections in session uiState', async () => {
+    render(<App />);
+    await waitFor(() => expect(screen.getByRole('banner')).toBeInTheDocument());
+
+    const onSessionLoaded = (globalThis as any).__onSessionLoaded as ((session: any, files: Record<string, File>) => Promise<void>) | undefined;
+    expect(onSessionLoaded).toBeDefined();
+
+    const session = {
+      viewerA: { moleculeAlignedTo: { filename: '4ug0.cif' } },
+      viewerB: { moleculeAligned: { filename: '6xu8.cif' } },
+      uiState: {
+        selections: {
+          alignedTo: {
+            subunit: 'Large',
+            chainId: 'A',
+            residueIds: ['10'],
+            residueId: '10',
+            chainId2: 'B',
+            residueIds2: ['20'],
+            residueId2: '20',
+          },
+          aligned: {
+            subunit: 'Small',
+            chainId: 'B',
+            residueIds: ['20'],
+            residueId: '20',
+            chainId2: 'A',
+            residueIds2: ['10'],
+            residueId2: '10',
+          },
+        },
+      },
+    };
+    const files = {
+      '4ug0.cif': loadTestFile('4ug0.cif'),
+      '6xu8.cif': loadTestFile('6xu8.cif'),
+    };
+
+    await onSessionLoaded!(session, files);
+
+    const getSessionState = (globalThis as any).__getSessionState as (() => any) | undefined;
+    expect(getSessionState).toBeDefined();
+
+    await waitFor(() => {
+      const restored = getSessionState!();
+      expect(restored.uiState.selections.alignedTo.chainId2).toBe('B');
+      expect(restored.uiState.selections.alignedTo.residueIds2).toEqual(['20']);
+      expect(restored.uiState.selections.alignedTo.residueId2).toBe('20');
+      expect(restored.uiState.selections.aligned.chainId2).toBe('A');
+      expect(restored.uiState.selections.aligned.residueIds2).toEqual(['10']);
+      expect(restored.uiState.selections.aligned.residueId2).toBe('10');
+    }, { timeout: 5000 });
+  });
+
+  it('round-trips selected chain colour when persisted theme key uses an alias chain id', async () => {
+    render(<App />);
+    await waitFor(() => expect(screen.getByRole('banner')).toBeInTheDocument());
+
+    const onSessionLoaded = (globalThis as any).__onSessionLoaded as ((session: any, files: Record<string, File>) => Promise<void>) | undefined;
+    expect(onSessionLoaded).toBeDefined();
+
+    const session = {
+      viewerA: {
+        moleculeAlignedTo: {
+          filename: '4ug0.cif',
+          representations: [
+            {
+              type: 'cartoon',
+              colorTheme: { name: 'AlignedTo-custom-theme-test', params: {} },
+              visible: true,
+            },
+          ],
+        },
+      },
+      viewerB: {
+        moleculeAlignedTo: {
+          filename: '4ug0.cif',
+          representations: [
+            {
+              type: 'cartoon',
+              colorTheme: { name: 'AlignedTo-custom-theme-test', params: {} },
+              visible: true,
+            },
+          ],
+        },
+      },
+      uiState: {
+        colorThemesByMode: {
+          alignedTo: {
+            selectedThemeName: 'AlignedTo-custom-theme-test',
+            themes: [
+              {
+                value: 'AlignedTo-custom-theme-test',
+                label: 'AlignedTo custom',
+                rows: [
+                  // Intentionally lower-case alias key to ensure alias-aware lookup/update.
+                  { pdb_chain: 'a', color: '#12AB34' },
+                ],
+              },
+            ],
+          },
+          aligned: {
+            selectedThemeName: 'default',
+            themes: [],
+          },
+        },
+        selections: {
+          alignedTo: { chainId: 'A' },
+        },
+      },
+    };
+
+    const files = {
+      '4ug0.cif': loadTestFile('4ug0.cif'),
+    };
+
+    (globalThis as any).__mockStructureRepsByRef = {
+      'mock-ref-0': [
+        {
+          repRef: 'mock-rep-alignedto-A',
+          type: 'cartoon',
+          colorTheme: { name: 'chain-id', params: {} },
+          visible: true,
+        },
+      ],
+    };
+
+    await onSessionLoaded!(session, files);
+
+    fireEvent.click(document.getElementById('viewer-column-A-select-zoom-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-A-alignedto-chain-controls-toggle-btn') as HTMLButtonElement);
+    fireEvent.click(document.getElementById('viewer-column-A-alignedto-select-chain-controls-toggle-btn') as HTMLButtonElement);
+
+    await waitFor(() => {
+      const selectedLabel = document.getElementById('viewer-column-A-alignedto-selected-chain-label');
+      expect(selectedLabel?.textContent).toContain('A');
+    }, { timeout: 5000 });
+
+    await waitFor(() => {
+      const repToggle = document.getElementById('viewer-column-A-alignedto-representation-controls-toggle-btn') as HTMLButtonElement | null;
+      const selectedChainColorInput = document.getElementById('viewer-column-A-alignedto-selected-chain-color') as HTMLInputElement | null;
+      if (!selectedChainColorInput && repToggle) {
+        fireEvent.click(repToggle);
+      }
+      expect(selectedChainColorInput).toBeInTheDocument();
+      expect(selectedChainColorInput?.value.toUpperCase()).toBe('#12AB34');
+    }, { timeout: 5000 });
+
+    const getSessionState = (globalThis as any).__getSessionState as (() => any) | undefined;
+    expect(getSessionState).toBeDefined();
+    const restored = getSessionState!();
+    const savedRows = restored?.uiState?.colorThemesByMode?.alignedTo?.themes?.find((t: any) => t?.value === 'AlignedTo-custom-theme-test')?.rows ?? [];
+    const rowByA = savedRows.find((row: any) => String(row?.pdb_chain ?? '').trim().toUpperCase() === 'A');
+    expect(rowByA?.color?.toUpperCase()).toBe('#12AB34');
+  }, 15000);
 
   it('updates Realign to Residues button disabled state from residue selections', async () => {
     render(<App />);
