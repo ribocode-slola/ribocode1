@@ -47,7 +47,7 @@ async function selectTargetChain(page: Page): Promise<string> {
 
 async function saveThemeCsv(page: Page): Promise<Map<string, string>> {
   const downloadPromise = page.waitForEvent('download');
-  await page.click('#viewer-column-A-alignedto-save-colour-theme-btn');
+  await page.click('#viewer-column-A-alignedto-save-chain-theme-btn');
   const download = await downloadPromise;
   const filePath = await download.path();
   expect(filePath).toBeTruthy();
@@ -63,8 +63,8 @@ async function saveThemeCsv(page: Page): Promise<Map<string, string>> {
   return map;
 }
 
-async function setSelectedChainColorDraft(page: Page, color: string) {
-  await page.locator('#viewer-column-A-alignedto-selected-chain-color').evaluate((element, value) => {
+async function setSelectedChainColorDraft(page: Page, chainId: string, color: string) {
+  await page.locator(`#viewer-column-A-alignedto-chain-color-${chainId}`).evaluate((element, value) => {
     const input = element as HTMLInputElement;
     input.value = value as string;
     input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -79,7 +79,7 @@ test('selected chain swatch is not grey and two Apply actions persist successive
   await openChainAndRepresentationControls(page);
   const targetChain = await selectTargetChain(page);
 
-  const selectedColorInput = page.locator('#viewer-column-A-alignedto-selected-chain-color');
+  const selectedColorInput = page.locator(`#viewer-column-A-alignedto-chain-color-${targetChain}`);
   await expect(selectedColorInput).toBeVisible();
 
   const initialSwatch = (await selectedColorInput.inputValue()).toUpperCase();
@@ -89,15 +89,15 @@ test('selected chain swatch is not grey and two Apply actions persist successive
   expect(baseline.get(targetChain)).toBeTruthy();
 
   const firstColor = '#12AB34';
-  await setSelectedChainColorDraft(page, firstColor);
-  await page.click('#viewer-column-A-alignedto-selected-chain-color-apply-btn');
+  await setSelectedChainColorDraft(page, targetChain, firstColor);
+  await page.click(`#viewer-column-A-alignedto-chain-color-${targetChain}-apply-btn`);
 
   const afterFirstApply = await saveThemeCsv(page);
   expect(afterFirstApply.get(targetChain)).toBe(firstColor);
 
   const secondColor = '#EE5522';
-  await setSelectedChainColorDraft(page, secondColor);
-  await page.click('#viewer-column-A-alignedto-selected-chain-color-apply-btn');
+  await setSelectedChainColorDraft(page, targetChain, secondColor);
+  await page.click(`#viewer-column-A-alignedto-chain-color-${targetChain}-apply-btn`);
 
   const afterSecondApply = await saveThemeCsv(page);
   expect(afterSecondApply.get(targetChain)).toBe(secondColor);

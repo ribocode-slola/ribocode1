@@ -35,12 +35,12 @@ async function selectFirstAlignedToChain(page: Page): Promise<string> {
 async function openRepresentationControls(page: Page) {
   const controlsToggle = page.locator('#viewer-column-A-alignedto-representation-controls-toggle-btn').first();
   await controlsToggle.click();
-  await expect(page.locator('#viewer-column-A-alignedto-save-colour-theme-btn').first()).toBeVisible();
+  await expect(page.locator('#viewer-column-A-alignedto-save-chain-theme-btn').first()).toBeVisible();
 }
 
 async function saveThemeCsv(page: Page): Promise<Map<string, string>> {
   const downloadPromise = page.waitForEvent('download');
-  await page.locator('#viewer-column-A-alignedto-save-colour-theme-btn').first().click();
+  await page.locator('#viewer-column-A-alignedto-save-chain-theme-btn').first().click();
   const download = await downloadPromise;
   const filePath = await download.path();
   expect(filePath).toBeTruthy();
@@ -57,14 +57,14 @@ async function saveThemeCsv(page: Page): Promise<Map<string, string>> {
   return map;
 }
 
-async function setSelectedChainColor(page: Page, color: string) {
-  await page.locator('#viewer-column-A-alignedto-selected-chain-color').first().evaluate((element, value) => {
+async function setSelectedChainColor(page: Page, chainId: string, color: string) {
+  await page.locator(`#viewer-column-A-alignedto-chain-color-${chainId}`).first().evaluate((element, value) => {
     const input = element as HTMLInputElement;
     input.value = value as string;
     input.dispatchEvent(new Event('input', { bubbles: true }));
     input.dispatchEvent(new Event('change', { bubbles: true }));
   }, color);
-  await page.locator('#viewer-column-A-alignedto-selected-chain-color-apply-btn').first().click();
+  await page.locator(`#viewer-column-A-alignedto-chain-color-${chainId}-apply-btn`).first().click();
 }
 
 test('saving baseline and modified theme only changes selected chain color', async ({ page }) => {
@@ -80,10 +80,12 @@ test('saving baseline and modified theme only changes selected chain color', asy
   expect(baseline.size).toBeGreaterThan(0);
 
   const updatedColor = '#12AB34';
-  await setSelectedChainColor(page, updatedColor);
+  await setSelectedChainColor(page, selectedChain, updatedColor);
 
   const modified = await saveThemeCsv(page);
   expect(modified.size).toBeGreaterThan(0);
+
+  const selectedChainUpper = selectedChain.toUpperCase();
 
   const allChains = new Set<string>([...baseline.keys(), ...modified.keys()]);
   const changedChains: string[] = [];
@@ -93,11 +95,11 @@ test('saving baseline and modified theme only changes selected chain color', asy
     if (before !== after) changedChains.push(chain);
   }
 
-  expect(changedChains).toEqual([selectedChain]);
-  expect(modified.get(selectedChain)).toBe(updatedColor);
+  expect(changedChains.map(c => c.toUpperCase())).toEqual([selectedChainUpper]);
+  expect(modified.get(selectedChain) ?? modified.get(selectedChainUpper)).toBe(updatedColor);
 
   const nonSelectedGreys = [...modified.entries()]
-    .filter(([chain]) => chain !== selectedChain)
+    .filter(([chain]) => chain.toUpperCase() !== selectedChainUpper)
     .filter(([, color]) => color.toUpperCase() === '#CCCCCC' || color.toUpperCase() === '#FAFAFA');
   expect(nonSelectedGreys.length).toBe(0);
 });

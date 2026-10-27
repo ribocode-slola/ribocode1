@@ -10,6 +10,8 @@
  */
 import { defineConfig, devices } from '@playwright/test';
 
+const reuseExistingServer = process.env.PW_E2E_REUSE_SERVER === '1';
+
 // See https://playwright.dev/docs/test-configuration for more details.
 export default defineConfig({
   testDir: './e2e',
@@ -30,8 +32,8 @@ export default defineConfig({
   webServer: {
     command: 'npm run dev',
     port: 5173,
-    // Avoid reusing stale local dev servers that can keep port 5173 open but unresponsive.
-    reuseExistingServer: false,
+    // Default to strict startup; optionally reuse an already-running dev server for convenience.
+    reuseExistingServer,
     timeout: 120 * 1000,
   },
 });

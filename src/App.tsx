@@ -54,7 +54,7 @@ import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 import { AlignmentData } from 'molstar/lib/extensions/ribocode/types';
 import { StateTransforms } from 'molstar/lib/mol-plugin-state/transforms';
 import { Mat4, Vec3 } from 'molstar/lib/mol-math/linear-algebra';
-import { StructureElement, StructureProperties } from 'molstar/lib/mol-model/structure';
+import { StructureElement, StructureProperties, Unit } from 'molstar/lib/mol-model/structure';
 import type { LoadedMolecule, ViewerKey, MoleculeMode } from './types/ribocode';
 import { A, B } from './constants/ribocode';
 import { makeFogSetters, makeClippingSetters, makeZoomHandler, makeChainHighlightToggleHandler, makeResidueHighlightToggleHandler, makeSubunitHighlightToggleHandler, makeChainInspectToggleHandler, makeResidueInspectToggleHandler, makeSubunitInspectToggleHandler } from './utils/viewerHelpers';
@@ -249,10 +249,14 @@ interface SessionUiState {
     colorThemesByMode?: {
         alignedTo?: {
             selectedThemeName?: string;
+            selectedChainThemeName?: string;
+            selectedResidueThemeName?: string;
             themes?: Array<{ value: string; label: string; rows: Array<Record<string, string>> }>;
         };
         aligned?: {
             selectedThemeName?: string;
+            selectedChainThemeName?: string;
+            selectedResidueThemeName?: string;
             themes?: Array<{ value: string; label: string; rows: Array<Record<string, string>> }>;
         };
     };
@@ -1191,8 +1195,10 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
     const alignmentFile = useFileInput<Array<Record<string, string>>>(parseDictionaryFileContent, []);
     const [isMoleculeAlignedToColoursLoaded, setIsMoleculeAlignedToColoursLoaded] = useState(false);
     const [isMoleculeAlignedColoursLoaded, setIsMoleculeAlignedColoursLoaded] = useState(false);
-    const colorsAlignedToInputRef = useRef<HTMLInputElement>(null);
-    const colorsAlignedInputRef = useRef<HTMLInputElement>(null);
+    const chainColorsAlignedToInputRef = useRef<HTMLInputElement>(null);
+    const chainColorsAlignedInputRef = useRef<HTMLInputElement>(null);
+    const residueColorsAlignedToInputRef = useRef<HTMLInputElement>(null);
+    const residueColorsAlignedInputRef = useRef<HTMLInputElement>(null);
     const [loadedColorThemes, setLoadedColorThemes] = useState<LoadedColorThemeOption[]>([
         { value: DEFAULT_COLOR_THEME_NAME, label: DEFAULT_COLOR_THEME_LABEL },
     ]);
@@ -1202,6 +1208,10 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         return colorThemeRevisionRef.current;
     }, []);
     const [selectedColorThemeByMode, setSelectedColorThemeByMode] = useState<Record<ColorThemeMode, string>>({
+        AlignedTo: DEFAULT_COLOR_THEME_NAME,
+        Aligned: DEFAULT_COLOR_THEME_NAME,
+    });
+    const [selectedResidueThemeByMode, setSelectedResidueThemeByMode] = useState<Record<ColorThemeMode, string>>({
         AlignedTo: DEFAULT_COLOR_THEME_NAME,
         Aligned: DEFAULT_COLOR_THEME_NAME,
     });
@@ -1255,6 +1265,27 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         return loadedColorThemeRowsByName[themeName] ?? [];
     }, [loadedColorThemeRowsByName]);
 
+    const getThemeKindByName = useCallback((themeName: string): 'chain' | 'residue-type' | null => {
+        if (!themeName || themeName === DEFAULT_COLOR_THEME_NAME) return 'chain';
+        return inferColorThemeKind(getThemeRowsByName(themeName));
+    }, [getThemeRowsByName]);
+
+    const chainThemeOptions = useMemo(() => {
+        const options = loadedColorThemes.filter(option => {
+            if (option.value === DEFAULT_COLOR_THEME_NAME) return true;
+            return getThemeKindByName(option.value) === 'chain';
+        });
+        return options.length > 0 ? options : [{ value: DEFAULT_COLOR_THEME_NAME, label: DEFAULT_COLOR_THEME_LABEL }];
+    }, [getThemeKindByName, loadedColorThemes]);
+
+    const residueThemeOptions = useMemo(() => {
+        const options = loadedColorThemes.filter(option => {
+            if (option.value === DEFAULT_COLOR_THEME_NAME) return true;
+            return getThemeKindByName(option.value) === 'residue-type';
+        });
+        return options.length > 0 ? options : [{ value: DEFAULT_COLOR_THEME_NAME, label: DEFAULT_COLOR_THEME_LABEL }];
+    }, [getThemeKindByName, loadedColorThemes]);
+
     const getChainColorsByThemeName = useCallback((themeName: string): Map<string, string> => {
         const rows = getThemeRowsByName(themeName);
         const map = new Map<string, string>();
@@ -1262,6 +1293,18 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             if (row.pdb_chain && row.color) {
                 map.set(row.pdb_chain, row.color);
             }
+        });
+        return map;
+    }, [getThemeRowsByName]);
+
+    const getResidueTypeColorsByThemeName = useCallback((themeName: string): Map<string, string> => {
+        const rows = getThemeRowsByName(themeName);
+        const map = new Map<string, string>();
+        rows.forEach((row) => {
+            const residueType = String(row.residue_type ?? '').trim().toUpperCase();
+            const color = normalizeThemeColor(row.color);
+            if (!residueType || !color) return;
+            map.set(residueType, color);
         });
         return map;
     }, [getThemeRowsByName]);
@@ -1606,15 +1649,61 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         selectedColorThemeByMode,
     ]);
 
-    const handleLoadColorThemeClick = useCallback((mode: ColorThemeMode) => {
-        if (mode === AlignedTo) {
-            colorsAlignedToInputRef.current?.click();
-        } else {
-            colorsAlignedInputRef.current?.click();
-        }
-    }, [colorsAlignedInputRef, colorsAlignedToInputRef]);
+    const updateResidueTypeColorInTheme = useCallback((themeName: string, residueType: string, color: string, mode?: ColorThemeMode) => {
+        if (!themeName || !residueType || !color) return;
+        const normalizedResidueType = residueType.trim().toUpperCase();
+        const normalizedColor = color.trim().toUpperCase();
+        if (!normalizedResidueType) return;
+        if (!/^#(?:[0-9A-F]{3}|[0-9A-F]{6})$/.test(normalizedColor)) return;
 
-    const handleColorThemeFileChange = useCallback(async (mode: ColorThemeMode, e: React.ChangeEvent<HTMLInputElement>) => {
+        const targetMode = mode ?? 'AlignedTo';
+        const editableThemeName = (themeName === DEFAULT_COLOR_THEME_NAME || themeName === 'chain-id')
+            ? `residue-type-custom-${targetMode.toLowerCase()}`
+            : themeName;
+        const currentRows = getThemeRowsByName(editableThemeName);
+        const updatedRows = [...currentRows];
+        const idx = updatedRows.findIndex(row => String(row.residue_type ?? '').trim().toUpperCase() === normalizedResidueType);
+        if (idx >= 0) {
+            updatedRows[idx] = { ...updatedRows[idx], residue_type: normalizedResidueType, color: normalizedColor };
+        } else {
+            updatedRows.push({ residue_type: normalizedResidueType, color: normalizedColor });
+        }
+
+        registerLoadedColorTheme(editableThemeName, updatedRows);
+        setLoadedColorThemeRowsByName(prev => ({
+            ...prev,
+            [editableThemeName]: updatedRows,
+        }));
+        setLoadedColorThemes(prev => {
+            if (prev.some(option => option.value === editableThemeName)) return prev;
+            return [...prev, { value: editableThemeName, label: editableThemeName }];
+        });
+        setSelectedResidueThemeByMode(prev => ({
+            ...prev,
+            [targetMode]: editableThemeName,
+        }));
+
+        void applyColorThemeNameToModeRepresentations(targetMode, editableThemeName, {
+            __themeRevision: nextColorThemeRevision(),
+        });
+    }, [
+        applyColorThemeNameToModeRepresentations,
+        getThemeRowsByName,
+        nextColorThemeRevision,
+        registerLoadedColorTheme,
+    ]);
+
+    const handleLoadColorThemeClick = useCallback((mode: ColorThemeMode, kind: 'chain' | 'residue-type') => {
+        if (mode === AlignedTo) {
+            if (kind === 'chain') chainColorsAlignedToInputRef.current?.click();
+            else residueColorsAlignedToInputRef.current?.click();
+        } else {
+            if (kind === 'chain') chainColorsAlignedInputRef.current?.click();
+            else residueColorsAlignedInputRef.current?.click();
+        }
+    }, [chainColorsAlignedInputRef, chainColorsAlignedToInputRef, residueColorsAlignedInputRef, residueColorsAlignedToInputRef]);
+
+    const handleColorThemeFileChange = useCallback(async (mode: ColorThemeMode, expectedKind: 'chain' | 'residue-type', e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
         try {
@@ -1622,6 +1711,10 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             const parsedKind = inferColorThemeKind(parsedRows);
             if (!parsedKind) {
                 alert('Could not parse colour file. Use a simple 2-column file with header: "chain,color" or "residue_type,color".');
+                return;
+            }
+            if (parsedKind !== expectedKind) {
+                alert(`Loaded file looks like a ${parsedKind} theme, but this control expects a ${expectedKind} theme.`);
                 return;
             }
             const uniqueThemeName = `custom-colors-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -1632,7 +1725,11 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 [uniqueThemeName]: parsedRows,
             }));
             setLoadedColorThemes(prev => [...prev, { value: uniqueThemeName, label }]);
-            setSelectedColorThemeByMode(prev => ({ ...prev, [mode]: uniqueThemeName }));
+            if (expectedKind === 'chain') {
+                setSelectedColorThemeByMode(prev => ({ ...prev, [mode]: uniqueThemeName }));
+            } else {
+                setSelectedResidueThemeByMode(prev => ({ ...prev, [mode]: uniqueThemeName }));
+            }
             setIsMoleculeAlignedToColoursLoaded(true);
             setIsMoleculeAlignedColoursLoaded(true);
         } catch (err) {
@@ -1662,8 +1759,8 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         });
     }, [molstarA.structureRefs, molstarB.structureRefs, viewerA.ref, viewerB.ref]);
 
-    const handleRemoveSelectedColorTheme = useCallback((mode: ColorThemeMode) => {
-        const selectedName = selectedColorThemeByMode[mode];
+    const handleRemoveSelectedColorTheme = useCallback((mode: ColorThemeMode, kind: 'chain' | 'residue-type') => {
+        const selectedName = kind === 'chain' ? selectedColorThemeByMode[mode] : selectedResidueThemeByMode[mode];
         if (selectedName === DEFAULT_COLOR_THEME_NAME) return;
         if (isThemeInUse(selectedName)) {
             alert('This colour theme is currently used by one or more representations across the viewers. Switch those representations to another theme before removing it.');
@@ -1678,6 +1775,11 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 Aligned: prev.Aligned === selectedName ? DEFAULT_COLOR_THEME_NAME : prev.Aligned,
             };
         });
+        setSelectedResidueThemeByMode(prev => ({
+            ...prev,
+            AlignedTo: prev.AlignedTo === selectedName ? DEFAULT_COLOR_THEME_NAME : prev.AlignedTo,
+            Aligned: prev.Aligned === selectedName ? DEFAULT_COLOR_THEME_NAME : prev.Aligned,
+        }));
         setIsMoleculeAlignedToColoursLoaded(remainingLoadedThemeCount > 0);
         setIsMoleculeAlignedColoursLoaded(remainingLoadedThemeCount > 0);
         setLoadedColorThemeRowsByName(prev => {
@@ -1688,24 +1790,42 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         });
         chainColorMaps.delete(selectedName);
         residueTypeColorMaps.delete(selectedName);
-    }, [chainColorMaps, residueTypeColorMaps, isThemeInUse, loadedColorThemes, selectedColorThemeByMode]);
+    }, [chainColorMaps, residueTypeColorMaps, isThemeInUse, loadedColorThemes, selectedColorThemeByMode, selectedResidueThemeByMode]);
 
-    const colorsAlignedToFile = useMemo(() => ({
-        inputRef: colorsAlignedToInputRef,
-        handleButtonClick: () => handleLoadColorThemeClick('AlignedTo'),
+    const chainColorsAlignedToFile = useMemo(() => ({
+        inputRef: chainColorsAlignedToInputRef,
+        handleButtonClick: () => handleLoadColorThemeClick('AlignedTo', 'chain'),
         handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => {
-            void handleColorThemeFileChange('AlignedTo', e);
+            void handleColorThemeFileChange('AlignedTo', 'chain', e);
+        },
+    }), [handleColorThemeFileChange, handleLoadColorThemeClick]);
+
+    const residueColorsAlignedToFile = useMemo(() => ({
+        inputRef: residueColorsAlignedToInputRef,
+        handleButtonClick: () => handleLoadColorThemeClick('AlignedTo', 'residue-type'),
+        handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+            void handleColorThemeFileChange('AlignedTo', 'residue-type', e);
         },
     }), [handleColorThemeFileChange, handleLoadColorThemeClick]);
 
     const selectedAlignedToThemeName = selectedColorThemeByMode.AlignedTo;
     const selectedAlignedThemeName = selectedColorThemeByMode.Aligned;
+    const selectedAlignedToResidueThemeName = selectedResidueThemeByMode.AlignedTo;
+    const selectedAlignedResidueThemeName = selectedResidueThemeByMode.Aligned;
 
-    const colorsAlignedFile = useMemo(() => ({
-        inputRef: colorsAlignedInputRef,
-        handleButtonClick: () => handleLoadColorThemeClick('Aligned'),
+    const chainColorsAlignedFile = useMemo(() => ({
+        inputRef: chainColorsAlignedInputRef,
+        handleButtonClick: () => handleLoadColorThemeClick('Aligned', 'chain'),
         handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => {
-            void handleColorThemeFileChange('Aligned', e);
+            void handleColorThemeFileChange('Aligned', 'chain', e);
+        },
+    }), [handleColorThemeFileChange, handleLoadColorThemeClick]);
+
+    const residueColorsAlignedFile = useMemo(() => ({
+        inputRef: residueColorsAlignedInputRef,
+        handleButtonClick: () => handleLoadColorThemeClick('Aligned', 'residue-type'),
+        handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+            void handleColorThemeFileChange('Aligned', 'residue-type', e);
         },
     }), [handleColorThemeFileChange, handleLoadColorThemeClick]);
     // Realigned molecule structure/representation refs
@@ -1855,20 +1975,12 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
         })(),
     };
 
-    const getSelectedChainColor = (mode: ColorThemeMode, selectedChainId: string): string => {
-        if (!selectedChainId) return '#cccccc';
-        const normalizedSelectedChainId = selectedChainId.trim();
-        const selectedUpper = normalizedSelectedChainId.toUpperCase();
-        const map = mode === 'AlignedTo' ? chainColorsByMode.AlignedTo : chainColorsByMode.Aligned;
-        const direct = map.get(normalizedSelectedChainId) ?? map.get(selectedUpper);
-        if (direct && direct.toUpperCase() !== '#CCCCCC') return direct;
+    const residueTypeColorsByMode = {
+        AlignedTo: getResidueTypeColorsByThemeName(selectedResidueThemeByMode.AlignedTo),
+        Aligned: getResidueTypeColorsByThemeName(selectedResidueThemeByMode.Aligned),
+    };
 
-        const aliases = getEquivalentChainIdsForMode(mode, normalizedSelectedChainId);
-        for (const alias of aliases) {
-            const aliasColor = map.get(alias) ?? map.get(alias.toUpperCase());
-            if (aliasColor && aliasColor.toUpperCase() !== '#CCCCCC') return aliasColor;
-        }
-
+    const getResidueTypeCountsForMode = useCallback((mode: ColorThemeMode): Array<{ type: string; count: number }> => {
         const structureRefs: Array<{ plugin: PluginUIContext | null; structureRef?: string | null }> = mode === 'AlignedTo'
             ? [
                 { plugin: viewerA.ref.current, structureRef: molstarA.structureRefs[AlignedTo] },
@@ -1879,54 +1991,42 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 { plugin: viewerB.ref.current, structureRef: molstarB.structureRefs[Aligned] },
             ];
 
+        let structureData: any = null;
         for (const { plugin, structureRef } of structureRefs) {
             if (!plugin || !structureRef) continue;
-            const reps = getStructureRepresentations(plugin, structureRef);
-            const structureData = plugin.managers.structure.hierarchy.current.structures.find(
+            const candidate = plugin.managers.structure.hierarchy.current.structures.find(
                 s => s.cell.transform.ref === structureRef
             )?.cell.obj?.data;
-            if (!structureData) continue;
-            for (const rep of reps) {
-                const theme = rep.colorTheme as any;
-                const themeName = typeof theme === 'string' ? theme : theme?.name;
-                if (themeName !== 'chain-id') continue;
-                try {
-                    const themeInstance = ChainIdColorTheme({ structure: structureData } as any, ChainIdColorThemeProvider.defaultValues as any);
-                    const location = StructureElement.Location.create(structureData);
-                    let found = false;
-                    for (const unit of structureData.units) {
-                        if (!unit?.elements?.length) continue;
-                        for (let elementIndex = 0; elementIndex < unit.elements.length; elementIndex++) {
-                            const element = unit.elements[elementIndex];
-                            location.unit = unit;
-                            location.element = element;
-                            const auth = String(StructureProperties.chain.auth_asym_id(location) ?? '').trim();
-                            const label = String(StructureProperties.chain.label_asym_id(location) ?? '').trim();
-                            if (auth !== normalizedSelectedChainId && label !== normalizedSelectedChainId && auth.toUpperCase() !== selectedUpper && label.toUpperCase() !== selectedUpper) continue;
-                            const resolved = normalizeThemeColor(themeInstance.color(location, false));
-                            if (resolved) return resolved;
-                            found = true;
-                            break;
-                        }
-                        if (found) break;
-                    }
-                } catch {
-                    // Ignore dynamic fallback errors and continue to simpler fallbacks.
-                }
+            if (candidate) {
+                structureData = candidate;
+                break;
+            }
+        }
+        if (!structureData) return [];
+
+        const counts = new Map<string, number>();
+        const seenResidues = new Set<string>();
+        for (const unit of structureData.units ?? []) {
+            if (!unit?.elements?.length || !Unit.isAtomic(unit)) continue;
+            for (let elementIndex = 0; elementIndex < unit.elements.length; elementIndex++) {
+                const element = unit.elements[elementIndex];
+                const residueIndex = unit.model.atomicHierarchy.residueAtomSegments.index[element];
+                const residueKey = `${unit.id}:${residueIndex}`;
+                if (seenResidues.has(residueKey)) continue;
+                seenResidues.add(residueKey);
+                const residueType = String(unit.model.atomicHierarchy.atoms.label_comp_id.value(element) ?? '').trim().toUpperCase() || '?';
+                counts.set(residueType, (counts.get(residueType) ?? 0) + 1);
             }
         }
 
-        const live = getChainColorsFromActiveChainIdTheme(mode);
-        for (const alias of aliases) {
-            const aliasColor = live.get(alias) ?? live.get(alias.toUpperCase());
-            if (aliasColor) return aliasColor;
-        }
-        return live.get(normalizedSelectedChainId) ?? live.get(selectedUpper) ?? direct ?? '#cccccc';
-    };
+        return Array.from(counts.entries())
+            .map(([type, count]) => ({ type, count }))
+            .sort((a, b) => a.type.localeCompare(b.type));
+    }, [molstarA.structureRefs, molstarB.structureRefs, viewerA.ref, viewerB.ref]);
 
-    const selectedChainColorByMode = {
-        AlignedTo: getSelectedChainColor('AlignedTo', selectedChainIdAlignedTo),
-        Aligned: getSelectedChainColor('Aligned', selectedChainIdAligned),
+    const residueTypeCountsByMode = {
+        AlignedTo: getResidueTypeCountsForMode('AlignedTo'),
+        Aligned: getResidueTypeCountsForMode('Aligned'),
     };
 
     const getExportableChainThemeRowsForMode = useCallback((mode: ColorThemeMode): Array<{ chain: string; color: string }> => {
@@ -1987,6 +2087,46 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             'text/csv;charset=utf-8'
         );
     }, [getCurrentColorThemeNameForMode, getExportableChainThemeRowsForMode]);
+
+    const handleSaveResidueThemeForMode = useCallback((mode: ColorThemeMode) => {
+        const themeName = selectedResidueThemeByMode[mode] ?? DEFAULT_COLOR_THEME_NAME;
+        const rows = getThemeRowsByName(themeName);
+        const kind = inferColorThemeKind(rows);
+        if (kind !== 'residue-type') {
+            alert('No residue-type colour theme is selected for this dataset.');
+            return;
+        }
+        const normalizedRows = rows
+            .map((row) => ({
+                residue_type: String(row.residue_type ?? '').trim().toUpperCase(),
+                color: normalizeThemeColor(row.color) ?? '',
+            }))
+            .filter(row => !!row.residue_type && !!row.color)
+            .sort((a, b) => a.residue_type.localeCompare(b.residue_type));
+        if (normalizedRows.length === 0) {
+            alert('No residue-type colours are available to save yet.');
+            return;
+        }
+
+        const safeThemeName = themeName.replace(/[^a-zA-Z0-9._-]+/g, '-');
+        const csvRows = ['residue_type,color', ...normalizedRows.map(row => `${row.residue_type},${row.color}`)];
+        downloadTextFile(
+            `ribocode-${mode.toLowerCase()}-${safeThemeName || 'residue-theme'}-${Date.now()}.csv`,
+            `${csvRows.join('\n')}\n`,
+            'text/csv;charset=utf-8'
+        );
+    }, [getThemeRowsByName, selectedResidueThemeByMode]);
+
+    const handleSelectThemeForMode = useCallback((mode: ColorThemeMode, kind: 'chain' | 'residue-type', themeName: string) => {
+        if (kind === 'chain') {
+            setSelectedColorThemeByMode(prev => ({ ...prev, [mode]: themeName }));
+        } else {
+            setSelectedResidueThemeByMode(prev => ({ ...prev, [mode]: themeName }));
+        }
+        void applyColorThemeNameToModeRepresentations(mode, themeName, {
+            __themeRevision: nextColorThemeRevision(),
+        });
+    }, [applyColorThemeNameToModeRepresentations, nextColorThemeRevision]);
 
     const handleSelectChainIdAlignedTo = useCallback((chainId: string) => {
         setSelectedChainIdAlignedTo(chainId);
@@ -5822,10 +5962,14 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
             colorThemesByMode: {
                 alignedTo: {
                     selectedThemeName: selectedColorThemeByMode.AlignedTo,
+                    selectedChainThemeName: selectedColorThemeByMode.AlignedTo,
+                    selectedResidueThemeName: selectedResidueThemeByMode.AlignedTo,
                     themes: buildPersistedColorThemes(),
                 },
                 aligned: {
                     selectedThemeName: selectedColorThemeByMode.Aligned,
+                    selectedChainThemeName: selectedColorThemeByMode.Aligned,
+                    selectedResidueThemeName: selectedResidueThemeByMode.Aligned,
                     themes: buildPersistedColorThemes(),
                 },
             },
@@ -6009,10 +6153,14 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                 colorThemesByMode: {
                     alignedTo: {
                         selectedThemeName: selectedColorThemeByMode.AlignedTo,
+                        selectedChainThemeName: selectedColorThemeByMode.AlignedTo,
+                        selectedResidueThemeName: selectedResidueThemeByMode.AlignedTo,
                         themes: buildPersistedColorThemes(),
                     },
                     aligned: {
                         selectedThemeName: selectedColorThemeByMode.Aligned,
+                        selectedChainThemeName: selectedColorThemeByMode.Aligned,
+                        selectedResidueThemeName: selectedResidueThemeByMode.Aligned,
                         themes: buildPersistedColorThemes(),
                     },
                 },
@@ -6170,20 +6318,36 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                     return next;
                 });
 
-                const alignedToSelectedCandidate = uiState.colorThemesByMode.alignedTo?.selectedThemeName;
-                const alignedSelectedCandidate = uiState.colorThemesByMode.aligned?.selectedThemeName;
+                const alignedToSelectedChainCandidate = uiState.colorThemesByMode.alignedTo?.selectedChainThemeName
+                    ?? uiState.colorThemesByMode.alignedTo?.selectedThemeName;
+                const alignedSelectedChainCandidate = uiState.colorThemesByMode.aligned?.selectedChainThemeName
+                    ?? uiState.colorThemesByMode.aligned?.selectedThemeName;
+                const alignedToSelectedResidueCandidate = uiState.colorThemesByMode.alignedTo?.selectedResidueThemeName;
+                const alignedSelectedResidueCandidate = uiState.colorThemesByMode.aligned?.selectedResidueThemeName;
 
-                const restoredAlignedToThemeName = options.some(option => option.value === alignedToSelectedCandidate)
-                    ? alignedToSelectedCandidate!
+                const restoredAlignedToThemeName = options.some(option => option.value === alignedToSelectedChainCandidate)
+                    ? alignedToSelectedChainCandidate!
                     : DEFAULT_COLOR_THEME_NAME;
-                const restoredAlignedThemeName = options.some(option => option.value === alignedSelectedCandidate)
-                    ? alignedSelectedCandidate!
+                const restoredAlignedThemeName = options.some(option => option.value === alignedSelectedChainCandidate)
+                    ? alignedSelectedChainCandidate!
+                    : DEFAULT_COLOR_THEME_NAME;
+
+                const restoredAlignedToResidueThemeName = options.some(option => option.value === alignedToSelectedResidueCandidate)
+                    ? alignedToSelectedResidueCandidate!
+                    : DEFAULT_COLOR_THEME_NAME;
+                const restoredAlignedResidueThemeName = options.some(option => option.value === alignedSelectedResidueCandidate)
+                    ? alignedSelectedResidueCandidate!
                     : DEFAULT_COLOR_THEME_NAME;
 
                 setSelectedColorThemeByMode(prev => ({
                     ...prev,
                     AlignedTo: restoredAlignedToThemeName,
                     Aligned: restoredAlignedThemeName,
+                }));
+                setSelectedResidueThemeByMode(prev => ({
+                    ...prev,
+                    AlignedTo: restoredAlignedToResidueThemeName,
+                    Aligned: restoredAlignedResidueThemeName,
                 }));
 
                 restoredSelectedThemeByMode.AlignedTo = restoredAlignedToThemeName;
@@ -6781,20 +6945,39 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     otherViewerReady: viewerBReady,
                                     representationType: representationTypeAlignedTo,
                                     setRepresentationType: setRepresentationTypeAlignedTo,
-                                    colorsFile: colorsAlignedToFile,
+                                    colorsFile: chainColorsAlignedToFile,
+                                    chainColorsFile: chainColorsAlignedToFile,
+                                    residueColorsFile: residueColorsAlignedToFile,
                                     isMoleculeColoursLoaded: isMoleculeAlignedToColoursLoaded,
                                     colorMode: colorModeByMode.AlignedTo,
                                     onColorModeChange: (mode: RepresentationColorMode) => setColorModeByMode(prev => ({ ...prev, AlignedTo: mode })),
-                                    selectedChainColor: selectedChainColorByMode.AlignedTo,
-                                    onSelectedChainColorChange: (color: string) => updateChainColorInTheme(getCurrentColorThemeNameForMode('AlignedTo'), selectedChainIdAlignedTo, color, 'AlignedTo'),
+                                    residueTypeColorsById: residueTypeColorsByMode.AlignedTo,
+                                    residueTypeCounts: residueTypeCountsByMode.AlignedTo,
+                                    onResidueTypeColorChange: (residueType: string, color: string) => updateResidueTypeColorInTheme(selectedResidueThemeByMode.AlignedTo, residueType, color, 'AlignedTo'),
                                     onSaveColorTheme: () => handleSaveColorThemeForMode('AlignedTo'),
                                     saveColorThemeDisabled: !selectedChainIdAlignedTo,
-                                    colorThemeOptions: loadedColorThemes,
+                                    colorThemeOptions: chainThemeOptions,
                                     selectedColorThemeName: selectedColorThemeByMode.AlignedTo,
-                                    setSelectedColorThemeName: (themeName: string) => setSelectedColorThemeByMode(prev => ({ ...prev, AlignedTo: themeName })),
-                                    onRemoveColorTheme: () => handleRemoveSelectedColorTheme('AlignedTo'),
+                                    setSelectedColorThemeName: (themeName: string) => handleSelectThemeForMode('AlignedTo', 'chain', themeName),
+                                    onRemoveColorTheme: () => handleRemoveSelectedColorTheme('AlignedTo', 'chain'),
                                     removeColorThemeDisabled: selectedColorThemeByMode.AlignedTo === DEFAULT_COLOR_THEME_NAME
                                         || isThemeInUse(selectedColorThemeByMode.AlignedTo),
+                                    chainThemeOptions,
+                                    selectedChainThemeName: selectedColorThemeByMode.AlignedTo,
+                                    setSelectedChainThemeName: (themeName: string) => handleSelectThemeForMode('AlignedTo', 'chain', themeName),
+                                    onSaveChainTheme: () => handleSaveColorThemeForMode('AlignedTo'),
+                                    saveChainThemeDisabled: false,
+                                    onRemoveChainTheme: () => handleRemoveSelectedColorTheme('AlignedTo', 'chain'),
+                                    removeChainThemeDisabled: selectedColorThemeByMode.AlignedTo === DEFAULT_COLOR_THEME_NAME
+                                        || isThemeInUse(selectedColorThemeByMode.AlignedTo),
+                                    residueThemeOptions,
+                                    selectedResidueThemeName: selectedResidueThemeByMode.AlignedTo,
+                                    setSelectedResidueThemeName: (themeName: string) => handleSelectThemeForMode('AlignedTo', 'residue-type', themeName),
+                                    onSaveResidueTheme: () => handleSaveResidueThemeForMode('AlignedTo'),
+                                    saveResidueThemeDisabled: selectedResidueThemeByMode.AlignedTo === DEFAULT_COLOR_THEME_NAME && residueTypeColorsByMode.AlignedTo.size === 0,
+                                    onRemoveResidueTheme: () => handleRemoveSelectedColorTheme('AlignedTo', 'residue-type'),
+                                    removeResidueThemeDisabled: selectedResidueThemeByMode.AlignedTo === DEFAULT_COLOR_THEME_NAME
+                                        || isThemeInUse(selectedResidueThemeByMode.AlignedTo),
                                     structureRef: structureRefAAlignedTo,
                                     otherStructureRef: structureRefBAlignedTo,
                                     selectedSubunit: selectedSubunitAlignedTo,
@@ -6919,20 +7102,39 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     otherViewerReady: viewerBReady,
                                     representationType: representationTypeAligned,
                                     setRepresentationType: setRepresentationTypeAligned,
-                                    colorsFile: colorsAlignedFile,
+                                    colorsFile: chainColorsAlignedFile,
+                                    chainColorsFile: chainColorsAlignedFile,
+                                    residueColorsFile: residueColorsAlignedFile,
                                     isMoleculeColoursLoaded: isMoleculeAlignedColoursLoaded,
                                     colorMode: colorModeByMode.Aligned,
                                     onColorModeChange: (mode: RepresentationColorMode) => setColorModeByMode(prev => ({ ...prev, Aligned: mode })),
-                                    selectedChainColor: selectedChainColorByMode.Aligned,
-                                    onSelectedChainColorChange: (color: string) => updateChainColorInTheme(getCurrentColorThemeNameForMode('Aligned'), selectedChainIdAligned, color, 'Aligned'),
+                                    residueTypeColorsById: residueTypeColorsByMode.Aligned,
+                                    residueTypeCounts: residueTypeCountsByMode.Aligned,
+                                    onResidueTypeColorChange: (residueType: string, color: string) => updateResidueTypeColorInTheme(selectedResidueThemeByMode.Aligned, residueType, color, 'Aligned'),
                                     onSaveColorTheme: () => handleSaveColorThemeForMode('Aligned'),
                                     saveColorThemeDisabled: !selectedChainIdAligned,
-                                    colorThemeOptions: loadedColorThemes,
+                                    colorThemeOptions: chainThemeOptions,
                                     selectedColorThemeName: selectedColorThemeByMode.Aligned,
-                                    setSelectedColorThemeName: (themeName: string) => setSelectedColorThemeByMode(prev => ({ ...prev, Aligned: themeName })),
-                                    onRemoveColorTheme: () => handleRemoveSelectedColorTheme('Aligned'),
+                                    setSelectedColorThemeName: (themeName: string) => handleSelectThemeForMode('Aligned', 'chain', themeName),
+                                    onRemoveColorTheme: () => handleRemoveSelectedColorTheme('Aligned', 'chain'),
                                     removeColorThemeDisabled: selectedColorThemeByMode.Aligned === DEFAULT_COLOR_THEME_NAME
                                         || isThemeInUse(selectedColorThemeByMode.Aligned),
+                                    chainThemeOptions,
+                                    selectedChainThemeName: selectedColorThemeByMode.Aligned,
+                                    setSelectedChainThemeName: (themeName: string) => handleSelectThemeForMode('Aligned', 'chain', themeName),
+                                    onSaveChainTheme: () => handleSaveColorThemeForMode('Aligned'),
+                                    saveChainThemeDisabled: false,
+                                    onRemoveChainTheme: () => handleRemoveSelectedColorTheme('Aligned', 'chain'),
+                                    removeChainThemeDisabled: selectedColorThemeByMode.Aligned === DEFAULT_COLOR_THEME_NAME
+                                        || isThemeInUse(selectedColorThemeByMode.Aligned),
+                                    residueThemeOptions,
+                                    selectedResidueThemeName: selectedResidueThemeByMode.Aligned,
+                                    setSelectedResidueThemeName: (themeName: string) => handleSelectThemeForMode('Aligned', 'residue-type', themeName),
+                                    onSaveResidueTheme: () => handleSaveResidueThemeForMode('Aligned'),
+                                    saveResidueThemeDisabled: selectedResidueThemeByMode.Aligned === DEFAULT_COLOR_THEME_NAME && residueTypeColorsByMode.Aligned.size === 0,
+                                    onRemoveResidueTheme: () => handleRemoveSelectedColorTheme('Aligned', 'residue-type'),
+                                    removeResidueThemeDisabled: selectedResidueThemeByMode.Aligned === DEFAULT_COLOR_THEME_NAME
+                                        || isThemeInUse(selectedResidueThemeByMode.Aligned),
                                     structureRef: structureRefAAligned,
                                     otherStructureRef: structureRefBAligned,
                                     selectedSubunit: selectedSubunitAligned,
@@ -7145,20 +7347,39 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     otherViewerReady: viewerAReady,
                                     representationType: representationTypeAlignedTo,
                                     setRepresentationType: setRepresentationTypeAlignedTo,
-                                    colorsFile: colorsAlignedToFile,
+                                    colorsFile: chainColorsAlignedToFile,
+                                    chainColorsFile: chainColorsAlignedToFile,
+                                    residueColorsFile: residueColorsAlignedToFile,
                                     isMoleculeColoursLoaded: isMoleculeAlignedToColoursLoaded,
                                     colorMode: colorModeByMode.AlignedTo,
                                     onColorModeChange: (mode: RepresentationColorMode) => setColorModeByMode(prev => ({ ...prev, AlignedTo: mode })),
-                                    selectedChainColor: selectedChainColorByMode.AlignedTo,
-                                    onSelectedChainColorChange: (color: string) => updateChainColorInTheme(getCurrentColorThemeNameForMode('AlignedTo'), selectedChainIdAlignedTo, color, 'AlignedTo'),
+                                    residueTypeColorsById: residueTypeColorsByMode.AlignedTo,
+                                    residueTypeCounts: residueTypeCountsByMode.AlignedTo,
+                                    onResidueTypeColorChange: (residueType: string, color: string) => updateResidueTypeColorInTheme(selectedResidueThemeByMode.AlignedTo, residueType, color, 'AlignedTo'),
                                     onSaveColorTheme: () => handleSaveColorThemeForMode('AlignedTo'),
                                     saveColorThemeDisabled: !selectedChainIdAlignedTo,
-                                    colorThemeOptions: loadedColorThemes,
+                                    colorThemeOptions: chainThemeOptions,
                                     selectedColorThemeName: selectedColorThemeByMode.AlignedTo,
-                                    setSelectedColorThemeName: (themeName: string) => setSelectedColorThemeByMode(prev => ({ ...prev, AlignedTo: themeName })),
-                                    onRemoveColorTheme: () => handleRemoveSelectedColorTheme('AlignedTo'),
+                                    setSelectedColorThemeName: (themeName: string) => handleSelectThemeForMode('AlignedTo', 'chain', themeName),
+                                    onRemoveColorTheme: () => handleRemoveSelectedColorTheme('AlignedTo', 'chain'),
                                     removeColorThemeDisabled: selectedColorThemeByMode.AlignedTo === DEFAULT_COLOR_THEME_NAME
                                         || isThemeInUse(selectedColorThemeByMode.AlignedTo),
+                                    chainThemeOptions,
+                                    selectedChainThemeName: selectedColorThemeByMode.AlignedTo,
+                                    setSelectedChainThemeName: (themeName: string) => handleSelectThemeForMode('AlignedTo', 'chain', themeName),
+                                    onSaveChainTheme: () => handleSaveColorThemeForMode('AlignedTo'),
+                                    saveChainThemeDisabled: false,
+                                    onRemoveChainTheme: () => handleRemoveSelectedColorTheme('AlignedTo', 'chain'),
+                                    removeChainThemeDisabled: selectedColorThemeByMode.AlignedTo === DEFAULT_COLOR_THEME_NAME
+                                        || isThemeInUse(selectedColorThemeByMode.AlignedTo),
+                                    residueThemeOptions,
+                                    selectedResidueThemeName: selectedResidueThemeByMode.AlignedTo,
+                                    setSelectedResidueThemeName: (themeName: string) => handleSelectThemeForMode('AlignedTo', 'residue-type', themeName),
+                                    onSaveResidueTheme: () => handleSaveResidueThemeForMode('AlignedTo'),
+                                    saveResidueThemeDisabled: selectedResidueThemeByMode.AlignedTo === DEFAULT_COLOR_THEME_NAME && residueTypeColorsByMode.AlignedTo.size === 0,
+                                    onRemoveResidueTheme: () => handleRemoveSelectedColorTheme('AlignedTo', 'residue-type'),
+                                    removeResidueThemeDisabled: selectedResidueThemeByMode.AlignedTo === DEFAULT_COLOR_THEME_NAME
+                                        || isThemeInUse(selectedResidueThemeByMode.AlignedTo),
                                     structureRef: structureRefBAlignedTo,
                                     otherStructureRef: structureRefAAlignedTo,
                                     selectedSubunit: selectedSubunitAlignedTo,
@@ -7283,20 +7504,39 @@ const App: React.FC<AppProps> = ({ testForceIsMoleculeAlignedLoaded }) => {
                                     otherViewerReady: viewerAReady,
                                     representationType: representationTypeAligned,
                                     setRepresentationType: setRepresentationTypeAligned,
-                                    colorsFile: colorsAlignedFile,
+                                    colorsFile: chainColorsAlignedFile,
+                                    chainColorsFile: chainColorsAlignedFile,
+                                    residueColorsFile: residueColorsAlignedFile,
                                     isMoleculeColoursLoaded: isMoleculeAlignedColoursLoaded,
                                     colorMode: colorModeByMode.Aligned,
                                     onColorModeChange: (mode: RepresentationColorMode) => setColorModeByMode(prev => ({ ...prev, Aligned: mode })),
-                                    selectedChainColor: selectedChainColorByMode.Aligned,
-                                    onSelectedChainColorChange: (color: string) => updateChainColorInTheme(getCurrentColorThemeNameForMode('Aligned'), selectedChainIdAligned, color, 'Aligned'),
+                                    residueTypeColorsById: residueTypeColorsByMode.Aligned,
+                                    residueTypeCounts: residueTypeCountsByMode.Aligned,
+                                    onResidueTypeColorChange: (residueType: string, color: string) => updateResidueTypeColorInTheme(selectedResidueThemeByMode.Aligned, residueType, color, 'Aligned'),
                                     onSaveColorTheme: () => handleSaveColorThemeForMode('Aligned'),
                                     saveColorThemeDisabled: !selectedChainIdAligned,
-                                    colorThemeOptions: loadedColorThemes,
+                                    colorThemeOptions: chainThemeOptions,
                                     selectedColorThemeName: selectedColorThemeByMode.Aligned,
-                                    setSelectedColorThemeName: (themeName: string) => setSelectedColorThemeByMode(prev => ({ ...prev, Aligned: themeName })),
-                                    onRemoveColorTheme: () => handleRemoveSelectedColorTheme('Aligned'),
+                                    setSelectedColorThemeName: (themeName: string) => handleSelectThemeForMode('Aligned', 'chain', themeName),
+                                    onRemoveColorTheme: () => handleRemoveSelectedColorTheme('Aligned', 'chain'),
                                     removeColorThemeDisabled: selectedColorThemeByMode.Aligned === DEFAULT_COLOR_THEME_NAME
                                         || isThemeInUse(selectedColorThemeByMode.Aligned),
+                                    chainThemeOptions,
+                                    selectedChainThemeName: selectedColorThemeByMode.Aligned,
+                                    setSelectedChainThemeName: (themeName: string) => handleSelectThemeForMode('Aligned', 'chain', themeName),
+                                    onSaveChainTheme: () => handleSaveColorThemeForMode('Aligned'),
+                                    saveChainThemeDisabled: false,
+                                    onRemoveChainTheme: () => handleRemoveSelectedColorTheme('Aligned', 'chain'),
+                                    removeChainThemeDisabled: selectedColorThemeByMode.Aligned === DEFAULT_COLOR_THEME_NAME
+                                        || isThemeInUse(selectedColorThemeByMode.Aligned),
+                                    residueThemeOptions,
+                                    selectedResidueThemeName: selectedResidueThemeByMode.Aligned,
+                                    setSelectedResidueThemeName: (themeName: string) => handleSelectThemeForMode('Aligned', 'residue-type', themeName),
+                                    onSaveResidueTheme: () => handleSaveResidueThemeForMode('Aligned'),
+                                    saveResidueThemeDisabled: selectedResidueThemeByMode.Aligned === DEFAULT_COLOR_THEME_NAME && residueTypeColorsByMode.Aligned.size === 0,
+                                    onRemoveResidueTheme: () => handleRemoveSelectedColorTheme('Aligned', 'residue-type'),
+                                    removeResidueThemeDisabled: selectedResidueThemeByMode.Aligned === DEFAULT_COLOR_THEME_NAME
+                                        || isThemeInUse(selectedResidueThemeByMode.Aligned),
                                     structureRef: structureRefBAligned,
                                     otherStructureRef: structureRefAAligned,
                                     selectedSubunit: selectedSubunitAligned,

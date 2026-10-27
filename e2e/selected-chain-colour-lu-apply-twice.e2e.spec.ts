@@ -28,8 +28,8 @@ async function selectLuChain(page: Page) {
   await expect(page.locator('#viewer-column-A-alignedto-selected-chain-label')).toContainText('LU');
 }
 
-async function setSelectedChainColorDraft(page: Page, color: string) {
-  await page.locator('#viewer-column-A-alignedto-selected-chain-color').evaluate((element, value) => {
+async function setSelectedChainColorDraft(page: Page, chainId: string, color: string) {
+  await page.locator(`#viewer-column-A-alignedto-chain-color-${chainId}`).evaluate((element, value) => {
     const input = element as HTMLInputElement;
     input.value = value as string;
     input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -39,7 +39,7 @@ async function setSelectedChainColorDraft(page: Page, color: string) {
 
 async function saveThemeCsv(page: Page): Promise<Map<string, string>> {
   const downloadPromise = page.waitForEvent('download');
-  await page.click('#viewer-column-A-alignedto-save-colour-theme-btn');
+  await page.click('#viewer-column-A-alignedto-save-chain-theme-btn');
   const download = await downloadPromise;
   const filePath = await download.path();
   expect(filePath).toBeTruthy();
@@ -61,20 +61,24 @@ test('LU chain supports two successive selected colour apply actions', async ({ 
   await openControls(page);
   await selectLuChain(page);
 
-  const colorInput = page.locator('#viewer-column-A-alignedto-selected-chain-color');
+  const chainId = 'LU';
+  const colorInput = page.locator(`#viewer-column-A-alignedto-chain-color-${chainId}`);
   await expect(colorInput).toBeVisible();
   const initial = (await colorInput.inputValue()).toUpperCase();
   expect(initial).not.toBe('#CCCCCC');
 
-  await setSelectedChainColorDraft(page, '#11AA33');
-  await page.click('#viewer-column-A-alignedto-selected-chain-color-apply-btn');
-  await expect(colorInput).toHaveValue('#11aa33');
-  const afterFirst = await saveThemeCsv(page);
-  expect(afterFirst.get('LU')).toBe('#11AA33');
+  const firstColor = initial === '#11AA33' ? '#CC4411' : '#11AA33';
+  const secondColor = firstColor === '#CC4411' ? '#3366CC' : '#CC4411';
 
-  await setSelectedChainColorDraft(page, '#CC4411');
-  await page.click('#viewer-column-A-alignedto-selected-chain-color-apply-btn');
-  await expect(colorInput).toHaveValue('#cc4411');
+  await setSelectedChainColorDraft(page, chainId, firstColor);
+  await page.click(`#viewer-column-A-alignedto-chain-color-${chainId}-apply-btn`);
+  await expect(colorInput).toHaveValue(firstColor.toLowerCase());
+  const afterFirst = await saveThemeCsv(page);
+  expect(afterFirst.get('LU')).toBe(firstColor);
+
+  await setSelectedChainColorDraft(page, chainId, secondColor);
+  await page.click(`#viewer-column-A-alignedto-chain-color-${chainId}-apply-btn`);
+  await expect(colorInput).toHaveValue(secondColor.toLowerCase());
   const afterSecond = await saveThemeCsv(page);
-  expect(afterSecond.get('LU')).toBe('#CC4411');
+  expect(afterSecond.get('LU')).toBe(secondColor);
 });

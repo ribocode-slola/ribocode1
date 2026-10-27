@@ -42,6 +42,7 @@ Welcome to the Ribocode Developer Guide!
     - [Running E2E Tests](#running-e2e-tests)
     - [Using Real Datasets in E2E Tests](#using-real-datasets-in-e2e-tests)
     - [E2E Test Best Practices](#e2e-test-best-practices)
+      - [Session Round-Trip Regression Patterns](#session-round-trip-regression-patterns)
   - [Test Types Overview](#test-types-overview)
 - [Contributing](#contributing)
 
@@ -722,6 +723,14 @@ The following scripts are available in `package.json`:
 - Clean up test state between tests to avoid cross-test interference.
 - Document any new E2E tests and datasets added.
 - Prefer realistic user flows: test file selection dialogs, downloads, and UI prompts as a user would experience them.
+
+#### Session Round-Trip Regression Patterns
+
+- Keep `Save` and `Save All` selection payloads in parity for session fidelity. If selection schema is extended (for example `chainId2`, `residueId2`, `residueIds2`), update both save paths and both restore paths together.
+- Add integration coverage for session schema changes in `src/App.integration.test.tsx` before or alongside app changes. This catches regressions in serialized UI state quickly.
+- For Playwright session-load assertions, gate on readiness state before asserting UI labels. For sync-related flows, prefer polling the test API (`window.__ribocodeTestApi.getSyncState()`) and then asserting button enabled/text state.
+- Reuse shared session helpers in `e2e/helpers/session-load.ts` for loading fixture sessions and required files instead of re-implementing modal/file-input flows in each spec.
+- When a session E2E fails under a run that was manually interrupted (`^C`/SIGINT), re-run cleanly before triage; interrupted runs can report false failures across unrelated specs.
 
 #### Session and Selector Stability Notes
 
