@@ -338,9 +338,9 @@ export function createChainColorTheme(
                 const authAsymId: string = String(unit.model.atomicHierarchy.chains.auth_asym_id?.value?.(chainIndex) ?? '');
                 const labelAsymId: string = String(unit.model.atomicHierarchy.chains.label_asym_id?.value?.(chainIndex) ?? '');
                 const resolved = resolveChainColor(authAsymId, labelAsymId);
-                return resolved ?? fallbackChainIdTheme.color(location as any);
+                return resolved ?? fallbackChainIdTheme.color(location as any, false);
             }
-            return fallbackChainIdTheme.color(location as any);
+            return fallbackChainIdTheme.color(location as any, false);
         },
         props: {},
         description: 'Colors chains according to a custom map.'
