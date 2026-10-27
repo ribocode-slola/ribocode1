@@ -47,7 +47,7 @@ async function selectTargetChain(page: Page): Promise<string> {
 
 async function saveThemeCsv(page: Page): Promise<Map<string, string>> {
   const downloadPromise = page.waitForEvent('download');
-  await page.click('#viewer-column-A-alignedto-save-colour-theme-btn');
+  await page.click('#viewer-column-A-alignedto-save-chain-theme-btn');
   const download = await downloadPromise;
   const filePath = await download.path();
   expect(filePath).toBeTruthy();

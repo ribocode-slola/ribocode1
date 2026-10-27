@@ -35,12 +35,12 @@ async function selectFirstAlignedToChain(page: Page): Promise<string> {
 async function openRepresentationControls(page: Page) {
   const controlsToggle = page.locator('#viewer-column-A-alignedto-representation-controls-toggle-btn').first();
   await controlsToggle.click();
-  await expect(page.locator('#viewer-column-A-alignedto-save-colour-theme-btn').first()).toBeVisible();
+  await expect(page.locator('#viewer-column-A-alignedto-save-chain-theme-btn').first()).toBeVisible();
 }
 
 async function saveThemeCsv(page: Page): Promise<Map<string, string>> {
   const downloadPromise = page.waitForEvent('download');
-  await page.locator('#viewer-column-A-alignedto-save-colour-theme-btn').first().click();
+  await page.locator('#viewer-column-A-alignedto-save-chain-theme-btn').first().click();
   const download = await downloadPromise;
   const filePath = await download.path();
   expect(filePath).toBeTruthy();

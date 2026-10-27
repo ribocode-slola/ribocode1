@@ -400,7 +400,7 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     }, { timeout: 5000 });
   });
 
-  it('disables Column B Load Colours until Aligned data are loaded', async () => {
+  it('disables Column B Load Chain/Residue Colours until Aligned data are loaded', async () => {
     render(<App />);
 
     const alignedToInput = document.getElementById('viewer-column-A-alignedto-file-input') as HTMLInputElement | null;
@@ -414,15 +414,19 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     expect(alignedRepControlsToggle).toBeInTheDocument();
     fireEvent.click(alignedRepControlsToggle!);
 
-    const alignedColoursBtn = document.getElementById('viewer-column-B-aligned-load-colours-btn') as HTMLButtonElement | null;
-    expect(alignedColoursBtn).toBeInTheDocument();
-    expect(alignedColoursBtn).toBeDisabled();
+    const alignedChainColoursBtn = document.getElementById('viewer-column-B-aligned-load-chain-colours-btn') as HTMLButtonElement | null;
+    const alignedColorModeSelect = document.getElementById('viewer-column-B-aligned-color-mode-select') as HTMLSelectElement | null;
+    expect(alignedChainColoursBtn).toBeInTheDocument();
+    expect(alignedColorModeSelect).toBeInTheDocument();
+    expect(alignedColorModeSelect!.value).toBe('chain');
+    expect(document.getElementById('viewer-column-B-aligned-load-residue-colours-btn')).toBeNull();
+    expect(alignedChainColoursBtn).toBeDisabled();
 
     fireEvent.change(alignedToInput!, { target: { files: [loadTestFile('4ug0.cif')] } });
 
     await waitFor(() => {
       expect(document.getElementById('viewer-column-B-aligned-load-btn')).not.toBeDisabled();
-      expect(document.getElementById('viewer-column-B-aligned-load-colours-btn')).toBeDisabled();
+      expect(document.getElementById('viewer-column-B-aligned-load-chain-colours-btn')).toBeDisabled();
     }, { timeout: 5000 });
 
     fireEvent.change(alignedInput!, { target: { files: [loadTestFile('6xu8.cif')] } });
@@ -436,7 +440,14 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     }
 
     await waitFor(() => {
-      expect(document.getElementById('viewer-column-B-aligned-load-colours-btn')).not.toBeDisabled();
+      expect(document.getElementById('viewer-column-B-aligned-load-chain-colours-btn')).not.toBeDisabled();
+    }, { timeout: 5000 });
+
+    fireEvent.change(alignedColorModeSelect!, { target: { value: 'residue-type' } });
+    await waitFor(() => {
+      expect(document.getElementById('viewer-column-B-aligned-load-residue-colours-btn')).toBeInTheDocument();
+      expect(document.getElementById('viewer-column-B-aligned-load-residue-colours-btn')).not.toBeDisabled();
+      expect(document.getElementById('viewer-column-B-aligned-load-chain-colours-btn')).toBeNull();
     }, { timeout: 5000 });
   });
 
@@ -753,6 +764,8 @@ describe('App integration: AlignedTo and Aligned loading', () => {
       expect(row).toBeInTheDocument();
       return row as HTMLTableRowElement;
     }, { timeout: 5000 });
+    const selectedChainRowTestId = firstChainRow.getAttribute('data-testid') ?? '';
+    const selectedChainIdFromRow = selectedChainRowTestId.replace('viewer-column-A-chain-table-row-', '');
     fireEvent.click(firstChainRow);
 
     await waitFor(() => {
@@ -761,9 +774,11 @@ describe('App integration: AlignedTo and Aligned loading', () => {
       expect(selectedLabel?.textContent).not.toContain('Selected: None');
     }, { timeout: 5000 });
 
-    const selectedChainColorInput = document.getElementById('viewer-column-A-alignedto-selected-chain-color') as HTMLInputElement | null;
+    const selectedChainId = selectedChainIdFromRow || 'A';
+
+    const selectedChainColorInput = document.getElementById(`viewer-column-A-alignedto-chain-color-${selectedChainId}`) as HTMLInputElement | null;
     expect(selectedChainColorInput).toBeInTheDocument();
-    const selectedChainColorApplyButton = document.getElementById('viewer-column-A-alignedto-selected-chain-color-apply-btn') as HTMLButtonElement | null;
+    const selectedChainColorApplyButton = document.getElementById(`viewer-column-A-alignedto-chain-color-${selectedChainId}-apply-btn`) as HTMLButtonElement | null;
     expect(selectedChainColorApplyButton).toBeInTheDocument();
     const pluginA = (globalThis as any).__mockPluginA;
     const pluginB = (globalThis as any).__mockPluginB;
@@ -1161,10 +1176,14 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     expect(session.uiState.colorThemesByMode).toEqual({
       alignedTo: {
         selectedThemeName: 'default',
+        selectedChainThemeName: 'default',
+        selectedResidueThemeName: 'default',
         themes: [],
       },
       aligned: {
         selectedThemeName: 'default',
+        selectedChainThemeName: 'default',
+        selectedResidueThemeName: 'default',
         themes: [],
       },
     });
@@ -1341,9 +1360,9 @@ describe('App integration: AlignedTo and Aligned loading', () => {
       expect((document.getElementById('viewer-column-B-aligned-selection-display-mode') as HTMLSelectElement).value).toBe('halo');
       expect(document.getElementById('viewer-column-B-aligned-dim-unselected-toggle-btn')).toHaveAttribute('aria-pressed', 'true');
       expect((document.getElementById('viewer-column-B-aligned-dim-unselected-strength') as HTMLInputElement).value).toBe('65');
-      expect((document.getElementById('viewer-column-A-alignedto-colour-theme-select') as HTMLSelectElement).value).toBe('AlignedTo-custom-theme-test');
-      expect(document.querySelector('#viewer-column-A-alignedto-colour-theme-select option[value="AlignedTo-custom-theme-test"]')).toBeInTheDocument();
-      expect(document.querySelector('#viewer-column-B-aligned-colour-theme-select option[value="AlignedTo-custom-theme-test"]')).toBeInTheDocument();
+      expect((document.getElementById('viewer-column-A-alignedto-chain-colour-theme-select') as HTMLSelectElement).value).toBe('AlignedTo-custom-theme-test');
+      expect(document.querySelector('#viewer-column-A-alignedto-chain-colour-theme-select option[value="AlignedTo-custom-theme-test"]')).toBeInTheDocument();
+      expect(document.querySelector('#viewer-column-B-aligned-chain-colour-theme-select option[value="AlignedTo-custom-theme-test"]')).toBeInTheDocument();
     }, { timeout: 5000 });
 
     const getSessionState = (globalThis as any).__getSessionState as (() => any) | undefined;
@@ -1669,7 +1688,7 @@ describe('App integration: AlignedTo and Aligned loading', () => {
 
     await waitFor(() => {
       const repToggle = document.getElementById('viewer-column-A-alignedto-representation-controls-toggle-btn') as HTMLButtonElement | null;
-      const selectedChainColorInput = document.getElementById('viewer-column-A-alignedto-selected-chain-color') as HTMLInputElement | null;
+      const selectedChainColorInput = document.getElementById('viewer-column-A-alignedto-chain-color-A') as HTMLInputElement | null;
       if (!selectedChainColorInput && repToggle) {
         fireEvent.click(repToggle);
       }

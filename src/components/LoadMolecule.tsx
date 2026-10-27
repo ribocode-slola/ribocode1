@@ -79,14 +79,21 @@ interface LoadDataRowProps {
     representationType: AllowedRepresentationType;
     onRepresentationTypeChange: (type: AllowedRepresentationType) => void;
     representationTypeDisabled: boolean;
-    onAddColorsClick: () => void;
+    onAddColorsClick?: () => void;
     addColorsDisabled: boolean;
-    colorsInputRef: React.RefObject<HTMLInputElement | null>;
-    onColorsFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    colorsInputRef?: React.RefObject<HTMLInputElement | null>;
+    onColorsFileChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    onLoadChainColorsClick?: () => void;
+    chainColorsInputRef?: React.RefObject<HTMLInputElement | null>;
+    onChainColorsFileChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    onLoadResidueColorsClick?: () => void;
+    residueColorsInputRef?: React.RefObject<HTMLInputElement | null>;
+    onResidueColorsFileChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
     colorMode?: 'chain' | 'residue-type';
     onColorModeChange?: (mode: 'chain' | 'residue-type') => void;
-    selectedChainColor?: string;
-    onSelectedChainColorChange?: (color: string) => void;
+    residueTypeColorsById?: Map<string, string>;
+    residueTypeCounts?: Array<{ type: string; count: number }>;
+    onResidueTypeColorChange?: (residueType: string, color: string) => void;
     onSaveColorTheme?: () => void;
     saveColorThemeDisabled?: boolean;
     colorThemeOptions?: Array<{ value: string; label: string }>;
@@ -94,6 +101,20 @@ interface LoadDataRowProps {
     onSelectedColorThemeNameChange?: (themeName: string) => void;
     onRemoveColorTheme?: () => void;
     removeColorThemeDisabled?: boolean;
+    onSaveChainTheme?: () => void;
+    saveChainThemeDisabled?: boolean;
+    chainThemeOptions?: Array<{ value: string; label: string }>;
+    selectedChainThemeName?: string;
+    onSelectedChainThemeNameChange?: (themeName: string) => void;
+    onRemoveChainTheme?: () => void;
+    removeChainThemeDisabled?: boolean;
+    onSaveResidueTheme?: () => void;
+    saveResidueThemeDisabled?: boolean;
+    residueThemeOptions?: Array<{ value: string; label: string }>;
+    selectedResidueThemeName?: string;
+    onSelectedResidueThemeNameChange?: (themeName: string) => void;
+    onRemoveResidueTheme?: () => void;
+    removeResidueThemeDisabled?: boolean;
     // Subunit selection
     subunitToChainIds: Map<string, Set<string>>;
     selectedSubunit: RibosomeSubunitType;
@@ -1160,10 +1181,17 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
     addColorsDisabled,
     colorsInputRef,
     onColorsFileChange,
+    onLoadChainColorsClick,
+    chainColorsInputRef,
+    onChainColorsFileChange,
+    onLoadResidueColorsClick,
+    residueColorsInputRef,
+    onResidueColorsFileChange,
     colorMode = 'chain',
     onColorModeChange = () => {},
-    selectedChainColor = '#cccccc',
-    onSelectedChainColorChange = () => {},
+    residueTypeColorsById,
+    residueTypeCounts,
+    onResidueTypeColorChange,
     onSaveColorTheme,
     saveColorThemeDisabled = false,
     colorThemeOptions,
@@ -1171,6 +1199,20 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
     onSelectedColorThemeNameChange,
     onRemoveColorTheme,
     removeColorThemeDisabled,
+    onSaveChainTheme,
+    saveChainThemeDisabled,
+    chainThemeOptions,
+    selectedChainThemeName,
+    onSelectedChainThemeNameChange,
+    onRemoveChainTheme,
+    removeChainThemeDisabled,
+    onSaveResidueTheme,
+    saveResidueThemeDisabled,
+    residueThemeOptions,
+    selectedResidueThemeName,
+    onSelectedResidueThemeNameChange,
+    onRemoveResidueTheme,
+    removeResidueThemeDisabled,
     subunitToChainIds,
     selectedSubunit,
     onSelectSubunit,
@@ -1185,6 +1227,8 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
     onSubunitZoom,
     subunitZoomDisabled,
     chainInfo,
+    chainColorsById,
+    onChainColorChange,
     selectedChainId,
     onSelectChainId,
     selectedChainId2,
@@ -1252,11 +1296,46 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
     idPrefix
 }) => {
     const [showRepresentationControls, setShowRepresentationControls] = React.useState(false);
-    const [selectedChainColorDraft, setSelectedChainColorDraft] = React.useState(selectedChainColor);
+    const [chainColorQuery, setChainColorQuery] = React.useState('');
+    const [chainColorDraftById, setChainColorDraftById] = React.useState<Record<string, string>>({});
+    const [residueTypeColorDraftById, setResidueTypeColorDraftById] = React.useState<Record<string, string>>({});
+    const chainLabelsForColorEditor = React.useMemo(() => {
+        return getFilteredChainLabels(selectedSubunit, chainInfo.chainLabels, subunitToChainIds);
+    }, [selectedSubunit, chainInfo.chainLabels, subunitToChainIds]);
+
+    const chainColorRows = React.useMemo(() => {
+        const q = chainColorQuery.trim().toLowerCase();
+        return Array.from(chainLabelsForColorEditor.entries())
+            .sort((a, b) => {
+                const byLabel = a[1].localeCompare(b[1], undefined, { numeric: true, sensitivity: 'base' });
+                if (byLabel !== 0) return byLabel;
+                return a[0].localeCompare(b[0], undefined, { numeric: true, sensitivity: 'base' });
+            })
+            .filter(([chainId, label]) => {
+                if (!q) return true;
+                return chainId.toLowerCase().includes(q) || label.toLowerCase().includes(q);
+            });
+    }, [chainLabelsForColorEditor, chainColorQuery]);
+
     React.useEffect(() => {
-        setSelectedChainColorDraft(selectedChainColor);
-    }, [selectedChainColor, selectedChainId, colorMode]);
+        setChainColorDraftById(prev => {
+            const next: Record<string, string> = {};
+            for (const [chainId] of chainLabelsForColorEditor.entries()) {
+                const resolved = chainColorsById?.get(chainId) ?? '#CCCCCC';
+                next[chainId] = resolved;
+            }
+            for (const key of Object.keys(prev)) {
+                if (next[key]) continue;
+                next[key] = prev[key];
+            }
+            return next;
+        });
+    }, [chainLabelsForColorEditor, chainColorsById]);
+
     const allResidueTypeCounts = React.useMemo(() => {
+        if (Array.isArray(residueTypeCounts) && residueTypeCounts.length > 0) {
+            return [...residueTypeCounts].sort((a, b) => a.type.localeCompare(b.type));
+        }
         const counts = new Map<string, number>();
         const addFrom = (info?: { residueLabels: Map<string, ResidueLabelInfo> }) => {
             if (!info) return;
@@ -1270,7 +1349,45 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
         return Array.from(counts.entries())
             .map(([type, count]) => ({ type, count }))
             .sort((a, b) => a.type.localeCompare(b.type));
-    }, [residueInfo, residueInfo2]);
+    }, [residueInfo, residueInfo2, residueTypeCounts]);
+
+    React.useEffect(() => {
+        setResidueTypeColorDraftById(prev => {
+            const next: Record<string, string> = {};
+            for (const { type } of allResidueTypeCounts) {
+                const resolved = residueTypeColorsById?.get(type) ?? '#FF00FF';
+                next[type] = resolved;
+            }
+            // Preserve drafts for residue types not currently shown.
+            for (const key of Object.keys(prev)) {
+                if (next[key]) continue;
+                next[key] = prev[key];
+            }
+            return next;
+        });
+    }, [allResidueTypeCounts, residueTypeColorsById]);
+
+    const effectiveChainThemeOptions = chainThemeOptions ?? colorThemeOptions;
+    const effectiveChainThemeName = selectedChainThemeName ?? selectedColorThemeName;
+    const effectiveSetChainThemeName = onSelectedChainThemeNameChange ?? onSelectedColorThemeNameChange;
+    const effectiveLoadChainColors = onLoadChainColorsClick ?? onAddColorsClick;
+    const effectiveChainInputRef = chainColorsInputRef ?? colorsInputRef;
+    const effectiveOnChainFileChange = onChainColorsFileChange ?? onColorsFileChange;
+    const effectiveSaveChainTheme = onSaveChainTheme ?? onSaveColorTheme;
+    const effectiveSaveChainThemeDisabled = saveChainThemeDisabled ?? saveColorThemeDisabled;
+    const effectiveRemoveChainTheme = onRemoveChainTheme ?? onRemoveColorTheme;
+    const effectiveRemoveChainThemeDisabled = removeChainThemeDisabled ?? removeColorThemeDisabled;
+
+    const effectiveResidueThemeOptions = residueThemeOptions ?? colorThemeOptions;
+    const effectiveResidueThemeName = selectedResidueThemeName ?? selectedColorThemeName;
+    const effectiveSetResidueThemeName = onSelectedResidueThemeNameChange ?? onSelectedColorThemeNameChange;
+    const effectiveLoadResidueColors = onLoadResidueColorsClick ?? onAddColorsClick;
+    const effectiveResidueInputRef = residueColorsInputRef ?? colorsInputRef;
+    const effectiveOnResidueFileChange = onResidueColorsFileChange ?? onColorsFileChange;
+    const effectiveSaveResidueTheme = onSaveResidueTheme ?? onSaveColorTheme;
+    const effectiveSaveResidueThemeDisabled = saveResidueThemeDisabled ?? saveColorThemeDisabled;
+    const effectiveRemoveResidueTheme = onRemoveResidueTheme ?? onRemoveColorTheme;
+    const effectiveRemoveResidueThemeDisabled = removeResidueThemeDisabled ?? removeColorThemeDisabled;
 
     return (
 
@@ -1363,120 +1480,216 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
             </div>
             )}
             {showRepresentationControls && (
-            <div className="load-data-control-row">
-                {colorThemeOptions && colorThemeOptions.length > 0 ? (
-                    <>
-                        <label htmlFor={`${idPrefix}-colour-theme-select`}>Colour Theme:</label>
-                        <select
-                            id={`${idPrefix}-colour-theme-select`}
-                            value={selectedColorThemeName ?? colorThemeOptions[0].value}
-                            onChange={e => onSelectedColorThemeNameChange?.(e.target.value)}
-                            disabled={addColorsDisabled}
-                            className="msp-select msp-form-control"
-                        >
-                            {colorThemeOptions.map(option => (
-                                <option key={option.value} value={option.value}>{option.label}</option>
-                            ))}
-                        </select>
-                        <button
-                            type="button"
-                            onClick={onAddColorsClick}
-                            disabled={addColorsDisabled}
-                            aria-label="Load Colours"
-                            className="msp-btn msp-form-control"
-                            id={`${idPrefix}-load-colours-btn`}
-                        >
-                            Load Colours
-                        </button>
-                        <button
-                            type="button"
-                            onClick={onRemoveColorTheme}
-                            disabled={removeColorThemeDisabled ?? true}
-                            aria-label="Remove Colour Theme"
-                            className="msp-btn msp-form-control"
-                            id={`${idPrefix}-remove-colour-theme-btn`}
-                        >
-                            Remove Theme
-                        </button>
-                        <button
-                            type="button"
-                            onClick={onSaveColorTheme}
-                            disabled={saveColorThemeDisabled || !onSaveColorTheme}
-                            aria-label="Save Colour Theme"
-                            className="msp-btn msp-form-control"
-                            id={`${idPrefix}-save-colour-theme-btn`}
-                        >
-                            Save Theme
-                        </button>
-                    </>
-                ) : (
-                <button
-                    type="button"
-                    onClick={onAddColorsClick}
-                    disabled={addColorsDisabled}
-                    aria-label="Load Colours"
-                    className="msp-btn msp-form-control"
-                    id={`${idPrefix}-load-colours-btn`}
-                >
-                    Load Colours
-                </button>
+            <div className="load-data-control-row" style={{ display: 'flex', flexDirection: 'column', gap: 8, marginLeft: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <strong>Theme:</strong>
+                    <select
+                        id={`${idPrefix}-color-mode-select`}
+                        value={colorMode}
+                        onChange={e => onColorModeChange(e.target.value as 'chain' | 'residue-type')}
+                        className="msp-select msp-form-control"
+                    >
+                        <option value="chain">Chain</option>
+                        <option value="residue-type">Residue</option>
+                    </select>
+                </div>
+
+                {colorMode === 'chain' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginLeft: 16 }}>
+                    {effectiveChainThemeOptions && effectiveChainThemeOptions.length > 0 && (
+                        <>
+                            <select
+                                id={`${idPrefix}-chain-colour-theme-select`}
+                                value={effectiveChainThemeName ?? effectiveChainThemeOptions[0].value}
+                                onChange={e => effectiveSetChainThemeName?.(e.target.value)}
+                                disabled={addColorsDisabled}
+                                className="msp-select msp-form-control"
+                            >
+                                {effectiveChainThemeOptions.map(option => (
+                                    <option key={option.value} value={option.value}>{option.label}</option>
+                                ))}
+                            </select>
+                            <button
+                                type="button"
+                                onClick={effectiveRemoveChainTheme}
+                                disabled={effectiveRemoveChainThemeDisabled ?? true}
+                                aria-label="Remove"
+                                className="msp-btn msp-form-control"
+                                id={`${idPrefix}-remove-chain-theme-btn`}
+                            >
+                                X
+                            </button>
+                        </>
+                    )}
+                    <button
+                        type="button"
+                        onClick={effectiveLoadChainColors}
+                        disabled={addColorsDisabled}
+                        aria-label="Load"
+                        className="msp-btn msp-form-control"
+                        id={`${idPrefix}-load-chain-colours-btn`}
+                    >
+                        Load
+                    </button>
+                    <button
+                        type="button"
+                        onClick={effectiveSaveChainTheme}
+                        disabled={effectiveSaveChainThemeDisabled || !effectiveSaveChainTheme}
+                        aria-label="Save"
+                        className="msp-btn msp-form-control"
+                        id={`${idPrefix}-save-chain-theme-btn`}
+                    >
+                        Save
+                    </button>
+                    <input
+                        type="file"
+                        accept=".csv,.tsv,.txt,.json"
+                        ref={effectiveChainInputRef}
+                        onChange={effectiveOnChainFileChange}
+                        style={{ display: 'none' }}
+                        tabIndex={-1}
+                        id={`${idPrefix}-chain-colours-file-input`}
+                    />
+                </div>
                 )}
-                <input
-                    type="file"
-                    accept=".csv,.tsv,.txt,.json"
-                    ref={colorsInputRef}
-                    onChange={onColorsFileChange}
-                    style={{ display: 'none' }}
-                    tabIndex={-1}
-                    id={`${idPrefix}-colours-file-input`}
-                />
+
+                {colorMode === 'residue-type' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginLeft: 16 }}>
+                    {effectiveResidueThemeOptions && effectiveResidueThemeOptions.length > 0 && (
+                        <>
+                            <select
+                                id={`${idPrefix}-residue-colour-theme-select`}
+                                value={effectiveResidueThemeName ?? effectiveResidueThemeOptions[0].value}
+                                onChange={e => effectiveSetResidueThemeName?.(e.target.value)}
+                                disabled={addColorsDisabled}
+                                className="msp-select msp-form-control"
+                            >
+                                {effectiveResidueThemeOptions.map(option => (
+                                    <option key={option.value} value={option.value}>{option.label}</option>
+                                ))}
+                            </select>
+                            <button
+                                type="button"
+                                onClick={effectiveRemoveResidueTheme}
+                                disabled={effectiveRemoveResidueThemeDisabled ?? true}
+                                aria-label="Remove"
+                                className="msp-btn msp-form-control"
+                                id={`${idPrefix}-remove-residue-theme-btn`}
+                            >
+                                X
+                            </button>
+                        </>
+                    )}
+                    <button
+                        type="button"
+                        onClick={effectiveLoadResidueColors}
+                        disabled={addColorsDisabled}
+                        aria-label="Load"
+                        className="msp-btn msp-form-control"
+                        id={`${idPrefix}-load-residue-colours-btn`}
+                    >
+                        Load
+                    </button>
+                    <button
+                        type="button"
+                        onClick={effectiveSaveResidueTheme}
+                        disabled={effectiveSaveResidueThemeDisabled || !effectiveSaveResidueTheme}
+                        aria-label="Save"
+                        className="msp-btn msp-form-control"
+                        id={`${idPrefix}-save-residue-theme-btn`}
+                    >
+                        Save
+                    </button>
+                    <input
+                        type="file"
+                        accept=".csv,.tsv,.txt,.json"
+                        ref={effectiveResidueInputRef}
+                        onChange={effectiveOnResidueFileChange}
+                        style={{ display: 'none' }}
+                        tabIndex={-1}
+                        id={`${idPrefix}-residue-colours-file-input`}
+                    />
+                </div>
+                )}
             </div>
             )}
-            {showRepresentationControls && (
-            <div className="load-data-control-row" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <label htmlFor={`${idPrefix}-color-mode-select`}>Colouring Mode:</label>
-                <select
-                    id={`${idPrefix}-color-mode-select`}
-                    value={colorMode}
-                    onChange={e => onColorModeChange(e.target.value as 'chain' | 'residue-type')}
-                    className="msp-select msp-form-control"
-                >
-                    <option value="chain">Chain</option>
-                    <option value="residue-type">Residue Type</option>
-                </select>
-                {colorMode === 'chain' && selectedChainId && (
-                    <>
-                        <label htmlFor={`${idPrefix}-selected-chain-color`}>Selected chain colour:</label>
-                        <input
-                            id={`${idPrefix}-selected-chain-color`}
-                            type="color"
-                            value={selectedChainColorDraft}
-                            onChange={e => {
-                                const value = e.target.value;
-                                setSelectedChainColorDraft(value);
-                            }}
-                            aria-label="Selected chain colour"
-                        />
-                        <button
-                            type="button"
-                            onClick={() => onSelectedChainColorChange(selectedChainColorDraft)}
-                            className="msp-btn msp-form-control"
-                            id={`${idPrefix}-selected-chain-color-apply-btn`}
-                            disabled={selectedChainColorDraft.toUpperCase() === selectedChainColor.toUpperCase()}
-                        >
-                            Apply
-                        </button>
-                    </>
-                )}
-            </div>
+            {showRepresentationControls && colorMode === 'chain' && (
+                <div className="load-data-control-row" style={{ display: 'flex', flexDirection: 'column', gap: 6, marginLeft: 24 }} id={`${idPrefix}-chain-color-table-container`}>
+                    <strong>Chain Colours</strong>
+                    <input
+                        id={`${idPrefix}-chain-color-table-search`}
+                        data-testid={`${idPrefix}-chain-color-table-search`}
+                        className="chain-selection-table-search"
+                        type="text"
+                        value={chainColorQuery}
+                        onChange={e => setChainColorQuery(e.target.value)}
+                        placeholder="Search chain, auth, UniProt, molecule..."
+                        aria-label="Chain colour search"
+                    />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {chainColorRows.map(([chainId, label]) => {
+                            const current = chainColorsById?.get(chainId) ?? '#CCCCCC';
+                            const draft = chainColorDraftById[chainId] ?? current;
+                            return (
+                                <div key={chainId} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                    <span style={{ minWidth: 180 }}>{`${chainId}: ${label}`}</span>
+                                    <input
+                                        id={`${idPrefix}-chain-color-${chainId}`}
+                                        type="color"
+                                        value={draft}
+                                        onChange={e => {
+                                            const value = e.target.value;
+                                            setChainColorDraftById(prev => ({ ...prev, [chainId]: value }));
+                                        }}
+                                        aria-label={`Chain ${chainId} colour`}
+                                    />
+                                    <button
+                                        type="button"
+                                        className="msp-btn msp-form-control"
+                                        id={`${idPrefix}-chain-color-${chainId}-apply-btn`}
+                                        onClick={() => onChainColorChange?.(chainId, draft)}
+                                        disabled={!onChainColorChange || draft.toUpperCase() === current.toUpperCase()}
+                                    >
+                                        Apply
+                                    </button>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
             )}
             {showRepresentationControls && colorMode === 'residue-type' && allResidueTypeCounts.length > 0 && (
-                <div className="load-data-control-row" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div className="load-data-control-row" style={{ display: 'flex', flexDirection: 'column', gap: 4, marginLeft: 32 }}>
                     <strong>Residue Types (all chains in loaded dataset)</strong>
-                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                        {allResidueTypeCounts.map(({ type, count }) => (
-                            <span key={`${type}-${count}`}>{`${type} (${count})`}</span>
-                        ))}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {allResidueTypeCounts.map(({ type, count }) => {
+                            const current = residueTypeColorsById?.get(type) ?? '#FF00FF';
+                            const draft = residueTypeColorDraftById[type] ?? current;
+                            return (
+                                <div key={`${type}-${count}`} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                    <span style={{ minWidth: 130 }}>{`${type} (${count})`}</span>
+                                    <input
+                                        id={`${idPrefix}-residue-type-color-${type}`}
+                                        type="color"
+                                        value={draft}
+                                        onChange={e => {
+                                            const value = e.target.value;
+                                            setResidueTypeColorDraftById(prev => ({ ...prev, [type]: value }));
+                                        }}
+                                        aria-label={`Residue type ${type} colour`}
+                                    />
+                                    <button
+                                        type="button"
+                                        className="msp-btn msp-form-control"
+                                        id={`${idPrefix}-residue-type-color-${type}-apply-btn`}
+                                        onClick={() => onResidueTypeColorChange?.(type, draft)}
+                                        disabled={!onResidueTypeColorChange || draft.toUpperCase() === current.toUpperCase()}
+                                    >
+                                        Apply
+                                    </button>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             )}
@@ -1621,88 +1834,5 @@ const LoadDataRow: React.FC<LoadDataRowProps> = ({
     </div>
 );
 };
-
-interface LoadDataRowProps {
-    viewerTitle: string;
-    isLoaded: boolean;
-    loadedFilename?: string;
-    onFileInputClick: () => void;
-    fileInputRef: React.RefObject<HTMLInputElement | null>;
-    onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-    fileInputDisabled: boolean;
-    fileInputLabel: string;
-    representationType: AllowedRepresentationType;
-    onRepresentationTypeChange: (type: AllowedRepresentationType) => void;
-    representationTypeDisabled: boolean;
-    onAddColorsClick: () => void;
-    addColorsDisabled: boolean;
-    colorsInputRef: React.RefObject<HTMLInputElement | null>;
-    onColorsFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-    // Subunit selection
-    subunitToChainIds: Map<string, Set<string>>;
-    selectedSubunit: RibosomeSubunitType;
-    onSelectSubunit: (subunit: RibosomeSubunitType) => void;
-    subunitSelectDisabled: boolean;
-    subunitZoomLabel: string;
-    onSubunitHighlight: () => void;
-    subunitHighlightOn?: boolean;
-    subunitHighlightDisabled: boolean;
-    onSubunitInspect: () => void;
-    subunitInspectOn?: boolean;
-    subunitInspectDisabled: boolean;
-    onSubunitZoom: () => void;
-    subunitZoomDisabled: boolean;
-    // Chain
-    chainInfo: { chainLabels: Map<string, string>; };
-    selectedChainId: string;
-    onSelectChainId: (id: string) => void;
-    chainSelectDisabled: boolean;
-    chainZoomLabel: string;
-    onChainHighlight: () => void;
-    chainHighlightOn?: boolean;
-    chainHighlightDisabled: boolean;
-    onChainInspect: () => void;
-    chainInspectOn?: boolean;
-    chainInspectDisabled: boolean;
-    onChainZoom: () => void;
-    chainZoomDisabled: boolean;
-    // Residue
-    residueInfo: {
-        residueLabels: Map<string, ResidueLabelInfo>;
-        residueToAtomIds: Record<string, string[]>;
-    };
-    selectedResidueIds: string[];
-    onSelectResidueIds: (ids: string[]) => void;
-    residueSelectDisabled: boolean;
-    residueZoomLabel: string;
-    onResidueHighlight: () => void;
-    residueHighlightOn?: boolean;
-    residueHighlightDisabled: boolean;
-    onResidueInspect: () => void;
-    residueInspectOn?: boolean;
-    residueInspectDisabled: boolean;
-    onResidueZoom: () => void;
-    residueZoomDisabled: boolean;
-    // Optional representation type selector
-    representationTypeSelector?: React.ReactNode;
-    onAddRepresentationClick: () => void;
-    addRepresentationDisabled: boolean;
-    // Fog controls
-    fogEnabled: boolean;
-    fogNear: number;
-    fogFar: number;
-    onFogEnabledChange: (enabled: boolean) => void;
-    onFogNearChange: (value: number) => void;
-    onFogFarChange: (value: number) => void;
-    // Clipping controls
-    clippingMinNear: number;
-    clippingRadius: number;
-    onClippingMinNearChange: (value: number) => void;
-    onClippingRadiusChange: (value: number) => void;
-    // Test mode override
-    testMode?: boolean;
-    showSelectZoomControls?: boolean;
-    idPrefix: string;
-}
 
 export default LoadDataRow;
