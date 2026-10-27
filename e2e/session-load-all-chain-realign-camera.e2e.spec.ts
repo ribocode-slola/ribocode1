@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import path from 'path';
+import { dataPath, waitForSessionMenuReady } from './helpers/session-load';
 
 test.use({
   launchOptions: {
@@ -17,10 +17,6 @@ type Snapshot = {
   up: [number, number, number];
   radius: number;
 };
-
-function dataPath(filename: string) {
-  return path.resolve(__dirname, '../data/input', filename);
-}
 
 function toVec3(value: any): [number, number, number] | undefined {
   if (!value) return undefined;
@@ -56,10 +52,6 @@ function expectSnapshotsClose(actual: Snapshot, expected: Snapshot, decimals = 4
     expect(actual.up[i]).toBeCloseTo(expected.up[i], decimals);
   }
   expect(actual.radius).toBeCloseTo(expected.radius, decimals);
-}
-
-async function waitForSessionMenuReady(page: Page) {
-  await expect(page.locator('#session-menu-btn')).toBeVisible({ timeout: 45000 });
 }
 
 async function loadAlignedToAndAligned(page: Page) {

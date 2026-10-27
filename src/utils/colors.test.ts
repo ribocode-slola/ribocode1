@@ -10,7 +10,7 @@
  */
 import { vi } from 'vitest';
 import { Color } from 'molstar/lib/mol-util/color';
-import { createChainColorTheme, getColourTheme } from './colors';
+import { createChainColorTheme, getColourTheme, inferColorThemeKind, parseColorFileContent } from './colors';
 
 describe('getColourTheme', () => {
     let originalWarn: any;
@@ -95,5 +95,56 @@ describe('createChainColorTheme', () => {
         const color = colorFn(location);
 
         expect(color).toBe(Color.fromHexStyle('#FF8800'));
+    });
+});
+
+describe('parseColorFileContent', () => {
+    it('parses simple chain colour file with header', async () => {
+        const content = [
+            'chain,color',
+            'LY,#3366FF',
+            'e,#FF8800',
+        ].join('\n');
+        const file = new File([content], 'chain-theme.csv', { type: 'text/csv' });
+
+        const parsed = await parseColorFileContent(content, file);
+
+        expect(parsed).toEqual([
+            { pdb_chain: 'LY', color: '#3366FF' },
+            { pdb_chain: 'e', color: '#FF8800' },
+        ]);
+        expect(inferColorThemeKind(parsed)).toBe('chain');
+    });
+
+    it('parses simple residue-type colour file with header', async () => {
+        const content = [
+            'residue_type color',
+            'ALA #8CFF8C',
+            'LYS #4747B8',
+            'G #32CD32',
+        ].join('\n');
+        const file = new File([content], 'residue-theme.txt', { type: 'text/plain' });
+
+        const parsed = await parseColorFileContent(content, file);
+
+        expect(parsed).toEqual([
+            { residue_type: 'ALA', color: '#8CFF8C' },
+            { residue_type: 'LYS', color: '#4747B8' },
+            { residue_type: 'G', color: '#32CD32' },
+        ]);
+        expect(inferColorThemeKind(parsed)).toBe('residue-type');
+    });
+
+    it('returns empty rows for unsupported legacy multi-column layout', async () => {
+        const content = [
+            'pdb_name RP_name class color',
+            '4ug0_LY RPL26 1 #3366FF',
+        ].join('\n');
+        const file = new File([content], 'mapping_with_colour_animal.txt', { type: 'text/plain' });
+
+        const parsed = await parseColorFileContent(content, file);
+
+        expect(parsed).toEqual([]);
+        expect(inferColorThemeKind(parsed)).toBeNull();
     });
 });

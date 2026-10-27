@@ -18,12 +18,25 @@ A list of the ribosomal protein families with at least one pair of paralogs pres
 
 mapping_with_colour_animal.txt
 Uploaded to the Sharepoint (https://leeds365.sharepoint.com/sites/RiboCodesLoLa22/GUI/Forms/AllItems.aspx) by Alan Beavan and mentioned in email 2025-01-08
-Colour theme data
+Legacy colour theme data
 1. mapping_with_colour_animal - a list of ribosomal proteins, the number of duplication events inferred in their history within animals, and a colour value on a scale of blue to orange proportional to that value. The proteins are labelled according to:
 2. 4ug0-assembly1.cif – a human ribosome just like the Drosophila one Bulat put on. I offer this one as an alternative just because I used it to make my own figure in pymol, the result of which can be found in
 3. human.pse – a pymol file with the colours modified according to the first file described here, a snapshot of which can be seen in
 4. human_blue_orange.png – an image of the produced from this pymol stuff.
 Obviously, you can use the structure Bulat uploaded, but you’d have to change the chain names. It’s something for you to play around with at least. I can provide more of this sort of thing if you like.
+
+simple_chain_colours.csv
+Simple chain colour theme example for Ribocode `Load Colours`.
+Format:
+`chain,color`
+
+simple_chain_colours.json
+Simple chain colour theme example in JSON array format for Ribocode `Load Colours`.
+
+simple_residue_type_colours.csv
+Simple residue-type colour theme example for Ribocode `Load Colours`.
+Format:
+`residue_type,color`
 
 RP_name_table.csv
 From Alan Beavan sent by email 2025-03-20

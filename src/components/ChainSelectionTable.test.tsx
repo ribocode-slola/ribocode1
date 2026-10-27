@@ -88,4 +88,26 @@ describe('ChainSelectionTable', () => {
     expect(screen.getByText('e')).toBeInTheDocument();
     expect(screen.queryByText('G')).not.toBeInTheDocument();
   });
+
+  it('renders only chain and label columns', () => {
+    const onSelectChainId = vi.fn();
+    const chainLabels = new Map<string, string>([
+      ['CU', 'Chain CU'],
+    ]);
+
+    render(
+      <ChainSelectionTable
+        chainLabels={chainLabels}
+        selectedChainId=""
+        onSelectChainId={onSelectChainId}
+        idPrefix="viewer-column-D"
+      />
+    );
+
+    const row = screen.getByTestId('viewer-column-D-chain-table-row-CU');
+    expect(row).toBeInTheDocument();
+    expect(screen.getByText('Chain')).toBeInTheDocument();
+    expect(screen.getByText('Label')).toBeInTheDocument();
+    expect(screen.queryByText('Color')).not.toBeInTheDocument();
+  });
 });
