@@ -599,7 +599,7 @@ interface LoadDataRowProps {
             showSharedButton: boolean;
         }) => (
             <>
-                <div className="load-data-control-row" style={{ marginLeft: 24 }}>
+                <div className="load-data-control-row" style={{ marginLeft: 36 }}>
                     <ResidueSelectButton
                         disabled={residueSelectDisabled || !selectedChainIdSlot}
                         residueLabels={residueInfoSlot.residueLabels}
@@ -608,7 +608,7 @@ interface LoadDataRowProps {
                         id={`${idPrefix}-residue${slot}-select`}
                     />
                 </div>
-                <div className="load-data-control-row" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginLeft: 24 }}>
+                <div className="load-data-control-row" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginLeft: 36 }}>
                     <button
                         type="button"
                         className="msp-btn msp-form-control"
@@ -657,7 +657,7 @@ interface LoadDataRowProps {
                     )}
                 </div>
                 {residueTypeBucketsSlot.length > 0 && (
-                    <div className="load-data-control-row" style={{ marginLeft: 24, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <div className="load-data-control-row" style={{ marginLeft: 36, display: 'flex', flexDirection: 'column', gap: 4 }}>
                         {residueTypeBucketsSlot.map(({ type, residueIds, count }) => {
                             const selectedSet = new Set(selectedResidueIdsSlot);
                             const allSelected = residueIds.length > 0 && residueIds.every(id => selectedSet.has(id));
@@ -688,7 +688,7 @@ interface LoadDataRowProps {
                         })}
                     </div>
                 )}
-                <div className="load-data-control-row" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginLeft: 24 }}>
+                <div className="load-data-control-row" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginLeft: 36 }}>
                     <button
                         onClick={onZoom}
                         disabled={zoomDisabled}
@@ -862,9 +862,6 @@ interface LoadDataRowProps {
                 </div>
                 {showChainControls && (
                     <>
-                        <div className="load-data-control-row" id={`${idPrefix}-selected-chain-label`} style={{ marginLeft: 12 }}>
-                            <span>Selected: {selectedChainLabel}</span>
-                        </div>
                         <div className="load-data-control-row" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginLeft: 12 }}>
                             <button
                                 onClick={onCombinedSelectionZoom}
@@ -893,6 +890,28 @@ interface LoadDataRowProps {
                                 Inspect: {combinedSelectionInspectOn ? 'On' : 'Off'}
                             </button>
                         </div>
+                        {onShowUniprotAccessionInChainLabelsChange && (
+                            <div className="load-data-control-row" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginLeft: 12 }}>
+                                <button
+                                    type="button"
+                                    className="msp-btn msp-form-control"
+                                    id={`${idPrefix}-show-uniprot-accession`}
+                                    aria-pressed={showUniprotAccessionInChainLabels}
+                                    onClick={() => onShowUniprotAccessionInChainLabelsChange(!showUniprotAccessionInChainLabels)}
+                                >
+                                    Include UniProt accession in labels: {showUniprotAccessionInChainLabels ? 'On' : 'Off'}
+                                </button>
+                                <span
+                                    id={`${idPrefix}-uniprot-status`}
+                                    style={{ fontSize: 12, color: '#555' }}
+                                >
+                                    UniProt cache: {uniprotLookupStatus?.completed ?? 0} cached, {uniprotLookupStatus?.pending ?? 0} pending, {uniprotLookupStatus?.inFlight ?? 0} in-flight
+                                </span>
+                            </div>
+                        )}
+                        <div className="load-data-control-row" id={`${idPrefix}-selected-chain-label`} style={{ marginLeft: 12 }}>
+                            <span>Selected 1: {selectedChainLabel}</span>
+                        </div>
                         <div className="load-data-control-row" style={{ marginLeft: 12 }}>
                             <button
                                 type="button"
@@ -900,30 +919,11 @@ interface LoadDataRowProps {
                                 id={`${idPrefix}-select-chain-controls-toggle-btn`}
                                 onClick={() => setShowSelectChainControls((current) => !current)}
                             >
-                                {showSelectChainControls ? 'Hide Select Chain 1' : 'Show Select Chain 1'}
+                                {showSelectChainControls ? 'Hide Select 1' : 'Show Select 1'}
                             </button>
                         </div>
                         {showSelectChainControls && (
                             <>
-                                {onShowUniprotAccessionInChainLabelsChange && (
-                                    <div className="load-data-control-row" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginLeft: 24 }}>
-                                        <button
-                                            type="button"
-                                            className="msp-btn msp-form-control"
-                                            id={`${idPrefix}-show-uniprot-accession`}
-                                            aria-pressed={showUniprotAccessionInChainLabels}
-                                            onClick={() => onShowUniprotAccessionInChainLabelsChange(!showUniprotAccessionInChainLabels)}
-                                        >
-                                            Include UniProt accession in labels: {showUniprotAccessionInChainLabels ? 'On' : 'Off'}
-                                        </button>
-                                        <span
-                                            id={`${idPrefix}-uniprot-status`}
-                                            style={{ fontSize: 12, color: '#555' }}
-                                        >
-                                            UniProt cache: {uniprotLookupStatus?.completed ?? 0} cached, {uniprotLookupStatus?.pending ?? 0} pending, {uniprotLookupStatus?.inFlight ?? 0} in-flight
-                                        </span>
-                                    </div>
-                                )}
                                 <div style={{ marginLeft: 24 }}>
                                     {!!effectiveChainLabels && effectiveChainLabels.size > 0 && (
                                         <ChainSelectionTable
@@ -1023,7 +1023,7 @@ interface LoadDataRowProps {
                                 onClick={() => setShowSelectChain2Controls((current) => !current)}
                                 disabled={chain2SectionDisabled}
                             >
-                                {showSelectChain2Controls ? 'Hide Select Chain 2' : 'Show Select Chain 2'}
+                                {showSelectChain2Controls ? 'Hide Select 2' : 'Show Select 2'}
                             </button>
                         </div>
                         {showSelectChain2Controls && (
