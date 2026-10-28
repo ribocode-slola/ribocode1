@@ -113,7 +113,7 @@ describe('LoadDataRow', () => {
         render(<LoadDataRow {...baseProps} isLoaded={true} />);
         fireEvent.click(screen.getByText('Show Subunit Controls'));
         fireEvent.click(screen.getByText('Show Chain Controls'));
-        fireEvent.click(screen.getByText('Show Select Chain 1'));
+        fireEvent.click(screen.getByText('Show Select 1'));
         fireEvent.click(screen.getByText('Show Residue Controls'));
         expect(screen.getByText('Chain A')).toBeInTheDocument();
         expect(screen.getByText('Residue 1')).toBeInTheDocument();
@@ -155,10 +155,10 @@ describe('LoadDataRow', () => {
         expect(document.getElementById('test-viewer-a-selected-chain-label')).toBeInTheDocument();
         expect(document.getElementById('test-viewer-a-chain-table-container')).toBeNull();
 
-        fireEvent.click(screen.getByText('Show Select Chain 1'));
+        fireEvent.click(screen.getByText('Show Select 1'));
         expect(document.getElementById('test-viewer-a-chain-table-container')).toBeInTheDocument();
 
-        fireEvent.click(screen.getByText('Hide Select Chain 1'));
+        fireEvent.click(screen.getByText('Hide Select 1'));
         expect(document.getElementById('test-viewer-a-selected-chain-label')).toBeInTheDocument();
         expect(document.getElementById('test-viewer-a-chain-table-container')).toBeNull();
         expect(document.getElementById('test-viewer-a-show-uniprot-accession')).toBeNull();
@@ -384,7 +384,7 @@ describe('LoadDataRow', () => {
             />
         );
         fireEvent.click(getByText('Show Chain Controls'));
-        fireEvent.click(getByText('Show Select Chain 1'));
+        fireEvent.click(getByText('Show Select 1'));
         expect((getByText('Show Residue Controls') as HTMLButtonElement).disabled).toBe(true);
     });
 
@@ -398,7 +398,7 @@ describe('LoadDataRow', () => {
         );
         expect(queryByText('Select')).not.toBeInTheDocument();
         expect(queryByText('Zoom')).not.toBeInTheDocument();
-        expect(queryByText('Selected: Chain A')).not.toBeInTheDocument();
+        expect(queryByText('Selected 1: Chain A')).not.toBeInTheDocument();
         expect(queryByText('Zoom')).not.toBeInTheDocument();
         expect(queryByText('Select')).not.toBeInTheDocument();
         expect(document.getElementById('test-viewer-a-zoom-residue-btn')).toBeNull();
@@ -411,7 +411,7 @@ describe('LoadDataRow', () => {
         render(<LoadDataRow {...baseProps} isLoaded={true} />);
         fireEvent.click(screen.getByText('Show Subunit Controls'));
         fireEvent.click(screen.getByText('Show Chain Controls'));
-        fireEvent.click(screen.getByText('Show Select Chain 1'));
+        fireEvent.click(screen.getByText('Show Select 1'));
         fireEvent.click(screen.getByText('Show Residue Controls'));
         fireEvent.click(document.getElementById('test-viewer-a-zoom-subunit-btn') as HTMLButtonElement);
         fireEvent.click(document.getElementById('test-viewer-a-highlight-subunit-btn') as HTMLButtonElement);
@@ -461,7 +461,7 @@ describe('LoadDataRow', () => {
 
         fireEvent.click(screen.getByText('Show Subunit Controls'));
         fireEvent.click(screen.getByText('Show Chain Controls'));
-        fireEvent.click(screen.getByText('Show Select Chain 1'));
+        fireEvent.click(screen.getByText('Show Select 1'));
         fireEvent.click(screen.getByText('Show Residue Controls'));
 
         expect(document.getElementById('test-viewer-a-inspect-subunit-btn')).toHaveTextContent('Inspect: On');
@@ -534,7 +534,7 @@ describe('LoadDataRow', () => {
         );
 
         fireEvent.click(screen.getByText('Show Chain Controls'));
-        fireEvent.click(screen.getByText('Show Select Chain 1'));
+        fireEvent.click(screen.getByText('Show Select 1'));
         fireEvent.click(screen.getByText('Show Residue Controls'));
         expect(screen.getAllByText('ALA (2)').length).toBeGreaterThanOrEqual(1);
         expect(screen.getAllByText('GLY (1)').length).toBeGreaterThanOrEqual(1);
@@ -585,7 +585,7 @@ describe('LoadDataRow', () => {
         );
 
         fireEvent.click(screen.getByText('Show Chain Controls'));
-        fireEvent.click(screen.getByText('Show Select Chain 2'));
+        fireEvent.click(screen.getByText('Show Select 2'));
         fireEvent.click(document.querySelector('[data-testid="test-viewer-a-chain2-chain-table-row-B"]') as HTMLTableRowElement);
         expect(onSelectChainId2).toHaveBeenCalledWith('B');
 
