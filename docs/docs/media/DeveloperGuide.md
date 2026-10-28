@@ -5,7 +5,7 @@ Welcome to the Ribocode Developer Guide!
 
 ## Table of Contents
 
-- [Quick Start](#quick-start)
+- [Quick Test](#quick-test)
 - [Setup](#setup)
   - [Recommended set up](#recommended-set-up)
   - [Build and run locally](#build-and-run-locally)
@@ -21,6 +21,7 @@ Welcome to the Ribocode Developer Guide!
 - [Re-alignment Implementation Notes](#re-alignment-implementation-notes)
   - [Cache and State Hygiene](#cache-and-state-hygiene)
 - [Mol*](#mol*)
+- [Mol* Submodule Workflow](#mol-submodule-workflow)
 - [Highlighting and Selection Colouring](#highlighting-and-selection-colouring)
 - [Documentation](#documentation)
   - [How to Generate Documentation](#how-to-generate-documentation)
@@ -42,17 +43,22 @@ Welcome to the Ribocode Developer Guide!
     - [Running E2E Tests](#running-e2e-tests)
     - [Using Real Datasets in E2E Tests](#using-real-datasets-in-e2e-tests)
     - [E2E Test Best Practices](#e2e-test-best-practices)
+      - [Session Round-Trip Regression Patterns](#session-round-trip-regression-patterns)
   - [Test Types Overview](#test-types-overview)
 - [Contributing](#contributing)
 
 
-## Quick Start
-
-For experienced developers:
+## Quick Test
 
 ```sh
 git clone https://github.com/ribocode-slola/ribocode1.git
 cd ribocode1
+mkdir -p packages
+git clone https://github.com/ribocode-slola/molstar.git packages/molstar
+cd packages/molstar
+npm install
+npm run build:lib
+cd ../..
 npm install
 npm run dev
 # Visit http://localhost:5173/
@@ -71,7 +77,14 @@ npm test
 
 ## Setup
 
-You will need [Git](https://git-scm.com/) to clone the repository and [Node](https://nodejs.org/). It is recommended to use Node version 24.11.0 or later. With these installed you can make a start by forking https://github.com/ribocode-slola/ribocode1 and then cloning the fork locally.
+You will need [Git](https://git-scm.com/) to clone the repository and [Node](https://nodejs.org/). It is recommended to use Node version 24.11.0 or later.
+
+Please also fork https://github.com/ribocode-slola/ribocode1 and https://github.com/ribocode-slola/molstar, and then clone and use your forks of the ribocode-slola forks.
+
+Note on submodule URL policy:
+- The repository-tracked `.gitmodules` must point to the canonical Ribocode Mol* repository (`https://github.com/ribocode-slola/molstar`).
+- Do not commit personal-fork URLs in `.gitmodules`.
+- Use local submodule remotes to push to your fork.
 
 If you are a member of the Ribocode project and want help getting set up with a development environment or help contributing via a `pull request`, please let it be known.
 
@@ -79,9 +92,76 @@ If you are a member of the Ribocode project and want help getting set up with a 
 ### Recommended set up
 
 1. Fork the Ribocode repository.
-2. Clone the fork into a local directory (Ribocode root).
-3. Change to the `packages` directory.
-4. Clone [Ribocode Mol*](https://github.com/ribocode-slola/molstar) into `packages`.
+2. Fork [Ribocode Mol*](https://github.com/ribocode-slola/molstar).
+3. Clone your Ribocode fork into a local directory (Ribocode root).
+4. Clone your Mol* fork into `packages/molstar` inside the Ribocode root.
+5. In `packages/molstar`, add the Ribocode Mol* repository as `upstream`.
+6. Build Mol* library outputs before running Ribocode.
+
+Example commands:
+
+```sh
+# Clone Ribocode
+git clone https://github.com/<your-github-user>/ribocode1.git
+cd ribocode1
+
+# Clone your Mol* fork to the expected local path
+mkdir -p packages
+git clone https://github.com/<your-github-user>/molstar.git packages/molstar
+
+# Track the canonical Ribocode Mol* repo
+cd packages/molstar
+git remote add upstream https://github.com/ribocode-slola/molstar.git
+
+# Install and build the Mol* lib output consumed by Ribocode
+npm install
+npm run build:lib
+
+# Back to Ribocode root
+cd ../..
+npm install
+```
+
+## Mol* Submodule Workflow
+
+Ribocode tracks Mol* as a git submodule at `packages/molstar`.
+
+- Repository default (`.gitmodules`):
+  - `url = https://github.com/ribocode-slola/molstar`
+- Developer push target:
+  - Configure your local `origin` in `packages/molstar` to your own fork.
+- Upstream sync target:
+  - Keep `upstream` set to `https://github.com/ribocode-slola/molstar`.
+
+Recommended one-time local setup:
+
+```sh
+# Initialize/update submodule using canonical URL from .gitmodules
+git submodule sync --recursive
+git submodule update --init --recursive
+
+# In submodule, set your fork as origin (push target)
+cd packages/molstar
+git remote set-url origin https://github.com/<your-github-user>/molstar.git
+
+# Ensure canonical repo is available as upstream (pull/rebase target)
+git remote add upstream https://github.com/ribocode-slola/molstar.git 2>/dev/null || true
+git fetch upstream
+```
+
+Daily update pattern:
+
+```sh
+cd packages/molstar
+git fetch upstream
+git checkout main
+git rebase upstream/main
+git push origin main
+```
+
+Important:
+- Avoid editing `.gitmodules` for personal workflow changes.
+- If `.gitmodules` changes in a PR, verify it still points to the canonical Ribocode Mol* URL.
 
 
 ### Build and run locally
@@ -93,6 +173,12 @@ From the Ribocode root directory:
 
 * `npm install`
   - Installs all dependencies.
+* `npm --workspace packages/molstar install`
+  - Installs Mol* workspace dependencies (useful for first-time setup and after Mol* dependency updates).
+* `npm --workspace packages/molstar run build:lib`
+  - Builds the `packages/molstar/lib` output that Ribocode imports from.
+  - Run this at least once after cloning Mol* and again after any Mol* source changes.
+  - Equivalent from within `packages/molstar`: `npm run build:lib`.
 * `npm run dev`
   - Starts the Vite development server using settings from `.env` (base path is `/`).
   - Visit the local URL shown in the terminal (usually http://localhost:5173/).
@@ -105,7 +191,7 @@ From the Ribocode root directory:
   - Output is placed in the `dist/` directory.
 * `npm run preview`
   - Serves the production build locally for testing (simulates deployment).
-  - Visit the local preview URL (usually http://localhost:4173/ribocode1/).
+  - Visit the local preview URL (usually http://localhost:5173/ribocode1/).
 
 #### Notes on Environment Files
 
@@ -288,6 +374,13 @@ If you add a new modal, file input, or dynamic UI element, ensure it has a `data
 ## Mol*
 
 Ribocode depends upon a customised version of [Mol*](https://github.com/molstar/molstar) - [Ribocode Mol*](https://github.com/ribocode-slola/molstar). This is currently Mol* Version 5.4.2 with some files added for Ribocode that might be generally useful for Mol*. These are being contributed via [Mol* Pull Request #1726](https://github.com/molstar/molstar/pull/1726), but if this does not happen, they will be folded back into Ribocode to make it easier to build on later versions of Mol*.
+
+Important local wiring details:
+
+- Ribocode resolves `molstar` imports to `packages/molstar` via `vite.config.js` aliasing.
+- Ribocode imports from `molstar/lib/...`, so the local `packages/molstar/lib` tree must exist.
+- The Mol* repository keeps `lib/` out of Git; generate it locally with `npm run build:lib` in `packages/molstar`.
+- If you edit files under `packages/molstar/src`, rebuild Mol* (`npm run build:lib`) before re-testing Ribocode.
 
 ## Highlighting and Selection Colouring
 
@@ -627,25 +720,31 @@ npx playwright install
 
 ### Running E2E Tests
 
-and E2E tests with:
-
 **Note:** Playwright E2E tests and unit/integration tests (run with Vitest) should be run separately. E2E tests require a real browser and dev server, are slower, and have different dependencies and environments than fast, isolated unit/integration tests. Keeping them separate ensures clarity, speed, and easier debugging.
 
 **Summary:**
-- Start the dev server with `npm run dev` for local development.
 - Run all unit/integration tests with `npm test`.
-- Run all E2E tests with `npm run test:e2e` (the dev server is auto-started by Playwright if needed).
+- Run all E2E tests in strict mode with `npm run test:e2e`.
+- Run all E2E tests while reusing an already-running dev server with `npm run test:e2e:reuse`.
+
+Playwright is configured with a `webServer` entry and starts `npm run dev` on port `5173`.
+- `npm run test:e2e` uses strict mode (`reuseExistingServer: false`) and fails if `5173` is already in use.
+- `npm run test:e2e:reuse` sets `PW_E2E_REUSE_SERVER=1` and reuses an existing dev server on `5173`.
 
 - To run all E2E tests:
   ```sh
   npm run test:e2e
+  # reuse a running dev server (useful during local development)
+  npm run test:e2e:reuse
   # or
   npx playwright test
   ```
 - To run a specific E2E test file:
-  **Good news!** Playwright is now configured to automatically start the Vite dev server using its `webServer` setting. You do **not** need to manually start the dev server before running E2E tests—just run the E2E test command and Playwright will handle it for you.
-  npm run test:e2e:single -- e2e/session-load.e2e.spec.ts
-  **Tip:** You can automate dev server startup by adding a `webServer` section to `playwright.config.ts`. See [Playwright webServer docs](https://playwright.dev/docs/test-advanced#launching-a-development-web-server-during-the-tests) for details.
+  ```sh
+  npm run test:e2e -- e2e/session-load.e2e.spec.ts
+  # or (reuse mode)
+  npm run test:e2e:reuse -- e2e/session-load.e2e.spec.ts
+  # or
   npx playwright test e2e/session-load.e2e.spec.ts
   ```
 - To open the interactive Playwright Test UI:
@@ -659,8 +758,9 @@ and E2E tests with:
 
 The following scripts are available in `package.json`:
 
-- `test:e2e` – Run all Playwright E2E tests
-- `test:e2e:single` – Run a single E2E test file (pass the file as an argument)
+- `test:e2e` – Run all Playwright E2E tests (strict server mode)
+- `test:e2e:reuse` – Run all Playwright E2E tests while reusing an existing dev server on port `5173`
+- `test:e2e:session` – Run the session-load E2E spec (`e2e/session-load.e2e.spec.ts`)
 - `test:e2e:ui` – Open the Playwright Test UI
 
 
@@ -677,6 +777,14 @@ The following scripts are available in `package.json`:
 - Clean up test state between tests to avoid cross-test interference.
 - Document any new E2E tests and datasets added.
 - Prefer realistic user flows: test file selection dialogs, downloads, and UI prompts as a user would experience them.
+
+#### Session Round-Trip Regression Patterns
+
+- Keep `Save` and `Save All` selection payloads in parity for session fidelity. If selection schema is extended (for example `chainId2`, `residueId2`, `residueIds2`), update both save paths and both restore paths together.
+- Add integration coverage for session schema changes in `src/App.integration.test.tsx` before or alongside app changes. This catches regressions in serialized UI state quickly.
+- For Playwright session-load assertions, gate on readiness state before asserting UI labels. For sync-related flows, prefer polling the test API (`window.__ribocodeTestApi.getSyncState()`) and then asserting button enabled/text state.
+- Reuse shared session helpers in `e2e/helpers/session-load.ts` for loading fixture sessions and required files instead of re-implementing modal/file-input flows in each spec.
+- When a session E2E fails under a run that was manually interrupted (`^C`/SIGINT), re-run cleanly before triage; interrupted runs can report false failures across unrelated specs.
 
 #### Session and Selector Stability Notes
 
