@@ -49,11 +49,12 @@ The UI layout is as follows:
       - `Add Representation`
         - Enabled after AlignedTo data load.
         - Allows users to add a new representation.
-      - `Colour Theme`
-        - Enabled after AlignedTo data load.
-        - Allows users to choose, load and remove custom colour themes for chains and residue types. Users choose which theme to detail and this is the one applied when creating a new representation.
-        - Custom themes loaded here are available in both `AlignedTo` and `Aligned` colour theme selectors.
-        - The button to remove a theme is blocked if the selected theme is currently used by any representation in either viewer.
+        - `Theme`
+          - Allows users to choose a chain or residue type theme. By default the theme is a chain theme. 
+          - select, `x`, `Load`, `Save`
+            - Allows users to select remove load and save remove colour themes for chains or residue types. Users choose which theme to detail and this is the one applied when creating a new representation.
+          - Custom themes loaded here are available in both `AlignedTo` and `Aligned` colour theme selectors.
+          - The `x` button to remove a theme is blocked if the selected theme is currently used by any representation in either viewer.
     - `Clipping controls`
       - Hidden by default.
       - Allows users to modify clipping in Mol* viewer.
@@ -126,11 +127,12 @@ The UI layout is as follows:
       - `Add Representation`
         - Enabled after AlignedTo data load.
         - Allows users to add a new representation.
-      - `Colour Theme`
-        - Enabled after AlignedTo data load.
-        - Allows users to choose, load and remove custom colour themes for chains and residue types. Users choose which theme to detail and this is the one applied when creating a new representation.
-        - Custom themes loaded here are available in both `AlignedTo` and `Aligned` colour theme selectors.
-        - The button to remove a theme is blocked if the selected theme is currently used by any representation in either viewer.
+        - `Theme`
+          - Allows users to choose a chain or residue type theme. By default the theme is a chain theme. 
+          - select, `x`, `Load`, `Save`
+            - Allows users to select remove load and save remove colour themes for chains or residue types. Users choose which theme to detail and this is the one applied when creating a new representation.
+          - Custom themes loaded here are available in both `AlignedTo` and `Aligned` colour theme selectors.
+          - The `x` button to remove a theme is blocked if the selected theme is currently used by any representation in either viewer.
     - `Clipping controls`
       - Hidden by default.
       - Allows users to modify clipping in Mol* viewer.
@@ -213,7 +215,9 @@ The UI layout is as follows:
 | --------                     | --------                     |
 | Representation Controls      | Representation Controls      |
 |  Add Representation          |  Add Representation          |
-|  Colour Theme                |  Colour Theme                |
+|   Theme                      |   Theme                      |
+|    Load/Save                 |    Load/Save                 |
+|    Colours                   |    Colours                   |
 | --------                     | --------                     |
 | Clipping Controls            | Clipping Controls            |
 |  Min Near                    |  Min Near                    |
