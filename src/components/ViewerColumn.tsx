@@ -427,11 +427,23 @@ export function getLoadDataRowProps({
 		onRemoveResidueTheme,
 		removeResidueThemeDisabled,
 		onAddRepresentationClick: async () => {
-			const selectedThemeByMode = colorMode === 'residue-type'
-				? selectedResidueThemeName
-				: selectedChainThemeName ?? selectedColorThemeName;
-			const colorThemeName = selectedThemeByMode || (isMoleculeColoursLoaded ? Aligned + '-custom-chain-colors' : 'default');
-			const colorTheme = { name: colorThemeName, params: {} };
+			const selectedChainTheme = selectedChainThemeName ?? selectedColorThemeName ?? 'default';
+			const selectedResidueTheme = selectedResidueThemeName ?? 'default';
+			const activeThemeKind: 'chain' | 'residue-type' = colorMode === 'residue-type' ? 'residue-type' : 'chain';
+			const colorThemeName = activeThemeKind === 'residue-type'
+				? selectedResidueTheme
+				: selectedChainTheme;
+			const colorTheme = {
+				name: colorThemeName,
+				params: {
+					__ribocodeActiveThemeKind: activeThemeKind,
+				},
+			};
+			const themePrefs = {
+				chainThemeName: selectedChainTheme,
+				residueThemeName: selectedResidueTheme,
+				activeThemeKind,
+			};
 			const repId = (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
 			const thisCameraBefore = captureCameraSnapshot(molstar);
 			const otherCameraBefore = captureCameraSnapshot(otherMolstar);
@@ -449,7 +461,8 @@ export function getLoadDataRowProps({
 					representationType,
 					colorTheme,
 					repId,
-					thisViewerVisible
+					thisViewerVisible,
+					themePrefs
 				));
 			}
 			if ((Aligned === 'AlignedTo' ? otherViewer.moleculeAlignedTo : otherViewer.moleculeAligned) && otherStructureRef) {
@@ -459,7 +472,8 @@ export function getLoadDataRowProps({
 					representationType,
 					colorTheme,
 					repId,
-					otherViewerVisible
+					otherViewerVisible,
+					themePrefs
 				));
 			}
 			Object.entries(realignedStructRefs).forEach(([id, structRef]) => {
@@ -469,7 +483,9 @@ export function getLoadDataRowProps({
 						structRef,
 						representationType,
 						colorTheme,
-						repId
+						repId,
+						true,
+						themePrefs
 					));
 				}
 			});
@@ -480,7 +496,9 @@ export function getLoadDataRowProps({
 						structRef,
 						representationType,
 						colorTheme,
-						repId
+						repId,
+						true,
+						themePrefs
 					));
 				}
 			});
@@ -646,7 +664,11 @@ export function getMoleculeUIAlignedToProps({
 	syncEnabled,
 	deleteRepresentation,
 	repIdMap,
-	AlignedTo
+	AlignedTo,
+	chainThemeOptions,
+	residueThemeOptions,
+	onRepresentationChainThemeChange,
+	onRepresentationResidueThemeChange,
 }: {
 	molstar: any,
 	otherMolstar: any,
@@ -668,7 +690,11 @@ export function getMoleculeUIAlignedToProps({
 	syncEnabled: boolean,
 	deleteRepresentation: any,
 	repIdMap: any,
-	AlignedTo: string
+	AlignedTo: string,
+	chainThemeOptions?: Array<{ value: string; label: string }>,
+	residueThemeOptions?: Array<{ value: string; label: string }>,
+	onRepresentationChainThemeChange?: (ref: string, themeName: string) => void,
+	onRepresentationResidueThemeChange?: (ref: string, themeName: string) => void,
 }) {
 	return {
 		key: representationRefs?.join('-') || viewer.viewerKey + `-` + AlignedTo,
@@ -723,6 +749,10 @@ export function getMoleculeUIAlignedToProps({
 			};
 			toggleInInstance(molstar, ref);
 		},
+		chainThemeOptions,
+		residueThemeOptions,
+		onRepresentationChainThemeChange,
+		onRepresentationResidueThemeChange,
 	};
 }
 
@@ -753,6 +783,10 @@ export function getMoleculeUIAlignedProps({
 	deleteRepresentation,
 	repIdMap,
 	Aligned,
+	chainThemeOptions,
+	residueThemeOptions,
+	onRepresentationChainThemeChange,
+	onRepresentationResidueThemeChange,
 	chainInfoAligned,
 	selectedChainIdAligned,
 	residueInfoAligned,
@@ -779,6 +813,10 @@ export function getMoleculeUIAlignedProps({
 	deleteRepresentation: any,
 	repIdMap: any,
 	Aligned: string,
+	chainThemeOptions?: Array<{ value: string; label: string }>,
+	residueThemeOptions?: Array<{ value: string; label: string }>,
+	onRepresentationChainThemeChange?: (ref: string, themeName: string) => void,
+	onRepresentationResidueThemeChange?: (ref: string, themeName: string) => void,
 	chainInfoAligned: any,
 	selectedChainIdAligned: any,
 	residueInfoAligned: any,
@@ -837,6 +875,10 @@ export function getMoleculeUIAlignedProps({
 			};
 			toggleInInstance(molstar, ref);
 		},
+		chainThemeOptions,
+		residueThemeOptions,
+		onRepresentationChainThemeChange,
+		onRepresentationResidueThemeChange,
 	};
 }
 

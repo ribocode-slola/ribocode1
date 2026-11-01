@@ -239,4 +239,391 @@ describe('MoleculeUI', () => {
             expect(onToggleRepVisibility).toHaveBeenCalledTimes(2);
         });
     });
+
+    it('switching Theme Type to Residue applies the stored residue theme for the representation', () => {
+        const repRef = 'rep-ref-theme-switch';
+        const onRepresentationChainThemeChange = vi.fn();
+        const onRepresentationResidueThemeChange = vi.fn();
+        const pluginWithRep = {
+            state: {
+                data: {
+                    cells: new Map([
+                        [repRef, {
+                            params: {
+                                values: {
+                                    type: { name: 'cartoon' },
+                                    _ribocodeId: 'custom-id-theme-switch',
+                                    _ribocodeChainTheme: 'Aligned-chain-theme',
+                                    _ribocodeResidueTheme: 'Aligned-residue-theme',
+                                    _ribocodeActiveThemeKind: 'chain',
+                                    colorTheme: { name: 'Aligned-chain-theme', params: {} },
+                                }
+                            },
+                            state: { isHidden: false }
+                        }]
+                    ])
+                }
+            }
+        } as any;
+
+        render(
+            <MoleculeUI
+                {...baseProps}
+                plugin={pluginWithRep}
+                representationRefs={[repRef]}
+                idPrefix="viewer-column-A-alignedto"
+                chainThemeOptions={[
+                    { value: 'Aligned-chain-theme', label: 'Aligned chain theme' },
+                ]}
+                residueThemeOptions={[
+                    { value: 'Aligned-residue-theme', label: 'Aligned residue theme' },
+                ]}
+                onRepresentationChainThemeChange={onRepresentationChainThemeChange}
+                onRepresentationResidueThemeChange={onRepresentationResidueThemeChange}
+            />
+        );
+
+        const themeTypeSelect = document.getElementById('viewer-column-A-alignedto-rep-theme-kind-custom-id-theme-switch') as HTMLSelectElement | null;
+        expect(themeTypeSelect).toBeInTheDocument();
+        fireEvent.change(themeTypeSelect!, { target: { value: 'residue-type' } });
+
+        expect(themeTypeSelect?.value).toBe('residue-type');
+        expect(onRepresentationResidueThemeChange).toHaveBeenCalledWith(repRef, 'Aligned-residue-theme');
+        expect(onRepresentationChainThemeChange).not.toHaveBeenCalled();
+    });
+
+    it('shows applied residue theme name in selector when residue theme field is missing', () => {
+        const repRef = 'rep-ref-residue-label';
+        const pluginWithRep = {
+            state: {
+                data: {
+                    cells: new Map([
+                        [repRef, {
+                            params: {
+                                values: {
+                                    type: { name: 'cartoon' },
+                                    _ribocodeId: 'custom-id-residue-label',
+                                    _ribocodeChainTheme: 'Aligned-chain-theme',
+                                    _ribocodeActiveThemeKind: 'residue-type',
+                                    colorTheme: { name: 'Aligned-residue-theme-2', params: {} },
+                                }
+                            },
+                            state: { isHidden: false }
+                        }]
+                    ])
+                }
+            }
+        } as any;
+
+        render(
+            <MoleculeUI
+                {...baseProps}
+                plugin={pluginWithRep}
+                representationRefs={[repRef]}
+                idPrefix="viewer-column-A-alignedto"
+                chainThemeOptions={[
+                    { value: 'Aligned-chain-theme', label: 'Aligned chain theme' },
+                ]}
+                residueThemeOptions={[
+                    { value: 'default', label: 'Default' },
+                    { value: 'Aligned-residue-theme-2', label: 'Aligned residue theme 2' },
+                ]}
+            />
+        );
+
+        const residueThemeSelect = document.getElementById('viewer-column-A-alignedto-rep-residue-theme-custom-id-residue-label') as HTMLSelectElement | null;
+        expect(residueThemeSelect).toBeInTheDocument();
+        expect(residueThemeSelect?.value).toBe('Aligned-residue-theme-2');
+    });
+
+    it('infers Theme Type as Residue when active kind metadata is missing but applied theme is residue-based', () => {
+        const repRef = 'rep-ref-missing-kind';
+        const pluginWithRep = {
+            state: {
+                data: {
+                    cells: new Map([
+                        [repRef, {
+                            params: {
+                                values: {
+                                    type: { name: 'cartoon' },
+                                    _ribocodeId: 'custom-id-missing-kind',
+                                    colorTheme: { name: 'Aligned-residue-theme-3', params: {} },
+                                }
+                            },
+                            state: { isHidden: false }
+                        }]
+                    ])
+                }
+            }
+        } as any;
+
+        render(
+            <MoleculeUI
+                {...baseProps}
+                plugin={pluginWithRep}
+                representationRefs={[repRef]}
+                idPrefix="viewer-column-A-alignedto"
+                chainThemeOptions={[
+                    { value: 'default', label: 'Default' },
+                    { value: 'Aligned-chain-theme', label: 'Aligned chain theme' },
+                ]}
+                residueThemeOptions={[
+                    { value: 'default', label: 'Default' },
+                    { value: 'Aligned-residue-theme-3', label: 'Aligned residue theme 3' },
+                ]}
+            />
+        );
+
+        const themeTypeSelect = document.getElementById('viewer-column-A-alignedto-rep-theme-kind-custom-id-missing-kind') as HTMLSelectElement | null;
+        expect(themeTypeSelect).toBeInTheDocument();
+        expect(themeTypeSelect?.value).toBe('residue-type');
+
+        const residueThemeSelect = document.getElementById('viewer-column-A-alignedto-rep-residue-theme-custom-id-missing-kind') as HTMLSelectElement | null;
+        expect(residueThemeSelect).toBeInTheDocument();
+        expect(residueThemeSelect?.value).toBe('Aligned-residue-theme-3');
+    });
+
+    it('switching Theme Type to Residue uses currently applied residue theme when residue metadata is missing', () => {
+        const repRef = 'rep-ref-residue-switch-missing-meta';
+        const onRepresentationResidueThemeChange = vi.fn();
+        const pluginWithRep = {
+            state: {
+                data: {
+                    cells: new Map([
+                        [repRef, {
+                            params: {
+                                values: {
+                                    type: { name: 'cartoon' },
+                                    _ribocodeId: 'custom-id-residue-switch-missing-meta',
+                                    colorTheme: { name: 'Aligned-residue-theme-4', params: {} },
+                                }
+                            },
+                            state: { isHidden: false }
+                        }]
+                    ])
+                }
+            }
+        } as any;
+
+        render(
+            <MoleculeUI
+                {...baseProps}
+                plugin={pluginWithRep}
+                representationRefs={[repRef]}
+                idPrefix="viewer-column-A-aligned"
+                chainThemeOptions={[
+                    { value: 'default', label: 'Default' },
+                ]}
+                residueThemeOptions={[
+                    { value: 'default', label: 'Default' },
+                    { value: 'Aligned-residue-theme-4', label: 'Aligned residue theme 4' },
+                ]}
+                onRepresentationResidueThemeChange={onRepresentationResidueThemeChange}
+            />
+        );
+
+        const themeTypeSelect = document.getElementById('viewer-column-A-aligned-rep-theme-kind-custom-id-residue-switch-missing-meta') as HTMLSelectElement | null;
+        expect(themeTypeSelect).toBeInTheDocument();
+        fireEvent.change(themeTypeSelect!, { target: { value: 'residue-type' } });
+
+        expect(onRepresentationResidueThemeChange).toHaveBeenCalledWith(repRef, 'Aligned-residue-theme-4');
+    });
+
+    it('does not include residue themes in chain selector after switching back to chain', () => {
+        const repRef = 'rep-ref-no-theme-mixing';
+        const pluginWithRep = {
+            state: {
+                data: {
+                    cells: new Map([
+                        [repRef, {
+                            params: {
+                                values: {
+                                    type: { name: 'cartoon' },
+                                    _ribocodeId: 'custom-id-no-theme-mixing',
+                                    _ribocodeActiveThemeKind: 'chain',
+                                    colorTheme: { name: 'Aligned-residue-theme-1', params: {} },
+                                }
+                            },
+                            state: { isHidden: false }
+                        }]
+                    ])
+                }
+            }
+        } as any;
+
+        render(
+            <MoleculeUI
+                {...baseProps}
+                plugin={pluginWithRep}
+                representationRefs={[repRef]}
+                idPrefix="viewer-column-A-alignedto"
+                chainThemeOptions={[
+                    { value: 'default', label: 'Default' },
+                    { value: 'Aligned-chain-theme-1', label: 'Aligned chain theme 1' },
+                ]}
+                residueThemeOptions={[
+                    { value: 'default', label: 'Default' },
+                    { value: 'Aligned-residue-theme-1', label: 'Aligned residue theme 1' },
+                ]}
+            />
+        );
+
+        const chainThemeSelect = document.querySelector('select[id*="rep-chain-theme-"]') as HTMLSelectElement | null;
+        expect(chainThemeSelect).toBeInTheDocument();
+        expect(chainThemeSelect?.value).toBe('default');
+
+        const optionValues = Array.from(chainThemeSelect?.options ?? []).map(option => option.value);
+        expect(optionValues).toContain('default');
+        expect(optionValues).toContain('Aligned-chain-theme-1');
+        expect(optionValues).not.toContain('Aligned-residue-theme-1');
+    });
+
+    it('switching Theme Type to Residue after custom chain theme does not reuse chain theme name', () => {
+        const repRef = 'rep-ref-chain-to-residue-fallback';
+        const onRepresentationResidueThemeChange = vi.fn();
+        const pluginWithRep = {
+            state: {
+                data: {
+                    cells: new Map([
+                        [repRef, {
+                            params: {
+                                values: {
+                                    type: { name: 'cartoon' },
+                                    _ribocodeId: 'custom-id-chain-to-residue-fallback',
+                                    _ribocodeActiveThemeKind: 'chain',
+                                    colorTheme: { name: 'Aligned-chain-theme-new', params: {} },
+                                }
+                            },
+                            state: { isHidden: false }
+                        }]
+                    ])
+                }
+            }
+        } as any;
+
+        render(
+            <MoleculeUI
+                {...baseProps}
+                plugin={pluginWithRep}
+                representationRefs={[repRef]}
+                idPrefix="viewer-column-A-alignedto"
+                chainThemeOptions={[
+                    { value: 'default', label: 'Default' },
+                    { value: 'Aligned-chain-theme-new', label: 'Aligned chain theme new' },
+                ]}
+                residueThemeOptions={[
+                    { value: 'default', label: 'Default' },
+                    { value: 'Aligned-residue-theme-1', label: 'Aligned residue theme 1' },
+                ]}
+                onRepresentationResidueThemeChange={onRepresentationResidueThemeChange}
+            />
+        );
+
+        const themeTypeSelect = document.querySelector('select[id*="rep-theme-kind-"]') as HTMLSelectElement | null;
+        expect(themeTypeSelect).toBeInTheDocument();
+        fireEvent.change(themeTypeSelect!, { target: { value: 'residue-type' } });
+
+        expect(onRepresentationResidueThemeChange).toHaveBeenCalledWith(repRef, 'default');
+        expect(onRepresentationResidueThemeChange).not.toHaveBeenCalledWith(repRef, 'Aligned-chain-theme-new');
+    });
+
+    it('switching Theme Type to Residue ignores invalid persisted residue theme that points to a chain theme', () => {
+        const repRef = 'rep-ref-invalid-persisted-residue-theme';
+        const onRepresentationResidueThemeChange = vi.fn();
+        const pluginWithRep = {
+            state: {
+                data: {
+                    cells: new Map([
+                        [repRef, {
+                            params: {
+                                values: {
+                                    type: { name: 'cartoon' },
+                                    _ribocodeId: 'custom-id-invalid-persisted-residue-theme',
+                                    _ribocodeActiveThemeKind: 'chain',
+                                    _ribocodeResidueTheme: 'Aligned-chain-theme-new',
+                                    colorTheme: { name: 'Aligned-chain-theme-new', params: {} },
+                                }
+                            },
+                            state: { isHidden: false }
+                        }]
+                    ])
+                }
+            }
+        } as any;
+
+        render(
+            <MoleculeUI
+                {...baseProps}
+                plugin={pluginWithRep}
+                representationRefs={[repRef]}
+                idPrefix="viewer-column-A-alignedto"
+                chainThemeOptions={[
+                    { value: 'default', label: 'Default' },
+                    { value: 'Aligned-chain-theme-new', label: 'Aligned chain theme new' },
+                ]}
+                residueThemeOptions={[
+                    { value: 'default', label: 'Default' },
+                    { value: 'Aligned-residue-theme-1', label: 'Aligned residue theme 1' },
+                ]}
+                onRepresentationResidueThemeChange={onRepresentationResidueThemeChange}
+            />
+        );
+
+        const themeTypeSelect = document.querySelector('select[id*="rep-theme-kind-"]') as HTMLSelectElement | null;
+        expect(themeTypeSelect).toBeInTheDocument();
+        fireEvent.change(themeTypeSelect!, { target: { value: 'residue-type' } });
+
+        expect(onRepresentationResidueThemeChange).toHaveBeenCalledWith(repRef, 'default');
+        expect(onRepresentationResidueThemeChange).not.toHaveBeenCalledWith(repRef, 'Aligned-chain-theme-new');
+    });
+
+    it('switching Theme Type to Residue prefers the mode-selected residue theme when available', () => {
+        const repRef = 'rep-ref-preferred-residue-theme';
+        const onRepresentationResidueThemeChange = vi.fn();
+        const pluginWithRep = {
+            state: {
+                data: {
+                    cells: new Map([
+                        [repRef, {
+                            params: {
+                                values: {
+                                    type: { name: 'cartoon' },
+                                    _ribocodeId: 'custom-id-preferred-residue-theme',
+                                    _ribocodeActiveThemeKind: 'chain',
+                                    _ribocodeResidueTheme: 'default',
+                                    colorTheme: { name: 'Aligned-chain-theme-new', params: {} },
+                                }
+                            },
+                            state: { isHidden: false }
+                        }]
+                    ])
+                }
+            }
+        } as any;
+
+        render(
+            <MoleculeUI
+                {...baseProps}
+                plugin={pluginWithRep}
+                representationRefs={[repRef]}
+                idPrefix="viewer-column-A-alignedto"
+                chainThemeOptions={[
+                    { value: 'default', label: 'Default' },
+                    { value: 'Aligned-chain-theme-new', label: 'Aligned chain theme new' },
+                ]}
+                residueThemeOptions={[
+                    { value: 'default', label: 'Default' },
+                    { value: 'Aligned-residue-theme-2', label: 'Aligned residue theme 2' },
+                ]}
+                preferredResidueThemeName="Aligned-residue-theme-2"
+                onRepresentationResidueThemeChange={onRepresentationResidueThemeChange}
+            />
+        );
+
+        const themeTypeSelect = document.querySelector('select[id*="rep-theme-kind-"]') as HTMLSelectElement | null;
+        expect(themeTypeSelect).toBeInTheDocument();
+        fireEvent.change(themeTypeSelect!, { target: { value: 'residue-type' } });
+
+        expect(onRepresentationResidueThemeChange).toHaveBeenCalledWith(repRef, 'Aligned-residue-theme-2');
+    });
 });
