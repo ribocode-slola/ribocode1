@@ -96,11 +96,28 @@ describe('LoadDataRow', () => {
         const root = container.querySelector(`#${baseProps.idPrefix}-${loadMoleculeIdSuffix}`);
         expect(root).toBeInTheDocument();
         expect(screen.getByText('Viewer A')).toBeInTheDocument();
-        expect(screen.getByText('Load AlignedTo')).toBeInTheDocument();
+        const loadAlignedToButton = screen.getByRole('button', { name: 'Load AlignedTo' });
+        expect(loadAlignedToButton).toBeInTheDocument();
+        expect(loadAlignedToButton).toHaveAttribute('title', 'Load the AlignedTo reference structure file (.cif or .mmcif).');
         const representationToggle = document.getElementById('test-viewer-a-representation-controls-toggle-btn');
         expect(representationToggle).toBeInTheDocument();
         expect(representationToggle).toHaveClass('molstar-file-btn');
         expect(representationToggle).toHaveClass('molstar-advanced-controls-toggle');
+    });
+
+    it('renders a Load Aligned button tooltip when configured for Aligned viewer', () => {
+        render(<LoadDataRow {...baseProps} fileInputLabel="Load Aligned" />);
+        const loadAlignedButton = screen.getByRole('button', { name: 'Load Aligned' });
+        expect(loadAlignedButton).toHaveAttribute('title', 'Load the Aligned structure file (.cif or .mmcif).');
+    });
+
+    it('shows an enablement tooltip when Load Aligned is disabled', () => {
+        render(<LoadDataRow {...baseProps} fileInputLabel="Load Aligned" fileInputDisabled={true} />);
+        const loadAlignedButton = screen.getByRole('button', { name: 'Load Aligned' });
+        expect(loadAlignedButton).toHaveAttribute(
+            'title',
+            'Disabled until AlignedTo is loaded. Load AlignedTo first, then this button will be enabled.'
+        );
     });
 
     it('calls onFileInputClick when file input button is clicked', () => {
@@ -351,6 +368,115 @@ describe('LoadDataRow', () => {
         expect(baseProps.onAddRepresentationClick).toHaveBeenCalled();
     });
 
+    it('adds tooltips for representation controls in chain theme mode', () => {
+        render(
+            <LoadDataRow
+                {...baseProps}
+                isLoaded={true}
+                colorMode="chain"
+                colorThemeOptions={[
+                    { value: 'default', label: 'Default' },
+                    { value: 'aligned-custom-1', label: 'Custom 1' },
+                ]}
+                selectedColorThemeName="aligned-custom-1"
+                onSelectedColorThemeNameChange={vi.fn()}
+                onSaveColorTheme={vi.fn()}
+                saveColorThemeDisabled={false}
+                onRemoveColorTheme={vi.fn()}
+                removeColorThemeDisabled={false}
+                chainColorsById={new Map([['A', '#3366FF']])}
+                onChainColorChange={vi.fn()}
+            />
+        );
+
+        fireEvent.click(screen.getByText('Show Representation Controls'));
+
+        expect(document.getElementById('test-viewer-a-representation-type')).toHaveAttribute(
+            'title',
+            'Choose the representation type to add, currently set to cartoon'
+        );
+        expect(screen.getByLabelText('Add Representation')).toHaveAttribute(
+            'title',
+            'Add a new representation using the selected representation type using the theme as below.'
+        );
+        expect(document.getElementById('test-viewer-a-color-mode-select')).toHaveAttribute(
+            'title',
+            'Choose whether representation themes are based on chain or residue type.'
+        );
+        expect(document.getElementById('test-viewer-a-chain-colour-theme-select')).toHaveAttribute(
+            'title',
+            'Select the active chain colour theme.'
+        );
+        expect(document.getElementById('test-viewer-a-remove-chain-theme-btn')).toHaveAttribute(
+            'title',
+            'Remove the selected chain colour theme.'
+        );
+        expect(document.getElementById('test-viewer-a-load-chain-colours-btn')).toHaveAttribute(
+            'title',
+            'Load a chain colour theme from .json, .csv, .tsv, or .txt with chain IDs mapped to colour values.'
+        );
+        expect(document.getElementById('test-viewer-a-save-chain-theme-btn')).toHaveAttribute(
+            'title',
+            'Save the current chain colour theme to a file.'
+        );
+        expect(document.getElementById('test-viewer-a-chain-color-table-search')).toHaveAttribute(
+            'title',
+            'Filter chain rows before editing chain colours.'
+        );
+        expect(document.getElementById('test-viewer-a-chain-color-A')).toHaveAttribute(
+            'title',
+            'Choose a new colour for chain A.'
+        );
+        expect(document.getElementById('test-viewer-a-chain-color-A-apply-btn')).toHaveAttribute(
+            'title',
+            'Disabled until chain A has an unsaved colour change.'
+        );
+    });
+
+    it('adds tooltips for representation controls in residue theme mode', () => {
+        render(
+            <LoadDataRow
+                {...baseProps}
+                isLoaded={true}
+                colorMode="residue-type"
+                colorThemeOptions={[
+                    { value: 'default', label: 'Default' },
+                    { value: 'aligned-residue-1', label: 'Residue 1' },
+                ]}
+                selectedColorThemeName="aligned-residue-1"
+                onSelectedColorThemeNameChange={vi.fn()}
+                onSaveColorTheme={vi.fn()}
+                saveColorThemeDisabled={false}
+                onRemoveColorTheme={vi.fn()}
+                removeColorThemeDisabled={false}
+                residueInfo={{
+                    residueLabels: new Map([
+                        ['1', { id: '1', name: 'ALA 1', compId: 'ALA', seqNumber: 1, insCode: '' }],
+                    ]),
+                    residueToAtomIds: { '1': ['a1'] }
+                }}
+            />
+        );
+
+        fireEvent.click(screen.getByText('Show Representation Controls'));
+        expect(document.getElementById('test-viewer-a-residue-colour-theme-select')).toHaveAttribute(
+            'title',
+            'Select the active residue colour theme.'
+        );
+        expect(document.getElementById('test-viewer-a-remove-residue-theme-btn')).toHaveAttribute(
+            'title',
+            'Remove the selected residue colour theme.'
+        );
+        expect(document.getElementById('test-viewer-a-load-residue-colours-btn')).toHaveAttribute(
+            'title',
+            'Load a residue colour theme from .json, .csv, .tsv, or .txt with residue types mapped to colour values.'
+        );
+        expect(document.getElementById('test-viewer-a-save-residue-theme-btn')).toHaveAttribute(
+            'title',
+            'Save the current residue colour theme to a file.'
+        );
+    });
+
     it('renders grouped select and zoom toggles and keeps residue disabled without chain', () => {
         const { container, unmount } = render(<LoadDataRow {...baseProps} isLoaded={true} />);
         const controls = container.querySelector('.load-data-controls');
@@ -388,6 +514,43 @@ describe('LoadDataRow', () => {
         expect((getByText('Show Residue Controls') as HTMLButtonElement).disabled).toBe(true);
     });
 
+    it('adds tooltips to Show/Hide control toggle buttons', () => {
+        render(<LoadDataRow {...baseProps} isLoaded={true} />);
+
+        const representationToggle = document.getElementById('test-viewer-a-representation-controls-toggle-btn');
+        expect(representationToggle).toHaveAttribute('title', 'Show representation controls.');
+        fireEvent.click(representationToggle as HTMLElement);
+        expect(document.getElementById('test-viewer-a-representation-controls-toggle-btn'))
+            .toHaveAttribute('title', 'Hide representation controls.');
+
+        expect(document.getElementById('test-viewer-a-visibility-controls-toggle-btn'))
+            .toHaveAttribute('title', 'Show visibility controls.');
+        expect(document.getElementById('test-viewer-a-subunit-controls-toggle-btn'))
+            .toHaveAttribute('title', 'Show subunit controls.');
+        expect(document.getElementById('test-viewer-a-chain-controls-toggle-btn'))
+            .toHaveAttribute('title', 'Show chain controls.');
+
+        fireEvent.click(screen.getByText('Show Chain Controls'));
+        expect(document.getElementById('test-viewer-a-select-chain-controls-toggle-btn'))
+            .toHaveAttribute('title', 'Show Select 1 controls.');
+
+        fireEvent.click(screen.getByText('Show Select 2'));
+        expect(document.getElementById('test-viewer-a-residue2-controls-toggle-btn'))
+            .toHaveAttribute('title', 'Disabled. Select a chain in Select 2 to enable residue controls.');
+    });
+
+    it('explains why Select 2 and residue controls are disabled', () => {
+        render(<LoadDataRow {...baseProps} isLoaded={true} selectedChainId="" />);
+
+        fireEvent.click(screen.getByText('Show Chain Controls'));
+        expect(document.getElementById('test-viewer-a-select-chain2-controls-toggle-btn'))
+            .toHaveAttribute('title', 'Disabled. Select a chain in Select 1 first.');
+
+        fireEvent.click(screen.getByText('Show Select 1'));
+        expect(document.getElementById('test-viewer-a-residue-controls-toggle-btn'))
+            .toHaveAttribute('title', 'Disabled. Select a chain in Select 1 to enable residue controls.');
+    });
+
     it('hides select and zoom controls when showSelectZoomControls is false', () => {
         const { queryByText } = render(
             <LoadDataRow
@@ -413,6 +576,22 @@ describe('LoadDataRow', () => {
         fireEvent.click(screen.getByText('Show Chain Controls'));
         fireEvent.click(screen.getByText('Show Select 1'));
         fireEvent.click(screen.getByText('Show Residue Controls'));
+        expect(document.getElementById('test-viewer-a-subunit-select')).toHaveAttribute(
+            'title',
+            'Choose the active subunit selection, currently set to All.'
+        );
+        expect(document.getElementById('test-viewer-a-zoom-subunit-btn')).toHaveAttribute(
+            'title',
+            'Zoom to current subunit selection (All).'
+        );
+        expect(document.getElementById('test-viewer-a-highlight-subunit-btn')).toHaveAttribute(
+            'title',
+            'Subunit highlight is Off. Click to turn it On.'
+        );
+        expect(document.getElementById('test-viewer-a-inspect-subunit-btn')).toHaveAttribute(
+            'title',
+            'Subunit inspect is Off. Click to turn it On.'
+        );
         fireEvent.click(document.getElementById('test-viewer-a-zoom-subunit-btn') as HTMLButtonElement);
         fireEvent.click(document.getElementById('test-viewer-a-highlight-subunit-btn') as HTMLButtonElement);
         fireEvent.click(document.getElementById('test-viewer-a-inspect-subunit-btn') as HTMLButtonElement);
@@ -496,21 +675,40 @@ describe('LoadDataRow', () => {
         const modeSelect = document.getElementById('test-viewer-a-selection-display-mode') as HTMLSelectElement;
         const dimToggle = document.getElementById('test-viewer-a-dim-unselected-toggle-btn') as HTMLButtonElement;
         const dimStrength = document.getElementById('test-viewer-a-dim-unselected-strength') as HTMLInputElement;
+        const zoomExtraRadius = document.getElementById('test-viewer-a-zoom-extra-radius') as HTMLInputElement;
+        const zoomMinRadius = document.getElementById('test-viewer-a-zoom-min-radius') as HTMLInputElement;
 
         expect(modeSelect).toBeInTheDocument();
+        expect(modeSelect).toHaveAttribute('title', 'Choose how highlights are displayed, currently set to overlay.');
         expect(modeSelect.value).toBe('overlay');
         fireEvent.change(modeSelect, { target: { value: 'halo' } });
         expect(onSelectionDisplayModeChange).toHaveBeenCalledWith('halo');
 
         expect(dimToggle).toBeInTheDocument();
+        expect(dimToggle).toHaveAttribute(
+            'title',
+            'Dim unselected atoms/residues is currently Off. Click to turn it On.'
+        );
         expect(dimToggle).toHaveAttribute('aria-pressed', 'false');
         fireEvent.click(dimToggle);
         expect(onDimUnselectedChange).toHaveBeenCalledWith(true);
 
         expect(dimStrength).toBeInTheDocument();
+        expect(dimStrength).toHaveAttribute('title', 'Disabled until Dim unselected is turned On.');
         expect(dimStrength.disabled).toBe(true);
         fireEvent.change(dimStrength, { target: { value: '70' } });
         expect(onDimUnselectedStrengthChange).toHaveBeenCalledWith(0.7);
+
+        expect(zoomExtraRadius).toBeInTheDocument();
+        expect(zoomExtraRadius).toHaveAttribute(
+            'title',
+            'Adjust extraRadius padding used when zooming to selections.'
+        );
+        expect(zoomMinRadius).toBeInTheDocument();
+        expect(zoomMinRadius).toHaveAttribute(
+            'title',
+            'Adjust the minimum zoom radius used when zooming to selections.'
+        );
     });
 
     it('supports residue quick actions and residue-type toggles', () => {
@@ -535,7 +733,59 @@ describe('LoadDataRow', () => {
 
         fireEvent.click(screen.getByText('Show Chain Controls'));
         fireEvent.click(screen.getByText('Show Select 1'));
+        expect(document.getElementById('test-viewer-a-chain-table-search')).toHaveAttribute(
+            'title',
+            'Select a chain for Select 1.'
+        );
+        expect(document.getElementById('test-viewer-a-zoom-chain-btn')).toHaveAttribute(
+            'title',
+            'Zoom to the current Select 1 chain selection (Chain A).'
+        );
+        expect(document.getElementById('test-viewer-a-highlight-chain-btn')).toHaveAttribute(
+            'title',
+            'Select 1 chain highlight is Off. Click to turn it On.'
+        );
+        expect(document.getElementById('test-viewer-a-inspect-chain-btn')).toHaveAttribute(
+            'title',
+            'Select 1 chain inspect is Off. Click to turn it On.'
+        );
         fireEvent.click(screen.getByText('Show Residue Controls'));
+        expect(document.getElementById('test-viewer-a-residue-select')).toHaveAttribute(
+            'title',
+            'Select one or more residues for Select 1.'
+        );
+        expect(document.getElementById('test-viewer-a-residue-select-all-btn')).toHaveAttribute(
+            'title',
+            'Select all residues for Select 1.'
+        );
+        expect(document.getElementById('test-viewer-a-residue-clear-selection-btn')).toHaveAttribute(
+            'title',
+            'Clear the current residue selection for Select 1.'
+        );
+        expect(document.getElementById('test-viewer-a-residue-invert-selection-btn')).toHaveAttribute(
+            'title',
+            'Invert the current residue selection for Select 1.'
+        );
+        expect(document.getElementById('test-viewer-a-residue-select-common-btn')).toHaveAttribute(
+            'title',
+            'Select residues shared between Select 1 and the other selection.'
+        );
+        expect(document.getElementById('test-viewer-a-residue-type-toggle-ALA-btn')).toHaveAttribute(
+            'title',
+            'Add all ALA residues in Select 1.'
+        );
+        expect(document.getElementById('test-viewer-a-zoom-residue-btn')).toHaveAttribute(
+            'title',
+            'Zoom to the current Select 1 residue selection (Residue 1).'
+        );
+        expect(document.getElementById('test-viewer-a-highlight-residue-btn')).toHaveAttribute(
+            'title',
+            'Select 1 residue highlight is Off. Click to turn it On.'
+        );
+        expect(document.getElementById('test-viewer-a-inspect-residue-btn')).toHaveAttribute(
+            'title',
+            'Select 1 residue inspect is Off. Click to turn it On.'
+        );
         expect(screen.getAllByText('ALA (2)').length).toBeGreaterThanOrEqual(1);
         expect(screen.getAllByText('GLY (1)').length).toBeGreaterThanOrEqual(1);
 
@@ -556,6 +806,7 @@ describe('LoadDataRow', () => {
         const onSelectChainId2 = vi.fn();
         const onChainZoom2 = vi.fn();
         const onCombinedSelectionZoom = vi.fn();
+        const onShowUniprotAccessionInChainLabelsChange = vi.fn();
         const onSelectResidueIds2 = vi.fn();
         const onResidueZoom2 = vi.fn();
 
@@ -566,9 +817,11 @@ describe('LoadDataRow', () => {
                 selectedChainId2="B"
                 onSelectChainId2={onSelectChainId2}
                 onChainZoom2={onChainZoom2}
+                chainZoomLabel2="Chain B"
                 chainZoomDisabled2={false}
                 onCombinedSelectionZoom={onCombinedSelectionZoom}
                 combinedSelectionZoomDisabled={false}
+                onShowUniprotAccessionInChainLabelsChange={onShowUniprotAccessionInChainLabelsChange}
                 residueInfo2={{
                     residueLabels: new Map([
                         ['10', { id: '10', name: 'Residue 10', compId: 'GLY', seqNumber: 10, insCode: '' }],
@@ -585,7 +838,39 @@ describe('LoadDataRow', () => {
         );
 
         fireEvent.click(screen.getByText('Show Chain Controls'));
+        expect(document.getElementById('test-viewer-a-zoom-combined-selection-btn')).toHaveAttribute(
+            'title',
+            'Zoom to the current combined selection across selected chains.'
+        );
+        expect(document.getElementById('test-viewer-a-highlight-combined-selection-btn')).toHaveAttribute(
+            'title',
+            'Disabled until combined-selection highlighting is available.'
+        );
+        expect(document.getElementById('test-viewer-a-inspect-combined-selection-btn')).toHaveAttribute(
+            'title',
+            'Disabled until combined-selection inspection is available.'
+        );
+        expect(document.getElementById('test-viewer-a-show-uniprot-accession')).toHaveAttribute(
+            'title',
+            'UniProt accessions in chain labels are On. Click to turn them Off.'
+        );
         fireEvent.click(screen.getByText('Show Select 2'));
+        expect(document.getElementById('test-viewer-a-chain2-chain-table-search')).toHaveAttribute(
+            'title',
+            'Select a chain for Select 2.'
+        );
+        expect(document.getElementById('test-viewer-a-zoom-chain2-btn')).toHaveAttribute(
+            'title',
+            'Zoom to the current Select 2 chain selection (Chain B).'
+        );
+        expect(document.getElementById('test-viewer-a-highlight-chain2-btn')).toHaveAttribute(
+            'title',
+            'Disabled until Select 2 chain highlighting is available.'
+        );
+        expect(document.getElementById('test-viewer-a-inspect-chain2-btn')).toHaveAttribute(
+            'title',
+            'Disabled until Select 2 chain inspection is available.'
+        );
         fireEvent.click(document.querySelector('[data-testid="test-viewer-a-chain2-chain-table-row-B"]') as HTMLTableRowElement);
         expect(onSelectChainId2).toHaveBeenCalledWith('B');
 
@@ -601,5 +886,47 @@ describe('LoadDataRow', () => {
 
         fireEvent.click(document.getElementById('test-viewer-a-residue2-select-common-btn') as HTMLButtonElement);
         expect(onSelectResidueIds2).toHaveBeenCalled();
+    });
+
+    it('explains disabled Select Shared tooltips for Select 1 and Select 2', () => {
+        render(
+            <LoadDataRow
+                {...baseProps}
+                isLoaded={true}
+                selectedChainId="A"
+                selectedChainId2="B"
+                residueCommonIds={[]}
+                residueCommonIds2={[]}
+                residueInfo={{
+                    residueLabels: new Map([
+                        ['1', { id: '1', name: 'ALA 1', compId: 'ALA', seqNumber: 1, insCode: '' }],
+                    ]),
+                    residueToAtomIds: { '1': ['a1'] },
+                }}
+                residueInfo2={{
+                    residueLabels: new Map([
+                        ['10', { id: '10', name: 'GLY 10', compId: 'GLY', seqNumber: 10, insCode: '' }],
+                    ]),
+                    residueToAtomIds: { '10': ['a10'] },
+                }}
+                selectedResidueIds2={['10']}
+                onSelectResidueIds2={vi.fn()}
+            />
+        );
+
+        fireEvent.click(screen.getByText('Show Chain Controls'));
+        fireEvent.click(screen.getByText('Show Select 1'));
+        fireEvent.click(screen.getByText('Show Residue Controls'));
+        expect(document.getElementById('test-viewer-a-residue-select-common-btn')).toHaveAttribute(
+            'title',
+            'Disabled until matching chains are selected in both AlignedTo and Aligned views and shared residues are available for Select 1.'
+        );
+
+        fireEvent.click(screen.getByText('Show Select 2'));
+        fireEvent.click(screen.getAllByText('Show Residue Controls')[0]);
+        expect(document.getElementById('test-viewer-a-residue2-select-common-btn')).toHaveAttribute(
+            'title',
+            'Disabled until matching chains are selected in both AlignedTo and Aligned views and shared residues are available for Select 2.'
+        );
     });
 });

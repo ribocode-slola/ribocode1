@@ -178,17 +178,20 @@ describe('ViewerColumn', () => {
         const toggleButton = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-advanced-molstar-controls-toggle-btn`);
         expect(toggleButton).toBeInTheDocument();
         expect(toggleButton).toHaveTextContent('Show Advanced Mol* Controls');
+        expect(toggleButton).toHaveAttribute('title', 'Show Advanced Mol* Controls.');
 
         const closedPanel = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-advanced-molstar-controls-panel`);
         expect(closedPanel).toBeNull();
 
         fireEvent.click(toggleButton as HTMLElement);
         expect(toggleButton).toHaveTextContent('Hide Advanced Mol* Controls');
+        expect(toggleButton).toHaveAttribute('title', 'Hide Advanced Mol* Controls.');
         const openedPanel = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-advanced-molstar-controls-panel`);
         expect(openedPanel).toBeInTheDocument();
 
         fireEvent.click(toggleButton as HTMLElement);
         expect(toggleButton).toHaveTextContent('Show Advanced Mol* Controls');
+        expect(toggleButton).toHaveAttribute('title', 'Show Advanced Mol* Controls.');
         const reClosedPanel = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-advanced-molstar-controls-panel`);
         expect(reClosedPanel).toBeNull();
     });
@@ -215,10 +218,12 @@ describe('ViewerColumn', () => {
         const toggleButton = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-select-zoom-controls-toggle-btn`);
         expect(toggleButton).toBeInTheDocument();
         expect(toggleButton).toHaveTextContent('Show Select and Zoom Controls');
+        expect(toggleButton).toHaveAttribute('title', 'Show Select and Zoom Controls.');
         expect(document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-chain-table-container`)).toBeNull();
 
         fireEvent.click(toggleButton as HTMLElement);
         expect(toggleButton).toHaveTextContent('Hide Select and Zoom Controls');
+        expect(toggleButton).toHaveAttribute('title', 'Hide Select and Zoom Controls.');
         const visibilityToggle = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-alignedto-visibility-controls-toggle-btn`);
         expect(visibilityToggle).toBeInTheDocument();
         expect(document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-alignedto-zoom-extra-radius`)).toBeNull();
@@ -396,18 +401,42 @@ describe('ViewerColumn', () => {
 
         const clippingToggle = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-clipping-controls-toggle-btn`) as HTMLButtonElement;
         expect(clippingToggle).toHaveTextContent('Show Clipping Controls');
+        expect(clippingToggle).toHaveAttribute('title', 'Show Clipping Controls.');
         fireEvent.click(clippingToggle);
         expect(clippingToggle).toHaveTextContent('Hide Clipping Controls');
+        expect(clippingToggle).toHaveAttribute('title', 'Hide Clipping Controls.');
 
         const nearRange = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-alignedto-clip-near-range`) as HTMLInputElement;
+        const nearNumber = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-alignedto-clip-near-number`) as HTMLInputElement;
         const farRange = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-alignedto-clip-far-range`) as HTMLInputElement;
+        const farNumber = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-alignedto-clip-far-number`) as HTMLInputElement;
         const nearResetBtn = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-alignedto-clip-near-reset-btn`) as HTMLButtonElement;
         const farResetBtn = document.getElementById(`${idPrefix}-${viewerColumnIdSuffix}-A-alignedto-clip-far-reset-btn`) as HTMLButtonElement;
 
         expect(nearRange).toBeInTheDocument();
+        expect(nearNumber).toBeInTheDocument();
         expect(farRange).toBeInTheDocument();
+        expect(farNumber).toBeInTheDocument();
         expect(nearResetBtn).toBeInTheDocument();
         expect(farResetBtn).toBeInTheDocument();
+        expect(nearRange).toHaveAttribute(
+            'title',
+            'Adjust the minimum near clipping distance to control how much of the nearest geometry is clipped.'
+        );
+        expect(farRange).toHaveAttribute(
+            'title',
+            'Adjust the clipping radius to control how much of the structure remains visible.'
+        );
+        expect(nearNumber).toHaveAttribute(
+            'title',
+            'Adjust the minimum near clipping distance to control how much of the nearest geometry is clipped.'
+        );
+        expect(farNumber).toHaveAttribute(
+            'title',
+            'Adjust the clipping radius to control how much of the structure remains visible.'
+        );
+        expect(nearResetBtn).toHaveAttribute('title', 'Reset Min Near to its default value.');
+        expect(farResetBtn).toHaveAttribute('title', 'Reset Clip Radius to its default value.');
 
         fireEvent.change(nearRange, { target: { value: '0.5' } });
         expect(onClippingMinNearChange).toHaveBeenCalledWith(0.5);

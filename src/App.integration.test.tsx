@@ -375,6 +375,14 @@ describe('App integration: AlignedTo and Aligned loading', () => {
     expect(header).toBeInTheDocument();
     expect(header.id).toBe('app-header');
     expect(header.tagName.toLowerCase()).toBe('header');
+    expect(screen.getByRole('link', { name: 'README' })).toHaveAttribute(
+      'title',
+      'Open README documentation in a web browser.'
+    );
+    expect(screen.getByRole('link', { name: 'User Guide' })).toHaveAttribute(
+      'title',
+      'Open User Guide documentation in a web browser.'
+    );
   });
 
   it('toggles visibility for all representations', async () => {
@@ -391,6 +399,10 @@ describe('App integration: AlignedTo and Aligned loading', () => {
 
     expect(alignedLoadBtn).toBeInTheDocument();
     expect(alignedLoadBtn).toBeDisabled();
+    expect(alignedLoadBtn).toHaveAttribute(
+      'title',
+      'Disabled until AlignedTo is loaded. Load AlignedTo first, then this button will be enabled.'
+    );
     expect(alignedToInput).toBeInTheDocument();
 
     fireEvent.change(alignedToInput!, { target: { files: [loadTestFile('4ug0.cif')] } });
