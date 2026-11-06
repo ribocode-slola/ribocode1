@@ -4,7 +4,12 @@ A chronological version based list of changes.
 ## [Unreleased]
 Release summary: upcoming changes.
 
-- Added a subtle visual boundary around each viewer column in `src/App.css` (light border, rounded corners, and minimal shadow) to improve side-by-side panel separation and readability.
+## [v0.23.0] - 2026-11-06
+Release summary: this minor release introduces progressive multi-chain selection expansion with recursive slots, improved residue selection, stronger session round-tripping, and expanded automated coverage.
+- Refined progressive selection disclosure in `src/components/LoadMolecule.tsx` so `Select 2` controls/selection info appear only after a `Select 1` chain is chosen, and `Select 3` controls/selection info appear only after a `Select 2` chain is chosen.
+- Added regression coverage for recursive dynamic chain slots and persistence filtering in `src/components/LoadMolecule.test.tsx` and `src/App.integration.test.tsx`, plus end-to-end Save All/Load All round-trip tests in `e2e/session-load-all-dynamic-chain-slots.e2e.spec.ts`
+- Improved residue selection UX in `src/components/LoadMolecule.tsx` by adding per-residue-type `Show list`/`Hide list` controls in Select 1/2/3 residue panels, enabling compact on-demand per-residue checkbox selection while keeping the existing quick `Add/Remove` actions.
+- Added focused regression assertions in `src/components/LoadMolecule.test.tsx` covering the new per-type residue details toggle, expanded panel rendering, and individual residue checkbox selection behavior.
 
 ## [v0.22.1] - 2026-11-06
 Release summary: this patch release fixes and clarifies `Dim unselected` behavior so dimming scope follows active selection/theme context.
@@ -13,6 +18,7 @@ Release summary: this patch release fixes and clarifies `Dim unselected` behavio
 - Added regression tests in `src/App.test.tsx` covering theme-type-based dim exclusion behavior for chain and residue scopes.
 - Refined `Dim unselected` behavior to follow the active Theme Type: chain themes now dim relative to the selected chain, while residue themes dim relative to selected residues.
 - Updated `Dim unselected` tooltip guidance to explicitly state that emphasis scope follows the active Theme Type (selected chain for chain themes, selected residues for residue themes).
+- Added a subtle visual boundary around each viewer column in `src/App.css` (light border, rounded corners, and minimal shadow) to improve side-by-side panel separation and readability.
 
 ## [v0.22.0] - 2026-11-05
 Release summary: this release improves session export UX and rolls out comprehensive, state-aware tooltip guidance across key controls.
