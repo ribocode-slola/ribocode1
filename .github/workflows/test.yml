@@ -20,7 +20,9 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
+      - run: npm install
+      - run: npm --workspace packages/molstar install
+      - run: npm --workspace packages/molstar run build:lib
       - run: npm run test
 
   e2e-tests:
@@ -33,6 +35,8 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
+      - run: npm install
+      - run: npm --workspace packages/molstar install
+      - run: npm --workspace packages/molstar run build:lib
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
