@@ -22,6 +22,8 @@ jobs:
           cache: npm
       - run: npm install
       - run: npm --workspace packages/molstar install
+      # The current lock resolves Molstar's ^5.9.3 TypeScript dependency to 6.x.
+      - run: npm install --workspace packages/molstar --no-save --no-audit --no-fund typescript@5.9.3
       - run: npm --workspace packages/molstar run build:lib
       - run: npm run test
 
@@ -37,6 +39,8 @@ jobs:
           cache: npm
       - run: npm install
       - run: npm --workspace packages/molstar install
+      # The current lock resolves Molstar's ^5.9.3 TypeScript dependency to 6.x.
+      - run: npm install --workspace packages/molstar --no-save --no-audit --no-fund typescript@5.9.3
       - run: npm --workspace packages/molstar run build:lib
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
