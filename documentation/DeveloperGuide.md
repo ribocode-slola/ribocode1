@@ -218,6 +218,8 @@ This section defines expected behavior for loading, applying, saving, and testin
 
 - Chain edits target author chain IDs. Label aliases may be updated only when they do not collide with another author chain ID.
 - When seeding an editable default theme, preserve provider colours for all unaffected chains; author-ID colours take precedence over colliding label aliases.
+- Loaded custom chain and residue-type themes use `UNSPECIFIED_THEME_COLOR` (`#808080`) for omitted entries. Chain swatches sample the same provider as the viewer, including author/label lookup; residue swatches fill omitted types with the same grey.
+- Fallback colours are display values, not stored theme rows. Imported custom themes export their explicit entries and remain partial in sessions. Editing the built-in Default chain theme still seeds the editable theme with the dataset's existing palette.
 
 ### Sync scope note
 

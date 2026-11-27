@@ -5,8 +5,8 @@
  *
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT
  * @author Copilot, Andy Turner <agdturner@gmail.com>
- * @version 1.0.0
- * @lastModified 2026-06-11
+ * @version 1.0.1
+ * @lastModified 2026-11-27
  */
 import { test, expect, type Page } from '@playwright/test';
 import { promises as fs } from 'fs';
@@ -109,10 +109,14 @@ test('Save All/Load All restores separate chain and residue theme selections', a
   await expect(page.locator('#viewer-column-A-alignedto-chain-colour-theme-select')).toBeVisible({ timeout: 10000 });
 
   const chainThemeValueBefore = await page.locator('#viewer-column-A-alignedto-chain-colour-theme-select').inputValue();
+  await expect(page.locator('#viewer-column-A-alignedto-chain-color-L5')).toHaveValue('#808080');
+  await expect(page.locator('#viewer-column-A-alignedto-chain-color-LY')).toHaveValue('#34cd56');
 
   await page.selectOption('#viewer-column-A-alignedto-color-mode-select', 'residue-type');
   await expect(page.locator('#viewer-column-A-alignedto-residue-colour-theme-select')).toBeVisible({ timeout: 10000 });
   const residueThemeValueBefore = await page.locator('#viewer-column-A-alignedto-residue-colour-theme-select').inputValue();
+  await expect(page.locator('#viewer-column-A-alignedto-residue-type-color-G')).toHaveValue('#808080');
+  await expect(page.locator('#viewer-column-A-alignedto-residue-type-color-ALA')).toHaveValue('#cc5500');
 
   expect(chainThemeValueBefore).not.toBe('default');
   expect(residueThemeValueBefore).not.toBe('default');
@@ -122,6 +126,31 @@ test('Save All/Load All restores separate chain and residue theme selections', a
 
   expect(saved.json?.uiState?.colorThemesByMode?.alignedTo?.selectedChainThemeName).toBe(chainThemeValueBefore);
   expect(saved.json?.uiState?.colorThemesByMode?.alignedTo?.selectedResidueThemeName).toBe(residueThemeValueBefore);
+  const themes = saved.json.uiState.colorThemesByMode.alignedTo.themes as Array<{ value: string; rows: unknown[] }>;
+  expect(themes.find(theme => theme.value === chainThemeValueBefore)?.rows).toHaveLength(2);
+  expect(themes.find(theme => theme.value === residueThemeValueBefore)?.rows).toHaveLength(2);
+
+  const residueDownloadPromise = page.waitForEvent('download');
+  await page.click('#viewer-column-A-alignedto-save-residue-theme-btn');
+  const residueDownload = await residueDownloadPromise;
+  const residuePath = await residueDownload.path();
+  if (!residuePath) throw new Error('Residue theme download was not saved.');
+  expect((await fs.readFile(residuePath, 'utf8')).trim().split('\n')).toEqual([
+    'residue_type,color', 'ALA,#CC5500', 'GLY,#0088AA',
+  ]);
+
+  await page.selectOption('#viewer-column-A-alignedto-color-mode-select', 'chain');
+  const chainDownloadPromise = page.waitForEvent('download');
+  await page.click('#viewer-column-A-alignedto-save-chain-theme-btn');
+  const chainDownload = await chainDownloadPromise;
+  const chainPath = await chainDownload.path();
+  if (!chainPath) throw new Error('Chain theme download was not saved.');
+  expect((await fs.readFile(chainPath, 'utf8')).trim().split('\n')).toEqual([
+    'chain,color', 'CU,#12AB34', 'LY,#34CD56',
+  ]);
+  await page.selectOption('#viewer-column-A-alignedto-chain-colour-theme-select', 'default');
+  await page.selectOption('#viewer-column-A-alignedto-color-mode-select', 'residue-type');
+  await page.selectOption('#viewer-column-A-alignedto-residue-colour-theme-select', 'default');
 
   await loadAllFromSession(page, saved.path);
   await openRepresentationControls(page);
@@ -129,8 +158,12 @@ test('Save All/Load All restores separate chain and residue theme selections', a
   await page.selectOption('#viewer-column-A-alignedto-color-mode-select', 'chain');
   await expect.poll(async () => page.locator('#viewer-column-A-alignedto-chain-colour-theme-select').inputValue(), { timeout: 20000 })
     .toBe(chainThemeValueBefore);
+  await expect(page.locator('#viewer-column-A-alignedto-chain-color-L5')).toHaveValue('#808080');
+  await expect(page.locator('#viewer-column-A-alignedto-chain-color-LY')).toHaveValue('#34cd56');
 
   await page.selectOption('#viewer-column-A-alignedto-color-mode-select', 'residue-type');
   await expect.poll(async () => page.locator('#viewer-column-A-alignedto-residue-colour-theme-select').inputValue(), { timeout: 20000 })
     .toBe(residueThemeValueBefore);
+  await expect(page.locator('#viewer-column-A-alignedto-residue-type-color-G')).toHaveValue('#808080');
+  await expect(page.locator('#viewer-column-A-alignedto-residue-type-color-ALA')).toHaveValue('#cc5500');
 });

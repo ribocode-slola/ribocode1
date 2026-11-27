@@ -4,7 +4,7 @@
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
  * 
  * @author Andy Turner <agdturner@gmail.com>
- * @version 1.0.1
+ * @version 1.0.2
  * @lastModified 2026-11-27
  * @see https://github.com/ribocode-slola/ribocode1
  */
@@ -97,9 +97,37 @@ describe('createChainColorTheme', () => {
 
         expect(color).toBe(Color.fromHexStyle('#FF8800'));
     });
+
+    it('uses grey for unspecified chains without modifying the map', () => {
+        const colors = new Map([['LY', Color(0x3366FF)], ['SC', Color(0x000000)]]);
+        const provider = createChainColorTheme('partial-chain', colors);
+        const color = provider.factory({}, {}).color;
+
+        expect(color(makeLocation('L5', 'A'))).toBe(Color(0x808080));
+        expect(color(makeLocation('LY', 'B'))).toBe(Color(0x3366FF));
+        expect(color(makeLocation('SC', 'LY'))).toBe(Color(0x000000));
+        expect(color(makeLocation('other', 'LY'))).toBe(Color(0x3366FF));
+        expect(colors.size).toBe(2);
+    });
 });
 
 describe('createResidueTypeColorTheme', () => {
+    it('uses grey for unspecified residue types and bonds without modifying the map', () => {
+        const colors = new Map([['ALA', Color(0xCC5500)]]);
+        const provider = createResidueTypeColorTheme('partial-residue', colors);
+        const color = provider.factory({}, provider.defaultValues).color;
+        const unit = {
+            kind: 0,
+            elements: [0, 1],
+            model: { atomicHierarchy: { atoms: { label_comp_id: { value: (index: number) => index === 0 ? 'ALA' : 'GLY' } } } },
+        };
+
+        expect(color({ kind: 'element-location', unit, element: 0 })).toBe(Color(0xCC5500));
+        expect(color({ kind: 'element-location', unit, element: 1 })).toBe(Color(0x808080));
+        expect(color({ kind: 'bond-location', aUnit: unit, aIndex: 1 })).toBe(Color(0x808080));
+        expect(colors.size).toBe(1);
+    });
+
     it('retains refresh and theme-kind params through Molstar normalization and theme creation', () => {
         const provider = createResidueTypeColorTheme('residue-theme', new Map([['ALA', Color(0x8CFF8C)]]));
         const firstProps = PD.normalizeParams(provider.getParams(), {

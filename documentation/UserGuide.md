@@ -50,6 +50,7 @@ Use this flow when working with chain/residue themes:
 Theme library behavior:
 
 - Loaded custom themes are shared and can be applied to either dataset role (`AlignedTo` or `Aligned`).
+- Chains and residue types not specified in a loaded custom theme use neutral grey (`#808080`), including their colour-editor swatches. Built-in Default themes retain their normal palettes. Saving a custom theme exports only its explicit entries; the grey fallback does not add rows to the theme or session.
 - The top `Theme` selector in `Representation Controls` sets what newly added representations will use by default for that mode.
 - Per-representation selectors are authoritative for that specific representation row.
 

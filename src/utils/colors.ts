@@ -5,7 +5,7 @@
  * Copyright (c) 2024-now Ribocode contributors, licensed under MIT, See LICENSE file for more info.
  * 
  * @author Andy Turner <agdturner@gmail.com>
- * @version 1.0.1
+ * @version 1.0.2
  * @lastModified 2026-11-27
  * @see https://github.com/ribocode-slola/ribocode1
  */
@@ -15,13 +15,13 @@ import { ThemeDataContext } from 'molstar/lib/mol-theme/theme';
 //import { ColorType } from 'molstar/lib/mol-geo/geometry/color-data';
 import { ColorTheme } from 'molstar/lib/mol-theme/color';
 import { ChainIdColorThemeParams } from 'molstar/lib/mol-theme/color/chain-id';
-import { ChainIdColorTheme, ChainIdColorThemeProvider } from 'molstar/lib/mol-theme/color/chain-id';
 import { PluginUIContext } from 'molstar/lib/mol-plugin-ui/context';
 import { ParamDefinition as PD } from 'molstar/lib/mol-util/param-definition';
 
 // Define a type for the data structure
 export type Data = Record<string, string>;
 export type ParsedColorThemeKind = 'chain' | 'residue-type';
+export const UNSPECIFIED_THEME_COLOR = '#808080';
 
 const CHAIN_KEYS = new Set(['chain', 'chain_id', 'pdb_chain', 'auth_asym_id', 'label_asym_id', 'asym_id']);
 const RESIDUE_KEYS = new Set(['residue_type', 'residue', 'residue_name', 'comp_id', 'label_comp_id']);
@@ -300,6 +300,7 @@ export function getColourTheme(
 export function createChainColorTheme(
     themeName: string,
     chainColorMap: Map<string, Color>) {
+    const unspecifiedColor = Color.fromHexStyle(UNSPECIFIED_THEME_COLOR);
     const normalizeChainId = (value: unknown): string => String(value ?? '').trim();
     const normalizedChainColorMap = new Map<string, Color>();
     chainColorMap.forEach((color, key) => {
@@ -327,8 +328,7 @@ export function createChainColorTheme(
         return undefined;
     };
 
-    const theme = (ctx: ThemeDataContext, props: {}) => {
-        const fallbackChainIdTheme = ChainIdColorTheme(ctx, ChainIdColorThemeProvider.defaultValues as any);
+    const theme = (_ctx: ThemeDataContext, _props: {}) => {
         return ({
         granularity: 'group',
         color: (location: StructureElement.Location) => {
@@ -339,9 +339,9 @@ export function createChainColorTheme(
                 const authAsymId: string = String(unit.model.atomicHierarchy.chains.auth_asym_id?.value?.(chainIndex) ?? '');
                 const labelAsymId: string = String(unit.model.atomicHierarchy.chains.label_asym_id?.value?.(chainIndex) ?? '');
                 const resolved = resolveChainColor(authAsymId, labelAsymId);
-                return resolved ?? fallbackChainIdTheme.color(location as any, false);
+                return resolved ?? unspecifiedColor;
             }
-            return fallbackChainIdTheme.color(location as any, false);
+            return unspecifiedColor;
         },
         props: {},
         description: 'Colors chains according to a custom map.'
@@ -389,7 +389,7 @@ export function createResidueTypeColorTheme(
         return normalizedResidueColorMap.get(normalized);
     };
 
-    const unknownResidueColor = Color(0xFF00FF);
+    const unknownResidueColor = Color.fromHexStyle(UNSPECIFIED_THEME_COLOR);
     const theme = (_ctx: ThemeDataContext, props: PD.Values<typeof params>) => ({
         granularity: 'group',
         color: (location: any) => {
