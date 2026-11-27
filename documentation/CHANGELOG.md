@@ -1,6 +1,10 @@
 # Change Log
 A chronological version based list of changes.
 
+## [Unreleased]
+
+- Use neutral grey (`#808080`) for chains and residue types omitted from loaded custom colour themes, including colour-editor swatches. Preserve built-in Default palettes and export only explicit custom theme entries.
+
 ## [v0.26.0]
 
 - Use the Mol* light skin for embedded viewer controls, restoring the vertical toolbar and distinct selection icons; keep advanced panels behind the per-viewer toggle.
